@@ -14,16 +14,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-      let salt: string | number = 10; 
-      try {
-          salt = await bcryptjs.genSalt(10);
-      } catch (err) {
-          console.error('Error generating salt:', err);
-      }
-  
-      const hashedPassword = await bcryptjs.hash(password, salt as string); // Ensure salt is a string
-      const newUser = new User({ username, password: hashedPassword, role });
-      const savedUser = await newUser.save();
+    const salt:string = await bcryptjs.genSalt(10);
+    const hashedPassword:string = await bcryptjs.hash(password, salt);
+    const newUser = new User({ username, password: hashedPassword ,role});
+    const savedUser = await newUser.save();
+
     return Response.json(
       { message: "User Created Successfully", success: true, savedUser },
       { status: 201 }
