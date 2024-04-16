@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const salt = await bcryptjs.genSalt(10);
+    const salt:any = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
     const newUser = new User({ username, password: hashedPassword ,role});
     const savedUser = await newUser.save();
