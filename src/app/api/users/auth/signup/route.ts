@@ -1,4 +1,3 @@
-import { mailer } from "@/helpers/mailer";
 import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
@@ -6,14 +5,8 @@ import { type TUser } from "@/libs/types";
 connect();
 export async function POST(request: Request) {
   try {
-    const { username, email, password }: TUser = await request.json();
-    const existingEmail: TUser | null = await User.findOne({ email });
-    if (existingEmail) {
-      return Response.json(
-        { error: "Email already Registered" },
-        { status: 400 }
-      );
-    }
+    const { username, password,role }: TUser = await request.json();
+
     const existingUserName: TUser | null = await User.findOne({ username });
     if (existingUserName) {
       return Response.json(
@@ -23,14 +16,8 @@ export async function POST(request: Request) {
     }
     const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
-    const newUser = new User({ username, email, password: hashedPassword });
+    const newUser = new User({ username, password: hashedPassword ,role});
     const savedUser = await newUser.save();
-
-    await mailer({
-      email,
-      userId: savedUser._id,
-      reason: "VERIFY",
-    });
 
     return Response.json(
       { message: "User Created Successfully", success: true, savedUser },
