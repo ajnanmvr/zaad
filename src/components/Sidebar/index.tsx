@@ -231,12 +231,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
               {/* <!-- Menu Item Calendar --> */}
 
-              {/* <!-- Menu Item Profile --> */}
+              {/* <!-- Menu Item employees --> */}
               <li>
                 <Link
-                  href="/profile"
+                  href="/employees"
                   className={`group relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-graydark dark:hover:bg-meta-4 ${
-                    pathname.includes("profile") && "bg-graydark dark:bg-meta-4"
+                    pathname.includes("employees") && "bg-graydark dark:bg-meta-4"
                   }`}
                 >
                   <svg
@@ -256,7 +256,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       fill=""
                     />
                   </svg>
-                  Profile
+                  Employees
                 </Link>
               </li>
               {/* <!-- Menu Item Profile --> */}
@@ -453,10 +453,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
             </ul>
           </div>
 
-          {/* <!-- Others Group --> */}
+          {/* <!-- Accounts Group --> */}
           <div>
             <h3 className="mb-4 ml-4 text-sm font-semibold text-bodydark2">
-              OTHERS
+              ACCOUNTS
             </h3>
 
             <ul className="mb-6 flex flex-col gap-1.5">
