@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    return Response.json(error), { status: 401 };
+    return Response.json(error, { status: 401 });
   }
 }
 interface Document {
@@ -22,13 +22,13 @@ interface Document {
 }
 
 interface CompanyData {
-  _id:any;
+  _id: any;
   name: string;
   documents: Document[];
 }
 
 interface CompanyWithOldestExpiry {
-  id:any;
+  id: any;
   name: string;
   docs: number;
   expiryDate: Date | null;
@@ -52,7 +52,7 @@ export async function GET() {
     });
 
     data.push({
-      id:company._id,
+      id: company._id,
       name: company.name,
       docs: company.documents.length,
       expiryDate,
