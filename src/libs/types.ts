@@ -37,5 +37,6 @@ export type TListCompanies = [
     name: string;
     expiryDate: string;
     docs: number;
+    status:string
   },
 ];

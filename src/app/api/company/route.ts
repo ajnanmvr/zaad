@@ -1,5 +1,4 @@
 import connect from "@/db/connect";
-import { TListCompanies } from "@/libs/types";
 import Company from "@/models/companies";
 
 connect();
@@ -17,25 +16,27 @@ export async function POST(request: Request) {
     return Response.json(error, { status: 401 });
   }
 }
+
 interface Document {
-  expiryDate: Date;
+  expiryDate: string;
 }
 
 interface CompanyData {
-  _id: any;
   name: string;
+  _id:string;
   documents: Document[];
 }
 
 interface CompanyWithOldestExpiry {
-  id: any;
+  id:string;
   name: string;
+  expiryDate: string | null;
   docs: number;
-  expiryDate: Date | null;
+  status: "expired" | "renewal" | "valid";
 }
 
 export async function GET() {
-  const today = new Date(); // Today's date
+  const today = new Date();
 
   const companies: CompanyData[] =
     await Company.find().select("name documents");
@@ -43,21 +44,51 @@ export async function GET() {
   const data: CompanyWithOldestExpiry[] = [];
 
   companies.forEach((company) => {
-    let expiryDate: Date | null = null;
+    let expiryDate: string | null = null;
 
     company.documents.forEach((document) => {
-      if (!expiryDate || document.expiryDate < expiryDate!) {
+      if (
+        !expiryDate ||
+        new Date(document.expiryDate).getTime() <
+          new Date(expiryDate).getTime()!
+      ) {
         expiryDate = document.expiryDate;
       }
     });
 
-    data.push({
-      id: company._id,
-      name: company.name,
-      docs: company.documents.length,
-      expiryDate,
-    });
-  });
+    let status: CompanyWithOldestExpiry["status"] = "valid"; // Default status
 
+    if (expiryDate) {
+      const expiryDateTime = new Date(expiryDate).getTime();
+      const timeDiff = expiryDateTime - today.getTime();
+      const daysDiff = timeDiff / (1000 * 3600 * 24); // Convert milliseconds to days
+
+      if (daysDiff < 0) {
+        status = "expired";
+      } else if (daysDiff <= 30) {
+        status = "renewal";
+      }
+      const formattedExpiryDate = new Date(expiryDateTime).toLocaleDateString(
+        "en-US",
+        {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        },
+      );
+
+      data.push({
+        id:company._id,
+        name: company.name,
+        expiryDate: formattedExpiryDate,
+        docs: company.documents.length,
+        status,
+      });
+    }
+  });
+  data.sort(
+    (a, b) =>
+      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime(),
+  );
   return Response.json({ count: companies.length, data }, { status: 200 });
 }
