@@ -25,50 +25,109 @@ const SingleCompany = () => {
 
   return (
     <DefaultLayout>
-      <div className="mx-auto max-w-242.5">
-        <div className="overflow-hidden rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-          <div className="px-4 pb-6 text-center lg:pb-8 xl:pb-11.5">
-            <div className="mt-10">
-              <h3 className="mb-1.5 text-3xl font-semibold text-black dark:text-white">
-                {company.name}
-              </h3>
-              <p className="font-medium">{company?.companyType}</p>
-              <div className="mx-auto mb-5.5 mt-4.5 grid max-w-94 grid-cols-3 rounded-md border border-stroke py-2.5 shadow-1 dark:border-strokedark dark:bg-[#37404F]">
-                <div className="flex flex-col items-center justify-center gap-1 border-r border-stroke px-4 dark:border-strokedark xsm:flex-row">
-                  <span className="font-semibold text-black dark:text-white">
-                  {company?.documents?.length}
-                  </span>
-                  <span className="text-sm">Documents</span>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-1 border-r border-stroke px-4 dark:border-strokedark xsm:flex-row">
-                  <span className="font-semibold text-black dark:text-white">
-                  {company?.documents?.length}
-                  </span>
-                  <span className="text-sm">Followers</span>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-1 px-4 xsm:flex-row">
-                  <span className="font-semibold text-black dark:text-white">
-                  {company?.password?.length}
-                  </span>
-                  <span className="text-sm">Usernames</span>
-                </div>
-              </div>
-
-              {/* <div className="mx-auto max-w-180">
-                <h4 className="font-semibold text-black dark:text-white">
-                  About Me
-                </h4>
-                <p className="mt-4.5">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Pellentesque posuere fermentum urna, eu condimentum mauris
-                  tempus ut. Donec fermentum blandit aliquet. Etiam dictum
-                  dapibus ultricies. Sed vel aliquet libero. Nunc a augue
-                  fermentum, pharetra ligula sed, aliquam lacus.
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="bg-white dark:bg-boxdark shadow-default rounded-lg overflow-hidden">
+          <div className="px-6 py-8 sm:p-10">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-3xl font-bold text-black dark:text-white">
+                  {company.name}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-8">
+                  {company.companyType || "dfksf"}
                 </p>
-              </div> */}
+              </div>
+              <div className="flex gap-1">
 
+                <Link
+                  href={`${id}/edit`}
+                  className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
+                >
+                  Edit
+                </Link>
+                <Link
+                  href="#"
+                  className="inline-flex items-center justify-center rounded-md bg-red px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
+                >
+                  Delete
+                </Link></div></div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
+                  Company Details
+                </h3>
+                <ul className="grid grid-cols-2 gap-x-4">
+                  <li>
+                    License No:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.licenseNo || "dfdsfd fdjfldsj"}</span>
+                  </li>
+                  <li>
+                    Emirates/Area:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.emirates || "-"}</span>
+                  </li>
+                  <li>
+                    Phone 1:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.phone1 || "-"}</span>
+                  </li>
+                  <li>
+                    Phone 2:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.phone2 || "-"}</span>
+                  </li>
+                  <li>
+                    Email:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.email || "-"}</span>
+                  </li>
+                  <li>
+                    Transaction No:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.transactionNo || "-"}</span>
+                  </li>
+                  <li>
+                    Mainland/Freezone:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.isMainland ? "Mainland" : "Freezone"}</span>
+                  </li>
+                  <li>
+                    Remarks:
+                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company.remarks || "-"}</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="">
+              <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
+                Documents
+              </h3>
+              <ul>
+                {company.documents?.map((doc, index) => (
+                  <li key={index} className="mb-2">
+                    <span className="font-medium">{doc.name} </span>
+                    <span className="text-sm">
+                      valid from
+                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{doc.issueDate || "-"}</span>
+                      to
+                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{doc.expiryDate || "-"}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             </div>
+
+            <div className="mt-8">
+                <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
+                  Passwords
+                </h3>
+                <ul>
+                  {company.password?.map((pass, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{pass.platform}:</span>
+                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.username || "-"}</span>
+                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.password || "-"}</span>
+
+                    </li>
+                  ))}
+                </ul>
+              </div>
           </div>
         </div>
       </div>

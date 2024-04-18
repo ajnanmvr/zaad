@@ -25,8 +25,8 @@ export type TCompanyData = {
   documents?: [
     {
       name: string;
-      issueDate: Date;
-      expiryDate: Date;
+      issueDate: string;
+      expiryDate: string;
       attachment: string;
     },
   ];
