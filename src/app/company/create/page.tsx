@@ -413,6 +413,7 @@ const FormLayout = () => {
                     <input
                       type="text"
                       name="name"
+                      required
                       value={companyData.documents[index]?.name}
                       onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
                       placeholder="Enter document name"
