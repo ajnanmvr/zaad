@@ -1,4 +1,5 @@
 import connect from "@/db/connect";
+import { TListCompanies } from "@/libs/types";
 import Company from "@/models/companies";
 
 connect();
@@ -6,8 +7,8 @@ connect();
 export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
-    console.log(reqBody);
     const data = await Company.create(reqBody);
+
     return Response.json(
       { message: "Created new company", data },
       { status: 201 },
@@ -16,8 +17,44 @@ export async function POST(request: Request) {
     return Response.json(error), { status: 401 };
   }
 }
+interface Document {
+  expiryDate: Date;
+}
+
+interface CompanyData {
+  name: string;
+  documents: Document[];
+}
+
+interface CompanyWithOldestExpiry {
+  name: string;
+  docs: number;
+  expiryDate: Date | null;
+}
 
 export async function GET() {
-  const Companys = await Company.find();
-  return Response.json({ count: Companys.length, Companys }, { status: 200 });
+  const today = new Date(); // Today's date
+
+  const companies: CompanyData[] =
+    await Company.find().select("name documents");
+
+  const data: CompanyWithOldestExpiry[] = [];
+
+  companies.forEach((company) => {
+    let expiryDate: Date | null = null;
+
+    company.documents.forEach((document) => {
+      if (!expiryDate || document.expiryDate < expiryDate!) {
+        expiryDate = document.expiryDate;
+      }
+    });
+
+    data.push({
+      name: company.name,
+      docs: company.documents.length,
+      expiryDate,
+    });
+  });
+
+  return Response.json({ count: companies.length, data }, { status: 200 });
 }

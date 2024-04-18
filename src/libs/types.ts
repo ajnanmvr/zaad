@@ -4,3 +4,37 @@ export type TUser = {
   password?: string;
   role?: "partner" | "employee";
 };
+export type TCompanyData = {
+  name: string;
+  licenseNo?: string;
+  companyType?: string;
+  emirates?: string;
+  phone1?: string;
+  phone2?: string;
+  email?: string;
+  transactionNo?: string;
+  isMainland?: "mainland" | "freezone";
+  remarks?: string;
+  password?: [
+    {
+      platform: string;
+      username: string;
+      password: string;
+    },
+  ];
+  documents?: [
+    {
+      name: string;
+      issueDate: Date;
+      expiryDate: Date;
+      attachment: string;
+    },
+  ];
+};
+export type TListCompanies = [
+  {
+    name: String;
+    expiryDate: String;
+    docs: number;
+  },
+];

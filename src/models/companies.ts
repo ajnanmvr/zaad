@@ -8,8 +8,15 @@ const companySchema = new Schema(
     licenseNo: String,
     companyType: String,
     emirates: String,
-    phone: String,
+    phone1: String,
+    phone2: String,
     email: String,
+    transactionNo: String,
+    // isMainland: {
+    //   type: String,
+    //   enum: ["mainland", "freezone",""],
+    // },
+    remarks: String,
     password: [
       {
         platform: String,
@@ -17,33 +24,27 @@ const companySchema = new Schema(
         password: String,
       },
     ],
-    transactionNo: String,
-    isMainland: {
-      type: String,
-      enum: ["mainland", "freezone"],
-    },
-    remarks: String,
     documents: [
       {
         name: String,
-        issueDate: Date,
-        expiryDate: Date,
+        issueDate: String,
+        expiryDate: String,
         attachment: String,
       },
     ],
-    owners: [
-      {
-        name: String,
-        documents: [
-          {
-            name: String,
-            issueDate: Date,
-            expiryDate: Date,
-            attachment: String,
-          },
-        ],
-      },
-    ],
+    // owners: [
+    //   {
+    //     name: String,
+    //     documents: [
+    //       {
+    //         name: String,
+    //         // issueDate: Date,
+    //         // expiryDate: Date,
+    //         attachment: String,
+    //       },
+    //     ],
+    //   },
+    // ],
   },
   { timestamps: true },
 );
