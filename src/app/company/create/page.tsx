@@ -2,43 +2,21 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const FormLayout = () => {
   const router = useRouter()
   const [selectedOption, setSelectedOption] = useState<string>("");
-  const [companyData, setCompanyData] = useState<any>(
-    {
-      name: "",
-      licenseNo: "",
-      companyType: "",
-      emirates: "",
-      phone1: "",
-      phone2: "",
-      email: "",
-      transactionNo: "",
-      isMainland: "",
-      remarks: "",
-      password: [{
-        platform: "",
-        username: "",
-        password: "",
-      }],
-      documents: [{
-        name: "",
-        issueDate: "",
-        expiryDate: "",
-        attachment: ""
-      }]
-    }
-
-  );
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
+  const [companyData, setCompanyData] = useState<any>({ name: "" });
 
-  const changeTextColor = () => {
-    setIsOptionSelected(true);
-  };
+  useEffect(() => {
+    if (companyData.isMainland) {
+      setIsOptionSelected(true);
+    }
+  }, [companyData.isMainland])
+
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     try {
@@ -56,30 +34,49 @@ const FormLayout = () => {
   };
   const handleAddPassword = (e: any) => {
     e.preventDefault()
-    const updatedPasswords = [...companyData.password, {
+    let password = {
       platform: "",
       username: "",
       password: "",
-    }];
-    setCompanyData({ ...companyData, password: updatedPasswords });
+    }
+    if (!companyData.password) {
+      setCompanyData({ ...companyData, password: [password] })
+    }
+    else {
+      const updatedPasswords = [...companyData.password, password];
+      setCompanyData({ ...companyData, password: updatedPasswords });
+    }
+
   };
   const handleAddDocument = (e: any) => {
     e.preventDefault()
-    const updatedDocuments = [...companyData.documents, {
+    let documents = {
       name: "",
       issueDate: "",
       expiryDate: "",
       attachment: ""
-    }];
-    setCompanyData({ ...companyData, documents: updatedDocuments });
+    }
+    if (!companyData.documents) {
+      setCompanyData({ ...companyData, documents: [documents] })
+    }
+    else {
+      const updatedDocuments = [...companyData.documents, documents];
+      setCompanyData({ ...companyData, documents: updatedDocuments });
+    }
   };
   const handleDocumentChange = (index: number, field: string, value: string | Date) => {
     const updatedDocuments = [...companyData.documents];
     updatedDocuments[index][field] = value;
     setCompanyData({ ...companyData, documents: updatedDocuments });
   };
+  const handleChange = (e: any) => {
+    setCompanyData({
+      ...companyData,
+      [e.target.name]: e.target.value
+    })
+  }
   console.log(companyData);
-  
+
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Add Company" />
@@ -100,7 +97,9 @@ const FormLayout = () => {
                 </label>
                 <input
                   type="text"
-                  onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                  name="name"
+                  value={companyData.name}
+                  onChange={handleChange}
                   required
                   placeholder="Enter company name"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -114,7 +113,9 @@ const FormLayout = () => {
                   </label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, licenseNo: e.target.value })}
+                    name="licenseNo"
+                    value={companyData?.licenseNo}
+                    onChange={handleChange}
                     placeholder="Enter license number"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -125,7 +126,9 @@ const FormLayout = () => {
                     Company Type</label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, companyType: e.target.value })}
+                    name="companyType"
+                    value={companyData?.companyType}
+                    onChange={handleChange}
                     placeholder="Enter company type"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -138,7 +141,9 @@ const FormLayout = () => {
                 </label>
                 <input
                   type="email"
-                  onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
+                  name="email"
+                  value={companyData?.email}
+                  onChange={handleChange}
                   placeholder="Enter company Email"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
@@ -151,7 +156,9 @@ const FormLayout = () => {
                   </label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, phone1: e.target.value })}
+                    name="phone1"
+                    value={companyData?.phone1}
+                    onChange={handleChange}
                     placeholder="Enter phone number"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -162,7 +169,9 @@ const FormLayout = () => {
                   </label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, phone2: e.target.value })}
+                    name="phone2"
+                    value={companyData?.phone2}
+                    onChange={handleChange}
                     placeholder="Other phone number"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -177,7 +186,9 @@ const FormLayout = () => {
                   </label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, emirates: e.target.value })}
+                    name="emirates"
+                    value={companyData?.emirates}
+                    onChange={handleChange}
                     placeholder="Enter emirates name"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -187,7 +198,9 @@ const FormLayout = () => {
                     Transaction Number                    </label>
                   <input
                     type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, transactionNo: e.target.value })}
+                    name="transactionNo"
+                    value={companyData?.transactionNo}
+                    onChange={handleChange}
                     placeholder="Transaction Number"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
@@ -206,11 +219,10 @@ const FormLayout = () => {
                 <div className="relative z-20 bg-transparent dark:bg-form-input">
                   <select
                     value={selectedOption}
+                    name="isMainland"
                     onChange={(e) => {
                       setSelectedOption(e.target.value);
-                      changeTextColor();
                       setCompanyData({ ...companyData, isMainland: e.target.value })
-
                     }}
                     className={`relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary ${isOptionSelected ? "text-black dark:text-white" : ""
                       }`}
@@ -254,8 +266,10 @@ const FormLayout = () => {
                 </label>
                 <textarea
                   rows={6}
+                  name="remarks"
                   placeholder="Remarks Here"
-                  onChange={(e) => setCompanyData({ ...companyData, remarks: e.target.value })}
+                  value={companyData?.remarks}
+                  onChange={handleChange}
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 ></textarea>
               </div>
@@ -326,7 +340,7 @@ const FormLayout = () => {
               </h3>
             </div>
             <div className="px-6.5 pb-6.5">
-              {companyData.password.map((item: any, index: number) => (
+              {companyData?.password?.map((item: any, index: number) => (
                 <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
                   <div className="mb-4.5">
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
@@ -334,6 +348,8 @@ const FormLayout = () => {
                     </label>
                     <input
                       type="text"
+                      name="platform"
+                      value={companyData?.password[index]?.platform}
                       placeholder="Enter platform name"
                       onChange={(e) => handlePasswordChange(index, 'platform', e.target.value)}
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -348,6 +364,8 @@ const FormLayout = () => {
                       </label>
                       <input
                         type="text"
+                        name="username"
+                        value={companyData?.password[index]?.username}
                         onChange={(e) => handlePasswordChange(index, 'username', e.target.value)}
                         placeholder="Enter username"
                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -360,6 +378,7 @@ const FormLayout = () => {
                       <input
                         type="text"
                         name="password"
+                        value={companyData?.password[index]?.password}
                         onChange={(e) => handlePasswordChange(index, 'password', e.target.value)}
                         placeholder="Enter the password"
                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -373,7 +392,7 @@ const FormLayout = () => {
 
               ))}
               <button onClick={handleAddPassword} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
-                Add Another Platform
+                Add Platform
               </button>
             </div>
           </div>
@@ -385,15 +404,16 @@ const FormLayout = () => {
               </h3>
             </div>
             <div className="px-6.5 pb-6.5">
-              {companyData.documents.map((doc: any, index: number) => (
+              {companyData?.documents?.map((doc: any, index: number) => (
                 <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
                   <div className="mb-4.5">
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                      Document Name
+                      Document Name <span className="text-meta-1">*</span>
                     </label>
                     <input
                       type="text"
                       name="name"
+                      value={companyData.documents[index]?.name}
                       onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
                       placeholder="Enter document name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -407,6 +427,8 @@ const FormLayout = () => {
                       </label>
                       <input
                         type="date"
+                        name="issueDate"
+                        value={companyData.documents[index]?.issueDate}
                         onChange={(e) => handleDocumentChange(index, 'issueDate', e.target.value)}
                         placeholder="Enter phone number"
                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -414,12 +436,14 @@ const FormLayout = () => {
                     </div>
                     <div className="w-full xl:w-1/2">
                       <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Expiry Date
+                        Expiry Date <span className="text-meta-1">*</span>
                       </label>
                       <input
                         type="date"
+                        name="expiryDate"
+                        value={companyData.documents[index]?.expiryDate}
                         onChange={(e) => handleDocumentChange(index, 'expiryDate', e.target.value)}
-                        placeholder="Enter the password"
+                        required
                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                       />
                     </div>
@@ -436,6 +460,8 @@ const FormLayout = () => {
                     </label>
                     <input
                       type="file"
+                      name="attachment"
+                      value={companyData.documents[index]?.attachment}
                       onChange={(e) => handleDocumentChange(index, 'attachment', e.target.value)}
                       className="w-full cursor-pointer rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition file:mr-5 file:border-collapse file:cursor-pointer file:border-0 file:border-r file:border-solid file:border-stroke file:bg-whiter file:px-5 file:py-3 file:hover:bg-primary file:hover:bg-opacity-10 focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:file:border-form-strokedark dark:file:bg-white/30 dark:file:text-white dark:focus:border-primary"
                     />
@@ -444,7 +470,7 @@ const FormLayout = () => {
               ))}
 
               <button onClick={handleAddDocument} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
-                Add Another Document                </button>
+                Add Document                </button>
             </div>
           </div>
         </div>

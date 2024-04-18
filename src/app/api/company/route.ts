@@ -22,11 +22,13 @@ interface Document {
 }
 
 interface CompanyData {
+  _id:any;
   name: string;
   documents: Document[];
 }
 
 interface CompanyWithOldestExpiry {
+  id:any;
   name: string;
   docs: number;
   expiryDate: Date | null;
@@ -50,6 +52,7 @@ export async function GET() {
     });
 
     data.push({
+      id:company._id,
       name: company.name,
       docs: company.documents.length,
       expiryDate,

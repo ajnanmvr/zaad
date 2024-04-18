@@ -33,8 +33,9 @@ export type TCompanyData = {
 };
 export type TListCompanies = [
   {
-    name: String;
-    expiryDate: String;
+    id: string;
+    name: string;
+    expiryDate: string;
     docs: number;
   },
 ];

@@ -6,14 +6,9 @@ export async function PUT(
   { params }: { params: { id: string } },
 ) {
   const { id } = params;
-  const {
-    newTitle: title,
-    newDescription: description,
-    newImage: image,
-    newCategory: category,
-  } = await request.json();
+  const reqBody = await request.json();
   await connectMongoDB;
-  await Company.findByIdAndUpdate(id, { title, image, description, category });
+  await Company.findByIdAndUpdate(id, reqBody);
   return Response.json({ msg: "data updated successfully" }, { status: 204 });
 }
 export async function GET(

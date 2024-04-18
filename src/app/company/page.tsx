@@ -5,8 +5,10 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { TListCompanies } from "@/libs/types";
+import Link from "next/link";
 const TablesPage = () => {
   const [companies, setCompanies] = useState<TListCompanies>([{
+    id: "",
     name: "",
     expiryDate: "",
     docs: 0
@@ -46,8 +48,8 @@ const TablesPage = () => {
                 </tr>
               </thead>
               <tbody>
-                
-                {companies.map(({ name, expiryDate, docs }, key) => (
+
+                {companies.map(({ id, name, expiryDate, docs }, key) => (
                   <tr key={key}>
                     <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                       <h5 className="font-medium capitalize text-black dark:text-white">
@@ -69,12 +71,12 @@ const TablesPage = () => {
                       //     : "bg-warning text-warning"
                       //   }`}
                       >
-not defined
+                        not defined
                       </p>
                     </td>
                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                       <div className="flex items-center space-x-3.5">
-                        <button className="hover:text-primary">
+                        <Link href={`/company/${id}`} className="hover:text-primary">
                           <svg
                             className="fill-current"
                             width="18"
@@ -92,7 +94,7 @@ not defined
                               fill=""
                             />
                           </svg>
-                        </button>
+                        </Link>
                         <button className="hover:text-primary">
                           <svg
                             className="fill-current"
