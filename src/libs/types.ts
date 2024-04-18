@@ -5,6 +5,7 @@ export type TUser = {
   role?: "partner" | "employee";
 };
 export type TCompanyData = {
+  _id?:string;
   name: string;
   licenseNo?: string;
   companyType?: string;
@@ -37,6 +38,26 @@ export type TListCompanies = [
     name: string;
     expiryDate: string;
     docs: number;
-    status:string
+    status: string;
   },
 ];
+export type TEmployeeData = {
+  name: string;
+  company: TCompanyData;
+  isActive: boolean;
+  emiratesId?: string;
+  nationality?: string;
+  phone1?: string;
+  phone2?: string;
+  email?: string;
+  designation?: string;
+  remarks?: string;
+  documents?: [
+    {
+      name: string;
+      issueDate: string;
+      expiryDate: string;
+      attachment: string;
+    },
+  ];
+};

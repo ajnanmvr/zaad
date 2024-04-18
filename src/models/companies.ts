@@ -12,10 +12,10 @@ const companySchema = new Schema(
     phone2: String,
     email: String,
     transactionNo: String,
-    // isMainland: {
-    //   type: String,
-    //   enum: ["mainland", "freezone",""],
-    // },
+    isMainland: {
+      type: String,
+      enum: ["mainland", "freezone", ""],
+    },
     remarks: String,
     password: [
       {

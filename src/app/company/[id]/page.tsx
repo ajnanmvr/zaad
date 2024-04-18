@@ -34,7 +34,7 @@ const SingleCompany = () => {
                   {company.name}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-8">
-                  {company.companyType || "dfksf"}
+                  {company.companyType || ""}
                 </p>
               </div>
               <div className="flex gap-1">
@@ -46,7 +46,7 @@ const SingleCompany = () => {
                   Edit
                 </Link>
                 <Link
-                  href="#"
+                  href={`/employees/create/${id}`}
                   className="inline-flex items-center justify-center rounded-md bg-red px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
                 >
                   Delete
