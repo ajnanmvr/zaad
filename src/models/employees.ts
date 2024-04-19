@@ -6,8 +6,8 @@ const employeeSchema = new Schema(
       required: [true, "Please provide a name"],
     },
     company: {
-      type: mongoose.Types.ObjectId,
-      ref: "Company",
+      type: Schema.Types.ObjectId,
+      ref: "companies",
     },
     isActive: {
       type: Boolean,
@@ -31,6 +31,12 @@ const employeeSchema = new Schema(
   },
   { timestamps: true },
 );
+
+employeeSchema.pre("find", function (next) {
+  this.populate("company");
+  next();
+});
+
 const Employee =
-  mongoose.models.Employee || mongoose.model("Employee", employeeSchema);
+  mongoose.models.employees || mongoose.model("employees", employeeSchema);
 export default Employee;

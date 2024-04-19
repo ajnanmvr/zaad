@@ -8,9 +8,10 @@ import { useRouter, useParams } from "next/navigation";
 const FormLayout = () => {
   const router = useRouter()
   const { company } = useParams()
+  
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
-  const [employeeData, setEmployeeData] = useState<any>({ name: "", company });
+  const [employeeData, setEmployeeData] = useState<any>({ name: "",company });
 
   useEffect(() => {
     if (employeeData.isActive) {
@@ -163,8 +164,8 @@ const FormLayout = () => {
                 </label>
                 <input
                   type="text"
-                  name="Designation"
-                  value={employeeData?.Designation}
+                  name="designation"
+                  value={employeeData?.designation}
                   onChange={handleChange}
                   placeholder="Enter designation"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"

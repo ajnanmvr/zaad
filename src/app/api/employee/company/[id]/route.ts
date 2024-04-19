@@ -1,22 +1,5 @@
-import connect from "@/db/connect";
 import { TCompanyData } from "@/libs/types";
 import Employee from "@/models/employees";
-
-connect();
-
-export async function POST(request: Request) {
-  try {
-    const reqBody = await request.json();
-    const data = await Employee.create(reqBody);
-
-    return Response.json(
-      { message: "Created new employee", data },
-      { status: 201 },
-    );
-  } catch (error) {
-    return Response.json(error, { status: 401 });
-  }
-}
 
 interface Document {
   expiryDate: string;
@@ -38,12 +21,12 @@ interface EmployeeWithOldestExpiry {
   status: "expired" | "renewal" | "valid" | "none";
 }
 
-export async function GET() {
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } },
+) {
   const today = new Date();
-
-  const employees: EmployeeData[] = await Employee.find().select(
-    "name company documents",
-  );
+  const employees: EmployeeData[] = await Employee.find({ company:{_id: params.id} }).select('name company documents');
 
   const data: EmployeeWithOldestExpiry[] = [];
 

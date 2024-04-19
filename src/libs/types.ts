@@ -5,7 +5,7 @@ export type TUser = {
   role?: "partner" | "employee";
 };
 export type TCompanyData = {
-  _id?:string;
+  _id?: string;
   name: string;
   licenseNo?: string;
   companyType?: string;
@@ -32,13 +32,23 @@ export type TCompanyData = {
     },
   ];
 };
-export type TListCompanies = [
+export type TCompanyList = [
   {
     id: string;
     name: string;
-    expiryDate: string;
+    expiryDate: string | null;
     docs: number;
-    status: string;
+    status: "expired" | "renewal" | "valid" | "";
+  },
+];
+export type TEmployeeList = [
+  {
+    id: string;
+    company: { id: string; name: string };
+    name: string;
+    expiryDate: string | null;
+    docs: number;
+    status: "expired" | "renewal" | "valid" | "";
   },
 ];
 export type TEmployeeData = {

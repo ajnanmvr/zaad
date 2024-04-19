@@ -1,6 +1,6 @@
-import { TCompanyList } from "@/libs/types"
+import { TEmployeeList } from "@/libs/types"
 import Link from "next/link"
-function CompanyList({ companies }: { companies: TCompanyList }) {
+function CompanyList({ employees }: { employees: TEmployeeList }) {
     return (
         <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
             <div className="max-w-full overflow-x-auto">
@@ -23,13 +23,13 @@ function CompanyList({ companies }: { companies: TCompanyList }) {
                     </thead>
                     <tbody>
 
-                        {companies.map(({ id, name, expiryDate, docs, status }, key) => (
+                        {employees.map(({ id, name, expiryDate, docs, status, company }, key) => (
                             <tr key={key}>
                                 <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                                     <h5 className="font-medium capitalize text-black dark:text-white">
                                         {name}
                                     </h5>
-                                    <p className="text-sm">{docs} Docs</p>
+                                    <Link href={`/company/${company?.id}`} className="hover:underline text-sm">{company?.name}</Link>
                                 </td>
                                 <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                                     <p className="text-black dark:text-white">

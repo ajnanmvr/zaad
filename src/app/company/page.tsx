@@ -3,10 +3,10 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { TListCompanies } from "@/libs/types";
+import { TCompanyList } from "@/libs/types";
 import CompanyList from "@/components/Tables/CompanyList";
 const TablesPage = () => {
-  const [companies, setCompanies] = useState<TListCompanies>([{
+  const [companies, setCompanies] = useState<TCompanyList>([{
     id: "",
     name: "",
     expiryDate: "",
