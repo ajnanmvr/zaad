@@ -26,6 +26,11 @@ const AddRecord: React.FC = () => {
     particular: "",
     remarks: "",
   });
+  useEffect(() => {
+    if (selectedOption === "self")
+      setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
+
+  }, [selectedOption])
 
   useEffect(() => {
     if (pathname.includes("income")) {
@@ -34,9 +39,6 @@ const AddRecord: React.FC = () => {
     if (pathname.includes("expense")) {
       setRecordData({ ...recordData, type: "expense" })
     }
-    if (selectedOption === "self")
-      setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
-
   }, [])
 
 
@@ -206,9 +208,9 @@ const AddRecord: React.FC = () => {
 
                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                   Client Type
-                  
-                  
-                      <span className="text-meta-1">*</span>             </label>
+
+
+                  <span className="text-meta-1">*</span>             </label>
 
                 <div className="relative z-20 bg-transparent dark:bg-form-input">
                   <select
