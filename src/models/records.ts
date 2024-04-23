@@ -3,14 +3,11 @@ const recordSchema = new Schema(
   {
     invoiceNo: String,
     title: String,
-    description: String,
     particular: String,
-    payment: {
-      cash: Number,
-      bank: Number,
-      swiper: Number,
-      tasdeed: Number,
-    },
+    cash: Number,
+    bank: Number,
+    swiper: Number,
+    tasdeed: Number,
     type: {
       type: String,
       required: [true, "Please provide a record type"],
@@ -24,8 +21,9 @@ const recordSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "employees",
     },
+    remarks: String,
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 recordSchema.pre("find", function (next) {

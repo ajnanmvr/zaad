@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const tokenData = {
       id: existingUser._id,
       username: existingUser.username,
+      role: existingUser.role,
     };
     const token = await jwt.sign(tokenData, process.env.JWT_SECRET!, {
       expiresIn: "30d",
@@ -32,10 +33,20 @@ export async function POST(request: Request) {
       success: true,
     });
     response.cookies.set("auth", token, {
-      httpOnly: true,secure:true
+      httpOnly: true,
+      secure: true,
     });
+    if (existingUser.role === "partner") {
+      response.cookies.set("partner", "true", {
+        httpOnly: true,
+        secure: true,
+      });
+    }
     return response;
   } catch (error) {
-    return Response.json({ message: "error while logging in", error },{status:400});
+    return Response.json(
+      { message: "error while logging in", error },
+      { status: 400 }
+    );
   }
 }

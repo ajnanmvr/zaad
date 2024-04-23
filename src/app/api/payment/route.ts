@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       { message: "Created new payment record", data },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     return Response.json(error, { status: 401 });
