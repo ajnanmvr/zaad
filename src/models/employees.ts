@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-const employeeSchema = new Schema(
+const EmployeeSchema = new Schema(
   {
     name: {
       type: String,
@@ -32,11 +32,10 @@ const employeeSchema = new Schema(
   { timestamps: true },
 );
 
-employeeSchema.pre("find", function (next) {
+EmployeeSchema.pre("find", function (next) {
   this.populate("company");
   next();
 });
 
-const Employee =
-  mongoose.models.employees || mongoose.model("employees", employeeSchema);
+const Employee =mongoose.models.employees || mongoose.model("employees", EmployeeSchema);
 export default Employee;

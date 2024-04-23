@@ -12,6 +12,8 @@
     "apexcharts": "^3.45.2",
     "axios": "^1.6.8",
     "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
     "flatpickr": "^4.6.13",
     "jsonwebtoken": "^9.0.2",
     "jsvectormap": "^1.5.3",

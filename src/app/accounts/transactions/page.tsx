@@ -1,22 +1,34 @@
+"use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import TransactionList from "@/components/Tables/TransactionList";
-import TableThree from "@/components/Tables/TableThree";
-import TableTwo from "@/components/Tables/TableTwo";
-
-import { Metadata } from "next";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-
-export const metadata: Metadata = {
-  title: "Next.js Tables | ZaadAdmin - Next.js Dashboard Template",
-  description:
-    "This is Next.js Tables page for ZaadAdmin - Next.js Tailwind CSS Admin Dashboard Template",
-};
-
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { TRecordList } from "@/libs/types";
+import TransactionList from "@/components/Tables/TransactionList";
 const TablesPage = () => {
+  const [records, setRecords] = useState<TRecordList[]>([{
+    type: "",
+    amount: 0,
+    invoiceNo: "",
+    particular: "", date: ""
+  }])
+  const fetchData = async () => {
+    try {
+      const data = await axios.get("/api/payment")
+      setRecords(data.data.data)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  useEffect(() => {
+    fetchData()
+  }, [])
+  console.log(records);
+
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Transactions" />
-      <TransactionList />
+      <TransactionList records={records} />
     </DefaultLayout>
   );
 };

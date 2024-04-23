@@ -1,10 +1,10 @@
 import AddRecord from '@/components/Forms/AddRecord'
 import React from 'react'
 
-function IncomePage() {
+function expensePage() {
   return (
     <AddRecord />
   )
 }
 
-export default IncomePage
+export default expensePage

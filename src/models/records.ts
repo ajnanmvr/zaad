@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-const recordSchema = new Schema(
+const RecordSchema = new Schema(
   {
     invoiceNo: String,
     title: String,
@@ -17,6 +17,7 @@ const recordSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "companies",
     },
+    self: String,
     employee: {
       type: Schema.Types.ObjectId,
       ref: "employees",
@@ -26,12 +27,12 @@ const recordSchema = new Schema(
   { timestamps: true }
 );
 
-recordSchema.pre("find", function (next) {
+RecordSchema.pre("find", function (next) {
   this.populate("company");
   this.populate("employee");
   next();
 });
 
 const Records =
-  mongoose.models.records || mongoose.model("records", recordSchema);
+  mongoose.models.records || mongoose.model("records", RecordSchema);
 export default Records;

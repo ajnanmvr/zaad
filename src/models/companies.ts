@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-const companySchema = new Schema(
+const CompanySchema = new Schema(
   {
     name: {
       type: String,
@@ -46,8 +46,8 @@ const companySchema = new Schema(
     //   },
     // ],
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 const Company =
-  mongoose.models.companies || mongoose.model("companies", companySchema);
+  mongoose.models.companies || mongoose.model("companies", CompanySchema);
 export default Company;

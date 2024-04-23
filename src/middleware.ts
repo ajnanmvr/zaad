@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicPath = path === "/login";
-  const isPartnerPath = path === "/employees";
+  const isPartnerPath = path.includes("accounts");
 
   const token = request.cookies.get("auth")?.value || "";
   const partner = request.cookies.get("partner")?.value || "";
@@ -19,5 +19,11 @@ export function middleware(request: NextRequest) {
   }
 }
 export const config = {
-  matcher: ["/accounts", "/company", "/employees", "/login", "/"],
+  matcher: [
+    "/accounts/:path*",
+    "/company/:path*",
+    "/employees/:path*",
+    "/login",
+    "/",
+  ],
 };

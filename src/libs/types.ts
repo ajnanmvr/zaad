@@ -72,21 +72,33 @@ export type TEmployeeData = {
   ];
 };
 
-export type TRecordData =  {
+export type TRecordData = {
   type: string;
   cash: number;
   bank: number;
   swiper: number;
   tasdeed: number;
   title: string;
+  self?: string;
   invoiceNo: string;
   particular: string;
   employee?: string;
   company?: string;
   remarks: string;
-}
+};
 
-export type TSuggestions ={
+export type TSuggestions = {
   _id: string;
   name: string;
-}
+};
+
+export type TRecordList = {
+  type: string;
+  amount: number;
+  self?: string;
+  invoiceNo: string;
+  particular: string;
+  employee?: string;
+  company?: string;
+  date: string;
+};

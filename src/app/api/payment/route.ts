@@ -1,4 +1,6 @@
 import connect from "@/db/connect";
+import { format } from "date-fns";
+
 import Records from "@/models/records";
 connect();
 
@@ -17,6 +19,25 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const data = await Records.find();
-  return Response.json({ count: data.length, data }, { status: 200 });
+  const records = await Records.find();
+
+  const transformedData = records.map((record) => ({
+    company: record?.company?.name,
+    type: record.type,
+    employee: record?.employee?.name,
+    particular: record.particular,
+    invoiceNo: record.invoiceNo,
+    self: record?.self,
+    amount:
+      Number(record.cash) +
+      Number(record.bank) +
+      Number(record.swiper) +
+      Number(record.tasdeed),
+    date: format(new Date(record.updatedAt), "MMM-dd hh:mma"),
+  }));
+
+  return Response.json(
+    { count: transformedData.length, data: transformedData },
+    { status: 200 }
+  );
 }
