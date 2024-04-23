@@ -2,42 +2,94 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { TRecordData, TSuggestions } from "@/libs/types";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { debounce } from "lodash";
 
-const FormLayout = () => {
-  const router = useRouter()
+
+const FormLayout: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedOption, setSelectedOption] = useState<string>("");
+  const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
+  const [searchValue, setSearchValue] = useState<string>("");
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
-  const [incomeData, setIncomeData] = useState<any>({ type: "income", cash: 0, bank: 0, swiper: 0, tasdeed: 0 });
+  const [recordData, setRecordData] = useState<TRecordData>({
+    type: "",
+    cash: 0,
+    bank: 0,
+    swiper: 0,
+    tasdeed: 0,
+    title: "",
+    invoiceNo: "",
+    particular: "",
+    remarks: "",
+  });
 
-  let total = +incomeData.cash + +incomeData.swiper + +incomeData.tasdeed + +incomeData.bank
+useEffect(() => {
+  if (pathname.includes("income")) {
+    setRecordData({ ...recordData, type: "income" })
+  }
+  if (pathname.includes("expense")) {
+    setRecordData({ ...recordData, type: "expense" })
+  }
+}, [])
+
+
+  const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
+    try {
+      const response = await axios.get<TSuggestions[]>(`/api/${inputName}/list?search=${inputValue}`);
+      setSearchSuggestions(response.data);
+    } catch (error) {
+      console.error("Error fetching company suggestions:", error);
+    }
+  };
+
+  const debounceSearch = debounce((input: string, name: string) => {
+    fetchsearchSuggestions(input, name);
+  }, 300);
+
+  const handleInputChange = (e: any) => {
+    setSearchValue(e.target.value)
+    const inputName = e.target.name;
+    debounceSearch(searchValue, inputName);
+  };
+
+
+  const handleCompanySelection = (selected: TSuggestions) => {
+    setSearchValue(selected.name)
+    setRecordData({ ...recordData, employee: undefined, company: selected._id });
+    setSearchSuggestions([])
+  };
+  const handleEmployeeSelection = (selected: TSuggestions) => {
+    setSearchValue(selected.name)
+    setRecordData({ ...recordData, company: undefined, employee: selected._id });
+    setSearchSuggestions([])
+  };
 
   const handleSubmit = async (e: any) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      await axios.post("/api/company", incomeData)
-      router.push("/company")
+      await axios.post("/api/payment", recordData);
+      router.push("/accounts/transactions");
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   const handleChange = (e: any) => {
-    setIncomeData({
-      ...incomeData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value } = e.target;
+    setRecordData({ ...recordData, [name]: value });
+  };
 
-
-  }
-  console.log(incomeData);
-
+  const total = recordData.cash + recordData.swiper + recordData.tasdeed + recordData.bank;
+  console.log(recordData)
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Add Income" />
 
-      <form className=" relative" action="#">
+      <form className="relative" action="#">
 
         <div className="flex flex-col gap-9">
           <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
@@ -56,7 +108,7 @@ const FormLayout = () => {
                 <input
                   type="text"
                   name="title"
-                  value={incomeData.title}
+                  value={recordData.title}
                   onChange={handleChange}
                   placeholder="Enter record title"
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -70,7 +122,7 @@ const FormLayout = () => {
                   <input
                     type="text"
                     name="invoiceNo"
-                    value={incomeData?.invoiceNo}
+                    value={recordData?.invoiceNo}
                     onChange={handleChange}
                     placeholder="Enter invoice number"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -83,7 +135,7 @@ const FormLayout = () => {
                   <input
                     type="text"
                     name="particular"
-                    value={incomeData?.particular}
+                    value={recordData?.particular}
                     onChange={handleChange}
                     placeholder="Select particular"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -98,7 +150,7 @@ const FormLayout = () => {
                   <input
                     type="number"
                     name="cash"
-                    value={incomeData?.cash}
+                    value={recordData?.cash}
                     onChange={handleChange}
                     placeholder="Enter cash"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -112,7 +164,7 @@ const FormLayout = () => {
                   <input
                     type="number"
                     name="bank"
-                    value={incomeData?.bank}
+                    value={recordData?.bank}
                     onChange={handleChange}
                     placeholder="Enter bank amount"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -126,7 +178,7 @@ const FormLayout = () => {
                   <input
                     type="number"
                     name="tasdeed"
-                    value={incomeData?.tasdeed}
+                    value={recordData?.tasdeed}
                     onChange={handleChange}
                     placeholder="Enter tasdeed"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -139,7 +191,7 @@ const FormLayout = () => {
                   <input
                     type="number"
                     name="swiper"
-                    value={incomeData?.swiper}
+                    value={recordData?.swiper}
                     onChange={handleChange}
                     placeholder="Swiper amount"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -206,11 +258,19 @@ const FormLayout = () => {
                     <input
                       type="text"
                       name="employee"
-                      value={incomeData?.employee}
-                      onChange={handleChange}
+                      onChange={handleInputChange}
+                      value={searchValue}
                       placeholder="Enter employee name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                    /></>
+                    />
+                    <ul className="flex flex-wrap gap-1 mt-2">
+                      {searchSuggestions.map((employee, key) => (
+                        <li className="" key={key} onClick={() => handleEmployeeSelection(employee)}>
+                          {employee.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
 
                 {selectedOption === "company" && (
@@ -221,11 +281,20 @@ const FormLayout = () => {
                     <input
                       type="text"
                       name="company"
-                      value={incomeData?.company}
-                      onChange={handleChange}
+                      value={searchValue}
+                      onChange={handleInputChange}
                       placeholder="Enter company name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                    /></>
+                    />
+                    {/* Display suggestions */}
+                    <ul className="flex flex-wrap gap-1 mt-2">
+                      {searchSuggestions.map((company, key) => (
+                        <li className="" key={key} onClick={() => handleCompanySelection(company)}>
+                          {company.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
 
 
@@ -242,7 +311,7 @@ const FormLayout = () => {
                   rows={6}
                   name="remarks"
                   placeholder="Remarks Here"
-                  value={incomeData?.remarks}
+                  value={recordData?.remarks}
                   onChange={handleChange}
                   className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 ></textarea>
@@ -252,56 +321,6 @@ const FormLayout = () => {
               </button>
             </div>
           </div>
-          {/* <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-              <h3 className="font-medium text-black dark:text-white">
-                Company Owner Details
-              </h3>
-            </div>
-            <div className="p-6.5">
-              <div className="mb-4.5">
-                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  onChange={(e) => setIncomeData({ ...incomeData, name: e.target.value })}
-                  required
-                  placeholder="Enter owner name"
-                  className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-              </div>
-
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    License Number
-                  </label>
-                  <input
-                    type="text"
-                    onChange={(e) => setIncomeData({ ...incomeData, licenseNo: e.target.value })}
-                    placeholder="Enter license number"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Company Type</label>
-                  <input
-                    type="text"
-                    onChange={(e) => setIncomeData({ ...incomeData, particular: e.target.value })}
-                    placeholder="Enter company type"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-              </div>
-
-
-
-            </div>
-          </div> */}
-
 
 
         </div>

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getUserFromCookie(request);
     const user = await User.findOne({ _id: userId }).select(
-      "username email"
+      "username role"
     );
     return Response.json({ message: "found current user", user });
   } catch (error) {

@@ -71,3 +71,22 @@ export type TEmployeeData = {
     },
   ];
 };
+
+export type TRecordData =  {
+  type: string;
+  cash: number;
+  bank: number;
+  swiper: number;
+  tasdeed: number;
+  title: string;
+  invoiceNo: string;
+  particular: string;
+  employee?: string;
+  company?: string;
+  remarks: string;
+}
+
+export type TSuggestions ={
+  _id: string;
+  name: string;
+}

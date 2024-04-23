@@ -15,6 +15,7 @@
     "flatpickr": "^4.6.13",
     "jsonwebtoken": "^9.0.2",
     "jsvectormap": "^1.5.3",
+    "lodash": "^4.17.21",
     "mongoose": "^8.3.1",
     "next": "14.1.0",
     "react": "^18",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.6",
+    "@types/lodash": "^4.17.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
