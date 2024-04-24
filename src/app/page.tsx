@@ -5,33 +5,31 @@ import TableOne from "@/components/Tables/TableOne";
 import CardDataStats from "@/components/CardDataStats";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { TCompanyList } from "@/libs/types";
 
 export default function Home() {
-
-
-
-
-
   const [homeData, setHomeData] = useState({
-    company:0,employee:0
+    company: 0, employee: 0
   })
+
   const fetchData = async () => {
     try {
-      const {data} = await axios.get("/api/home/expiry")
+      const { data } = await axios.get("/api/home/expiry")
       setHomeData(data)
     } catch (error) {
       console.log(error);
     }
   }
+
   useEffect(() => {
     fetchData()
-  }, [])  
+  }, [])
   return (
     <>
       <DefaultLayout>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-          <CardDataStats title="Total Companies" total={`${homeData?.company}`} rate="0.43%" levelUp>
+          <CardDataStats title="Total Companies" total={`${homeData?.company}`}>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -50,7 +48,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Employees" total={`${homeData?.employee}`} rate="4.35%" levelUp>
+          <CardDataStats title="Total Employees" total={`${homeData?.employee}`} >
             <svg
               className="fill-primary dark:fill-white"
               width="20"
@@ -73,7 +71,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Product" total="2.450" rate="2.59%" levelUp>
+          <CardDataStats title="Total Product" total="2.450">
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -92,7 +90,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Users" total="3.456" rate="0.95%" levelDown>
+          <CardDataStats title="Total Users" total="3.456">
             <svg
               className="fill-primary dark:fill-white"
               width="22"

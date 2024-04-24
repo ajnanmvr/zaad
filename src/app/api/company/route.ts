@@ -17,14 +17,12 @@ export async function POST(request: Request) {
   }
 }
 
-interface Document {
-  expiryDate: string;
-}
-
 interface CompanyData {
   name: string;
   _id:string;
-  documents: Document[];
+  documents: {
+    expiryDate: string;
+  }[];
 }
 
 interface CompanyWithOldestExpiry {
