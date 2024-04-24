@@ -1,119 +1,9 @@
 import { ApexOptions } from "apexcharts";
-import React, { useState } from "react";
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 
-const options: ApexOptions = {
-  legend: {
-    show: false,
-    position: "top",
-    horizontalAlign: "left",
-  },
-  colors: ["#3C50E0", "#80CAEE"],
-  chart: {
-    fontFamily: "Satoshi, sans-serif",
-    height: 335,
-    type: "area",
-    dropShadow: {
-      enabled: true,
-      color: "#623CEA14",
-      top: 10,
-      blur: 4,
-      left: 0,
-      opacity: 0.1,
-    },
 
-    toolbar: {
-      show: false,
-    },
-  },
-  responsive: [
-    {
-      breakpoint: 1024,
-      options: {
-        chart: {
-          height: 300,
-        },
-      },
-    },
-    {
-      breakpoint: 1366,
-      options: {
-        chart: {
-          height: 350,
-        },
-      },
-    },
-  ],
-  stroke: {
-    width: [2, 2],
-    curve: "straight",
-  },
-  // labels: {
-  //   show: false,
-  //   position: "top",
-  // },
-  grid: {
-    xaxis: {
-      lines: {
-        show: true,
-      },
-    },
-    yaxis: {
-      lines: {
-        show: true,
-      },
-    },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  markers: {
-    size: 4,
-    colors: "#fff",
-    strokeColors: ["#3056D3", "#80CAEE"],
-    strokeWidth: 3,
-    strokeOpacity: 0.9,
-    strokeDashArray: 0,
-    fillOpacity: 1,
-    discrete: [],
-    hover: {
-      size: undefined,
-      sizeOffset: 5,
-    },
-  },
-  xaxis: {
-    type: "category",
-    categories: [
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-    ],
-    axisBorder: {
-      show: false,
-    },
-    axisTicks: {
-      show: false,
-    },
-  },
-  yaxis: {
-    title: {
-      style: {
-        fontSize: "0px",
-      },
-    },
-    min: 0,
-    max: 100,
-  },
-};
 
 interface ChartOneState {
   series: {
@@ -122,27 +12,146 @@ interface ChartOneState {
   }[];
 }
 
-const ChartOne: React.FC = () => {
-  const [state, setState] = useState<ChartOneState>({
-    series: [
-      {
-        name: "Income",
-        data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30, 100],
+type ChartOneProps = {
+  months: string[],
+  income: number[],
+  expense: number[]
+}
+
+const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
+  const options: ApexOptions = {
+    legend: {
+      show: false,
+      position: "top",
+      horizontalAlign: "left",
+    },
+    colors: ["#3C50E0", "#80CAEE"],
+    chart: {
+      fontFamily: "Satoshi, sans-serif",
+      height: 335,
+      type: "area",
+      dropShadow: {
+        enabled: true,
+        color: "#623CEA14",
+        top: 10,
+        blur: 4,
+        left: 0,
+        opacity: 0.1,
       },
 
+      toolbar: {
+        show: false,
+      },
+    },
+    responsive: [
       {
-        name: "Expense",
-        data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39, 51],
+        breakpoint: 1024,
+        options: {
+          chart: {
+            height: 300,
+          },
+        },
+      },
+      {
+        breakpoint: 1366,
+        options: {
+          chart: {
+            height: 350,
+          },
+        },
       },
     ],
-  });
+    stroke: {
+      width: [2, 2],
+      curve: "straight",
+    },
+    // labels: {
+    //   show: false,
+    //   position: "top",
+    // },
+    grid: {
+      xaxis: {
+        lines: {
+          show: true,
+        },
+      },
+      yaxis: {
+        lines: {
+          show: true,
+        },
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    markers: {
+      size: 4,
+      colors: "#fff",
+      strokeColors: ["#3056D3", "#80CAEE"],
+      strokeWidth: 3,
+      strokeOpacity: 0.9,
+      strokeDashArray: 0,
+      fillOpacity: 1,
+      discrete: [],
+      hover: {
+        size: undefined,
+        sizeOffset: 5,
+      },
+    },
+    xaxis: {
+      type: "category",
+      categories: months,
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
+        show: false,
+      },
+    },
+    yaxis: {
+      title: {
+        style: {
+          fontSize: "0px",
+        },
+      },
+      min: 0,
+      max: Math.ceil(Math.max(...income, ...expense) / 100) * 100,
+    },
+  };
+
+
+  const [seriesData, setSeriesData] = useState<ChartOneState["series"]>([
+    {
+      name: "Income",
+      data: [],
+    },
+    {
+      name: "Expense",
+      data: [],
+    },
+  ]);
+
+  useEffect(() => {
+    setSeriesData([
+      {
+        name: "Income",
+        data: income,
+      },
+      {
+        name: "Expense",
+        data: expense,
+      },
+    ]);
+  }, [income, expense]);
 
   const handleReset = () => {
-    setState((prevState) => ({
+    setSeriesData((prevState) => ({
       ...prevState,
     }));
   };
-  handleReset;
+
+  handleReset
+
 
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white px-5 pb-5 pt-7.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:col-span-8">
@@ -153,7 +162,7 @@ const ChartOne: React.FC = () => {
               <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-primary"></span>
             </span>
             <div className="w-full">
-              <p className="font-semibold text-primary">Total Revenue</p>
+              <p className="font-semibold text-primary">Total Income</p>
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>
@@ -162,7 +171,7 @@ const ChartOne: React.FC = () => {
               <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-secondary"></span>
             </span>
             <div className="w-full">
-              <p className="font-semibold text-secondary">Total Sales</p>
+              <p className="font-semibold text-secondary">Total Expense</p>
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>
@@ -170,14 +179,14 @@ const ChartOne: React.FC = () => {
         <div className="flex w-full max-w-45 justify-end">
           <div className="inline-flex items-center rounded-md bg-whiter p-1.5 dark:bg-meta-4">
             <button className="rounded bg-white px-3 py-1 text-xs font-medium text-black shadow-card hover:bg-white hover:shadow-card dark:bg-boxdark dark:text-white dark:hover:bg-boxdark">
-              Day
+              Graph
             </button>
-            <button className="rounded px-3 py-1 text-xs font-medium text-black hover:bg-white hover:shadow-card dark:text-white dark:hover:bg-boxdark">
+            {/* <button className="rounded px-3 py-1 text-xs font-medium text-black hover:bg-white hover:shadow-card dark:text-white dark:hover:bg-boxdark">
               Week
-            </button>
-            <button className="rounded px-3 py-1 text-xs font-medium text-black hover:bg-white hover:shadow-card dark:text-white dark:hover:bg-boxdark">
-              Month
-            </button>
+            </button> */}
+            <Link href={"/accounts/transactions"} className="rounded px-3 py-1 text-xs font-medium text-black hover:bg-white hover:shadow-card dark:text-white dark:hover:bg-boxdark">
+              List View
+            </Link>
           </div>
         </div>
       </div>
@@ -186,7 +195,7 @@ const ChartOne: React.FC = () => {
         <div id="chartOne" className="-ml-5">
           <ReactApexChart
             options={options}
-            series={state.series}
+            series={seriesData}
             type="area"
             height={350}
             width={"100%"}

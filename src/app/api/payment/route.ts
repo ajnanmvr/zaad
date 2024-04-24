@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const records = await Records.find();
+  const records = await Records.find().sort({createdAt:-1});
 
   const transformedData = records.map((record) => ({
     company: record?.company?.name,
@@ -33,7 +33,7 @@ export async function GET() {
       Number(record.bank) +
       Number(record.swiper) +
       Number(record.tasdeed),
-    date: format(new Date(record.updatedAt), "MMM-dd hh:mma"),
+    date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
   }));
 
   return Response.json(

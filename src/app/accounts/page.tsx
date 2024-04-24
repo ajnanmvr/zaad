@@ -12,7 +12,13 @@ export default function AccountsDashboard() {
     expenseCount: 0,
     totalExpenseAmount: 0,
     incomeCount: 0,
-    totalIncomeAmount: 0
+    totalIncomeAmount: 0,
+    last12MonthsExpenses: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    last12MonthsIncomes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    monthNames: [""],
+    incomesLast7DaysTotal: [0],
+    expensesLast7DaysTotal: [0],
+    daysOfWeekInitials: [""]
   })
   const fetchData = async () => {
     try {
@@ -25,6 +31,8 @@ export default function AccountsDashboard() {
   useEffect(() => {
     fetchData()
   }, [])
+  console.log(accountsData);
+
   return (
     <>
       <DefaultLayout>
@@ -118,8 +126,8 @@ export default function AccountsDashboard() {
         </div>
 
         <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-          <ChartOne />
-          <ChartTwo />
+          <ChartOne months={accountsData.monthNames} income={accountsData.last12MonthsIncomes} expense={accountsData.last12MonthsExpenses} />
+          <ChartTwo dates={accountsData.daysOfWeekInitials} income={accountsData.incomesLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal}/>
         </div>
 
       </DefaultLayout>

@@ -36,27 +36,25 @@ export async function GET() {
       ]).then((result) => (result.length > 0 ? result[0].total : 0)),
     ]);
 
-    const year = 2024; // Set the desired year for which you want to calculate monthly data
-    const monthlyExpenses = Array.from({ length: 12 }, () => 0);
-    const monthlyIncomes = Array.from({ length: 12 }, () => 0);
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
 
     // Calculate total expenses of the past 7 days
-    const today = new Date();
+    const last7DaysDates = [];
     const daysOfWeekInitials = [];
 
-    const last7DaysDates = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
+      const date = new Date(currentDate);
+      date.setDate(currentDate.getDate() - i);
+      last7DaysDates.push(date);
       const dayInitial = date
         .toLocaleString("en-US", { weekday: "short" })[0]
         .toUpperCase();
       daysOfWeekInitials.push(dayInitial);
-      last7DaysDates.push(date);
     }
 
     // Fetch expenses and incomes for the last 7 days
-    const [expensesResults, incomesResults] = await Promise.all([
+    const [expensesLast7DaysTotal, incomesLast7DaysTotal] = await Promise.all([
       Promise.all(
         last7DaysDates.map((date) =>
           Records.aggregate([
@@ -121,57 +119,84 @@ export async function GET() {
       ),
     ]);
 
-    // Calculate monthly expenses and incomes
-    const [expenseResults, incomeResults] = await Promise.all([
-      Records.aggregate([
-        {
-          $match: {
-            type: "expense",
-            createdAt: {
-              $gte: new Date(year, 0, 1), // January 1st of the given year
-              $lt: new Date(year + 1, 0, 1), // January 1st of the next year
+    // Calculate last 12 months' expenses and incomes
+    const last12Months = Array.from({ length: 12 }, (_, index) => {
+      let month = currentDate.getMonth() - index;
+      let year = currentYear;
+      if (month < 0) {
+        month += 12;
+        year -= 1; // Adjust year for months before January
+      }
+      return {
+        month: month + 1,
+        name: new Date(year, month, 1).toLocaleString("en-US", {
+          month: "short",
+        }),
+        year,
+      };
+    }).reverse();
+
+    const monthlyExpenses = Array.from({ length: 12 }, () => 0);
+    const monthlyIncomes = Array.from({ length: 12 }, () => 0);
+
+    const [expensesLast12Months, incomesLast12Months] = await Promise.all([
+      Promise.all(
+        last12Months.map(({ month, year }) =>
+          Records.aggregate([
+            {
+              $match: {
+                type: "expense",
+                createdAt: {
+                  $gte: new Date(year, month - 1, 1),
+                  $lt: new Date(year, month, 1),
+                },
+              },
             },
-          },
-        },
-        {
-          $group: {
-            _id: { $month: "$createdAt" },
-            total: {
-              $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+            {
+              $group: {
+                _id: null,
+                total: {
+                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                },
+              },
             },
-          },
-        },
-      ]),
-      Records.aggregate([
-        {
-          $match: {
-            type: "income",
-            createdAt: {
-              $gte: new Date(year, 0, 1), // January 1st of the given year
-              $lt: new Date(year + 1, 0, 1), // January 1st of the next year
+          ]).then((result) => (result.length > 0 ? result[0].total : 0))
+        )
+      ),
+      Promise.all(
+        last12Months.map(({ month, year }) =>
+          Records.aggregate([
+            {
+              $match: {
+                type: "income",
+                createdAt: {
+                  $gte: new Date(year, month - 1, 1),
+                  $lt: new Date(year, month, 1),
+                },
+              },
             },
-          },
-        },
-        {
-          $group: {
-            _id: { $month: "$createdAt" },
-            total: {
-              $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+            {
+              $group: {
+                _id: null,
+                total: {
+                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                },
+              },
             },
-          },
-        },
-      ]),
+          ]).then((result) => (result.length > 0 ? result[0].total : 0))
+        )
+      ),
     ]);
 
-    expenseResults.forEach((result) => {
-      const monthIndex = result._id - 1;
-      monthlyExpenses[monthIndex] = result.total;
+    expensesLast12Months.forEach((result, index) => {
+      monthlyExpenses[index] = result;
     });
 
-    incomeResults.forEach((result) => {
-      const monthIndex = result._id - 1;
-      monthlyIncomes[monthIndex] = result.total;
+    incomesLast12Months.forEach((result, index) => {
+      monthlyIncomes[index] = result;
     });
+
+    const monthNames = last12Months.map(({ name }) => name);
 
     return Response.json(
       {
@@ -180,10 +205,12 @@ export async function GET() {
         incomeCount,
         totalIncomeAmount,
         daysOfWeekInitials,
-        expensesLast7DaysTotal: expensesResults,
-        incomesLast7DaysTotal: incomesResults,
-        monthlyExpenses,
-        monthlyIncomes,
+        expensesLast7DaysTotal,
+        incomesLast7DaysTotal,
+        last12Months,
+        monthNames,
+        last12MonthsExpenses: monthlyExpenses,
+        last12MonthsIncomes: monthlyIncomes,
       },
       { status: 200 }
     );
