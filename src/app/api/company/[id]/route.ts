@@ -1,5 +1,8 @@
 import connect from "@/db/connect";
 import Company from "@/models/companies";
+import Records from "@/models/records";
+import { format } from "date-fns";
+
 connect();
 
 export async function PUT(
@@ -20,7 +23,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
-  await Company.findByIdAndDelete(id);
+  await Company.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
@@ -32,7 +35,7 @@ interface Company {
     expiryDate: string;
     name: string;
     issueDate: string;
-  }[]; 
+  }[];
 }
 
 export async function GET(
@@ -63,11 +66,31 @@ export async function GET(
         new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
     );
 
+    const records = await Records.find({ company: { _id: params.id } }).sort({
+      createdAt: -1,
+    });
+
+    const transformedData = records.map((record) => ({
+      company: record?.company?.name,
+      type: record.type,
+      employee: record?.employee?.name,
+      particular: record.particular,
+      invoiceNo: record.invoiceNo,
+      self: record?.self,
+      amount:
+        Number(record.cash) +
+        Number(record.bank) +
+        Number(record.swiper) +
+        Number(record.tasdeed),
+      date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+    }));
+
     // Prepare response data
     const responseData = {
       id: company._id,
       name: company.name,
       documents: modifiedDocuments,
+      transactions: transformedData,
     };
 
     return Response.json({ data: responseData }, { status: 200 });

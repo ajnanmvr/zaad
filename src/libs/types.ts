@@ -32,6 +32,7 @@ export type TCompanyData = {
       attachment: string;
     },
   ];
+  transactions?: TRecordList[];
 };
 export type TCompanyList = [
   {

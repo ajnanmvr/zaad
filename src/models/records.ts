@@ -18,6 +18,10 @@ const RecordSchema = new Schema(
       ref: "companies",
     },
     self: String,
+    published: {
+      type: Boolean,
+      default: true,
+    },
     employee: {
       type: Schema.Types.ObjectId,
       ref: "employees",

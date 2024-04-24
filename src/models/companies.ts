@@ -17,6 +17,11 @@ const CompanySchema = new Schema(
       enum: ["mainland", "freezone", ""],
     },
     remarks: String,
+    published: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
     password: [
       {
         platform: String,

@@ -20,6 +20,10 @@ const EmployeeSchema = new Schema(
     email: String,
     designation: String,
     remarks: String,
+    published: {
+      type: Boolean,
+      default: true,
+    },
     documents: [
       {
         name: String,

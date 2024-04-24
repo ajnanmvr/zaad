@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       { message: "Created new company", data },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     return Response.json(error, { status: 401 });
@@ -19,14 +19,14 @@ export async function POST(request: Request) {
 
 interface CompanyData {
   name: string;
-  _id:string;
+  _id: string;
   documents: {
     expiryDate: string;
   }[];
 }
 
 interface CompanyWithOldestExpiry {
-  id:string;
+  id: string;
   name: string;
   expiryDate: string | null;
   docs: number;
@@ -36,8 +36,9 @@ interface CompanyWithOldestExpiry {
 export async function GET() {
   const today = new Date();
 
-  const companies: CompanyData[] =
-    await Company.find().select("name documents");
+  const companies: CompanyData[] = await Company.find({
+    published: true,
+  }).select("name documents");
 
   const data: CompanyWithOldestExpiry[] = [];
 
@@ -72,11 +73,11 @@ export async function GET() {
           year: "numeric",
           month: "short",
           day: "2-digit",
-        },
+        }
       );
 
       data.push({
-        id:company._id,
+        id: company._id,
         name: company.name,
         expiryDate: formattedExpiryDate,
         docs: company.documents.length,
@@ -86,7 +87,7 @@ export async function GET() {
   });
   data.sort(
     (a, b) =>
-      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime(),
+      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
   );
   return Response.json({ count: companies.length, data }, { status: 200 });
 }

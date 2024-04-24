@@ -6,9 +6,9 @@ export async function GET() {
   try {
     // Get count of expense records and calculate total expenses
     const [expenseCount, totalExpenseAmount] = await Promise.all([
-      Records.countDocuments({ type: "expense" }),
+      Records.countDocuments({ type: "expense", published: true }),
       Records.aggregate([
-        { $match: { type: "expense" } },
+        { $match: { type: "expense", published: true } },
         {
           $group: {
             _id: null,
@@ -22,9 +22,9 @@ export async function GET() {
 
     // Get count of income records and calculate total income
     const [incomeCount, totalIncomeAmount] = await Promise.all([
-      Records.countDocuments({ type: "income" }),
+      Records.countDocuments({ type: "income", published: true }),
       Records.aggregate([
-        { $match: { type: "income" } },
+        { $match: { type: "income", published: true } },
         {
           $group: {
             _id: null,
@@ -61,6 +61,7 @@ export async function GET() {
             {
               $match: {
                 type: "expense",
+                published: true,
                 createdAt: {
                   $gte: new Date(
                     date.getFullYear(),
@@ -92,6 +93,7 @@ export async function GET() {
             {
               $match: {
                 type: "income",
+                published: true,
                 createdAt: {
                   $gte: new Date(
                     date.getFullYear(),
@@ -146,6 +148,7 @@ export async function GET() {
             {
               $match: {
                 type: "expense",
+                published: true,
                 createdAt: {
                   $gte: new Date(year, month - 1, 1),
                   $lt: new Date(year, month, 1),
@@ -169,6 +172,7 @@ export async function GET() {
             {
               $match: {
                 type: "income",
+                published: true,
                 createdAt: {
                   $gte: new Date(year, month - 1, 1),
                   $lt: new Date(year, month, 1),

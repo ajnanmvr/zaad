@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const records = await Records.find().sort({ createdAt: -1 });
+  const records = await Records.find({ published: true }).sort({ createdAt: -1 });
 
   const transformedData = records.map((record) => ({
     company: record?.company?.name,

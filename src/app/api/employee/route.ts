@@ -41,7 +41,7 @@ interface EmployeeWithOldestExpiry {
 export async function GET() {
   const today = new Date();
 
-  const employees: EmployeeData[] = await Employee.find().select(
+  const employees: EmployeeData[] = await Employee.find({ published: true }).select(
     "name company documents",
   );
 
