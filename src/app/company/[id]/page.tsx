@@ -137,7 +137,7 @@ const SingleCompany = () => {
                   </thead>
                   <tbody>
 
-                    {company?.documents?.map(({ name, issueDate, expiryDate }, key) => (
+                    {company?.documents?.map(({ name, status, issueDate, expiryDate }, key) => (
                       <tr key={key}>
                         <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                           <h5 className="font-medium capitalize text-black dark:text-white">
@@ -158,15 +158,15 @@ const SingleCompany = () => {
                           <p
                             className={`inline-flex capitalize rounded-full bg-opacity-10 px-3 py-1 text-sm font-medium
 
+                             ${status === "valid"
+                                ? "bg-success text-success"
+                                : status === "expired"
+                                  ? "bg-danger text-danger"
+                                  : "bg-warning text-warning"
+                              } 
                       `}
                           >
-                            {/* ${status === "valid"
-                      ? "bg-success text-success"
-                      : status === "expired"
-                        ? "bg-danger text-danger"
-                        : "bg-warning text-warning"
-                      } */}
-                            expired
+                            {status}
                           </p>
                         </td>
                         <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">

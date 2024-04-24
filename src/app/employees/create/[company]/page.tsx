@@ -59,7 +59,7 @@ const FormLayout = () => {
 
   return (
     <DefaultLayout>
-      <Breadcrumb pageName="Add Company" />
+      <Breadcrumb pageName="Add Employee" />
 
       <form className="grid grid-cols-1 gap-9 sm:grid-cols-2 relative" action="#">
 
