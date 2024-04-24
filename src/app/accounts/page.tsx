@@ -1,37 +1,37 @@
 "use client";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import ChatCard from "@/components/Chat/ChatCard";
-import TableOne from "@/components/Tables/TableOne";
+import React from "react";
+import ChartOne from "@/components/Charts/ChartOne";
+import ChartTwo from "@/components/Charts/ChartTwo";
 import CardDataStats from "@/components/CardDataStats";
-import { useEffect, useState } from "react";
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
+import { useEffect, useState } from "react";
 
-export default function Home() {
-
-
-
-
-
-  const [homeData, setHomeData] = useState({
-    company:0,employee:0
+export default function AccountsDashboard() {
+  const [accountsData, setAccountsData] = useState({
+    expenseCount: 0,
+    totalExpenseAmount: 0,
+    incomeCount: 0,
+    totalIncomeAmount: 0
   })
   const fetchData = async () => {
     try {
-      const {data} = await axios.get("/api/home/expiry")
-      setHomeData(data)
+      const { data } = await axios.get("/api/home/accounts")
+      setAccountsData(data)
     } catch (error) {
       console.log(error);
     }
   }
   useEffect(() => {
     fetchData()
-  }, [])  
+  }, [])
   return (
     <>
       <DefaultLayout>
 
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-          <CardDataStats title="Total Companies" total={`${homeData?.company}`} rate="0.43%" levelUp>
+          <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} rate="0.43%" levelUp>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -50,7 +50,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Employees" total={`${homeData?.employee}`} rate="4.35%" levelUp>
+          <CardDataStats title="Total Credit" total={`${accountsData.totalIncomeAmount}AED`} rate="4.35%" levelUp>
             <svg
               className="fill-primary dark:fill-white"
               width="20"
@@ -73,7 +73,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Product" total="2.450" rate="2.59%" levelUp>
+          <CardDataStats title="Total Debit" total={`${accountsData.totalExpenseAmount}AED`} rate="2.59%" levelUp>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -92,7 +92,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Users" total="3.456" rate="0.95%" levelDown>
+          <CardDataStats title="Balance" total={`${accountsData.totalIncomeAmount - accountsData.totalExpenseAmount}AED`} rate="0.95%" levelDown>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -118,12 +118,10 @@ export default function Home() {
         </div>
 
         <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-
-          <div className="col-span-12 xl:col-span-8">
-            <TableOne />
-          </div>
-          <ChatCard />
+          <ChartOne />
+          <ChartTwo />
         </div>
+
       </DefaultLayout>
     </>
   );
