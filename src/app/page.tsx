@@ -1,7 +1,7 @@
 "use client";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import ChatCard from "@/components/Chat/ChatCard";
-import TableOne from "@/components/Tables/TableOne";
+import TableOne from "@/components/Tables/HomeCompanies";
 import CardDataStats from "@/components/CardDataStats";
 import { useEffect, useState } from "react";
 import axios from "axios";

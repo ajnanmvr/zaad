@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import CompanyList from "./CompanyList";
 import Link from "next/link";
 
-const TableOne = () => {
+const HomeCompanies = () => {
   const [companies, setCompanies] = useState<TCompanyList>([{
     id: "",
     name: "",
@@ -28,7 +28,7 @@ const TableOne = () => {
   return (
     <div className="rounded-sm border border-stroke bg-white px-5 pb-5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
-      Company List
+        Company List
       </h4>
 
       <div className="max-w-full overflow-x-auto mb-5">
@@ -128,4 +128,4 @@ const TableOne = () => {
   );
 };
 
-export default TableOne;
+export default HomeCompanies;
