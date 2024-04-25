@@ -28,6 +28,7 @@ export async function GET() {
     particular: record.particular,
     invoiceNo: record.invoiceNo,
     self: record?.self,
+    id:record._id,
     amount:
       Number(record.cash) +
       Number(record.bank) +

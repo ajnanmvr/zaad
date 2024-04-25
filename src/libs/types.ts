@@ -80,7 +80,6 @@ export type TRecordData = {
   bank: number;
   swiper: number;
   tasdeed: number;
-  title: string;
   self?: string;
   invoiceNo: string;
   particular: string;
@@ -95,6 +94,7 @@ export type TSuggestions = {
 };
 
 export type TRecordList = {
+  id?:string;
   title?:string;
   desc?:string;
   type: string;

@@ -29,7 +29,7 @@ const TablesPage = () => {
   }, [])
   return (
     <DefaultLayout>
-      <Breadcrumb pageName={`Employees (${employees[0].company.name})`} />
+      <Breadcrumb pageName={`Employees (${employees[0]?.company.name})`} />
       <div className="flex flex-col gap-10">
         <EmployeeList employees={employees} />
       </div>

@@ -75,7 +75,6 @@ const FormLayout = () => {
       [e.target.name]: e.target.value
     })
   }
-  console.log(companyData);
 
   return (
     <DefaultLayout>

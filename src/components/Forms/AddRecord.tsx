@@ -21,7 +21,6 @@ const AddRecord: React.FC = () => {
     bank: 0,
     swiper: 0,
     tasdeed: 0,
-    title: "",
     invoiceNo: "",
     particular: "",
     remarks: "",
@@ -89,7 +88,7 @@ const AddRecord: React.FC = () => {
   };
 
   const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank;
-  console.log(recordData)
+  (recordData)
   return (
     <DefaultLayout>
       <Breadcrumb pageName={"Add " + recordData?.type} />
@@ -107,109 +106,9 @@ const AddRecord: React.FC = () => {
             </div>
             <div className="p-6.5">
               <div className="mb-4.5">
-                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={recordData.title}
-                  onChange={handleChange}
-                  placeholder="Enter record title"
-                  className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-              </div>
-
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Invoice Number                  </label>
-                  <input
-                    type="text"
-                    name="invoiceNo"
-                    value={recordData?.invoiceNo}
-                    onChange={handleChange}
-                    placeholder="Enter invoice number"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Particular</label>
-                  <input
-                    type="text"
-                    name="particular"
-                    value={recordData?.particular}
-                    onChange={handleChange}
-                    placeholder="Select particular"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-              </div>
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Cash                  </label>
-                  <input
-                    type="number"
-                    name="cash"
-                    value={recordData?.cash}
-                    onChange={handleChange}
-                    placeholder="Enter cash"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Bank amount
-                  </label>
-                  <input
-                    type="number"
-                    name="bank"
-                    value={recordData?.bank}
-                    onChange={handleChange}
-                    placeholder="Enter bank amount"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Tasdeed
-                  </label>
-                  <input
-                    type="number"
-                    name="tasdeed"
-                    value={recordData?.tasdeed}
-                    onChange={handleChange}
-                    placeholder="Enter tasdeed"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Swiper amount
-                  </label>
-                  <input
-                    type="number"
-                    name="swiper"
-                    value={recordData?.swiper}
-                    onChange={handleChange}
-                    placeholder="Swiper amount"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-              </div>
-              <div className="mb-4.5">
 
                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                   Client Type
-
-
                   <span className="text-meta-1">*</span>             </label>
 
                 <div className="relative z-20 bg-transparent dark:bg-form-input">
@@ -276,7 +175,9 @@ const AddRecord: React.FC = () => {
                     />
                     <ul className="flex flex-wrap gap-1 mt-2">
                       {searchSuggestions.map((employee, key) => (
-                        <li className="" key={key} onClick={() => handleEmployeeSelection(employee)}>
+                        <li
+                          className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+                          key={key} onClick={() => handleEmployeeSelection(employee)}>
                           {employee.name}
                         </li>
                       ))}
@@ -297,7 +198,6 @@ const AddRecord: React.FC = () => {
                       placeholder="Enter company name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                     />
-                    {/* Display suggestions */}
                     <ul className="flex flex-wrap gap-1 mt-2">
                       {searchSuggestions.map((company, key) => (
                         <li
@@ -314,6 +214,92 @@ const AddRecord: React.FC = () => {
 
 
               </div>
+
+              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Invoice Number                  </label>
+                  <input
+                    type="text"
+                    name="invoiceNo"
+                    value={recordData?.invoiceNo}
+                    onChange={handleChange}
+                    placeholder="Enter invoice number"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Particular</label>
+                  <input
+                    type="text"
+                    name="particular"
+                    value={recordData?.particular}
+                    onChange={handleChange}
+                    placeholder="Select particular"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Cash</label>
+                  <input
+                    type="number"
+                    name="cash"
+                    value={recordData?.cash}
+                    onChange={handleChange}
+                    placeholder="Enter cash"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Bank amount
+                  </label>
+                  <input
+                    type="number"
+                    name="bank"
+                    value={recordData?.bank}
+                    onChange={handleChange}
+                    placeholder="Enter bank amount"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Tasdeed
+                  </label>
+                  <input
+                    type="number"
+                    name="tasdeed"
+                    value={recordData?.tasdeed}
+                    onChange={handleChange}
+                    placeholder="Enter tasdeed"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Swiper amount
+                  </label>
+                  <input
+                    type="number"
+                    name="swiper"
+                    value={recordData?.swiper}
+                    onChange={handleChange}
+                    placeholder="Swiper amount"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+
+              </div>
+
 
 
 

@@ -15,7 +15,6 @@ export async function GET(
 
   const transformedData = records.map((record) => ({
     company: record?.company?.name,
-    title:record.title,
     desc:record?.description,
     type: record.type,
     employee: record?.employee?.name,

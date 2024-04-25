@@ -7,6 +7,7 @@ import { TRecordList } from "@/libs/types";
 import TransactionList from "@/components/Tables/TransactionList";
 const TablesPage = () => {
   const [records, setRecords] = useState<TRecordList[]>([{
+    id:"",
     type: "",
     amount: 0,
     invoiceNo: "",
@@ -23,7 +24,6 @@ const TablesPage = () => {
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(records);
 
   return (
     <DefaultLayout>

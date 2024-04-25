@@ -11,11 +11,15 @@ export async function GET(request: Request) {
     const searchQuery = searchParams.get("search");
     const companies = await Company.find({
       name: { $regex: searchQuery, $options: "i" },
+      published: true,
     }).select("name");
 
-    return Response.json(companies,{status:200});
+    return Response.json(companies, { status: 200 });
   } catch (error) {
     console.error("Error fetching companies:", error);
-    return  Response.json({ error: "An error occurred while fetching companies" },{status:500});
+    return Response.json(
+      { error: "An error occurred while fetching companies" },
+      { status: 500 }
+    );
   }
 }

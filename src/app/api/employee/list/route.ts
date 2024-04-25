@@ -9,9 +9,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const searchParams = new URLSearchParams(url.searchParams);
     const searchQuery = searchParams.get("search");
-    const companies = await Employee.find({
-      name: { $regex: searchQuery, $options: "i" },
-    }).select("name");
+    const companies = await Employee.find({name: { $regex: searchQuery, $options: "i" },published:true}).select("name");
 
     return Response.json(companies,{status:200});
   } catch (error) {

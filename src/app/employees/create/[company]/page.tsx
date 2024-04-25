@@ -55,7 +55,6 @@ const FormLayout = () => {
       [e.target.name]: e.target.value
     })
   }
-  console.log(employeeData);
 
   return (
     <DefaultLayout>

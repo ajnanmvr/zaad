@@ -5,7 +5,6 @@ import TableOne from "@/components/Tables/HomeCompanies";
 import CardDataStats from "@/components/CardDataStats";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { TCompanyList } from "@/libs/types";
 
 export default function Home() {
   const [homeData, setHomeData] = useState({
@@ -27,7 +26,6 @@ export default function Home() {
   return (
     <>
       <DefaultLayout>
-
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats title="Total Companies" total={`${homeData?.company}`}>
             <svg

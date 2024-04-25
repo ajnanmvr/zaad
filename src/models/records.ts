@@ -2,7 +2,6 @@ import mongoose, { Schema } from "mongoose";
 const RecordSchema = new Schema(
   {
     invoiceNo: String,
-    title: String,
     particular: String,
     cash: Number,
     bank: Number,
@@ -16,6 +15,15 @@ const RecordSchema = new Schema(
     company: {
       type: Schema.Types.ObjectId,
       ref: "companies",
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "users",
+      required: [true, "Please Define a Creator"],
+    },
+    lastUpdatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "users",
     },
     self: String,
     published: {
@@ -32,8 +40,7 @@ const RecordSchema = new Schema(
 );
 
 RecordSchema.pre("find", function (next) {
-  this.populate("company");
-  this.populate("employee");
+  this.populate(["company", "employee", "createdBy", "lastUpdatedBy"]);
   next();
 });
 

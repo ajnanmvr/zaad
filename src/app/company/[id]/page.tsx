@@ -14,7 +14,6 @@ const SingleCompany = () => {
   const fetchData = async () => {
     try {
       const data = await axios.get(`/api/company/${id}`)
-      console.log(data.data.data)
       setCompany(data.data.data)
     } catch (error) {
       console.log(error);
@@ -23,7 +22,6 @@ const SingleCompany = () => {
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(company);
 
   return (
     <DefaultLayout>
