@@ -1,8 +1,8 @@
-import { ApexOptions } from "apexcharts";
 import React, { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
+import { ApexOptions } from "apexcharts";
 
-
+import dynamic from 'next/dynamic'
+const ReactApexChart = dynamic(() => import("react-apexcharts"));
 
 interface ChartTwoState {
   series: {
