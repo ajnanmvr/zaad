@@ -1,4 +1,3 @@
-"use client"
 import { ApexOptions } from "apexcharts";
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
@@ -156,13 +155,15 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, income, expense }) => {
 
       <div>
         <div id="chartTwo" className="-mb-9 -ml-5">
-          <ReactApexChart
-            options={options}
-            series={seriesData}
-            type="bar"
-            height={350}
-            width={"100%"}
-          />
+          {(typeof window !== 'undefined') &&
+
+            <ReactApexChart
+              options={options}
+              series={seriesData}
+              type="bar"
+              height={350}
+              width={"100%"}
+            />}
         </div>
       </div>
     </div>

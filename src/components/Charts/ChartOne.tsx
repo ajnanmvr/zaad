@@ -1,4 +1,3 @@
-"use client"
 import { ApexOptions } from "apexcharts";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -194,13 +193,15 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
 
       <div>
         <div id="chartOne" className="-ml-5">
+        {(typeof window !== 'undefined') &&
+
           <ReactApexChart
             options={options}
             series={seriesData}
             type="area"
             height={350}
             width={"100%"}
-          />
+          />}
         </div>
       </div>
     </div>
