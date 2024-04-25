@@ -46,7 +46,7 @@ const SingleCompany = () => {
                   Edit
                 </Link>
                 <Link
-                  href={`/employees/create/${id}`}
+                  href={`/employee/create/${id}`}
                   className="inline-flex items-center justify-center rounded-md bg-red px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
                 >
                   Delete

@@ -101,7 +101,7 @@ function CompanyList({ companies }: { companies: TCompanyList }) {
                                                 />
                                             </svg>
                                         </Link>
-                                        <Link href={`/employees/view/${id}`} className="hover:text-primary">
+                                        <Link href={`/employee/view/${id}`} className="hover:text-primary">
                                             <svg
                                                 className="fill-current"
                                                 width="18"
