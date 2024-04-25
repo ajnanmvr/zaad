@@ -11,6 +11,7 @@ import { TRecordList } from "@/libs/types";
 const TablesPage = () => {
   const params = useParams()
   const [records, setRecords] = useState<TRecordList[]>([{
+    id: "",
     type: "",
     amount: 0,
     invoiceNo: "",
