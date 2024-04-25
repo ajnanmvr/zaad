@@ -15,6 +15,10 @@ const UserSchema = new mongoose.Schema({
     enum: ["partner", "employee"],
     default: "employee",
   },
+  published: {
+    type: Boolean,
+    default: true,
+  },
 });
 const User = mongoose.models.users || mongoose.model("users", UserSchema);
 export default User;

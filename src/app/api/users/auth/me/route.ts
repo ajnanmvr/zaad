@@ -6,7 +6,7 @@ connect();
 export async function GET(request: NextRequest) {
   try {
     const userId = await getUserFromCookie(request);
-    const user = await User.findOne({ _id: userId }).select(
+    const user = await User.findOne({ _id: userId,published:true }).select(
       "username role"
     );
     return Response.json({ message: "found current user", user });

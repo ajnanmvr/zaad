@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
     const { username, password } = reqBody;
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({ username, published: true });
     if (!existingUser) {
       return Response.json({ error: "user isn't available" }, { status: 400 });
     }
