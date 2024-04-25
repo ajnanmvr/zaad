@@ -30,7 +30,7 @@ interface CompanyWithOldestExpiry {
   name: string;
   expiryDate: string | null;
   docs: number;
-  status: "expired" | "renewal" | "valid";
+  status: "expired" | "renewal" | "valid" | "unknown";
 }
 
 export async function GET() {
@@ -55,7 +55,8 @@ export async function GET() {
       }
     });
 
-    let status: CompanyWithOldestExpiry["status"] = "valid"; // Default status
+    let status: CompanyWithOldestExpiry["status"] = "unknown"; // Default status
+    let formattedExpiryDate = "---";
 
     if (expiryDate) {
       const expiryDateTime = new Date(expiryDate).getTime();
@@ -66,8 +67,10 @@ export async function GET() {
         status = "expired";
       } else if (daysDiff <= 30) {
         status = "renewal";
+      }else if (daysDiff > 30) {
+        status = "valid";
       }
-      const formattedExpiryDate = new Date(expiryDateTime).toLocaleDateString(
+      formattedExpiryDate = new Date(expiryDateTime).toLocaleDateString(
         "en-US",
         {
           year: "numeric",
@@ -75,15 +78,15 @@ export async function GET() {
           day: "2-digit",
         }
       );
-
-      data.push({
-        id: company._id,
-        name: company.name,
-        expiryDate: formattedExpiryDate,
-        docs: company.documents.length,
-        status,
-      });
     }
+
+    data.push({
+      id: company._id,
+      name: company.name,
+      expiryDate: formattedExpiryDate,
+      docs: company.documents.length,
+      status,
+    });
   });
   data.sort(
     (a, b) =>

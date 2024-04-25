@@ -72,7 +72,7 @@ function EmployeeList({ employees }: { employees: TEmployeeList }) {
                                             ? "bg-success text-success"
                                             : status === "expired"
                                                 ? "bg-danger text-danger"
-                                                : "bg-warning text-warning"
+                                                : status === "renewal" ? "bg-warning text-warning" : "bg-slate-500"
                                             }`}
                                     >
                                         {status}
