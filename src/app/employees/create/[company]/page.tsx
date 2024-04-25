@@ -8,10 +8,17 @@ import { useRouter, useParams } from "next/navigation";
 const FormLayout = () => {
   const router = useRouter()
   const { company } = useParams()
-  
+
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
-  const [employeeData, setEmployeeData] = useState<any>({ name: "",company });
+  const [employeeData, setEmployeeData] = useState<any>({
+    name: "", company, documents: [{
+      name: "",
+      issueDate: "",
+      expiryDate: "",
+      attachment: ""
+    }]
+  });
 
   useEffect(() => {
     if (employeeData.isActive) {
@@ -21,21 +28,32 @@ const FormLayout = () => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+    const filteredDocuments = employeeData.documents.filter((doc: { name: string; issueDate: string; expiryDate: string; attachment: string; }) => (
+      doc.name !== "" && doc.issueDate !== "" && doc.expiryDate !== "" && doc.attachment !== ""
+    ));
+
+    const updatedEmployeeData = {
+      ...employeeData,
+      documents: filteredDocuments
+    };
+
     try {
-      await axios.post("/api/employee", employeeData)
-      router.push("/company")
+      await axios.post("/api/employee", updatedEmployeeData);
+      router.push("/company");
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
+  };
+
+  let documents = {
+    name: "",
+    issueDate: "",
+    expiryDate: "",
+    attachment: ""
   }
+
   const handleAddDocument = (e: any) => {
     e.preventDefault()
-    let documents = {
-      name: "",
-      issueDate: "",
-      expiryDate: "",
-      attachment: ""
-    }
     if (!employeeData.documents) {
       setEmployeeData({ ...employeeData, documents: [documents] })
     }
@@ -59,9 +77,7 @@ const FormLayout = () => {
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Add Employee" />
-
       <form className="grid grid-cols-1 gap-9 sm:grid-cols-2 relative" action="#">
-
         <div className="flex flex-col gap-9">
           <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
             <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
@@ -102,7 +118,7 @@ const FormLayout = () => {
 
                 <div className="w-full xl:w-1/2">
                   <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                  Nationality</label>
+                    Nationality</label>
                   <input
                     type="text"
                     name="nationality"
@@ -185,7 +201,7 @@ const FormLayout = () => {
                 ></textarea>
               </div>
               <button onClick={handleSubmit} className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                Save Company
+                Save Employee
               </button>
             </div>
           </div>

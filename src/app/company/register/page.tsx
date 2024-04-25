@@ -9,7 +9,18 @@ const FormLayout = () => {
   const router = useRouter()
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
-  const [companyData, setCompanyData] = useState<any>({ name: "" });
+  const [companyData, setCompanyData] = useState<any>({
+    name: "", documents: [{
+      name: "",
+      issueDate: "",
+      expiryDate: "",
+      attachment: ""
+    }], password: [{
+      platform: "",
+      username: "",
+      password: "",
+    }]
+  });
 
   useEffect(() => {
     if (companyData.isMainland) {
@@ -17,15 +28,28 @@ const FormLayout = () => {
     }
   }, [companyData.isMainland])
 
+
   const handleSubmit = async (e: any) => {
-    e.preventDefault()
+    e.preventDefault();
+
+    // Filter out documents with null values
+    const filteredDocuments = companyData.documents.filter((doc: { name: string; issueDate: string; expiryDate: string; attachment: string; }) => (
+      doc.name !== "" && doc.issueDate !== "" && doc.expiryDate !== "" && doc.attachment !== ""
+    ));
+
+    // Update the employeeData object with filtered documents
+    const updatedCompanyData = {
+      ...companyData,
+      documents: filteredDocuments
+    };
+
     try {
-      await axios.post("/api/company", companyData)
-      router.push("/company")
+      await axios.post("/api/company", updatedCompanyData);
+      router.push("/company");
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   const handlePasswordChange = (index: number, field: string, value: string) => {
     const updatedPasswords = [...companyData.password];
@@ -277,55 +301,6 @@ const FormLayout = () => {
               </button>
             </div>
           </div>
-          {/* <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-              <h3 className="font-medium text-black dark:text-white">
-                Company Owner Details
-              </h3>
-            </div>
-            <div className="p-6.5">
-              <div className="mb-4.5">
-                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                  required
-                  placeholder="Enter owner name"
-                  className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-              </div>
-
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    License Number
-                  </label>
-                  <input
-                    type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, licenseNo: e.target.value })}
-                    placeholder="Enter license number"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Company Type</label>
-                  <input
-                    type="text"
-                    onChange={(e) => setCompanyData({ ...companyData, companyType: e.target.value })}
-                    placeholder="Enter company type"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-              </div>
-
-
-
-            </div>
-          </div> */}
 
 
 
