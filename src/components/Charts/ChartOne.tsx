@@ -1,8 +1,8 @@
 import { ApexOptions } from "apexcharts";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
-
+import dynamic from 'next/dynamic'
+const ReactApexChart = dynamic(() => import("react-apexcharts"));
 
 
 interface ChartOneState {
@@ -193,15 +193,15 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
 
       <div>
         <div id="chartOne" className="-ml-5">
-        {(typeof window !== 'undefined') &&
+          {(typeof window !== 'undefined') &&
 
-          <ReactApexChart
-            options={options}
-            series={seriesData}
-            type="area"
-            height={350}
-            width={"100%"}
-          />}
+            <ReactApexChart
+              options={options}
+              series={seriesData}
+              type="area"
+              height={350}
+              width={"100%"}
+            />}
         </div>
       </div>
     </div>
