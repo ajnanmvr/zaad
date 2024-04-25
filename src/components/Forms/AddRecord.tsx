@@ -7,15 +7,18 @@ import { useEffect, useState } from "react";
 import { debounce } from "lodash";
 import axios from "axios";
 import clsx from "clsx";
+import { useUserContext } from "@/contexts/UserContext";
 
 const AddRecord: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useUserContext();
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
   const [recordData, setRecordData] = useState<TRecordData>({
+    createdBy: user?._id,
     type: "",
     cash: 0,
     bank: 0,
@@ -39,6 +42,7 @@ const AddRecord: React.FC = () => {
       setRecordData({ ...recordData, type: "expense" })
     }
   }, [])
+console.log(recordData);
 
 
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {

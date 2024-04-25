@@ -75,6 +75,7 @@ export type TEmployeeData = {
 };
 
 export type TRecordData = {
+  createdBy: string | undefined;
   type: string;
   cash: number;
   bank: number;
@@ -94,9 +95,9 @@ export type TSuggestions = {
 };
 
 export type TRecordList = {
-  id:string;
-  title?:string;
-  desc?:string;
+  id: string;
+  title?: string;
+  desc?: string;
   type: string;
   amount: number;
   self?: string;

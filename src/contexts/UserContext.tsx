@@ -25,7 +25,14 @@ interface UserProviderProps {
 }
 
 const UserProvider: React.FC<UserProviderProps> = ({ children }: UserProviderProps) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User>(
+        {
+            username: "",
+            _id: "",
+            fullname: "",
+            role: ""
+        }
+    );
 
     const fetchUserData = async () => {
         try {
@@ -39,7 +46,6 @@ const UserProvider: React.FC<UserProviderProps> = ({ children }: UserProviderPro
     useEffect(() => {
         fetchUserData();
     }, []);
-    console.log("aj", user);
 
     return (
         <UserContext.Provider value={{ user }}>
