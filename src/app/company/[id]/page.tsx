@@ -40,16 +40,16 @@ const SingleCompany = () => {
               <div className="flex gap-1">
 
                 <Link
-                  href={`${id}/edit`}
+                  href={`/employee/view/${id}`}
                   className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
                 >
-                  Edit
+                  Employees
                 </Link>
                 <Link
-                  href={`/employee/create/${id}`}
+                  href={`/employee/register/${id}`}
                   className="inline-flex items-center justify-center rounded-md bg-red px-6 py-2 text-center font-medium text-white hover:bg-opacity-90"
                 >
-                  Delete
+                  New Employee
                 </Link></div></div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

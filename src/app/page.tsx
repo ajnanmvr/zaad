@@ -69,7 +69,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Product" total="2.450">
+          <CardDataStats title="Company Renewal" total="0">
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -88,7 +88,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Users" total="3.456">
+          <CardDataStats title="Employee Renewal" total="0">
             <svg
               className="fill-primary dark:fill-white"
               width="22"

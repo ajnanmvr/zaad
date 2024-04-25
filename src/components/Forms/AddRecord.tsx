@@ -42,7 +42,6 @@ const AddRecord: React.FC = () => {
       setRecordData({ ...recordData, type: "expense" })
     }
   }, [])
-console.log(recordData);
 
 
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
