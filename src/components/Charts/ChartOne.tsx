@@ -1,3 +1,4 @@
+"use client"
 import { ApexOptions } from "apexcharts";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
