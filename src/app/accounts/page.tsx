@@ -126,8 +126,8 @@ export default function AccountsDashboard() {
         </div>
 
         <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-          <ChartOne months={accountsData.monthNames} income={accountsData.last12MonthsIncomes} expense={accountsData.last12MonthsExpenses} />
-          <ChartTwo dates={accountsData.daysOfWeekInitials} income={accountsData.incomesLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal}/>
+          {/* <ChartOne months={accountsData.monthNames} income={accountsData.last12MonthsIncomes} expense={accountsData.last12MonthsExpenses} />
+          <ChartTwo dates={accountsData.daysOfWeekInitials} income={accountsData.incomesLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} /> */}
         </div>
 
       </DefaultLayout>

@@ -6,7 +6,7 @@ connect();
 
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url);
+    const url = new URL("request.url");
     const searchParams = new URLSearchParams(url.searchParams);
     const searchQuery = searchParams.get("search");
     const companies = await Company.find({
