@@ -32,21 +32,8 @@ const FormLayout = () => {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    const filteredDocuments = companyData.documents.filter((doc: { name: string; issueDate: string; expiryDate: string; attachment: string; }) => (
-      doc.name !== "" && doc.issueDate !== "" && doc.expiryDate !== "" && doc.attachment !== ""
-    ));
-    const filteredPassword = companyData.password.filter((doc: { platform: string; username: string; password: string }) => (
-      doc.platform !== "" && doc.username !== "" && doc.password !== ""
-    ));
-
-    const updatedCompanyData = {
-      ...companyData,
-      documents: filteredDocuments,
-      password: filteredPassword
-    };
-
     try {
-      await axios.post("/api/company", updatedCompanyData);
+      await axios.post("/api/company", companyData);
       router.push("/company");
     } catch (error) {
       console.log(error);

@@ -1,8 +1,8 @@
 import connect from "@/db/connect";
+import calculateStatus from "@/helpers/calculateStatus";
 import Company from "@/models/companies";
 import Records from "@/models/records";
 import { format } from "date-fns";
-
 connect();
 
 export async function PUT(
@@ -80,11 +80,9 @@ export async function GET(
       particular: record.particular,
       invoiceNo: record.invoiceNo,
       self: record?.self,
-      amount:
-        Number(record.cash) +
-        Number(record.bank) +
-        Number(record.swiper) +
-        Number(record.tasdeed),
+      amount: Number(
+        record.cash + record.bank + record.swiper + record.tasdeed
+      ),
       date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
     }));
 
@@ -103,18 +101,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
-
-function calculateStatus(expiryDate: string): "valid" | "expired" | "renewal" {
-  const today = new Date();
-  const expiryDateTime = new Date(expiryDate).getTime();
-  const timeDiff = expiryDateTime - today.getTime();
-  const daysDiff = timeDiff / (1000 * 3600 * 24); // Convert milliseconds to days
-
-  if (daysDiff < 0) {
-    return "expired";
-  } else if (daysDiff <= 30) {
-    return "renewal";
-  }
-  return "valid";
 }

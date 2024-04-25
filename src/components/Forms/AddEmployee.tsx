@@ -34,17 +34,8 @@ const AddEmployee = ({ company }: { company?: string | string[] }) => {
     }, [employeeData.isActive])
     const handleSubmit = async (e: any) => {
         e.preventDefault()
-        const filteredDocuments = employeeData.documents.filter((doc: { name: string; issueDate: string; expiryDate: string; attachment: string; }) => (
-            doc.name !== "" && doc.issueDate !== "" && doc.expiryDate !== "" && doc.attachment !== ""
-        ));
-
-        const updatedEmployeeData = {
-            ...employeeData,
-            documents: filteredDocuments
-        };
-
         try {
-            await axios.post("/api/employee", updatedEmployeeData);
+            await axios.post("/api/employee", employeeData);
             router.push("/company");
         } catch (error) {
             console.log(error);
