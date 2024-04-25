@@ -1,21 +1,36 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
+import { format } from "date-fns";
 connect();
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const data = await Records.find({
-      published: true,
-      invoiceNo: params.id,
-      type: "income",
-    });
-    return Response.json(
-      { message: `Fetched invoice ${params.id}`, data },
-      { status: 200 }
-    );
-  } catch (error) {
-    return Response.json(error, { status: 401 });
-  }
+  const records = await Records.find({
+    published: true,
+    invoiceNo: params.id,
+    type: "income",
+  });
+
+  const transformedData = records.map((record) => ({
+    company: record?.company?.name,
+    title:record.title,
+    desc:record?.description,
+    type: record.type,
+    employee: record?.employee?.name,
+    particular: record.particular,
+    self: record?.self,
+    amount:
+      Number(record.cash) +
+      Number(record.bank) +
+      Number(record.swiper) +
+      Number(record.tasdeed),
+    date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+  }));
+
+  return Response.json(
+    { count: transformedData.length, data: transformedData },
+    { status: 200 }
+  );
 }

@@ -16,6 +16,7 @@
     "date-fns": "^3.6.0",
     "flatpickr": "^4.6.13",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^2.5.1",
     "jsvectormap": "^1.5.3",
     "lodash": "^4.17.21",
     "mongoose": "^8.3.1",

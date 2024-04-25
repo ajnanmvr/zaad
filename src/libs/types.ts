@@ -95,6 +95,8 @@ export type TSuggestions = {
 };
 
 export type TRecordList = {
+  title?:string;
+  desc?:string;
   type: string;
   amount: number;
   self?: string;
