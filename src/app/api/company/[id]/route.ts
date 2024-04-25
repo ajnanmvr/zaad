@@ -66,7 +66,10 @@ export async function GET(
         new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
     );
 
-    const records = await Records.find({ company: { _id: params.id } }).sort({
+    const records = await Records.find({
+      company: { _id: params.id },
+      published: true,
+    }).sort({
       createdAt: -1,
     });
 

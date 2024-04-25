@@ -23,10 +23,13 @@ interface EmployeeWithOldestExpiry {
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: { id: string } }
 ) {
   const today = new Date();
-  const employees: EmployeeData[] = await Employee.find({ company:{_id: params.id} }).select('name company documents');
+  const employees: EmployeeData[] = await Employee.find({
+    company: { _id: params.id },
+    published: true,
+  }).select("name company documents");
 
   const data: EmployeeWithOldestExpiry[] = [];
 
@@ -61,7 +64,7 @@ export async function GET(
           year: "numeric",
           month: "short",
           day: "2-digit",
-        },
+        }
       );
     }
 
@@ -76,7 +79,7 @@ export async function GET(
   });
   data.sort(
     (a, b) =>
-      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime(),
+      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
   );
   return Response.json({ count: employees.length, data }, { status: 200 });
 }
