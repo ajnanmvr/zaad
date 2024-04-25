@@ -32,15 +32,17 @@ const FormLayout = () => {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    // Filter out documents with null values
     const filteredDocuments = companyData.documents.filter((doc: { name: string; issueDate: string; expiryDate: string; attachment: string; }) => (
       doc.name !== "" && doc.issueDate !== "" && doc.expiryDate !== "" && doc.attachment !== ""
     ));
+    const filteredPassword = companyData.password.filter((doc: { platform: string; username: string; password: string }) => (
+      doc.platform !== "" && doc.username !== "" && doc.password !== ""
+    ));
 
-    // Update the employeeData object with filtered documents
     const updatedCompanyData = {
       ...companyData,
-      documents: filteredDocuments
+      documents: filteredDocuments,
+      password: filteredPassword
     };
 
     try {
