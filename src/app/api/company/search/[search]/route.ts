@@ -4,13 +4,13 @@ import Company from "@/models/companies";
 
 connect();
 
-export async function GET(request: Request) {
+export async function GET(
+  request: Request,
+  { params }: { params: { search: string } }
+) {
   try {
-    const url = new URL("request.url");
-    const searchParams = new URLSearchParams(url.searchParams);
-    const searchQuery = searchParams.get("search");
     const companies = await Company.find({
-      name: { $regex: searchQuery, $options: "i" },
+      name: { $regex: params.search, $options: "i" },
       published: true,
     }).select("name");
 

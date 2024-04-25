@@ -43,7 +43,7 @@ const AddRecord: React.FC = () => {
 
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
     try {
-      const response = await axios.get<TSuggestions[]>(`/api/${inputName}/list?search=${inputValue}`);
+      const response = await axios.get<TSuggestions[]>(`/api/${inputName}/search/${inputValue}`);
       setSearchSuggestions(response.data);
     } catch (error) {
       console.error("Error fetching company suggestions:", error);
