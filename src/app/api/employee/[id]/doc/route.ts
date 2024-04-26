@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import Company from "@/models/companies";
+import Employee from "@/models/employees";
 import { fetchDocuments } from "@/utils/fetchDocuments";
 connect();
 
@@ -9,11 +9,11 @@ export async function POST(
 ) {
   const { id, doc } = params;
   const reqBody = await request.json();
-  const Data = await Company.findById(id);
+  const Data = await Employee.findById(id);
   try {
     const { data } = await fetchDocuments(id, doc, Data);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Emloyee not found" });
     }
     data.documents.push(reqBody);
     await data.save();

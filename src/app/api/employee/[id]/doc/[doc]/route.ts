@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import Company from "@/models/companies";
+import Employee from "@/models/employees";
 import { fetchDocuments } from "@/utils/fetchDocuments";
 connect();
 export async function PUT(
@@ -8,19 +8,16 @@ export async function PUT(
 ) {
   const { id, doc } = params;
   const { name, issueDate, expiryDate, attachment } = await request.json();
-  const Data = await Company.findById(id);
+  const Data = await Employee.findById(id);
 
   try {
-    const { data, documentIndex } = await fetchDocuments(id, doc,Data);
+    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Employee not found" });
     }
-
     if (documentIndex === null) {
       return Response.json({ message: "Document not found" });
     }
-
-    // Update the document fields
     if (name) data.documents[documentIndex].name = name;
     if (issueDate) data.documents[documentIndex].issueDate = issueDate;
     if (expiryDate) data.documents[documentIndex].expiryDate = expiryDate;
@@ -39,22 +36,20 @@ export async function DELETE(
   { params }: { params: { id: string; doc: string } }
 ) {
   const { id, doc } = params;
-  const Data = await Company.findById(id);
+  const Data = await Employee.findById(id);
 
   try {
-    const { data, documentIndex } = await fetchDocuments(id, doc,Data);
+    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Employee not found" });
     }
 
     if (documentIndex === null) {
       return Response.json({ message: "Document not found" });
     }
 
-    // Remove the document from the array
     data.documents.splice(documentIndex, 1);
 
-    // Save the updated company without the deleted document
     await data.save();
 
     return Response.json({ message: "Document deleted successfully" });
@@ -63,4 +58,3 @@ export async function DELETE(
     return Response.json({ message: "Server Error" }, { status: 500 });
   }
 }
-
