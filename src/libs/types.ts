@@ -21,7 +21,7 @@ export type TCompanyData = {
     username: string;
     password: string;
   }[];
-  documents?: TDocuments[];
+  documents: TDocuments[];
   transactions?: TRecordList[];
 };
 export type TDocuments = {

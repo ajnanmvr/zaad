@@ -30,6 +30,20 @@ export async function DELETE(
 interface Company {
   _id: string;
   name: string;
+  licenseNo: string;
+  companyType: string;
+  emirates: string;
+  phone1: string;
+  phone2: string;
+  email: string;
+  transactionNo: string;
+  isMainland: string;
+  remarks: string;
+  password: {
+    platform: string;
+    username: string;
+    password: string;
+  }[];
   documents: {
     _id: string;
     expiryDate: string;
@@ -90,6 +104,16 @@ export async function GET(
     const responseData = {
       id: company._id,
       name: company.name,
+      licenseNo: company.licenseNo,
+      companyType: company.companyType,
+      emirates: company.emirates,
+      phone1: company.phone1,
+      phone2: company.phone2,
+      email: company.email,
+      transactionNo: company.transactionNo,
+      isMainland: company.isMainland,
+      remarks: company.remarks,
+      password: company.password,
       documents: modifiedDocuments,
       transactions: transformedData,
     };

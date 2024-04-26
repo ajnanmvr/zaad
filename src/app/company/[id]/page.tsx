@@ -11,23 +11,24 @@ import { useUserContext } from "@/contexts/UserContext";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 const SingleCompany = () => {
-  const [company, setCompany] = useState<TCompanyData>({ name: "" })
+  const [company, setCompany] = useState<TCompanyData>({ name: "", documents: [] })
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const { id }: { id: string } = useParams()
   const { user } = useUserContext()
-  const handleDelete = (id: string) => {
-    setSelectedDocumentId(id);
+
+  const handleDelete = (deleteID: string) => {
+    setSelectedDocumentId(deleteID);
     setIsConfirmationOpen(true);
   }
 
   const confirmDelete = async () => {
     console.log("Deleting company with ID:", selectedDocumentId);
-    const data = await axios.delete(`/api/company/${selectedDocumentId}/doc/${selectedDocumentId}`)
+    const data = await axios.delete(`/api/company/${id}/doc/${selectedDocumentId}`);
     console.log(data);
     window.location.reload();
     setIsConfirmationOpen(false);
-  }
+  };
 
   const cancelDelete = () => {
     setSelectedDocumentId(null);
@@ -48,7 +49,6 @@ const SingleCompany = () => {
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(company);
 
   return (
     <DefaultLayout>
@@ -64,10 +64,10 @@ const SingleCompany = () => {
           <div className="px-6 py-8 sm:p-10">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-3xl font-bold text-black dark:text-white">
+                <h2 className="text-3xl capitalize font-bold text-black dark:text-white">
                   {company?.name}
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
+                <p className="text-gray-600 capitalize dark:text-gray-400 mb-8">
                   {company?.companyType}
                 </p>
               </div>
@@ -174,7 +174,7 @@ const SingleCompany = () => {
                     </thead>
                     <tbody>
 
-                      {company?.documents?.map(({ name, status, issueDate, expiryDate }, key) => (
+                      {company?.documents?.map(({ name, status, issueDate, expiryDate, _id }, key) => (
                         <tr key={key}>
                           <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                             <h5 className="font-medium capitalize text-black dark:text-white">
@@ -207,32 +207,20 @@ const SingleCompany = () => {
                             </p>
                           </td>
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
-                            <div className="flex items-center space-x-3.5">
-                              <Link href={`/company/${id}`} className="hover:text-primary">
-                                <svg
-                                  className="fill-current"
-                                  width="18"
-                                  height="18"
-                                  viewBox="0 0 18 18"
-                                  fill="none"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <path
-                                    d="M8.99981 14.8219C3.43106 14.8219 0.674805 9.50624 0.562305 9.28124C0.47793 9.11249 0.47793 8.88749 0.562305 8.71874C0.674805 8.49374 3.43106 3.20624 8.99981 3.20624C14.5686 3.20624 17.3248 8.49374 17.4373 8.71874C17.5217 8.88749 17.5217 9.11249 17.4373 9.28124C17.3248 9.50624 14.5686 14.8219 8.99981 14.8219ZM1.85605 8.99999C2.4748 10.0406 4.89356 13.5562 8.99981 13.5562C13.1061 13.5562 15.5248 10.0406 16.1436 8.99999C15.5248 7.95936 13.1061 4.44374 8.99981 4.44374C4.89356 4.44374 2.4748 7.95936 1.85605 8.99999Z"
-                                    fill=""
-                                  />
-                                  <path
-                                    d="M9 11.3906C7.67812 11.3906 6.60938 10.3219 6.60938 9C6.60938 7.67813 7.67812 6.60938 9 6.60938C10.3219 6.60938 11.3906 7.67813 11.3906 9C11.3906 10.3219 10.3219 11.3906 9 11.3906ZM9 7.875C8.38125 7.875 7.875 8.38125 7.875 9C7.875 9.61875 8.38125 10.125 9 10.125C9.61875 10.125 10.125 9.61875 10.125 9C10.125 8.38125 9.61875 7.875 9 7.875Z"
-                                    fill=""
-                                  />
+                            <div className="flex items-center gap-1">
+                              <button className="hover:bg-primary rounded hover:bg-opacity-10 p-1">
+                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M5.92971 19.283L5.92972 19.283L5.95149 19.2775L5.95151 19.2775L8.58384 18.6194C8.59896 18.6156 8.61396 18.6119 8.62885 18.6082C8.85159 18.5528 9.04877 18.5037 9.2278 18.4023C9.40683 18.301 9.55035 18.1571 9.71248 17.9947C9.72332 17.9838 9.73425 17.9729 9.74527 17.9618L16.9393 10.7678L16.9393 10.7678L16.9626 10.7445C17.2761 10.4311 17.5461 10.1611 17.7333 9.91573C17.9339 9.65281 18.0858 9.36038 18.0858 9C18.0858 8.63961 17.9339 8.34719 17.7333 8.08427C17.5461 7.83894 17.276 7.5689 16.9626 7.2555L16.9393 7.23223L16.5858 7.58579L16.9393 7.23223L16.7678 7.06066L16.7445 7.03738C16.4311 6.72395 16.1611 6.45388 15.9157 6.2667C15.6528 6.0661 15.3604 5.91421 15 5.91421C14.6396 5.91421 14.3472 6.0661 14.0843 6.2667C13.8389 6.45388 13.5689 6.72395 13.2555 7.03739L13.2322 7.06066L6.03816 14.2547C6.02714 14.2658 6.01619 14.2767 6.00533 14.2875C5.84286 14.4496 5.69903 14.5932 5.59766 14.7722C5.4963 14.9512 5.44723 15.1484 5.39179 15.3711C5.38809 15.386 5.38435 15.401 5.38057 15.4162L4.71704 18.0703C4.71483 18.0791 4.7126 18.088 4.71036 18.097C4.67112 18.2537 4.62921 18.421 4.61546 18.5615C4.60032 18.7163 4.60385 18.9773 4.81326 19.1867C5.02267 19.3961 5.28373 19.3997 5.43846 19.3845C5.57899 19.3708 5.74633 19.3289 5.90301 19.2896C5.91195 19.2874 5.92085 19.2852 5.92971 19.283Z" stroke="#3C50E0" />
+                                  <path d="M12.5 7.5L15.5 5.5L18.5 8.5L16.5 11.5L12.5 7.5Z" fill="#3C50E0" />
                                 </svg>
-                              </Link>
-                              <button onClick={() => handleDelete(id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
-                                <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" stroke-linecap="round" />
-                                  <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" stroke-linecap="round" />
-                                  <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" stroke-linecap="round" />
-                                  <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" stroke-linecap="round" />
+                              </button>
+
+                              <button onClick={() => handleDelete(_id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                  <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                  <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                  <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
                                 </svg>
 
                               </button>
