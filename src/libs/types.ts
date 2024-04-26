@@ -26,6 +26,7 @@ export type TCompanyData = {
 };
 export type TDocuments = {
   _id: string;
+  id?: string;
   name?: string;
   status?: string;
   issueDate?: string;

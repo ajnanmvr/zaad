@@ -53,7 +53,7 @@ export async function GET(
 
     // Modify documents structure
     const modifiedDocuments = company.documents.map((document) => ({
-      id: document._id,
+      _id: document._id,
       name: document.name,
       issueDate: document.issueDate,
       expiryDate: document.expiryDate,

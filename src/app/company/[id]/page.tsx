@@ -8,11 +8,33 @@ import { TCompanyData } from "@/libs/types";
 import { useParams } from "next/navigation";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 const SingleCompany = () => {
   const [company, setCompany] = useState<TCompanyData>({ name: "" })
-  const { id } = useParams()
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const { id }: { id: string } = useParams()
   const { user } = useUserContext()
+  const handleDelete = (id: string) => {
+    setSelectedDocumentId(id);
+    setIsConfirmationOpen(true);
+  }
+
+  const confirmDelete = async () => {
+    console.log("Deleting company with ID:", selectedDocumentId);
+    const data = await axios.delete(`/api/company/${selectedDocumentId}/doc/${selectedDocumentId}`)
+    console.log(data);
+    window.location.reload();
+    setIsConfirmationOpen(false);
+  }
+
+  const cancelDelete = () => {
+    setSelectedDocumentId(null);
+    setIsConfirmationOpen(false);
+  }
+
+
   const fetchData = async () => {
     try {
       const data = await axios.get(`/api/company/${id}`)
@@ -21,6 +43,8 @@ const SingleCompany = () => {
       console.log(error);
     }
   }
+
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -29,6 +53,13 @@ const SingleCompany = () => {
   return (
     <DefaultLayout>
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <ConfirmationModal
+          isOpen={isConfirmationOpen}
+          message="Are you sure you want to delete this document?"
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
+
         <div className="bg-white dark:bg-boxdark shadow-default rounded-lg overflow-hidden">
           <div className="px-6 py-8 sm:p-10">
             <div className="flex justify-between items-start">
@@ -196,24 +227,14 @@ const SingleCompany = () => {
                                   />
                                 </svg>
                               </Link>
-                              <button className="hover:text-primary">
-                                <svg
-                                  className="fill-current"
-                                  width="18"
-                                  height="18"
-                                  viewBox="0 0 18 18"
-                                  fill="none"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <path
-                                    d="M9.0002 7.79065C11.0814 7.79065 12.7689 6.1594 12.7689 4.1344C12.7689 2.1094 11.0814 0.478149 9.0002 0.478149C6.91895 0.478149 5.23145 2.1094 5.23145 4.1344C5.23145 6.1594 6.91895 7.79065 9.0002 7.79065ZM9.0002 1.7719C10.3783 1.7719 11.5033 2.84065 11.5033 4.16252C11.5033 5.4844 10.3783 6.55315 9.0002 6.55315C7.62207 6.55315 6.49707 5.4844 6.49707 4.16252C6.49707 2.84065 7.62207 1.7719 9.0002 1.7719Z"
-                                    fill=""
-                                  />
-                                  <path
-                                    d="M10.8283 9.05627H7.17207C4.16269 9.05627 1.71582 11.5313 1.71582 14.5406V16.875C1.71582 17.2125 1.99707 17.5219 2.3627 17.5219C2.72832 17.5219 3.00957 17.2407 3.00957 16.875V14.5406C3.00957 12.2344 4.89394 10.3219 7.22832 10.3219H10.8564C13.1627 10.3219 15.0752 12.2063 15.0752 14.5406V16.875C15.0752 17.2125 15.3564 17.5219 15.7221 17.5219C16.0877 17.5219 16.3689 17.2407 16.3689 16.875V14.5406C16.2846 11.5313 13.8377 9.05627 10.8283 9.05627Z"
-                                    fill=""
-                                  />
+                              <button onClick={() => handleDelete(id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                                <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" stroke-linecap="round" />
+                                  <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" stroke-linecap="round" />
+                                  <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" stroke-linecap="round" />
+                                  <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" stroke-linecap="round" />
                                 </svg>
+
                               </button>
                             </div>
                           </td>
@@ -222,27 +243,6 @@ const SingleCompany = () => {
                     </tbody>
                   </table>
                 </div>
-
-
-
-                {/* <ul>
-                {company?.documents?.map((doc, index) => (
-                  <li key={index} className="mb-2">
-
-
-
-
-                    
-                    <span className="font-medium">{doc.name} </span>
-                    <span className="text-sm">
-                      valid from
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{doc.issueDate || "-"}</span>
-                      to
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{doc.expiryDate || "-"}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul> */}
               </div>
             )}
 
@@ -272,8 +272,6 @@ const SingleCompany = () => {
                       className={"grid grid-cols-3 sm:grid-cols-5 border-b border-stroke dark:border-strokedark"}
                       key={key}
                     >
-
-
                       <div className="flex items-center justify-center p-2.5 xl:p-5">
                         <p className="text-black dark:text-white">{record.invoiceNo}</p>
                       </div>
@@ -293,11 +291,6 @@ const SingleCompany = () => {
                 </div>
               </div>
             )}
-
-
-
-
-
           </div>
         </div>
       </div>
