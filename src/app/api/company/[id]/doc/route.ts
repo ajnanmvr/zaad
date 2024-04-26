@@ -1,6 +1,6 @@
 import connect from "@/db/connect";
 import Company from "@/models/companies";
-import { fetchDocuments } from "@/utils/fetchDocuments";
+import { fetchDocuments } from "@/helpers/fetchDocuments";
 connect();
 
 export async function POST(

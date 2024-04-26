@@ -1,4 +1,4 @@
-import getUserFromCookie from "@/utils/getUserFromCookie";
+import getUserFromCookie from "@/helpers/getUserFromCookie";
 import connect from "@/db/connect";
 import User from "@/models/users";
 import { NextRequest } from "next/server";

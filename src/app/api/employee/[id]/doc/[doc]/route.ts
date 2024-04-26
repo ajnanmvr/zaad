@@ -1,6 +1,6 @@
 import connect from "@/db/connect";
 import Employee from "@/models/employees";
-import { fetchDocuments } from "@/utils/fetchDocuments";
+import { fetchDocuments } from "@/helpers/fetchDocuments";
 connect();
 export async function PUT(
   request: Request,

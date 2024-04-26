@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import calculateStatus from "@/utils/calculateStatus";
+import calculateStatus from "@/helpers/calculateStatus";
 import Company from "@/models/companies";
 import Records from "@/models/records";
 import { format } from "date-fns";
