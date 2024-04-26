@@ -14,25 +14,60 @@ const SingleCompany = () => {
   const [company, setCompany] = useState<TCompanyData>({ name: "", documents: [] })
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [isEditDocsOpen, setIsEditDocsOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    name: "",
+    issueDate: "",
+    expiryDate: "",
+    attachment: ""
+  });
   const { id }: { id: string } = useParams()
   const { user } = useUserContext()
 
-  const handleDelete = (deleteID: string) => {
-    setSelectedDocumentId(deleteID);
+  const handleDelete = (deleteId: string) => {
+    setSelectedDocumentId(deleteId);
     setIsConfirmationOpen(true);
+  }
+  const handleEdit = (editId: string) => {
+    const selectedDocument = company.documents.find(doc => doc._id === editId);
+    if (selectedDocument) {
+      setEditData({
+        name: `${selectedDocument.name}`,
+        issueDate: `${selectedDocument.issueDate}`,
+        expiryDate: `${selectedDocument.expiryDate}`,
+        attachment: ""
+      });
+      setSelectedDocumentId(editId);
+      setIsEditDocsOpen(true);
+    } else {
+      console.error("Document not found!");
+    }
   }
 
   const confirmDelete = async () => {
-    console.log("Deleting company with ID:", selectedDocumentId);
+    console.log("Deleting Document with ID:", selectedDocumentId);
     const data = await axios.delete(`/api/company/${id}/doc/${selectedDocumentId}`);
     console.log(data);
-    window.location.reload();
+    fetchData();
     setIsConfirmationOpen(false);
   };
+  const saveEdits = async () => {
+    console.log("Updating Document with ID:", selectedDocumentId);
+    const data = await axios.put(`/api/company/${id}/doc/${selectedDocumentId}`, editData);
+    console.log(data);
+    setIsEditDocsOpen(false);
+    fetchData();
+  };
 
-  const cancelDelete = () => {
+  const closeModal = () => {
     setSelectedDocumentId(null);
     setIsConfirmationOpen(false);
+    setIsEditDocsOpen(false);
+  }
+  const handleChange = (e: any) => {
+    setEditData({
+      ...editData, [e.target.name]: e.target.value
+    })
   }
 
 
@@ -57,8 +92,83 @@ const SingleCompany = () => {
           isOpen={isConfirmationOpen}
           message="Are you sure you want to delete this document?"
           onConfirm={confirmDelete}
-          onCancel={cancelDelete}
+          onCancel={closeModal}
         />
+        {isEditDocsOpen && (
+          <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
+            <div className="bg-white dark:bg-black p-8 rounded-lg shadow-lg">
+
+              <div className="mt-5">
+                <div className="mb-4.5">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Document Name <span className="text-meta-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={editData.name}
+                    onChange={handleChange}
+                    placeholder="Enter document name"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                  <div className="w-full xl:w-1/2">
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      name="issueDate"
+                      value={editData.issueDate}
+                      onChange={handleChange}
+                      placeholder="Enter phone number"
+                      className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                  <div className="w-full xl:w-1/2">
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Expiry Date <span className="text-meta-1">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="expiryDate"
+                      value={editData.expiryDate}
+                      onChange={handleChange}
+                      required
+                      className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+
+                </div>
+                <div className="mb-4.5">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Attach file
+                  </label>
+                  <input
+                    type="file"
+                    name="attachment"
+                    value={editData.attachment}
+                    onChange={handleChange}
+                    className="w-full cursor-pointer rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition file:mr-5 file:border-collapse file:cursor-pointer file:border-0 file:border-r file:border-solid file:border-stroke file:bg-whiter file:px-5 file:py-3 file:hover:bg-primary file:hover:bg-opacity-10 focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:file:border-form-strokedark dark:file:bg-white/30 dark:file:text-white dark:focus:border-primary"
+                  />
+                </div>
+              </div>
+
+
+              <div className="flex justify-end">
+                <button onClick={closeModal} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
+                  Cancel
+                </button>
+                <button onClick={saveEdits} className="px-4 py-2 bg-primary hover:bg-red-600 text-white rounded-lg">
+                  Update
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-boxdark shadow-default rounded-lg overflow-hidden">
           <div className="px-6 py-8 sm:p-10">
@@ -178,17 +288,17 @@ const SingleCompany = () => {
                         <tr key={key}>
                           <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                             <h5 className="font-medium capitalize text-black dark:text-white">
-                              {name}
+                              {name || "---"}
                             </h5>
                           </td>
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                             <p className="text-black dark:text-white">
-                              {issueDate}
+                              {issueDate || "---"}
                             </p>
                           </td>
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                             <p className="text-black dark:text-white">
-                              {expiryDate}
+                              {expiryDate || "---"}
                             </p>
                           </td>
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
@@ -208,7 +318,7 @@ const SingleCompany = () => {
                           </td>
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                             <div className="flex items-center gap-1">
-                              <button className="hover:bg-primary rounded hover:bg-opacity-10 p-1">
+                              <button onClick={() => handleEdit(_id)} className="hover:bg-primary rounded hover:bg-opacity-10 p-1">
                                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M5.92971 19.283L5.92972 19.283L5.95149 19.2775L5.95151 19.2775L8.58384 18.6194C8.59896 18.6156 8.61396 18.6119 8.62885 18.6082C8.85159 18.5528 9.04877 18.5037 9.2278 18.4023C9.40683 18.301 9.55035 18.1571 9.71248 17.9947C9.72332 17.9838 9.73425 17.9729 9.74527 17.9618L16.9393 10.7678L16.9393 10.7678L16.9626 10.7445C17.2761 10.4311 17.5461 10.1611 17.7333 9.91573C17.9339 9.65281 18.0858 9.36038 18.0858 9C18.0858 8.63961 17.9339 8.34719 17.7333 8.08427C17.5461 7.83894 17.276 7.5689 16.9626 7.2555L16.9393 7.23223L16.5858 7.58579L16.9393 7.23223L16.7678 7.06066L16.7445 7.03738C16.4311 6.72395 16.1611 6.45388 15.9157 6.2667C15.6528 6.0661 15.3604 5.91421 15 5.91421C14.6396 5.91421 14.3472 6.0661 14.0843 6.2667C13.8389 6.45388 13.5689 6.72395 13.2555 7.03739L13.2322 7.06066L6.03816 14.2547C6.02714 14.2658 6.01619 14.2767 6.00533 14.2875C5.84286 14.4496 5.69903 14.5932 5.59766 14.7722C5.4963 14.9512 5.44723 15.1484 5.39179 15.3711C5.38809 15.386 5.38435 15.401 5.38057 15.4162L4.71704 18.0703C4.71483 18.0791 4.7126 18.088 4.71036 18.097C4.67112 18.2537 4.62921 18.421 4.61546 18.5615C4.60032 18.7163 4.60385 18.9773 4.81326 19.1867C5.02267 19.3961 5.28373 19.3997 5.43846 19.3845C5.57899 19.3708 5.74633 19.3289 5.90301 19.2896C5.91195 19.2874 5.92085 19.2852 5.92971 19.283Z" stroke="#3C50E0" />
                                   <path d="M12.5 7.5L15.5 5.5L18.5 8.5L16.5 11.5L12.5 7.5Z" fill="#3C50E0" />

@@ -4,16 +4,87 @@ import DropdownMessage from "./DropdownMessage";
 import DropdownNotification from "./DropdownNotification";
 import DropdownUser from "./DropdownUser";
 import Image from "next/image";
+import { useState } from "react";
+import axios from "axios";
+import Employee from "@/models/employees";
 
 const Header = (props: {
   sidebarOpen: string | boolean | undefined;
   setSidebarOpen: (arg0: boolean) => void;
 }) => {
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ companies: [{ name: "", _id: "" }], employees: [{ name: "", _id: "" }] });
+  const [isSearchResults, setIsSearchResults] = useState(false);
+
+  const handleSearch = async (e: any) => {
+    e.preventDefault();
+    if (searchQuery.trim() !== '') {
+      try {
+        console.log(encodeURIComponent(searchQuery));
+        const response = await axios.get(`/api/search/${encodeURIComponent(searchQuery)}`);
+        setSearchResults(response.data); // Assuming API returns an array of search results
+        setIsSearchResults(true)
+      } catch (error) {
+        console.error('Error fetching search results:', error);
+      }
+    }
+  };
+  console.log(searchResults);
+
+
   return (
     <header className="sticky top-0 z-999 flex w-full bg-white drop-shadow-1 dark:bg-boxdark dark:drop-shadow-none">
+      {isSearchResults && (
+        <div className="absolute left-5 h-screen flex justify-center items-center">
+          <div className="bg-white dark:bg-black p-8 rounded-lg shadow-lg">
+
+            {searchResults?.companies.length !== 0 && (
+              <>
+                <h3 className=" text-sm font-semibold text-bodydark2">
+                  COMPANIES
+                </h3>
+
+                <div className="flex flex-wrap gap-1 my-2">
+                  {searchResults?.companies.map((company, key) => (
+                    <Link href={`/company/${company._id}`}
+                      className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+                      key={key}>
+                      {company.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+            {searchResults?.employees.length !== 0 && (
+              <>
+                <h3 className=" text-sm font-semibold text-bodydark2">
+                  EMPLOYEES
+                </h3>
+
+                <div className="flex flex-wrap gap-1 my-2">
+                  {searchResults?.employees.map((company, key) => (
+                    <Link href={`/company/${company._id}`}
+                      className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+                      key={key}>
+                      {company.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button onClick={() => setIsSearchResults(false)} className="mr-2 w-full px-4 py-2 border-current hover:bg-white hover:bg-opacity-5 border rounded-lg">
+              Cancel
+            </button>
+
+          </div>
+        </div>
+      )
+      }
+
       <div className="flex flex-grow items-center justify-between px-4 py-4 shadow-2 md:px-6 2xl:px-11">
         <div className="flex items-center gap-2 sm:gap-4 lg:hidden">
-          {/* <!-- Hamburger Toggle BTN --> */}
           <button
             aria-controls="sidebar"
             onClick={(e) => {
@@ -25,31 +96,26 @@ const Header = (props: {
             <span className="relative block h-5.5 w-5.5 cursor-pointer">
               <span className="du-block absolute right-0 h-full w-full">
                 <span
-                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-[0] duration-200 ease-in-out dark:bg-white ${
-                    !props.sidebarOpen && "!w-full delay-300"
-                  }`}
+                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-[0] duration-200 ease-in-out dark:bg-white ${!props.sidebarOpen && "!w-full delay-300"
+                    }`}
                 ></span>
                 <span
-                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-150 duration-200 ease-in-out dark:bg-white ${
-                    !props.sidebarOpen && "delay-400 !w-full"
-                  }`}
+                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-150 duration-200 ease-in-out dark:bg-white ${!props.sidebarOpen && "delay-400 !w-full"
+                    }`}
                 ></span>
                 <span
-                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-200 duration-200 ease-in-out dark:bg-white ${
-                    !props.sidebarOpen && "!w-full delay-500"
-                  }`}
+                  className={`relative left-0 top-0 my-1 block h-0.5 w-0 rounded-sm bg-black delay-200 duration-200 ease-in-out dark:bg-white ${!props.sidebarOpen && "!w-full delay-500"
+                    }`}
                 ></span>
               </span>
               <span className="absolute right-0 h-full w-full rotate-45">
                 <span
-                  className={`absolute left-2.5 top-0 block h-full w-0.5 rounded-sm bg-black delay-300 duration-200 ease-in-out dark:bg-white ${
-                    !props.sidebarOpen && "!h-0 !delay-[0]"
-                  }`}
+                  className={`absolute left-2.5 top-0 block h-full w-0.5 rounded-sm bg-black delay-300 duration-200 ease-in-out dark:bg-white ${!props.sidebarOpen && "!h-0 !delay-[0]"
+                    }`}
                 ></span>
                 <span
-                  className={`delay-400 absolute left-0 top-2.5 block h-0.5 w-full rounded-sm bg-black duration-200 ease-in-out dark:bg-white ${
-                    !props.sidebarOpen && "!h-0 !delay-200"
-                  }`}
+                  className={`delay-400 absolute left-0 top-2.5 block h-0.5 w-full rounded-sm bg-black duration-200 ease-in-out dark:bg-white ${!props.sidebarOpen && "!h-0 !delay-200"
+                    }`}
                 ></span>
               </span>
             </span>
@@ -67,7 +133,7 @@ const Header = (props: {
         </div>
 
         <div className="hidden sm:block">
-          <form action="https://formbold.com/s/unique_form_id" method="POST">
+          <form onSubmit={handleSearch}>
             <div className="relative">
               <button className="absolute left-0 top-1/2 -translate-y-1/2">
                 <svg
@@ -97,6 +163,8 @@ const Header = (props: {
                 type="text"
                 placeholder="Type to search..."
                 className="w-full bg-transparent pl-9 pr-4 font-medium focus:outline-none xl:w-125"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </form>
@@ -122,7 +190,7 @@ const Header = (props: {
           {/* <!-- User Area --> */}
         </div>
       </div>
-    </header>
+    </header >
   );
 };
 

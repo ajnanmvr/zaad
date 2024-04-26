@@ -28,8 +28,8 @@ function CompanyList({ companies }: { companies: TCompanyList }) {
 
     return (
         <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
-        
-          <ConfirmationModal
+
+            <ConfirmationModal
                 isOpen={isConfirmationOpen}
                 message="Are you sure you want to delete this company?"
                 onConfirm={confirmDelete}
@@ -74,7 +74,7 @@ function CompanyList({ companies }: { companies: TCompanyList }) {
                                             ? "bg-success text-success"
                                             : status === "expired"
                                                 ? "bg-danger text-danger"
-                                                : status === "renewal" ? "bg-warning text-warning":"bg-slate-500"
+                                                : status === "renewal" ? "bg-warning text-warning" : "bg-slate-500"
                                             }`}
                                     >
                                         {status}
