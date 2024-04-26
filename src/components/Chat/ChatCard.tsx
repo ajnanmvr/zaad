@@ -13,7 +13,7 @@ const ChatCard = () => {
     status: "",
     company: { id: "", name: "" }
   }])
-  const fetchData = async () => {
+  const fetchEmployees = async () => {
     try {
       const data = await axios.get("/api/employee")
       setEmployees(data.data.data.slice(0, 5))
@@ -22,7 +22,7 @@ const ChatCard = () => {
     }
   }
   useEffect(() => {
-    fetchData()
+    fetchEmployees()
   }, [])
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">

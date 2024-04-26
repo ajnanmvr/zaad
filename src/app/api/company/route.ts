@@ -67,7 +67,7 @@ export async function GET() {
         status = "expired";
       } else if (daysDiff <= 30) {
         status = "renewal";
-      }else if (daysDiff > 30) {
+      } else if (daysDiff > 30) {
         status = "valid";
       }
       formattedExpiryDate = new Date(expiryDateTime).toLocaleDateString(
@@ -88,9 +88,17 @@ export async function GET() {
       status,
     });
   });
-  data.sort(
-    (a, b) =>
+
+  // Sorting logic
+  data.sort((a, b) => {
+    if (a.expiryDate === "---") return 1; // Move companies without expiry date to the end
+    if (b.expiryDate === "---") return -1; // Move companies without expiry date to the end
+
+    return (
       new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
-  );
+    );
+  });
+
   return Response.json({ count: companies.length, data }, { status: 200 });
 }
+

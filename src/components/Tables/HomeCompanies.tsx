@@ -1,7 +1,6 @@
 import { TCompanyList } from "@/libs/types";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import CompanyList from "./CompanyList";
 import Link from "next/link";
 
 const HomeCompanies = () => {

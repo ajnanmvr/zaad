@@ -53,8 +53,7 @@ export async function GET() {
     employee.documents.forEach((document) => {
       if (
         !expiryDate ||
-        new Date(document.expiryDate).getTime() <
-          new Date(expiryDate).getTime()!
+        new Date(document.expiryDate).getTime() < new Date(expiryDate).getTime()
       ) {
         expiryDate = document.expiryDate;
       }
@@ -93,9 +92,14 @@ export async function GET() {
       status,
     });
   });
-  data.sort(
-    (a, b) =>
-      new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
-  );
+
+  // Sort the data by expiryDate, oldest first, null values last
+  data.sort((a, b) => {
+    if (!a.expiryDate && !b.expiryDate) return 0; // If both dates are null, maintain order
+    if (!a.expiryDate) return 1; // Put items with null dates last
+    if (!b.expiryDate) return -1; // Put items with null dates last
+    return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+  });
+
   return Response.json({ count: employees.length, data }, { status: 200 });
 }
