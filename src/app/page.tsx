@@ -205,11 +205,11 @@ export default function Home() {
                         <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                           <p
                             className={`inline-flex capitalize rounded-full bg-opacity-10 px-3 py-1 text-sm font-medium ${status === "valid"
-                              ? "bg-success text-success"
-                              : status === "expired"
+                            ? "bg-success text-success"
+                            : status === "expired"
                                 ? "bg-danger text-danger"
-                                : "bg-warning text-warning"
-                              }`}
+                                : status === "renewal" ? "bg-warning text-warning" : "bg-slate-500"
+                            }`}
                           >
                             {status}
                           </p>
@@ -277,7 +277,7 @@ export default function Home() {
                   key={key}
                 >
                   <div
-                    className={clsx(employee.status === "renewal" ? "bg-meta-6" : employee.status === "expired" ? "bg-red" : `bg-meta-3`, "h-3.5 w-3.5 rounded-full border-2 border-white")}
+                    className={clsx(employee.status === "renewal" ? "bg-meta-6" : employee.status === "expired" ? "bg-red" : employee.status === "valid" ? `bg-meta-3`:"bg-slate-500", "h-3.5 w-3.5 rounded-full border-2 border-white")}
                   ></div>
 
                   <div className="flex flex-1 items-center justify-between">
