@@ -16,19 +16,21 @@ export type TCompanyData = {
   transactionNo?: string;
   isMainland?: "mainland" | "freezone";
   remarks?: string;
-  password?:{
-      platform: string;
-      username: string;
-      password: string;
-    }[];
-  documents?: {
-    name?: string;
-    status?: string;
-    issueDate?: string;
-    expiryDate?: string;
-    attachment?: string;
+  password?: {
+    platform: string;
+    username: string;
+    password: string;
   }[];
+  documents?: TDocuments[];
   transactions?: TRecordList[];
+};
+export type TDocuments = {
+  _id: string;
+  name?: string;
+  status?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  attachment?: string;
 };
 export type TCompanyList = [
   {
@@ -39,15 +41,14 @@ export type TCompanyList = [
     status: "expired" | "renewal" | "valid" | "";
   },
 ];
-export type TEmployeeList = 
-  {
-    id: string;
-    company: { id: string; name: string };
-    name: string;
-    expiryDate: string | null;
-    docs: number;
-    status: "expired" | "renewal" | "valid" | "";
-  }[];
+export type TEmployeeList = {
+  id: string;
+  company: { id: string; name: string };
+  name: string;
+  expiryDate: string | null;
+  docs: number;
+  status: "expired" | "renewal" | "valid" | "";
+}[];
 export type TEmployeeData = {
   name: string;
   company: TCompanyData;
