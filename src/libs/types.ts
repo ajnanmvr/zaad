@@ -23,6 +23,9 @@ export type TCompanyData = {
   }[];
   documents: TDocuments[];
   transactions?: TRecordList[];
+  balance?: number;
+  totalIncomes?: number;
+  totalExpenses?: number;
 };
 export type TDocuments = {
   _id: string;
@@ -104,5 +107,5 @@ export type TRecordList = {
   employee?: string;
   company?: string;
   date: string;
-  serviceFee:number
+  serviceFee: number;
 };

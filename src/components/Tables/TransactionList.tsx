@@ -57,9 +57,16 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
 
       <div className="flex flex-col">
         <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
+
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Client
+            Particular
+            </h5>
+          </div>
+
+          <div className="p-2.5 xl:p-5">
+            <h5 className="text-sm font-medium uppercase xsm:text-base">
+            Client
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">
@@ -72,11 +79,7 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
               Transaction
             </h5>
           </div>
-          <div className="hidden p-2.5 text-center sm:block xl:p-5">
-            <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Particular
-            </h5>
-          </div>
+
           <div className="hidden p-2.5 text-center sm:block xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
               Date
@@ -96,10 +99,12 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
               : "border-b border-stroke dark:border-strokedark"
               }`}
             key={key}
-          >
+          >            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
+              <p className="text-meta-5">{record.particular}</p>
+            </div>
             <div className="flex items-center gap-3 p-2.5 xl:p-5">
 
-              <p className="hidden text-black dark:text-white sm:block">
+              <p className="hidden capitalize text-black dark:text-white sm:block">
                 {record?.company}{record?.employee}{record?.self}
               </p>
             </div>
@@ -118,9 +123,7 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
                 <span className="text-xs">AED</span></p>
             </div>
 
-            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-              <p className="text-meta-5">{record.particular}</p>
-            </div>
+
             <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
               <p className="text-black dark:text-white">{record.date}</p>
 

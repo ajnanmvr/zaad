@@ -1,49 +1,30 @@
 import connect from "@/db/connect";
 import calculateStatus from "@/helpers/calculateStatus";
-import Company from "@/models/companies";
 import Records from "@/models/records";
 import { format } from "date-fns";
+import Employee from "@/models/employees";
 connect();
-
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = params;
   const reqBody = await request.json();
-  await Company.findByIdAndUpdate(id, reqBody);
+  await Employee.findByIdAndUpdate(params.id, reqBody);
   return Response.json(
     { message: "data updated successfully" },
     { status: 201 }
   );
 }
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-  await Company.findByIdAndUpdate(id, { published: false });
-  return Response.json({ message: "data deleted" }, { status: 200 });
-}
-
-interface Company {
+interface Employee {
   _id: string;
   name: string;
-  licenseNo: string;
-  companyType: string;
-  emirates: string;
+  emiratesId: string;
+  nationality: string;
   phone1: string;
   phone2: string;
   email: string;
-  transactionNo: string;
-  isMainland: string;
+  designation: string;
   remarks: string;
-  password: {
-    platform: string;
-    username: string;
-    password: string;
-  }[];
   documents: {
     _id: string;
     expiryDate: string;
@@ -56,17 +37,16 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const today = new Date();
 
   try {
-    const company: Company | null = await Company.findById(params.id);
+    const employee: Employee | null = await Employee.findById(params.id);
 
-    if (!company) {
-      return Response.json({ message: "Company not found" }, { status: 404 });
+    if (!employee) {
+      return Response.json({ message: "employee not found" }, { status: 404 });
     }
 
     // Modify documents structure
-    const modifiedDocuments = company.documents.map((document) => ({
+    const modifiedDocuments = employee.documents.map((document) => ({
       _id: document._id,
       name: document.name,
       issueDate: document.issueDate,
@@ -81,16 +61,15 @@ export async function GET(
     );
 
     const records = await Records.find({
-      company: { _id: params.id },
+      employee: { _id: params.id },
       published: true,
     }).sort({
       createdAt: -1,
     });
 
     const transformedData = records.map((record) => ({
-      company: record?.company?.name,
-      type: record.type,
       employee: record?.employee?.name,
+      type: record.type,
       particular: record.particular,
       invoiceNo: record.invoiceNo,
       self: record?.self,
@@ -99,45 +78,26 @@ export async function GET(
       ),
       date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
     }));
-    // Calculate total expenses and total incomes
-    let totalExpenses = 0;
-    let totalIncomes = 0;
 
-    transformedData.forEach((record) => {
-      if (record.type === "expense") {
-        totalExpenses += Math.abs(record.amount);
-      } else {
-        totalIncomes += record.amount;
-      }
-    });
-
-    // Calculate balance
-    const balance = totalIncomes - totalExpenses;
     // Prepare response data
     const responseData = {
-      id: company._id,
-      name: company.name,
-      licenseNo: company.licenseNo,
-      companyType: company.companyType,
-      emirates: company.emirates,
-      phone1: company.phone1,
-      phone2: company.phone2,
-      email: company.email,
-      transactionNo: company.transactionNo,
-      isMainland: company.isMainland,
-      remarks: company.remarks,
-      password: company.password,
+      id: employee._id,
+      name: employee.name,
+      emiratesId: employee.emiratesId,
+      nationality: employee.nationality,
+      phone1: employee.phone1,
+      phone2: employee.phone2,
+      email: employee.email,
+      designation: employee.designation,
+      remarks: employee.remarks,
       documents: modifiedDocuments,
       transactions: transformedData,
-      totalExpenses,
-      totalIncomes,
-      balance,
     };
 
     return Response.json({ data: responseData }, { status: 200 });
   } catch (error) {
     return Response.json(
-      { message: "Error fetching company data", error },
+      { message: "Error fetching employee data", error },
       { status: 500 }
     );
   }

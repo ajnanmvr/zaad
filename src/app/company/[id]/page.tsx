@@ -9,6 +9,7 @@ import { useParams } from "next/navigation";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
+import CardDataStats from "@/components/CardDataStats";
 
 const SingleCompany = () => {
   const [company, setCompany] = useState<TCompanyData>({ name: "", documents: [] })
@@ -347,29 +348,41 @@ const SingleCompany = () => {
 
             {company?.transactions?.length !== 0 && user?.role === "partner" && (
               <div className="mt-8">
-                <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
+                <div className=" mt-4 px-2 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+                  <CardDataStats title="Total Income" total={`${company.totalIncomes}AED`} />
+                  <CardDataStats title="Total Expense " total={`${company.totalExpenses}AED`} />
+                  <CardDataStats title="Final Balance" total={`${company.balance}AED`} />
+                  <CardDataStats title="Total Transactions" total={`${company.transactions?.length}`} />
+                </div>
+{/* 
+                <h3 className="text-xl font-semibold text-black dark:text-white my-2">
                   Transactions
-                </h3> <div className="flex flex-col">
-                  <div className="bg-gray-2 text-left  justify-around flex dark:bg-meta-4">
+                </h3> */}
+
+
+                <div className="flex flex-col mt-4">
+
+                  <div className="bg-gray-2 text-left justify-around flex dark:bg-meta-4">
+                    <div className="min-w-[150px] px-4 py-4 font-medium text-black dark:text-white">
+                      Particular                      </div>
                     <div className="min-w-[220px] px-4 py-4 font-medium text-black dark:text-white xl:pl-11">
                       Invoice No
                     </div>
                     <div className="min-w-[150px] px-4 py-4 font-medium text-black dark:text-white">
                       Amount                      </div>
-                    <div className="min-w-[150px] px-4 py-4 font-medium text-black dark:text-white">
-                      Particular                      </div>
+
                     <div className="min-w-[120px] px-4 py-4 font-medium text-black dark:text-white">
                       Date                      </div>
-                    <div className="px-4 py-4 font-medium text-black dark:text-white">
-                      Actions
-                    </div>
                   </div>
 
                   {company?.transactions?.map((record, key) => (
                     <div
-                      className={"grid grid-cols-3 sm:grid-cols-5 border-b border-stroke dark:border-strokedark"}
+                      className={"grid grid-cols-3 sm:grid-cols-4 border-b border-stroke dark:border-strokedark"}
                       key={key}
                     >
+                      <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
+                        <p className="text-meta-5">{record.particular}</p>
+                      </div>
                       <div className="flex items-center justify-center p-2.5 xl:p-5">
                         <p className="text-black dark:text-white">{record.invoiceNo}</p>
                       </div>
@@ -378,9 +391,7 @@ const SingleCompany = () => {
                         <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount} <span className="text-xs">AED</span></p>
                       </div>
 
-                      <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-                        <p className="text-meta-5">{record.particular}</p>
-                      </div>
+
                       <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
                         <p className="text-black dark:text-white">{record.date}</p>
                       </div>
