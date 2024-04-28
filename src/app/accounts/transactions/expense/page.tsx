@@ -3,7 +3,7 @@ import React from 'react'
 
 function expensePage() {
   return (
-    <AddRecord />
+    <AddRecord type="expense"/>
   )
 }
 

@@ -78,6 +78,7 @@ export type TRecordData = {
   bank: number;
   swiper: number;
   tasdeed: number;
+  serviceFee: number;
   self?: string;
   invoiceNo: string;
   particular: string;
@@ -103,4 +104,5 @@ export type TRecordList = {
   employee?: string;
   company?: string;
   date: string;
+  serviceFee:number
 };

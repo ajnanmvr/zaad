@@ -13,10 +13,15 @@ export default function AccountsDashboard() {
     totalExpenseAmount: 0,
     incomeCount: 0,
     totalIncomeAmount: 0,
+    totalBalance: 0,
+    bankBalance: 0,
+    cashBalance: 0,
+    tasdeedBalance: 0,
     last12MonthsExpenses: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    last12MonthsIncomes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    last12MonthsProfit: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     monthNames: [""],
-    incomesLast7DaysTotal: [0],
+    totalProfitAmount: 0,
+    profitLast7DaysTotal: [0],
     expensesLast7DaysTotal: [0],
     daysOfWeekInitials: [""]
   })
@@ -58,7 +63,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Credit" total={`${accountsData.totalIncomeAmount}AED`} rate="4.35%" levelUp>
+          <CardDataStats title="Total Income" total={`${accountsData.totalIncomeAmount}AED`} rate="4.35%" levelUp>
             <svg
               className="fill-primary dark:fill-white"
               width="20"
@@ -81,7 +86,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Debit" total={`${accountsData.totalExpenseAmount}AED`} rate="2.59%" levelUp>
+          <CardDataStats title="Total Expense" total={`${accountsData.totalExpenseAmount}AED`} rate="2.59%" levelUp>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -100,7 +105,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Balance" total={`${accountsData.totalIncomeAmount - accountsData.totalExpenseAmount}AED`} rate="0.95%" levelDown>
+          <CardDataStats title="Profit" total={`${accountsData.totalProfitAmount}AED`} rate="0.95%" levelDown>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -125,11 +130,17 @@ export default function AccountsDashboard() {
           </CardDataStats>
         </div>
 
-        <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-          <ChartOne months={accountsData.monthNames} income={accountsData.last12MonthsIncomes} expense={accountsData.last12MonthsExpenses} />
-          <ChartTwo dates={accountsData.daysOfWeekInitials} income={accountsData.incomesLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} />
-        </div>
 
+        <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
+          <ChartOne months={accountsData.monthNames} profit={accountsData.last12MonthsProfit} expense={accountsData.last12MonthsExpenses} />
+          <ChartTwo dates={accountsData.daysOfWeekInitials} profit={accountsData.profitLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} />
+        </div>
+        <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+          <CardDataStats title="Total Balance" total={`${accountsData.totalBalance}AED`} />
+          <CardDataStats title="Cash Balance" total={`${accountsData.cashBalance}AED`} />
+          <CardDataStats title="Bank Balance" total={`${accountsData.bankBalance}AED`} />
+          <CardDataStats title="Tasdeed Balance" total={`${accountsData.tasdeedBalance}AED`} />
+        </div>
       </DefaultLayout>
     </>
   );

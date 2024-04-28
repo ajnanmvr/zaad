@@ -7,9 +7,10 @@ import { TRecordList } from "@/libs/types";
 import TransactionList from "@/components/Tables/TransactionList";
 const TablesPage = () => {
   const [records, setRecords] = useState<TRecordList[]>([{
-    id:"",
+    id: "",
     type: "",
     amount: 0,
+    serviceFee: 0,
     invoiceNo: "",
     particular: "", date: ""
   }])

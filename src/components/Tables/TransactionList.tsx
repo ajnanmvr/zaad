@@ -109,7 +109,13 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
             </div>
 
             <div className="flex items-center justify-center p-2.5 xl:p-5">
-              <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount} <span className="text-xs">AED</span></p>
+              <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount}
+
+                {record.serviceFee !== 0 && (
+                  <> + {record.serviceFee}</>
+                )}
+                &nbsp;
+                <span className="text-xs">AED</span></p>
             </div>
 
             <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">

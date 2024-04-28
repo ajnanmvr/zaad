@@ -6,6 +6,7 @@ const RecordSchema = new Schema(
     cash: Number,
     bank: Number,
     swiper: Number,
+    serviceFee: Number,
     tasdeed: Number,
     type: {
       type: String,

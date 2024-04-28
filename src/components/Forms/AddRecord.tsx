@@ -1,5 +1,5 @@
 "use client"
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import { TRecordData, TSuggestions } from "@/libs/types";
@@ -9,9 +9,8 @@ import axios from "axios";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
 
-const AddRecord: React.FC = () => {
+const AddRecord = ({ type }: { type: string }) => {
   const router = useRouter();
-  const pathname = usePathname();
   const { user } = useUserContext();
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
@@ -19,11 +18,12 @@ const AddRecord: React.FC = () => {
   const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
-    type: "",
+    type,
     cash: 0,
     bank: 0,
     swiper: 0,
     tasdeed: 0,
+    serviceFee: 0,
     invoiceNo: "",
     particular: "",
     remarks: "",
@@ -34,14 +34,6 @@ const AddRecord: React.FC = () => {
 
   }, [selectedOption])
 
-  useEffect(() => {
-    if (pathname.includes("income")) {
-      setRecordData({ ...recordData, type: "income" })
-    }
-    if (pathname.includes("expense")) {
-      setRecordData({ ...recordData, type: "expense" })
-    }
-  }, [])
 
 
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
@@ -90,8 +82,8 @@ const AddRecord: React.FC = () => {
     setRecordData({ ...recordData, [name]: value });
   };
 
-  const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank;
-  (recordData)
+  const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank + +recordData.serviceFee
+
   return (
     <DefaultLayout>
       <Breadcrumb pageName={"Add " + recordData?.type} />
@@ -303,7 +295,21 @@ const AddRecord: React.FC = () => {
 
               </div>
 
-
+              {type === "expense" && (
+                <div className="mb-6">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Service Fee
+                  </label>
+                  <input
+                    type="number"
+                    name="serviceFee"
+                    value={recordData?.serviceFee}
+                    onChange={handleChange}
+                    placeholder="Enter service fee"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+              )}
 
 
 

@@ -14,11 +14,11 @@ interface ChartOneState {
 
 type ChartOneProps = {
   months: string[],
-  income: number[],
+  profit: number[],
   expense: number[]
 }
 
-const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
+const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
   const options: ApexOptions = {
     legend: {
       show: false,
@@ -115,14 +115,14 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
         },
       },
       min: 0,
-      max: Math.ceil(Math.max(...income, ...expense) / 100) * 100,
+      max: Math.ceil(Math.max(...profit, ...expense) / 100) * 100,
     },
   };
 
 
   const [seriesData, setSeriesData] = useState<ChartOneState["series"]>([
     {
-      name: "Income",
+      name: "Profit",
       data: [],
     },
     {
@@ -134,15 +134,15 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
   useEffect(() => {
     setSeriesData([
       {
-        name: "Income",
-        data: income,
+        name: "Profit",
+        data: profit,
       },
       {
         name: "Expense",
         data: expense,
       },
     ]);
-  }, [income, expense]);
+  }, [profit, expense]);
 
   const handleReset = () => {
     setSeriesData((prevState) => ({
@@ -162,7 +162,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, income, expense }) => {
               <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-primary"></span>
             </span>
             <div className="w-full">
-              <p className="font-semibold text-primary">Total Income</p>
+              <p className="font-semibold text-primary">Total Profit</p>
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>

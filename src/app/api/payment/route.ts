@@ -19,7 +19,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const records = await Records.find({ published: true }).sort({ createdAt: -1 });
+  const records = await Records.find({ published: true }).sort({
+    createdAt: -1,
+  });
 
   const transformedData = records.map((record) => ({
     company: record?.company?.name,
@@ -28,12 +30,13 @@ export async function GET() {
     particular: record.particular,
     invoiceNo: record.invoiceNo,
     self: record?.self,
-    id:record._id,
+    id: record._id,
     amount:
       Number(record.cash) +
       Number(record.bank) +
       Number(record.swiper) +
       Number(record.tasdeed),
+    serviceFee: record.serviceFee,
     date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
   }));
 

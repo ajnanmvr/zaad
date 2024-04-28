@@ -11,10 +11,10 @@ interface ChartTwoState {
 }
 type ChartTwoProps = {
   dates: string[],
-  income: number[],
+  profit: number[],
   expense: number[]
 }
-const ChartTwo: React.FC<ChartTwoProps> = ({ dates, income, expense }) => {
+const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   const options: ApexOptions = {
     colors: ["#3C50E0", "#80CAEE"],
     chart: {
@@ -76,7 +76,7 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, income, expense }) => {
   };
   const [seriesData, setSeriesData] = useState<ChartTwoState["series"]>([
     {
-      name: "Income",
+      name: "Profit",
       data: [],
     },
     {
@@ -88,15 +88,15 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, income, expense }) => {
   useEffect(() => {
     setSeriesData([
       {
-        name: "Income",
-        data: income,
+        name: "Profit",
+        data: profit,
       },
       {
         name: "Expense",
         data: expense,
       },
     ]);
-  }, [income, expense]);
+  }, [profit, expense]);
 
   const handleReset = () => {
     setSeriesData((prevState) => ({

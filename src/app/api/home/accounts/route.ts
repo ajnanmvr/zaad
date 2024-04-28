@@ -4,8 +4,14 @@ import Records from "@/models/records";
 connect();
 export async function GET() {
   try {
-    // Get count of expense records and calculate total expenses
-    const [expenseCount, totalExpenseAmount] = await Promise.all([
+    const [
+      expenseCount,
+      BankExpense,
+      CashExpense,
+      TaseedExpense,
+      SwiperExpense,
+      totalProfitAmount,
+    ] = await Promise.all([
       Records.countDocuments({ type: "expense", published: true }),
       Records.aggregate([
         { $match: { type: "expense", published: true } },
@@ -13,28 +19,105 @@ export async function GET() {
           $group: {
             _id: null,
             total: {
-              $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+              $sum: "$bank",
             },
           },
         },
       ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-    ]);
-
-    // Get count of income records and calculate total income
-    const [incomeCount, totalIncomeAmount] = await Promise.all([
-      Records.countDocuments({ type: "income", published: true }),
       Records.aggregate([
-        { $match: { type: "income", published: true } },
+        { $match: { type: "expense", published: true } },
         {
           $group: {
             _id: null,
             total: {
-              $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+              $sum: "$cash",
+            },
+          },
+        },
+      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+      Records.aggregate([
+        { $match: { type: "expense", published: true } },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: "$tasdeed",
+            },
+          },
+        },
+      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+      Records.aggregate([
+        { $match: { type: "expense", published: true } },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: "$swiper",
+            },
+          },
+        },
+      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+      Records.aggregate([
+        { $match: { type: "expense", published: true } },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: { $add: ["$serviceFee"] },
             },
           },
         },
       ]).then((result) => (result.length > 0 ? result[0].total : 0)),
     ]);
+    const [incomeCount, BankIncome, CashIncome, TaseedIncome, SwiperIncome] =
+      await Promise.all([
+        Records.countDocuments({ type: "income", published: true }),
+
+        Records.aggregate([
+          { $match: { type: "income", published: true } },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: "$bank",
+              },
+            },
+          },
+        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+        Records.aggregate([
+          { $match: { type: "income", published: true } },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: "$cash",
+              },
+            },
+          },
+        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+        Records.aggregate([
+          { $match: { type: "income", published: true } },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: "$tasdeed",
+              },
+            },
+          },
+        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+        Records.aggregate([
+          { $match: { type: "income", published: true } },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: "$swiper",
+              },
+            },
+          },
+        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
+      ]);
 
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -54,7 +137,7 @@ export async function GET() {
     }
 
     // Fetch expenses and incomes for the last 7 days
-    const [expensesLast7DaysTotal, incomesLast7DaysTotal] = await Promise.all([
+    const [expensesLast7DaysTotal, profitLast7DaysTotal] = await Promise.all([
       Promise.all(
         last7DaysDates.map((date) =>
           Records.aggregate([
@@ -80,7 +163,15 @@ export async function GET() {
               $group: {
                 _id: null,
                 total: {
-                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                  $sum: {
+                    $add: [
+                      "$cash",
+                      "$bank",
+                      "$swiper",
+                      "$tasdeed",
+                      "$serviceFee",
+                    ],
+                  },
                 },
               },
             },
@@ -92,7 +183,7 @@ export async function GET() {
           Records.aggregate([
             {
               $match: {
-                type: "income",
+                type: "expense",
                 published: true,
                 createdAt: {
                   $gte: new Date(
@@ -112,7 +203,7 @@ export async function GET() {
               $group: {
                 _id: null,
                 total: {
-                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                  $sum: "$serviceFee",
                 },
               },
             },
@@ -138,10 +229,10 @@ export async function GET() {
       };
     }).reverse();
 
-    const monthlyExpenses = Array.from({ length: 12 }, () => 0);
-    const monthlyIncomes = Array.from({ length: 12 }, () => 0);
+    const last12MonthsExpenses = Array.from({ length: 12 }, () => 0);
+    const last12MonthsProfit = Array.from({ length: 12 }, () => 0);
 
-    const [expensesLast12Months, incomesLast12Months] = await Promise.all([
+    const [expensesLast12Months, profitLast12Months] = await Promise.all([
       Promise.all(
         last12Months.map(({ month, year }) =>
           Records.aggregate([
@@ -159,7 +250,15 @@ export async function GET() {
               $group: {
                 _id: null,
                 total: {
-                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                  $sum: {
+                    $add: [
+                      "$cash",
+                      "$bank",
+                      "$swiper",
+                      "$tasdeed",
+                      "$serviceFee",
+                    ],
+                  },
                 },
               },
             },
@@ -171,7 +270,7 @@ export async function GET() {
           Records.aggregate([
             {
               $match: {
-                type: "income",
+                type: "expense",
                 published: true,
                 createdAt: {
                   $gte: new Date(year, month - 1, 1),
@@ -183,7 +282,7 @@ export async function GET() {
               $group: {
                 _id: null,
                 total: {
-                  $sum: { $add: ["$cash", "$bank", "$swiper", "$tasdeed"] },
+                  $sum: "$serviceFee",
                 },
               },
             },
@@ -193,28 +292,43 @@ export async function GET() {
     ]);
 
     expensesLast12Months.forEach((result, index) => {
-      monthlyExpenses[index] = result;
+      last12MonthsExpenses[index] = result;
     });
 
-    incomesLast12Months.forEach((result, index) => {
-      monthlyIncomes[index] = result;
+    profitLast12Months.forEach((result, index) => {
+      last12MonthsProfit[index] = result;
     });
 
-    const monthNames = last12Months.map(({ name }) => name);
+    const monthNames = last12Months.map(({ name }) => name),
+      totalIncomeAmount = Number(
+        BankIncome + CashIncome + TaseedIncome + SwiperIncome
+      ),
+      totalExpenseAmount = Number(
+        BankExpense + CashExpense + TaseedExpense + SwiperExpense
+      ),
+      totalBalance = totalIncomeAmount - totalExpenseAmount,
+      bankBalance = BankIncome - BankExpense + (SwiperIncome - SwiperExpense),
+      cashBalance = CashIncome - CashExpense,
+      tasdeedBalance = TaseedIncome - TaseedExpense;
 
     return Response.json(
       {
         expenseCount,
-        totalExpenseAmount,
         incomeCount,
         totalIncomeAmount,
+        totalExpenseAmount,
+        totalBalance,
+        bankBalance,
+        cashBalance,
+        tasdeedBalance,
+        totalProfitAmount,
         daysOfWeekInitials,
         expensesLast7DaysTotal,
-        incomesLast7DaysTotal,
+        profitLast7DaysTotal,
         last12Months,
         monthNames,
-        last12MonthsExpenses: monthlyExpenses,
-        last12MonthsIncomes: monthlyIncomes,
+        last12MonthsExpenses,
+        last12MonthsProfit,
       },
       { status: 200 }
     );
