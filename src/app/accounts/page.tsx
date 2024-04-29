@@ -20,15 +20,29 @@ export default function AccountsDashboard() {
     last12MonthsExpenses: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     last12MonthsProfit: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     monthNames: [""],
-    totalProfitAmount: 0,
     profitLast7DaysTotal: [0],
     expensesLast7DaysTotal: [0],
     daysOfWeekInitials: [""]
   })
+  const [profitsData, setProfitsData] = useState({
+    over0balanceCompanies: [],
+    under0balanceCompanies: [],
+    totalProfitAllCompanies: 0,
+    totalToGiveCompanies: 0,
+    totalToGetCompanies: 0,
+    over0balanceEmployees: [],
+    under0balanceEmployees: [],
+    totalProfitAllEmployees: 0,
+    totalToGiveEmployees: 0,
+    totalToGetEmployees: 0,
+    profit: 0,
+  })
   const fetchData = async () => {
     try {
       const { data } = await axios.get("/api/home/accounts")
+      const profit = await axios.get("/api/home/profit")
       setAccountsData(data)
+      setProfitsData(profit.data)
     } catch (error) {
       console.log(error);
     }
@@ -36,7 +50,7 @@ export default function AccountsDashboard() {
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(accountsData);
+  console.log(profitsData);
 
   return (
     <>
@@ -105,7 +119,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Profit" total={`${accountsData.totalProfitAmount}AED`} rate="0.95%" levelDown>
+          <CardDataStats title="Profit" total={`${profitsData.profit}AED`} rate="0.95%" levelDown>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -134,6 +148,12 @@ export default function AccountsDashboard() {
         <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
           <ChartOne months={accountsData.monthNames} profit={accountsData.last12MonthsProfit} expense={accountsData.last12MonthsExpenses} />
           <ChartTwo dates={accountsData.daysOfWeekInitials} profit={accountsData.profitLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} />
+        </div>
+        <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+          <CardDataStats title="Companies Credit" total={`${profitsData.totalToGiveCompanies}AED`} />
+          <CardDataStats title="Companies Debit" total={`${profitsData.totalToGetCompanies}AED`} />
+          <CardDataStats title="Employees Credit" total={`${profitsData.totalToGiveEmployees}AED`} />
+          <CardDataStats title="Employees Credit" total={`${profitsData.totalToGetEmployees}AED`} />
         </div>
         <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats title="Total Balance" total={`${accountsData.totalBalance}AED`} />

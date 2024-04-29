@@ -15,6 +15,7 @@ const TablesPage = () => {
     type: "",
     amount: 0,
     invoiceNo: "",
+    serviceFee: 0,
     particular: "", date: ""
   }])
   const fetchData = async () => {

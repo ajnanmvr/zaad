@@ -59,7 +59,7 @@ function EmployeeList({ employees }: { employees: TEmployeeList }) {
                                     <h5 className="font-medium capitalize text-black dark:text-white">
                                         {name}
                                     </h5>
-                                    <Link href={`/company/${company?.id}`} className="hover:underline text-sm">{company?.name}</Link>
+                                    <Link href={`/company/${company?.id}`} className="hover:underline capitalize text-sm">{company?.name}</Link>
                                 </td>
                                 <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                                     <p className="text-black dark:text-white">

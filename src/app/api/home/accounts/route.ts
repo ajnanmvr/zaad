@@ -10,7 +10,6 @@ export async function GET() {
       CashExpense,
       TaseedExpense,
       SwiperExpense,
-      totalProfitAmount,
     ] = await Promise.all([
       Records.countDocuments({ type: "expense", published: true }),
       Records.aggregate([
@@ -53,17 +52,6 @@ export async function GET() {
             _id: null,
             total: {
               $sum: "$swiper",
-            },
-          },
-        },
-      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-      Records.aggregate([
-        { $match: { type: "expense", published: true } },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: { $add: ["$serviceFee"] },
             },
           },
         },
@@ -321,7 +309,7 @@ export async function GET() {
         bankBalance,
         cashBalance,
         tasdeedBalance,
-        totalProfitAmount,
+
         daysOfWeekInitials,
         expensesLast7DaysTotal,
         profitLast7DaysTotal,
