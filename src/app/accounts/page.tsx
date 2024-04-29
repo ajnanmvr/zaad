@@ -58,7 +58,7 @@ export default function AccountsDashboard() {
 
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-          <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} rate="0.43%" levelUp>
+          <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`}>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -77,7 +77,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Income" total={`${accountsData.totalIncomeAmount}AED`} rate="4.35%" levelUp>
+          <CardDataStats title="Total Income" total={`${accountsData.totalIncomeAmount}AED`}>
             <svg
               className="fill-primary dark:fill-white"
               width="20"
@@ -100,7 +100,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Total Expense" total={`${accountsData.totalExpenseAmount}AED`} rate="2.59%" levelUp>
+          <CardDataStats title="Total Expense" total={`${accountsData.totalExpenseAmount}AED`} >
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -119,7 +119,7 @@ export default function AccountsDashboard() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Profit" total={`${profitsData.profit}AED`} rate="0.95%" levelDown>
+          <CardDataStats title="Profit" total={`${profitsData.profit}AED`}>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
