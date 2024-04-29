@@ -52,7 +52,8 @@ export async function GET() {
           }
         });
         over0balanceCompanies.push({
-          company: company.name,
+          id: company._id,
+          name: company.name,
           balance,
           totalProfit,
         });
@@ -60,7 +61,8 @@ export async function GET() {
         totalToGiveCompanies += balance;
       } else if (balance < 0) {
         under0balanceCompanies.push({
-          company: company.name,
+          id: company._id,
+          name: company.name,
           balance,
         });
         totalToGetCompanies += balance;
@@ -98,7 +100,8 @@ export async function GET() {
 
       if (balance > 0) {
         over0balanceEmployees.push({
-          employee: employee.name,
+          id: employee._id,
+          name: employee.name,
           balance,
           totalProfit, // Include total profit for this employee
         });
@@ -106,14 +109,17 @@ export async function GET() {
         totalToGiveEmployees += balance;
       } else if (balance < 0) {
         under0balanceEmployees.push({
-          employee: employee.name,
+          id: employee._id,
+          name: employee.name,
           balance,
           totalProfit, // Include total profit for this employee
         });
         totalToGetEmployees += balance;
       }
     }
-    const profit = totalProfitAllEmployees + totalProfitAllCompanies;
+    const profit = totalProfitAllEmployees + totalProfitAllCompanies,
+      totalToGive = totalToGiveCompanies + totalToGiveEmployees,
+      totalToGet = totalToGetCompanies + totalToGetEmployees;
     return Response.json(
       {
         over0balanceCompanies,
@@ -127,6 +133,8 @@ export async function GET() {
         totalToGiveEmployees,
         totalToGetEmployees,
         profit,
+        totalToGive,
+        totalToGet
       },
       { status: 200 }
     );

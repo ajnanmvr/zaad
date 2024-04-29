@@ -24,12 +24,15 @@ const TablesPage = () => {
       console.log(error);
     }
   }
+  const breadcrumbName = () => {
+    if (employees[0]?.company.name !== undefined) { return `( ${employees[0]?.company.name} )` } else { return "" }
+  }
   useEffect(() => {
     fetchData()
   }, [])
   return (
     <DefaultLayout>
-      <Breadcrumb pageName={`Employees (${employees[0]?.company.name})`} />
+      <Breadcrumb pageName={`Employees ${breadcrumbName()}`} />
       <div className="flex flex-col gap-10">
         <EmployeeList employees={employees} />
       </div>

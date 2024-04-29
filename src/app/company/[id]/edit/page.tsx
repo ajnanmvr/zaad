@@ -1,9 +1,11 @@
-import React from 'react'
-
-function page() {
+"use client"
+import AddCompany from '@/components/Forms/AddCompany'
+import { useParams } from 'next/navigation'
+function EditCompany() {
+  const params = useParams()
   return (
-    <div>page</div>
+    <AddCompany edit={params.id} />
   )
 }
 
-export default page
+export default EditCompany

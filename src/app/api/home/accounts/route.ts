@@ -8,7 +8,7 @@ export async function GET() {
       expenseCount,
       BankExpense,
       CashExpense,
-      TaseedExpense,
+      TasdeedExpense,
       SwiperExpense,
     ] = await Promise.all([
       Records.countDocuments({ type: "expense", published: true }),
@@ -57,7 +57,7 @@ export async function GET() {
         },
       ]).then((result) => (result.length > 0 ? result[0].total : 0)),
     ]);
-    const [incomeCount, BankIncome, CashIncome, TaseedIncome, SwiperIncome] =
+    const [incomeCount, BankIncome, CashIncome, TasdeedIncome, SwiperIncome] =
       await Promise.all([
         Records.countDocuments({ type: "income", published: true }),
 
@@ -277,15 +277,15 @@ export async function GET() {
 
     const monthNames = last12Months.map(({ name }) => name),
       totalIncomeAmount = Number(
-        BankIncome + CashIncome + TaseedIncome + SwiperIncome
+        BankIncome + CashIncome + TasdeedIncome + SwiperIncome
       ),
       totalExpenseAmount = Number(
-        BankExpense + CashExpense + TaseedExpense + SwiperExpense
+        BankExpense + CashExpense + TasdeedExpense + SwiperExpense
       ),
       totalBalance = totalIncomeAmount - totalExpenseAmount,
       bankBalance = BankIncome - BankExpense + (SwiperIncome - SwiperExpense),
       cashBalance = CashIncome - CashExpense,
-      tasdeedBalance = TaseedIncome - TaseedExpense;
+      tasdeedBalance = TasdeedIncome - TasdeedExpense;
 
     return Response.json(
       {
@@ -297,7 +297,14 @@ export async function GET() {
         bankBalance,
         cashBalance,
         tasdeedBalance,
-
+        BankIncome,
+        CashIncome,
+        TasdeedIncome,
+        SwiperIncome,
+        BankExpense,
+        CashExpense,
+        TasdeedExpense,
+        SwiperExpense,
         daysOfWeekInitials,
         expensesLast7DaysTotal,
         profitLast7DaysTotal,
