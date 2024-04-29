@@ -153,7 +153,7 @@ export default function AccountsDashboard() {
           <CardDataStats title="Companies Credit" total={`${profitsData.totalToGiveCompanies}AED`} />
           <CardDataStats title="Companies Debit" total={`${profitsData.totalToGetCompanies}AED`} />
           <CardDataStats title="Employees Credit" total={`${profitsData.totalToGiveEmployees}AED`} />
-          <CardDataStats title="Employees Credit" total={`${profitsData.totalToGetEmployees}AED`} />
+          <CardDataStats title="Employees Debit" total={`${profitsData.totalToGetEmployees}AED`} />
         </div>
         <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats title="Total Balance" total={`${accountsData.totalBalance}AED`} />

@@ -152,13 +152,7 @@ export async function GET() {
                 _id: null,
                 total: {
                   $sum: {
-                    $add: [
-                      "$cash",
-                      "$bank",
-                      "$swiper",
-                      "$tasdeed",
-                      "$serviceFee",
-                    ],
+                    $add: ["$cash", "$bank", "$swiper", "$tasdeed"],
                   },
                 },
               },
@@ -239,13 +233,7 @@ export async function GET() {
                 _id: null,
                 total: {
                   $sum: {
-                    $add: [
-                      "$cash",
-                      "$bank",
-                      "$swiper",
-                      "$tasdeed",
-                      "$serviceFee",
-                    ],
+                    $add: ["$cash", "$bank", "$swiper", "$tasdeed"],
                   },
                 },
               },
