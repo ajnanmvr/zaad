@@ -72,7 +72,7 @@ const DropdownUser = () => {
             {user?.user?.username}
           </span>
           <span className="block text-xs">            {user?.user?.role}
-</span>
+          </span>
         </span>
 
         <span className="h-12 w-12 rounded-full">
@@ -105,7 +105,6 @@ const DropdownUser = () => {
         </svg>
       </Link>
 
-      {/* <!-- Dropdown Start --> */}
       <div
         ref={dropdown}
         onFocus={() => setDropdownOpen(true)}
