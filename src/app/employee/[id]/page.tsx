@@ -4,7 +4,7 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { TCompanyData } from "@/libs/types";
+import { TEmployeeData } from "@/libs/types";
 import { useParams } from "next/navigation";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
@@ -12,9 +12,20 @@ import { useUserContext } from "@/contexts/UserContext";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import CardDataStats from "@/components/CardDataStats";
 
-const SingleCompany = () => {
+const SingleEmployee = () => {
   const router = useRouter()
-  const [company, setCompany] = useState<TCompanyData>({ name: "", documents: [], totalExpenses: 0, totalIncomes: 0, balance: 0, transactions: [] })
+  const [employee, setEmployee] = useState<TEmployeeData>({
+    name: "",
+    documents: [],
+    totalExpenses: 0,
+    totalIncomes: 0,
+    balance: 0,
+    transactions: [],
+    company: {
+      _id: "", name: "", documents: []
+    },
+    isActive: true,
+  });
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isEditDocsOpen, setIsEditDocsOpen] = useState(false);
@@ -33,7 +44,7 @@ const SingleCompany = () => {
     setIsConfirmationOpen(true);
   }
   const handleEdit = (editId: string) => {
-    const selectedDocument = company.documents.find(doc => doc._id === editId);
+    const selectedDocument = employee.documents.find(doc => doc._id === editId);
     if (selectedDocument) {
       setEditData({
         name: `${selectedDocument.name}`,
@@ -50,18 +61,18 @@ const SingleCompany = () => {
 
   const confirmDelete = async () => {
     console.log("Deleting Document with ID:", selectedDocumentId);
-    const data = await axios.delete(`/api/company/${id}/doc/${selectedDocumentId}`);
+    const data = await axios.delete(`/api/employee/${id}/doc/${selectedDocumentId}`);
     console.log(data);
     fetchData();
     setIsConfirmationOpen(false);
   };
   const confirmDeleteCompany = async () => {
-    await axios.delete(`/api/company/${id}`);
-    router.push("/company")
+    await axios.delete(`/api/employee/${id}`);
+    router.push("/employee")
   };
   const saveEdits = async () => {
     console.log("Updating Document with ID:", selectedDocumentId);
-    const data = await axios.put(`/api/company/${id}/doc/${selectedDocumentId}`, editData);
+    const data = await axios.put(`/api/employee/${id}/doc/${selectedDocumentId}`, editData);
     console.log(data);
     setIsEditDocsOpen(false);
     fetchData();
@@ -83,8 +94,8 @@ const SingleCompany = () => {
 
   const fetchData = async () => {
     try {
-      const data = await axios.get(`/api/company/${id}`)
-      setCompany(data.data.data)
+      const data = await axios.get(`/api/employee/${id}`)
+      setEmployee(data.data.data)
     } catch (error) {
       console.log(error);
     }
@@ -107,7 +118,7 @@ const SingleCompany = () => {
         />
         <ConfirmationModal
           isOpen={isConfirmationOpenCompany}
-          message="Are you sure you want to delete this company?"
+          message="Are you sure you want to delete this employee?"
           onConfirm={confirmDeleteCompany}
           onCancel={closeModal}
         />
@@ -192,42 +203,17 @@ const SingleCompany = () => {
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-3xl capitalize font-bold text-black dark:text-white">
-                  {company?.name}
+                  {employee?.name}
                 </h2>
-                <p className="text-gray-600 capitalize dark:text-gray-400 mb-8">
-                  {company?.companyType}
-                </p>
+                <Link href={`/company/${employee.company?._id}`} className="text-gray-600 capitalize dark:text-gray-400 mb-8">
+                  {employee?.company?.name}
+                </Link>
               </div>
               <div className="flex gap-1 items-center">
 
-                <Link href={`/employee/view/${id}`} className="hover:text-primary">
-                  <svg
-                    className="fill-current"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M9.0002 7.79065C11.0814 7.79065 12.7689 6.1594 12.7689 4.1344C12.7689 2.1094 11.0814 0.478149 9.0002 0.478149C6.91895 0.478149 5.23145 2.1094 5.23145 4.1344C5.23145 6.1594 6.91895 7.79065 9.0002 7.79065ZM9.0002 1.7719C10.3783 1.7719 11.5033 2.84065 11.5033 4.16252C11.5033 5.4844 10.3783 6.55315 9.0002 6.55315C7.62207 6.55315 6.49707 5.4844 6.49707 4.16252C6.49707 2.84065 7.62207 1.7719 9.0002 1.7719Z"
-                      fill=""
-                    />
-                    <path
-                      d="M10.8283 9.05627H7.17207C4.16269 9.05627 1.71582 11.5313 1.71582 14.5406V16.875C1.71582 17.2125 1.99707 17.5219 2.3627 17.5219C2.72832 17.5219 3.00957 17.2407 3.00957 16.875V14.5406C3.00957 12.2344 4.89394 10.3219 7.22832 10.3219H10.8564C13.1627 10.3219 15.0752 12.2063 15.0752 14.5406V16.875C15.0752 17.2125 15.3564 17.5219 15.7221 17.5219C16.0877 17.5219 16.3689 17.2407 16.3689 16.875V14.5406C16.2846 11.5313 13.8377 9.05627 10.8283 9.05627Z"
-                      fill=""
-                    />
-                  </svg>
-                </Link>
-                <Link
-                  href={`/employee/register/${id}`}
-                  className="hover:text-primary"
-                >
-                  New
-                </Link> |
 
                 <Link
-                  href={`/company/${id}/edit`}
+                  href={`/employee/${id}/edit`}
                   className="hover:text-primary"
                 >
                   Edit
@@ -239,65 +225,43 @@ const SingleCompany = () => {
                 </button>
               </div></div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
-                  Company Details
-                </h3>
-                <ul className="grid grid-cols-2 gap-x-4">
-                  <li>
-                    License No:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.licenseNo || "-"}</span>
-                  </li>
-                  <li>
-                    Emirates/Area:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.emirates || "-"}</span>
-                  </li>
-                  <li>
-                    Phone 1:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.phone1 || "-"}</span>
-                  </li>
-                  <li>
-                    Phone 2:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.phone2 || "-"}</span>
-                  </li>
-                  <li>
-                    Email:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.email || "-"}</span>
-                  </li>
-                  <li>
-                    Transaction No:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.transactionNo || "-"}</span>
-                  </li>
-                  <li>
-                    Mainland/Freezone:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.isMainland ? "Mainland" : "Freezone"}</span>
-                  </li>
-                  <li>
-                    Remarks:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.remarks || "-"}</span>
-                  </li>
-                </ul>
-              </div>
-              {company?.password?.length !== 0 && (
-                <div className="">
-                  <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
-                    Passwords.
-                  </h3>
-                  <ul>
-                    {company?.password?.map((pass, index) => (
-                      <li key={index}>
-                        <span className="font-medium">{pass.platform}:</span>
-                        <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.username || "-"}</span>
-                        <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.password || "-"}</span>
-
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            <div>
+              <h3 className="text-lg mt-5 font-semibold text-black dark:text-white mb-2">
+                Employee Details
+              </h3>
+              <ul className="grid sm:grid-cols-2 gap-x-4">
+                <li>
+                  Emirates ID:                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.emiratesId || "-"}</span>
+                </li>
+                <li>
+                  Nationality:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.nationality || "-"}</span>
+                </li>
+                <li>
+                  Phone 1:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.phone1 || "-"}</span>
+                </li>
+                <li>
+                  Phone 2:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.phone2 || "-"}</span>
+                </li>
+                <li>
+                  Email:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.email || "-"}</span>
+                </li>
+                <li>
+                  Designation:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.designation || "-"}</span>
+                </li>
+                <li>
+                  Remarks:
+                  <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.remarks || "-"}</span>
+                </li>
+              </ul>
             </div>
-            {company?.documents?.length !== 0 && (
+
+
+            {employee?.documents?.length !== 0 && (
 
               <div className="mt-8">
                 <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
@@ -327,7 +291,7 @@ const SingleCompany = () => {
                     </thead>
                     <tbody>
 
-                      {company?.documents?.map(({ name, status, issueDate, expiryDate, _id }, key) => (
+                      {employee?.documents?.map(({ name, status, issueDate, expiryDate, _id }, key) => (
                         <tr key={key}>
                           <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                             <h5 className="font-medium capitalize text-black dark:text-white">
@@ -388,19 +352,14 @@ const SingleCompany = () => {
             )}
 
 
-            {company?.transactions?.length !== 0 && user?.role === "partner" && (
+            {employee?.transactions?.length !== 0 && user?.role === "partner" && (
               <div className="mt-8">
                 <div className=" mt-4 px-2 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-                  <CardDataStats title="Total Income" total={`${company.totalIncomes}AED`} />
-                  <CardDataStats title="Total Expense " total={`${company.totalExpenses}AED`} />
-                  <CardDataStats title="Final Balance" total={`${company.balance}AED`} />
-                  <CardDataStats title="Total Transactions" total={`${company.transactions?.length}`} />
+                  <CardDataStats title="Total Income" total={`${employee.totalIncomes}AED`} />
+                  <CardDataStats title="Total Expense " total={`${employee.totalExpenses}AED`} />
+                  <CardDataStats title="Final Balance" total={`${employee.balance}AED`} />
+                  <CardDataStats title="Total Transactions" total={`${employee.transactions?.length}`} />
                 </div>
-                {/* 
-                <h3 className="text-xl font-semibold text-black dark:text-white my-2">
-                  Transactions
-                </h3> */}
-
 
                 <div className="flex flex-col mt-4">
 
@@ -417,7 +376,7 @@ const SingleCompany = () => {
                       Date                      </div>
                   </div>
 
-                  {company?.transactions?.map((record, key) => (
+                  {employee?.transactions?.map((record, key) => (
                     <div
                       className={"grid grid-cols-3 sm:grid-cols-4 border-b border-stroke dark:border-strokedark"}
                       key={key}
@@ -449,4 +408,4 @@ const SingleCompany = () => {
   );
 };
 
-export default SingleCompany;
+export default SingleEmployee;

@@ -7,7 +7,6 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import clsx from "clsx";
 
 export default function AccountsDashboard() {
   const [accountsData, setAccountsData] = useState({
@@ -100,8 +99,8 @@ export default function AccountsDashboard() {
         <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies}AED`} />
           <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} />
-          <CardDataStats title="Employees Credit" total={`${profitsData.totalToGetEmployees}AED`} />
-          <CardDataStats title="Employees Debit" total={`${profitsData.totalToGiveEmployees}AED`} />
+          <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees}AED`} />
+          <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} />
         </div>
 
         <div className="mt-4 flex flex-col gap-4">
@@ -174,7 +173,7 @@ export default function AccountsDashboard() {
 
             <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
               <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                Employee Debit List
+                Individual Debit List
               </h4>
 
               <div>
@@ -208,7 +207,7 @@ export default function AccountsDashboard() {
 
             <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
               <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                Employee Credit List
+                Individual Credit List
               </h4>
 
               <div>

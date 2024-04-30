@@ -4,20 +4,36 @@ import Records from "@/models/records";
 import { format } from "date-fns";
 import Employee from "@/models/employees";
 connect();
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { id } = params;
   const reqBody = await request.json();
-  await Employee.findByIdAndUpdate(params.id, reqBody);
+  await Employee.findByIdAndUpdate(id, reqBody);
   return Response.json(
     { message: "data updated successfully" },
     { status: 201 }
   );
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
+  await Employee.findByIdAndUpdate(id, { published: false });
+  return Response.json({ message: "data deleted" }, { status: 200 });
+}
+
 interface Employee {
   _id: string;
   name: string;
+  company: {
+    name: string;
+    _id: string;
+  };
   emiratesId: string;
   nationality: string;
   phone1: string;
@@ -37,7 +53,6 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-
   try {
     const employee: Employee | null = await Employee.findById(params.id);
 
@@ -68,8 +83,9 @@ export async function GET(
     });
 
     const transformedData = records.map((record) => ({
-      employee: record?.employee?.name,
+      company: record?.company?.name,
       type: record.type,
+      employee: record?.employee?.name,
       particular: record.particular,
       invoiceNo: record.invoiceNo,
       self: record?.self,
@@ -78,11 +94,25 @@ export async function GET(
       ),
       date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
     }));
+    // Calculate total expenses and total incomes
+    let totalExpenses = 0;
+    let totalIncomes = 0;
 
+    transformedData.forEach((record) => {
+      if (record.type === "expense") {
+        totalExpenses += record.amount;
+      } else {
+        totalIncomes += record.amount;
+      }
+    });
+
+    // Calculate balance
+    const balance = totalIncomes - totalExpenses;
     // Prepare response data
     const responseData = {
       id: employee._id,
       name: employee.name,
+      company: employee.company,
       emiratesId: employee.emiratesId,
       nationality: employee.nationality,
       phone1: employee.phone1,
@@ -92,6 +122,9 @@ export async function GET(
       remarks: employee.remarks,
       documents: modifiedDocuments,
       transactions: transformedData,
+      totalExpenses,
+      totalIncomes,
+      balance,
     };
 
     return Response.json({ data: responseData }, { status: 200 });

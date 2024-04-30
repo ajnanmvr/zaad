@@ -2,15 +2,17 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TSuggestions } from "@/libs/types";
 import { debounce } from "lodash";
+import Link from "next/link";
 
-const AddEmployee = ({ company }: { company?: string | string[] }) => {
+const AddEmployee = ({ company, edit }: { company?: string | string[], edit: string | string[] }) => {
     const router = useRouter()
     const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
+    const [isEditMode, setisEditMode] = useState(false);
     const [selectedOption, setSelectedOption] = useState<string>("");
     const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
     const [employeeData, setEmployeeData] = useState<any>({
@@ -32,11 +34,29 @@ const AddEmployee = ({ company }: { company?: string | string[] }) => {
             setIsOptionSelected(true);
         }
     }, [employeeData.isActive])
+    const fetchData = async () => {
+        if (edit !== "") {
+            try {
+                const { data } = await axios.get(`/api/employee/${edit}`, employeeData);
+                setEmployeeData(data.data);
+                setisEditMode(true)
+
+            } catch (error) {
+                console.log(error);
+            }
+        } else {
+            setisEditMode(false)
+        }
+    }
+    useEffect(() => {
+        fetchData()
+    }, [])
     const handleSubmit = async (e: any) => {
         e.preventDefault()
         try {
-            await axios.post("/api/employee", employeeData);
-            router.push("/company");
+            if (isEditMode) { await axios.put(`/api/employee/${edit}`, employeeData); }
+            else { await axios.post("/api/employee", employeeData); }
+            router.push("/employee");
         } catch (error) {
             console.log(error);
         }
@@ -95,11 +115,13 @@ const AddEmployee = ({ company }: { company?: string | string[] }) => {
             [e.target.name]: e.target.value
         })
     }
+    const breadCrumb = isEditMode ? "Edit Employee" : "Add Employee"
+    const confirmBtn = isEditMode ? "Save Edits" : "Save Employee"
     console.log(employeeData);
 
     return (
         <DefaultLayout>
-            <Breadcrumb pageName="Add Employee" />
+            <Breadcrumb pageName={`${breadCrumb}`} />
             <form className="grid grid-cols-1 gap-9 sm:grid-cols-2 relative" action="#">
                 <div className="flex flex-col gap-9">
                     <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
@@ -249,8 +271,11 @@ const AddEmployee = ({ company }: { company?: string | string[] }) => {
                                 ></textarea>
                             </div>
                             <button onClick={handleSubmit} className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                                Save Employee
+                                {confirmBtn}
                             </button>
+                            <Link href={"/employee"} className="mt-2 flex w-full justify-center rounded p-3 font-medium text-gray hover:bg-opacity-90">
+                                Cancel
+                            </Link>
                         </div>
                     </div>
 

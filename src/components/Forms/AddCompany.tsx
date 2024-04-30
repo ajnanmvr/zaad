@@ -2,11 +2,13 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
+    const [isEditMode, setisEditMode] = useState(false);
     const [selectedOption, setSelectedOption] = useState<string>("");
     const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
     const [companyData, setCompanyData] = useState<any>({
@@ -31,16 +33,19 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const fetchData = async () => {
         if (edit !== "") {
             try {
-                const {data} = await axios.post("/api/company", companyData);
-                setCompanyData(data);
-                
+                const { data } = await axios.get(`/api/company/${edit}`, companyData);
+                setCompanyData(data.data);
+                setisEditMode(true)
+
             } catch (error) {
                 console.log(error);
             }
+        } else {
+            setisEditMode(false)
         }
     }
     useEffect(() => {
-
+        fetchData()
     }, [])
 
 
@@ -48,7 +53,8 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         e.preventDefault();
 
         try {
-            await axios.post("/api/company", companyData);
+            if (isEditMode) { await axios.put(`/api/company/${edit}`, companyData); }
+            else { await axios.post("/api/company", companyData); }
             router.push("/company");
         } catch (error) {
             console.log(error);
@@ -103,10 +109,13 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             [e.target.name]: e.target.value
         })
     }
+    const breadCrumb = isEditMode ? "Edit Company" : "Add Company"
+    const confirmBtn = isEditMode ? "Save Edits" : "Save Company"
+    console.log(companyData);
 
     return (
         <DefaultLayout>
-            <Breadcrumb pageName="Add Company" />
+            <Breadcrumb pageName={`${breadCrumb}`} />
 
             <form className="grid grid-cols-1 gap-9 sm:grid-cols-2 relative" action="#">
 
@@ -301,8 +310,11 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                 ></textarea>
                             </div>
                             <button onClick={handleSubmit} className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                                Save Company
+                                {confirmBtn}
                             </button>
+                            <Link href={"/company"} className="mt-2 flex w-full justify-center rounded p-3 font-medium text-gray hover:bg-opacity-90">
+                                Cancel
+                            </Link>
                         </div>
                     </div>
 

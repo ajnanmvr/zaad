@@ -64,14 +64,11 @@ export type TEmployeeData = {
   email?: string;
   designation?: string;
   remarks?: string;
-  documents?: [
-    {
-      name: string;
-      issueDate: string;
-      expiryDate: string;
-      attachment: string;
-    },
-  ];
+  documents: TDocuments[];
+  transactions?: TRecordList[];
+  balance?: number;
+  totalIncomes?: number;
+  totalExpenses?: number;
 };
 
 export type TRecordData = {

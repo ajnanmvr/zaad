@@ -56,7 +56,6 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const today = new Date();
 
   try {
     const company: Company | null = await Company.findById(params.id);
@@ -105,7 +104,7 @@ export async function GET(
 
     transformedData.forEach((record) => {
       if (record.type === "expense") {
-        totalExpenses += Math.abs(record.amount);
+        totalExpenses += record.amount;
       } else {
         totalIncomes += record.amount;
       }
