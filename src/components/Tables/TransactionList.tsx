@@ -3,11 +3,29 @@ import { TRecordList } from "@/libs/types";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import { useState } from "react";
 import ConfirmationModal from "../Modals/ConfirmationModal";
+import { useEffect, useState } from "react";
 
-
-const TransactionList = ({ records }: { records: TRecordList[] }) => {
+const TransactionList = () => {
+  const [records, setRecords] = useState<TRecordList[]>([{
+    id: "",
+    type: "",
+    amount: 0,
+    serviceFee: 0,
+    invoiceNo: "",
+    particular: "", date: ""
+  }])
+  const fetchData = async () => {
+    try {
+      const data = await axios.get("/api/payment")
+      setRecords(data.data.data)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  useEffect(() => {
+    fetchData()
+  }, [])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const handleDelete = (id: string) => {
@@ -18,7 +36,7 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
     console.log("Deleting Record with ID:", selectedRecordId);
     const data = await axios.delete(`/api/payment/${selectedRecordId}`)
     console.log(data);
-    window.location.reload();
+    fetchData()
     setIsConfirmationOpen(false);
   }
   const cancelDelete = () => {
@@ -60,13 +78,13 @@ const TransactionList = ({ records }: { records: TRecordList[] }) => {
 
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-            Particular
+              Particular
             </h5>
           </div>
 
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
-            Client
+              Client
             </h5>
           </div>
           <div className="p-2.5 text-center xl:p-5">

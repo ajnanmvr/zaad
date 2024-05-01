@@ -16,7 +16,7 @@ type ChartTwoProps = {
 }
 const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   const options: ApexOptions = {
-    colors: ["#3C50E0", "#80CAEE"],
+    colors: [ "#3C50E0","#80CAEE"],
     chart: {
       fontFamily: "Satoshi, sans-serif",
       type: "bar",
@@ -76,19 +76,21 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   };
   const [seriesData, setSeriesData] = useState<ChartTwoState["series"]>([
     {
-      name: "Profit",
+      name: "Profitable",
       data: [],
     },
     {
       name: "Expense",
       data: [],
     },
+
+
   ]);
 
   useEffect(() => {
     setSeriesData([
       {
-        name: "Profit",
+        name: "Profitable",
         data: profit,
       },
       {

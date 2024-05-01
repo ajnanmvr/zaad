@@ -34,13 +34,13 @@ export default function AccountsDashboard() {
     daysOfWeekInitials: [""]
   })
   const [profitsData, setProfitsData] = useState({
-    over0balanceCompanies: [{ name: "", balance: "", id: "" }],
-    under0balanceCompanies: [{ name: "", balance: "", id: "" }],
+    over0balanceCompanies: [{ name: "", balance: 0, id: "" }],
+    under0balanceCompanies: [{ name: "", balance: 0, id: "" }],
     totalProfitAllCompanies: 0,
     totalToGiveCompanies: 0,
     totalToGetCompanies: 0,
-    over0balanceEmployees: [{ name: "", balance: "", id: "" }],
-    under0balanceEmployees: [{ name: "", balance: "", id: "" }],
+    over0balanceEmployees: [{ name: "", balance: 0, id: "" }],
+    under0balanceEmployees: [{ name: "", balance: 0, id: "" }],
     totalProfitAllEmployees: 0,
     totalToGiveEmployees: 0,
     totalToGetEmployees: 0,
@@ -68,7 +68,7 @@ export default function AccountsDashboard() {
       <DefaultLayout>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} />
-          <CardDataStats title="Total Credit" total={`${profitsData.totalToGet}AED`} />
+          <CardDataStats title="Total Credit" total={`${profitsData.totalToGet * (-1)}AED`} />
           <CardDataStats title="Total Debit" total={`${profitsData.totalToGive}AED`} />
           <CardDataStats title="Total Profit" total={`${profitsData.profit}AED`} />
         </div>
@@ -97,9 +97,9 @@ export default function AccountsDashboard() {
           <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
         </div>
         <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-          <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies}AED`} />
+          <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} />
           <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} />
-          <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees}AED`} />
+          <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees * (-1)}AED`} />
           <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} />
         </div>
 
@@ -117,7 +117,7 @@ export default function AccountsDashboard() {
                   key={key}
                 >
                   <div
-                    className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
+                    className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
                   ></div>
 
                   <div className="flex flex-1 items-center justify-between">
@@ -127,7 +127,7 @@ export default function AccountsDashboard() {
                       </h5>
                     </div>
                     <div>
-                      <h5 className="font-medium text-meta-3">
+                      <h5 className="font-medium text-red">
                         {data.balance}AED
                       </h5>
                     </div>
@@ -150,7 +150,7 @@ export default function AccountsDashboard() {
                     key={key}
                   >
                     <div
-                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
+                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
                     ></div>
 
                     <div className="flex flex-1 items-center justify-between">
@@ -160,8 +160,8 @@ export default function AccountsDashboard() {
                         </h5>
                       </div>
                       <div>
-                        <h5 className="font-medium text-red">
-                          {data.balance}AED
+                        <h5 className="font-medium text-meta-3">
+                          {data.balance * (-1)}AED
                         </h5>
                       </div>
                     </div>
@@ -184,7 +184,7 @@ export default function AccountsDashboard() {
                     key={key}
                   >
                     <div
-                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
+                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
                     ></div>
 
                     <div className="flex flex-1 items-center justify-between">
@@ -194,7 +194,7 @@ export default function AccountsDashboard() {
                         </h5>
                       </div>
                       <div>
-                        <h5 className="font-medium text-meta-3">
+                        <h5 className="font-medium text-red">
                           {data.balance}AED
                         </h5>
                       </div>
@@ -218,7 +218,7 @@ export default function AccountsDashboard() {
                     key={key}
                   >
                     <div
-                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
+                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
                     ></div>
 
                     <div className="flex flex-1 items-center justify-between">
@@ -228,8 +228,8 @@ export default function AccountsDashboard() {
                         </h5>
                       </div>
                       <div>
-                        <h5 className="font-medium text-red">
-                          {data.balance}AED
+                        <h5 className="font-medium text-meta-3">
+                          {data.balance * (-1)}AED
                         </h5>
                       </div>
                     </div>

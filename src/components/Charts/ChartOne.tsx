@@ -25,7 +25,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
       position: "top",
       horizontalAlign: "left",
     },
-    colors: ["#3C50E0", "#80CAEE"],
+    colors: ["#80CAEE", "#3C50E0",],
     chart: {
       fontFamily: "Satoshi, sans-serif",
       height: 335,
@@ -87,7 +87,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
     markers: {
       size: 4,
       colors: "#fff",
-      strokeColors: ["#3056D3", "#80CAEE"],
+      strokeColors: ["#80CAEE", "#3056D3"],
       strokeWidth: 3,
       strokeOpacity: 0.9,
       strokeDashArray: 0,
@@ -122,11 +122,11 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
 
   const [seriesData, setSeriesData] = useState<ChartOneState["series"]>([
     {
-      name: "Profit",
+      name: "Expense",
       data: [],
     },
     {
-      name: "Expense",
+      name: "Profitable",
       data: [],
     },
   ]);
@@ -134,13 +134,14 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
   useEffect(() => {
     setSeriesData([
       {
-        name: "Profit",
-        data: profit,
-      },
-      {
         name: "Expense",
         data: expense,
       },
+      {
+        name: "Profitable",
+        data: profit,
+      },
+
     ]);
   }, [profit, expense]);
 
@@ -162,7 +163,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
               <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-primary"></span>
             </span>
             <div className="w-full">
-              <p className="font-semibold text-primary">Total Profit</p>
+              <p className="font-semibold text-primary">Profitable Amount</p>
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>
@@ -175,6 +176,8 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>
+
+
         </div>
         <div className="flex w-full max-w-45 justify-end">
           <div className="inline-flex items-center rounded-md bg-whiter p-1.5 dark:bg-meta-4">

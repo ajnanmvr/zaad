@@ -1,10 +1,29 @@
-import { TCompanyList } from "@/libs/types"
+
+"use client"
 import axios from "axios";
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useState } from "react";
-
-function CompanyList({ companies }: { companies: TCompanyList }) {
+import { useEffect, useState } from "react";
+import { TCompanyList } from "@/libs/types";
+function CompanyList() {
+    const [companies, setCompanies] = useState<TCompanyList>([{
+        id: "",
+        name: "",
+        expiryDate: "",
+        docs: 0,
+        status: ""
+    }])
+    const fetchData = async () => {
+        try {
+            const data = await axios.get("/api/company")
+            setCompanies(data.data.data)
+        } catch (error) {
+            console.log(error);
+        }
+    }
+    useEffect(() => {
+        fetchData()
+    }, [])
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
@@ -17,7 +36,7 @@ function CompanyList({ companies }: { companies: TCompanyList }) {
         console.log("Deleting company with ID:", selectedCompanyId);
         const data = await axios.delete(`/api/company/${selectedCompanyId}`)
         console.log(data);
-        window.location.reload();
+        fetchData()
         setIsConfirmationOpen(false);
     }
 

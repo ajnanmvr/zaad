@@ -30,8 +30,6 @@ const TablesPage = () => {
     fetchData()
   }, [])
 
-
-
   const generatePDF = () => {
     const doc = new jsPDF() as any;
 
