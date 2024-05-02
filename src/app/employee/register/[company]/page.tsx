@@ -6,7 +6,7 @@ export default function AddEmployeeInside() {
     const { company } = useParams()
 
   return (
-    <AddEmployee company={company}/>
+    <AddEmployee company={company} />
   )
 }
 

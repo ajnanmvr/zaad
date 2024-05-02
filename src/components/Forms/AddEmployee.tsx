@@ -8,7 +8,7 @@ import { TSuggestions } from "@/libs/types";
 import { debounce } from "lodash";
 import Link from "next/link";
 
-const AddEmployee = ({ company, edit }: { company?: string | string[], edit: string | string[] }) => {
+const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
     const router = useRouter()
     const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
