@@ -167,6 +167,7 @@ const AddRecord = ({ type }: { type: string }) => {
                       name="employee"
                       onChange={handleInputChange}
                       value={searchValue}
+                      autoComplete="off"
                       placeholder="Enter employee name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                     />
@@ -191,6 +192,7 @@ const AddRecord = ({ type }: { type: string }) => {
                       type="text"
                       name="company"
                       value={searchValue}
+                      autoComplete="off"
                       onChange={handleInputChange}
                       placeholder="Enter company name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -314,7 +316,7 @@ const AddRecord = ({ type }: { type: string }) => {
                     onChange={(e) => {
                       const { value } = e.target
                       const finalValue = +value - total
-                      setRecordData({ ...recordData, serviceFee: finalValue, clientFee: +value })
+                      setRecordData({ ...recordData, serviceFee: finalValue, clientFee: value })
 
                     }}
                     placeholder="Enter clinet fee"
