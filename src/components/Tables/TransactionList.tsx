@@ -78,15 +78,15 @@ const TransactionList = () => {
 
           <div className="p-2.5 xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
+              Client
+            </h5>
+          </div>
+          <div className="p-2.5 xl:p-5">
+            <h5 className="text-sm font-medium uppercase xsm:text-base">
               Particular
             </h5>
           </div>
 
-          <div className="p-2.5 xl:p-5">
-            <h5 className="text-sm font-medium uppercase xsm:text-base">
-              Client
-            </h5>
-          </div>
           <div className="p-2.5 text-center xl:p-5">
             <h5 className="text-sm font-medium uppercase xsm:text-base">
               Invoice No
@@ -117,15 +117,17 @@ const TransactionList = () => {
               : "border-b border-stroke dark:border-strokedark"
               }`}
             key={key}
-          >            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-              <p className="text-meta-5">{record.particular}</p>
-            </div>
+          >
             <div className="flex items-center gap-3 p-2.5 xl:p-5">
-
               <p className="hidden capitalize text-black dark:text-white sm:block">
                 {record?.company}{record?.employee}{record?.self}
               </p>
             </div>
+
+            <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
+              <p className="text-meta-5">{record.particular}</p>
+            </div>
+
 
             <div className="flex items-center justify-center p-2.5 xl:p-5">
               <Link href={`/accounts/invoice/${record.invoiceNo}`} className="text-black dark:text-white">{record.invoiceNo}</Link>
