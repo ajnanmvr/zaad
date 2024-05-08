@@ -24,6 +24,7 @@ const AddRecord = ({ type }: { type: string }) => {
     swiper: 0,
     tasdeed: 0,
     serviceFee: 0,
+    clientFee: "",
     invoiceNo: "",
     particular: "",
     remarks: "",
@@ -82,7 +83,8 @@ const AddRecord = ({ type }: { type: string }) => {
     setRecordData({ ...recordData, [name]: value });
   };
 
-  const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank + +recordData.serviceFee
+  const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank
+  console.log(recordData);
 
   return (
     <DefaultLayout>
@@ -96,7 +98,7 @@ const AddRecord = ({ type }: { type: string }) => {
               <h3 className="font-medium text-black dark:text-white">
                 Transaction Details
               </h3>
-              <p className={clsx(recordData.type === "income" ? "text-meta-3" : 'text-red')}>AED {total}</p>
+              <p className={clsx(recordData.type === "income" ? "text-meta-3" : 'text-red')}>AED {recordData.clientFee}</p>
 
             </div>
             <div className="p-6.5">
@@ -245,7 +247,7 @@ const AddRecord = ({ type }: { type: string }) => {
                     Cash</label>
                   <input
                     type="number"
-                    onWheel={(e:any) => e.target.blur()}
+                    onWheel={(e: any) => e.target.blur()}
                     name="cash"
                     value={recordData?.cash}
                     onChange={handleChange}
@@ -260,7 +262,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   <input
                     type="number"
                     name="bank"
-                    onWheel={(e:any) => e.target.blur()}
+                    onWheel={(e: any) => e.target.blur()}
                     value={recordData?.bank}
                     onChange={handleChange}
                     placeholder="Enter bank amount"
@@ -275,7 +277,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   <input
                     type="number"
                     name="tasdeed"
-                    onWheel={(e:any) => e.target.blur()}
+                    onWheel={(e: any) => e.target.blur()}
                     value={recordData?.tasdeed}
                     onChange={handleChange}
                     placeholder="Enter tasdeed"
@@ -290,7 +292,7 @@ const AddRecord = ({ type }: { type: string }) => {
                     type="number"
                     name="swiper"
                     value={recordData?.swiper}
-                    onWheel={(e:any) => e.target.blur()}
+                    onWheel={(e: any) => e.target.blur()}
                     onChange={handleChange}
                     placeholder="Swiper amount"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
@@ -302,15 +304,20 @@ const AddRecord = ({ type }: { type: string }) => {
               {type === "expense" && (
                 <div className="mb-6">
                   <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Service Fee
+                    Client Fee
                   </label>
                   <input
                     type="number"
-                    name="serviceFee"
-                    onWheel={(e:any) => e.target.blur()}
-                    value={recordData?.serviceFee}
-                    onChange={handleChange}
-                    placeholder="Enter service fee"
+                    name="clientFee"
+                    onWheel={(e: any) => e.target.blur()}
+                    value={recordData?.clientFee}
+                    onChange={(e) => {
+                      const { value } = e.target
+                      const finalValue = +value - total
+                      setRecordData({ ...recordData, serviceFee: finalValue, clientFee: +value })
+
+                    }}
+                    placeholder="Enter clinet fee"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
                 </div>

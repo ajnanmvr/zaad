@@ -76,6 +76,7 @@ export type TRecordData = {
   type: string;
   cash: number;
   bank: number;
+  clientFee: string;
   swiper: number;
   tasdeed: number;
   serviceFee: number;

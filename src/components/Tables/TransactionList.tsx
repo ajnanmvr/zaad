@@ -160,6 +160,7 @@ const TransactionList = () => {
           </div>
         ))}
       </div>
+      
     </div>
   );
 };

@@ -30,7 +30,7 @@ const Header = (props: {
       }
     }
   };
-  console.log(searchResults);
+  // console.log(searchResults);
 
 
   return (

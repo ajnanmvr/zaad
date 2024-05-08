@@ -290,7 +290,6 @@ const SingleCompany = () => {
                         <span className="font-medium">{pass.platform}:</span>
                         <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.username || "-"}</span>
                         <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.password || "-"}</span>
-
                       </li>
                     ))}
                   </ul>
@@ -396,10 +395,6 @@ const SingleCompany = () => {
                   <CardDataStats title="Final Balance" total={`${company.balance}AED`} />
                   <CardDataStats title="Total Transactions" total={`${company.transactions?.length}`} />
                 </div>
-                {/* 
-                <h3 className="text-xl font-semibold text-black dark:text-white my-2">
-                  Transactions
-                </h3> */}
 
 
                 <div className="flex flex-col mt-4">
@@ -430,7 +425,13 @@ const SingleCompany = () => {
                       </div>
 
                       <div className="flex items-center justify-center p-2.5 xl:p-5">
-                        <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount} <span className="text-xs">AED</span></p>
+                        <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount}
+
+                          {record.serviceFee !== 0 && (
+                            <> + {record.serviceFee}</>
+                          )}
+                          &nbsp;
+                          <span className="text-xs">AED</span></p>
                       </div>
 
 
@@ -440,6 +441,10 @@ const SingleCompany = () => {
                     </div>
                   ))}
                 </div>
+
+
+
+
               </div>
             )}
           </div>

@@ -56,7 +56,6 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-
   try {
     const company: Company | null = await Company.findById(params.id);
 
@@ -96,6 +95,7 @@ export async function GET(
       amount: Number(
         record.cash + record.bank + record.swiper + record.tasdeed
       ),
+      serviceFee: record?.serviceFee,
       date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
     }));
     // Calculate total expenses and total incomes
@@ -104,7 +104,7 @@ export async function GET(
 
     transformedData.forEach((record) => {
       if (record.type === "expense") {
-        totalExpenses += record.amount;
+        totalExpenses += record.amount + record.serviceFee;
       } else {
         totalIncomes += record.amount;
       }
