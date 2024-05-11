@@ -32,7 +32,6 @@ const AddRecord = ({ type }: { type: string }) => {
   useEffect(() => {
     if (selectedOption === "self")
       setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
-
   }, [selectedOption])
 
 
@@ -84,6 +83,7 @@ const AddRecord = ({ type }: { type: string }) => {
   };
 
   const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank
+  const Gtotal = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank + +recordData.serviceFee
   console.log(recordData);
 
   return (
@@ -98,7 +98,7 @@ const AddRecord = ({ type }: { type: string }) => {
               <h3 className="font-medium text-black dark:text-white">
                 Transaction Details
               </h3>
-              <p className={clsx(recordData.type === "income" ? "text-meta-3" : 'text-red')}>AED {recordData.clientFee}</p>
+              <p className={clsx(recordData.type === "income" ? "text-meta-3" : 'text-red')}>AED {Gtotal}</p>
 
             </div>
             <div className="p-6.5">
@@ -217,8 +217,7 @@ const AddRecord = ({ type }: { type: string }) => {
               <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
 
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Invoice Number                  </label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Invoice Number</label>
                   <input
                     type="text"
                     name="invoiceNo"
@@ -230,8 +229,7 @@ const AddRecord = ({ type }: { type: string }) => {
                 </div>
 
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Particular</label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Particular</label>
                   <input
                     type="text"
                     name="particular"
@@ -245,8 +243,7 @@ const AddRecord = ({ type }: { type: string }) => {
               <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
 
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Cash</label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Cash</label>
                   <input
                     type="number"
                     onWheel={(e: any) => e.target.blur()}
@@ -258,9 +255,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   />
                 </div>
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Bank amount
-                  </label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Bank amount</label>
                   <input
                     type="number"
                     name="bank"
@@ -273,9 +268,7 @@ const AddRecord = ({ type }: { type: string }) => {
                 </div>
 
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Tasdeed
-                  </label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Tasdeed</label>
                   <input
                     type="number"
                     name="tasdeed"
@@ -287,9 +280,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   />
                 </div>
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Swiper amount
-                  </label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Swiper amount</label>
                   <input
                     type="number"
                     name="swiper"

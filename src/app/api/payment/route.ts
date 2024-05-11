@@ -8,7 +8,6 @@ export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
     const data = await Records.create(reqBody);
-
     return Response.json(
       { message: "Created new payment record", data },
       { status: 201 }
