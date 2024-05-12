@@ -1,4 +1,4 @@
-import { TEmployeeList } from "@/libs/types"
+import { TEmployeeList } from "@/types/types"
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";

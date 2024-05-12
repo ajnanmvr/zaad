@@ -22,7 +22,7 @@ export type TCompanyData = {
     password: string;
   }[];
   documents: TDocuments[];
-  transactions?: TRecordList[];
+  transactions?: [];
   balance?: number;
   totalIncomes?: number;
   totalExpenses?: number;
@@ -65,45 +65,16 @@ export type TEmployeeData = {
   designation?: string;
   remarks?: string;
   documents: TDocuments[];
-  transactions?: TRecordList[];
+  transactions?: [];
   balance?: number;
   totalIncomes?: number;
   totalExpenses?: number;
 };
 
-export type TRecordData = {
-  createdBy: string | undefined;
-  type: string;
-  cash: number;
-  bank: number;
-  clientFee: string;
-  swiper: number;
-  tasdeed: number;
-  serviceFee: number;
-  self?: string;
-  invoiceNo: string;
-  particular: string;
-  employee?: string;
-  company?: string;
-  remarks: string;
-};
+
 
 export type TSuggestions = {
   _id: string;
   name: string;
 };
 
-export type TRecordList = {
-  id: string;
-  title?: string;
-  desc?: string;
-  type: string;
-  amount: number;
-  self?: string;
-  invoiceNo: string;
-  particular: string;
-  employee?: string;
-  company?: string;
-  date: string;
-  serviceFee: number;
-};

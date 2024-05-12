@@ -3,11 +3,17 @@ const RecordSchema = new Schema(
   {
     invoiceNo: String,
     particular: String,
-    cash: Number,
-    bank: Number,
-    swiper: Number,
     serviceFee: Number,
-    tasdeed: Number,
+    status: String,
+    amount: {
+      type: Number,
+      required: true,
+    },
+    method: {
+      type: String,
+      required: [true, "Please provide a payment method"],
+      enum: ["bank", "cash", "tasdeed", "swiper"],
+    },
     type: {
       type: String,
       required: [true, "Please provide a record type"],
@@ -22,10 +28,6 @@ const RecordSchema = new Schema(
       ref: "users",
       required: [true, "Please Define a Creator"],
     },
-    lastUpdatedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "users",
-    },
     self: String,
     published: {
       type: Boolean,
@@ -35,15 +37,11 @@ const RecordSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "employees",
     },
-    remarks: String,
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
-
-RecordSchema.pre("find", function (next) {
-  this.populate(["company", "employee", "createdBy", "lastUpdatedBy"]);
-  next();
-});
 
 const Records =
   mongoose.models.records || mongoose.model("records", RecordSchema);

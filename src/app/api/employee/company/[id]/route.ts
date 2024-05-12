@@ -1,4 +1,4 @@
-import { TCompanyData } from "@/libs/types";
+import { TCompanyData } from "@/types/types";
 import Employee from "@/models/employees";
 
 interface Document {

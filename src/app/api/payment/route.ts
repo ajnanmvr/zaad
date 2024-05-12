@@ -1,7 +1,8 @@
 import connect from "@/db/connect";
-import { format } from "date-fns";
-
 import Records from "@/models/records";
+import { format } from "date-fns";
+import { NextRequest } from "next/server";
+
 connect();
 
 export async function POST(request: Request) {
@@ -17,30 +18,56 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
-  const records = await Records.find({ published: true }).sort({
-    createdAt: -1,
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const sectionNumber = searchParams.get("section") || 0;
+  const contentPerSection = 20;
+
+  const records = await Records.find({ published: true })
+    .populate(["createdBy", "company", "employee"])
+    .skip(+sectionNumber * contentPerSection)
+    .limit(contentPerSection)
+    .sort({ createdAt: -1 });
+
+  const transformedData = records.map((record) => {
+    const client = () => {
+      if (record?.company?._id) {
+        return {
+          name: record.company.name,
+          id: record.company._id,
+          type: "company",
+        };
+      } else if (record?.employee?._id) {
+        return {
+          name: record.employee.name,
+          id: record.employee._id,
+          type: "employee",
+        };
+      } else if (record?.self) {
+        return {
+          name: record.self,
+          type: "self",
+        };
+      }
+    };
+
+    return {
+      id: record._id,
+      type: record.type,
+      client: client(),
+      method: record.method,
+      particular: record.particular,
+      invoiceNo: record.invoiceNo,
+      amount: record.amount,
+      serviceFee: record.serviceFee,
+      creator: record.createdBy.username,
+      status: record.status,
+      date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+    };
   });
 
-  const transformedData = records.map((record) => ({
-    company: record?.company?.name,
-    type: record.type,
-    employee: record?.employee?.name,
-    particular: record.particular,
-    invoiceNo: record.invoiceNo,
-    self: record?.self,
-    id: record._id,
-    amount:
-      Number(record.cash) +
-      Number(record.bank) +
-      Number(record.swiper) +
-      Number(record.tasdeed),
-    serviceFee: record.serviceFee,
-    date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
-  }));
-
   return Response.json(
-    { count: transformedData.length, data: transformedData },
+    { count: transformedData.length, records: transformedData },
     { status: 200 }
   );
 }

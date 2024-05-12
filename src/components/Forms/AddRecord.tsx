@@ -2,40 +2,46 @@
 import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import { TRecordData, TSuggestions } from "@/libs/types";
+import { TSuggestions } from "@/types/types";
 import { useEffect, useState } from "react";
 import { debounce } from "lodash";
 import axios from "axios";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
+import { TRecordData } from "@/types/records";
 
 const AddRecord = ({ type }: { type: string }) => {
   const router = useRouter();
   const { user } = useUserContext();
+  console.log(user)
   const [selectedOption, setSelectedOption] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedMethod, setSelectedMethod] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
-  const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
+  const [clientFee, setClientFee] = useState<string>("");
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
     type,
-    cash: 0,
-    bank: 0,
-    swiper: 0,
-    tasdeed: 0,
-    serviceFee: 0,
-    clientFee: "",
+    amount: 0,
     invoiceNo: "",
     particular: "",
     remarks: "",
   });
+
   useEffect(() => {
     if (selectedOption === "self")
       setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
   }, [selectedOption])
 
 
+  const generateServiceFee = (e: any) => {
+    const newClientFee = e.target.value
+    const newServiceFee = newClientFee - recordData.amount
+    setClientFee(newClientFee)
+    setRecordData({ ...recordData, serviceFee: newServiceFee })
 
+  }
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
     try {
       const response = await axios.get<TSuggestions[]>(`/api/${inputName}/search/${inputValue}`);
@@ -82,8 +88,6 @@ const AddRecord = ({ type }: { type: string }) => {
     setRecordData({ ...recordData, [name]: value });
   };
 
-  const total = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank
-  const Gtotal = +recordData.cash + +recordData.swiper + +recordData.tasdeed + +recordData.bank + +recordData.serviceFee
   console.log(recordData);
 
   return (
@@ -94,13 +98,7 @@ const AddRecord = ({ type }: { type: string }) => {
 
         <div className="flex flex-col gap-9">
           <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b flex justify-between border-stroke px-6.5 py-4 dark:border-strokedark">
-              <h3 className="font-medium text-black dark:text-white">
-                Transaction Details
-              </h3>
-              <p className={clsx(recordData.type === "income" ? "text-meta-3" : 'text-red')}>AED {Gtotal}</p>
 
-            </div>
             <div className="p-6.5">
               <div className="mb-4.5">
 
@@ -116,9 +114,8 @@ const AddRecord = ({ type }: { type: string }) => {
                     onChange={(e) => {
                       setSelectedOption(e.target.value);
                     }}
-                    className={`relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary ${isOptionSelected ? "text-black dark:text-white" : ""
-                      }`}
-                      
+                    className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
                   >
                     <option value="" disabled className="text-body dark:text-bodydark">
                       Select any one
@@ -127,7 +124,7 @@ const AddRecord = ({ type }: { type: string }) => {
                       Company
                     </option>
                     <option value="employee" className="text-body dark:text-bodydark">
-                      Employee
+                      Individual
                     </option>
                     <option value="self" className="text-body dark:text-bodydark">
                       ZAAD
@@ -156,13 +153,10 @@ const AddRecord = ({ type }: { type: string }) => {
                 </div>
               </div>
               <div className="mb-4.5">
-
-
-
                 {selectedOption === "employee" && (
                   <>
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                      Employee Name
+                      Individual Name
                     </label>
                     <input
                       type="text"
@@ -170,7 +164,7 @@ const AddRecord = ({ type }: { type: string }) => {
                       onChange={handleInputChange}
                       value={searchValue}
                       autoComplete="off"
-                      placeholder="Enter employee name"
+                      placeholder="Enter individual name"
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                     />
                     <ul className="flex flex-wrap gap-1 mt-2">
@@ -243,82 +237,143 @@ const AddRecord = ({ type }: { type: string }) => {
                 </div>
               </div>
               <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+                <div className="w-full xl:w-1/2">
 
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Cash</label>
-                  <input
-                    type="number"
-                    onWheel={(e: any) => e.target.blur()}
-                    name="cash"
-                    value={recordData?.cash}
-                    onChange={handleChange}
-                    placeholder="Enter cash"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Bank amount</label>
-                  <input
-                    type="number"
-                    name="bank"
-                    onWheel={(e: any) => e.target.blur()}
-                    value={recordData?.bank}
-                    onChange={handleChange}
-                    placeholder="Enter bank amount"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Payment Method
+                    <span className="text-meta-1">*</span>
+                  </label>
 
+                  <div className="relative z-20 bg-transparent dark:bg-form-input">
+                    <select
+                      value={selectedMethod}
+                      name="method"
+                      onChange={(e) => {
+                        setSelectedMethod(e.target.value);
+                        setRecordData({ ...recordData, method: e.target.value })
+                      }}
+                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
+                    >
+                      <option value="" disabled className="text-body dark:text-bodydark">
+                        Select any status
+                      </option>
+                      <option value="bank" className="text-body dark:text-bodydark">
+                        Bank
+                      </option>
+                      <option value="cash" className="text-body dark:text-bodydark">
+                        Cash
+                      </option>
+                      <option value="tasdeed" className="text-body dark:text-bodydark">
+                        Tasdeed                      </option>
+                      <option value="swiper" className="text-body dark:text-bodydark">
+                        Swiper                      </option>
+                    </select>
+
+                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                      <svg
+                        className="fill-current"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g opacity="0.8">
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                          ></path>
+                        </g>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
                 <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Tasdeed</label>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Amount</label>
                   <input
                     type="number"
-                    name="tasdeed"
+                    name="amount"
+                    value={recordData?.amount}
                     onWheel={(e: any) => e.target.blur()}
-                    value={recordData?.tasdeed}
                     onChange={handleChange}
-                    placeholder="Enter tasdeed"
+                    placeholder="Enter Amount"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
                 </div>
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Swiper amount</label>
-                  <input
-                    type="number"
-                    name="swiper"
-                    value={recordData?.swiper}
-                    onWheel={(e: any) => e.target.blur()}
-                    onChange={handleChange}
-                    placeholder="Swiper amount"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
+                {type === "expense" && (
+                  <div className="w-full xl:w-1/2">
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Client Fee
+                    </label>
+                    <input
+                      type="number"
+                      name="clientFee"
+                      value={clientFee}
+                      onWheel={(e: any) => e.target.blur()}
+                      placeholder="Enter client fee"
+                      onChange={generateServiceFee}
+                      className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                )}
+                {type === "income" && (
+                  <div className="w-full xl:w-1/2">
+
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Payment Status
+                      <span className="text-meta-1">*</span>
+                    </label>
+
+                    <div className="relative z-20 bg-transparent dark:bg-form-input">
+                      <select
+                        value={selectedStatus}
+                        name="payment-status"
+                        onChange={(e) => {
+                          setSelectedStatus(e.target.value);
+                          setRecordData({ ...recordData, status: e.target.value })
+                        }}
+                        className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
+                      >
+                        <option value="" disabled className="text-body dark:text-bodydark">
+                          Select any status
+                        </option>
+                        <option value="Advance" className="text-body dark:text-bodydark">
+                          Advance
+                        </option>
+                        <option value="Credit" className="text-body dark:text-bodydark">
+                          Credit
+                        </option>
+                        <option value="Ready Cash" className="text-body dark:text-bodydark">
+                          Ready Cash
+                        </option>
+                      </select>
+
+                      <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                        <svg
+                          className="fill-current"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <g opacity="0.8">
+                            <path
+                              fillRule="evenodd"
+                              clipRule="evenodd"
+                              d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                            ></path>
+                          </g>
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                )}
 
               </div>
-
-              {type === "expense" && (
-                <div className="mb-6">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Client Fee
-                  </label>
-                  <input
-                    type="number"
-                    name="clientFee"
-                    onWheel={(e: any) => e.target.blur()}
-                    value={recordData?.clientFee}
-                    onChange={(e) => {
-                      const { value } = e.target
-                      const finalValue = +value - total
-                      setRecordData({ ...recordData, serviceFee: finalValue, clientFee: value })
-
-                    }}
-                    placeholder="Enter clinet fee"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-              )}
-
-
 
               <div className="mb-6">
                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">

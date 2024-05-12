@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { TRecordList } from "@/libs/types";
+import { TRecordList } from "@/types/types";
 
 const TablesPage = () => {
   const params = useParams()

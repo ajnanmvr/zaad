@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import { TCompanyData } from "@/libs/types";
+import { TCompanyData } from "@/types/types";
 import Employee from "@/models/employees";
 
 connect();

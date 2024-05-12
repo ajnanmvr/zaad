@@ -1,7 +1,7 @@
 import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
-import { type TUser } from "@/libs/types";
+import { type TUser } from "@/types/types";
 connect();
 export async function POST(request: Request) {
   try {

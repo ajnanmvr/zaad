@@ -3,7 +3,7 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import CardDataStats from "@/components/CardDataStats";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { TCompanyList, TEmployeeList } from "@/libs/types";
+import { TCompanyList, TEmployeeList } from "@/types/types";
 import Link from "next/link";
 import clsx from "clsx";
 
@@ -266,7 +266,7 @@ export default function Home() {
           </div>
           <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
             <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-              Emloyees
+              Employees
             </h4>
 
             <div>

@@ -4,7 +4,7 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TSuggestions } from "@/libs/types";
+import { TSuggestions } from "@/types/types";
 import { debounce } from "lodash";
 import Link from "next/link";
 

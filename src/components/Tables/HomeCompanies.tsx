@@ -1,4 +1,4 @@
-import { TCompanyList } from "@/libs/types";
+import { TCompanyList } from "@/types/types";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import Link from "next/link";

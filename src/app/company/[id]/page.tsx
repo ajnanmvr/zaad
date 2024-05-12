@@ -4,7 +4,7 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { TCompanyData } from "@/libs/types";
+import { TCompanyData } from "@/types/types";
 import { useParams } from "next/navigation";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";

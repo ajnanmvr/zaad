@@ -1,5 +1,5 @@
 import Company from "@/models/companies";
-import { TDocuments } from "@/libs/types";
+import { TDocuments } from "@/types/types";
 
 export async function fetchDocuments(id: string, doc: string,data:any): Promise<{ data: any, documentIndex: number | null }> {
   try {

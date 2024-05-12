@@ -3,7 +3,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { TEmployeeList } from "@/libs/types";
+import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
 const TablesPage = () => {
   const [employees, setEmployees] = useState<TEmployeeList>([{

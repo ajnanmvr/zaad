@@ -4,7 +4,7 @@ import axios from "axios";
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
-import { TCompanyList } from "@/libs/types";
+import { TCompanyList } from "@/types/types";
 function CompanyList() {
     const [companies, setCompanies] = useState<TCompanyList>([{
         id: "",
