@@ -106,7 +106,8 @@ const AddRecord = ({ type }: { type: string }) => {
 
                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                   Client Type
-                  <span className="text-meta-1">*</span>             </label>
+                  <span className="text-meta-1">*</span>
+                </label>
 
                 <div className="relative z-20 bg-transparent dark:bg-form-input">
                   <select
@@ -117,6 +118,7 @@ const AddRecord = ({ type }: { type: string }) => {
                     }}
                     className={`relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary ${isOptionSelected ? "text-black dark:text-white" : ""
                       }`}
+                      
                   >
                     <option value="" disabled className="text-body dark:text-bodydark">
                       Select any one
