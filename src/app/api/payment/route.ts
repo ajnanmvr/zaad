@@ -19,55 +19,58 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const sectionNumber = searchParams.get("section") || 0;
-  const contentPerSection = 20;
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const pageNumber = searchParams.get("page") || 0;
+    const contentPerSection = 10;
 
-  const records = await Records.find({ published: true })
-    .populate(["createdBy", "company", "employee"])
-    .skip(+sectionNumber * contentPerSection)
-    .limit(contentPerSection)
-    .sort({ createdAt: -1 });
+    const records = await Records.find({ published: true })
+      .populate(["createdBy", "company", "employee"])
+      .skip(+pageNumber * contentPerSection)
+      .limit(contentPerSection + 1)
+      .sort({ createdAt: -1 });
 
-  const transformedData = records.map((record) => {
-    const client = () => {
-      if (record?.company?._id) {
-        return {
-          name: record.company.name,
-          id: record.company._id,
-          type: "company",
+    if (!records || records.length === 0) {
+      return Response.json(
+        { message: "No records found", count: 0, hasMore: false, records: [] },
+        { status: 200 }
+      );
+    }
+    const hasMore = records.length > contentPerSection;
+    const transformedData = records
+      .slice(0, contentPerSection)
+      .map((record) => {
+        const client = () => {
+          const { company, employee, self } = record;
+          return company
+            ? { name: company.name, id: company._id, type: "company" }
+            : employee
+              ? { name: employee.name, id: employee._id, type: "employee" }
+              : self
+                ? { name: self, type: "self" }
+                : null;
         };
-      } else if (record?.employee?._id) {
-        return {
-          name: record.employee.name,
-          id: record.employee._id,
-          type: "employee",
-        };
-      } else if (record?.self) {
-        return {
-          name: record.self,
-          type: "self",
-        };
-      }
-    };
 
-    return {
-      id: record._id,
-      type: record.type,
-      client: client(),
-      method: record.method,
-      particular: record.particular,
-      invoiceNo: record.invoiceNo,
-      amount: record.amount,
-      serviceFee: record.serviceFee,
-      creator: record.createdBy.username,
-      status: record.status,
-      date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
-    };
-  });
+        return {
+          id: record._id,
+          type: record.type,
+          client: client(),
+          method: record.method,
+          particular: pageNumber + record.particular,
+          invoiceNo: record.invoiceNo,
+          amount: record.amount,
+          serviceFee: record.serviceFee,
+          creator: record.createdBy.username,
+          status: record.status,
+          date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+        };
+      });
 
-  return Response.json(
-    { count: transformedData.length, records: transformedData },
-    { status: 200 }
-  );
+    return Response.json(
+      { count: transformedData.length, hasMore, records: transformedData },
+      { status: 200 }
+    );
+  } catch (error) {
+    return Response.json({ error }, { status: 401 });
+  }
 }
