@@ -16,6 +16,7 @@ const TransactionList = () => {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
+  const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
 
   const fetchData = async () => {
     try {
@@ -23,6 +24,7 @@ const TransactionList = () => {
       setHasMore(res.data.hasMore)
       setRecords(res.data.records);
       setIsLoading(false);
+      setIsBtnDisabled(false)
     } catch (error) {
       console.error("Error fetching data:", error);
       setIsLoading(false);
@@ -31,6 +33,7 @@ const TransactionList = () => {
   };
 
   useEffect(() => {
+    setIsBtnDisabled(true)
     fetchData();
   }, [pageNumber]);
 
@@ -128,12 +131,12 @@ const TransactionList = () => {
                       <td className="px-4 py-2 border">{selectedRecord.creator}</td>
                     </tr>
                   )}
-                  {selectedRecord.serviceFee && (
+                  {selectedRecord.serviceFee && selectedRecord.serviceFee <1 ? (
                     <tr>
                       <th className="px-4 py-2 border">Service Fee</th>
                       <td className="px-4 py-2 border">{selectedRecord.serviceFee}</td>
                     </tr>
-                  )}
+                  ):<></>}
                   {selectedRecord.amount && (
                     <tr>
                       <th className="px-4 py-2 border">Amount</th>
@@ -238,9 +241,9 @@ const TransactionList = () => {
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
                   <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
 
-                    {record?.type === "expense" && record?.serviceFee && (
+                    {record?.type === "expense" && record?.serviceFee && record?.serviceFee !== 0 ? (
                       <span> + {record?.serviceFee}</span>
-                    )}
+                    ) : <></>}
                     &nbsp;
                     <span className="text-xs">AED</span></p>
                 </div>
@@ -262,25 +265,19 @@ const TransactionList = () => {
                       <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
                     </svg>
                   </button>
-
                 </div>
-
               </div>
             ))}
           </div>
-
-
-
-
         </div>
-
-      </div>              <div className="pagination-container flex justify-center items-center my-6">
+      </div>
+      <div className="pagination-container flex justify-center items-center my-6">
         <button
           onClick={() => handlePageChange(pageNumber - 1)}
-          disabled={pageNumber === 0}
+          disabled={pageNumber === 0 || isBtnDisabled}
           className={clsx(
             "px-3 py-1 mr-2 rounded-md",
-            pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            isBtnDisabled || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Back
@@ -288,10 +285,10 @@ const TransactionList = () => {
         <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
         <button
           onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={!hasMore || !records.length}
+          disabled={isBtnDisabled || !hasMore || !records.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            (!hasMore || !records.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            (isBtnDisabled || !hasMore || !records.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Next

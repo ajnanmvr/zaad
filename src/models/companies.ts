@@ -37,19 +37,6 @@ const CompanySchema = new Schema(
         attachment: String,
       },
     ],
-    // owners: [
-    //   {
-    //     name: String,
-    //     documents: [
-    //       {
-    //         name: String,
-    //         // issueDate: Date,
-    //         // expiryDate: Date,
-    //         attachment: String,
-    //       },
-    //     ],
-    //   },
-    // ],
   },
   { timestamps: true }
 );

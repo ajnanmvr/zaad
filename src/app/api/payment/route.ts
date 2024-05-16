@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           type: record.type,
           client: client(),
           method: record.method,
-          particular: pageNumber + record.particular,
+          particular: record.particular,
           invoiceNo: record.invoiceNo,
           amount: record.amount,
           serviceFee: record.serviceFee,

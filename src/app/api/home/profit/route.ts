@@ -6,120 +6,38 @@ connect();
 
 export async function GET() {
   try {
-    const companies = await Company.find({ published: true });
-    const employees = await Employee.find({ published: true });
-    const over0balanceCompanies = [];
-    const under0balanceCompanies = [];
-    const over0balanceEmployees = [];
-    const under0balanceEmployees = [];
-    let totalProfitAllCompanies = 0;
-    let totalToGiveCompanies = 0;
-    let totalToGetCompanies = 0;
-    let totalProfitAllEmployees = 0;
-    let totalToGiveEmployees = 0;
-    let totalToGetEmployees = 0;
+    // Load all necessary data
+    const [companies, employees, allCompanyRecords, allEmployeeRecords] =
+      await Promise.all([
+        Company.find({ published: true }),
+        Employee.find({ published: true }),
+        Records.find({ company: { $exists: true }, published: true }),
+        Records.find({ employee: { $exists: true }, published: true }),
+      ]);
 
     // Process companies
-    for (const company of companies) {
-      const companyRecords = await Records.find({
-        company: { _id: company.id },
-        published: true,
-      });
-      let incomeTotal = 0;
-      let expenseTotal = 0;
+    const {
+      over0balanceCompanies,
+      under0balanceCompanies,
+      totalProfitAllCompanies,
+      totalToGiveCompanies,
+      totalToGetCompanies,
+    } = processCompanies(companies, allCompanyRecords);
 
-      companyRecords.forEach((record) => {
-        if (record.type === "income") {
-          incomeTotal +=
-            record.cash + record.bank + record.tasdeed + record.swiper;
-        } else if (record.type === "expense") {
-          expenseTotal +=
-            record.cash +
-            record.bank +
-            record.tasdeed +
-            record.swiper +
-            record.serviceFee;
-        }
-      });
+    // Process employees
+    const {
+      over0balanceEmployees,
+      under0balanceEmployees,
+      totalProfitAllEmployees,
+      totalToGiveEmployees,
+      totalToGetEmployees,
+    } = processEmployees(employees, allEmployeeRecords);
 
-      const balance = incomeTotal - expenseTotal;
+    // Calculate overall profits and amounts to give/get
+    const profit = totalProfitAllEmployees + totalProfitAllCompanies;
+    const totalToGive = totalToGiveCompanies + totalToGiveEmployees;
+    const totalToGet = totalToGetCompanies + totalToGetEmployees;
 
-      if (balance > 0) {
-        let totalProfit = 0;
-        companyRecords.forEach((record) => {
-          if (record.type === "expense") {
-            totalProfit += record.serviceFee;
-          }
-        });
-        over0balanceCompanies.push({
-          id: company._id,
-          name: company.name,
-          balance,
-          totalProfit,
-        });
-        totalProfitAllCompanies += totalProfit;
-        totalToGiveCompanies += balance;
-      } else if (balance < 0) {
-        under0balanceCompanies.push({
-          id: company._id,
-          name: company.name,
-          balance,
-        });
-        totalToGetCompanies += balance;
-      }
-    }
-
-    // Process employees similar to companies
-    for (const employee of employees) {
-      const employeeRecords = await Records.find({
-        employee: { _id: employee.id },
-        published: true,
-      });
-      let incomeTotal = 0;
-      let expenseTotal = 0;
-      let totalProfit = 0; // Track total profit for the employee
-
-      employeeRecords.forEach((record) => {
-        if (record.type === "income") {
-          incomeTotal +=
-            record.cash + record.bank + record.tasdeed + record.swiper;
-        } else if (record.type === "expense") {
-          expenseTotal +=
-            record.cash +
-            record.bank +
-            record.tasdeed +
-            record.swiper +
-            record.serviceFee;
-
-          // Calculate profit for this expense record
-          totalProfit += record.serviceFee;
-        }
-      });
-
-      const balance = incomeTotal - expenseTotal;
-
-      if (balance > 0) {
-        over0balanceEmployees.push({
-          id: employee._id,
-          name: employee.name,
-          balance,
-          totalProfit, // Include total profit for this employee
-        });
-        totalProfitAllEmployees += totalProfit; // Update total profit for all employees
-        totalToGiveEmployees += balance;
-      } else if (balance < 0) {
-        under0balanceEmployees.push({
-          id: employee._id,
-          name: employee.name,
-          balance,
-          totalProfit, // Include total profit for this employee
-        });
-        totalToGetEmployees += balance;
-      }
-    }
-    const profit = totalProfitAllEmployees + totalProfitAllCompanies,
-      totalToGive = totalToGiveCompanies + totalToGiveEmployees,
-      totalToGet = totalToGetCompanies + totalToGetEmployees;
     return Response.json(
       {
         over0balanceCompanies,
@@ -134,11 +52,132 @@ export async function GET() {
         totalToGetEmployees,
         profit,
         totalToGive,
-        totalToGet
+        totalToGet,
       },
       { status: 200 }
     );
   } catch (error) {
     return Response.json({ error }, { status: 500 });
   }
+}
+
+function processCompanies(companies, allCompanyRecords) {
+  let over0balanceCompanies = [];
+  let under0balanceCompanies = [];
+  let totalProfitAllCompanies = 0;
+  let totalToGiveCompanies = 0;
+  let totalToGetCompanies = 0;
+
+  // Process companies
+  for (const company of companies) {
+    const companyRecords = allCompanyRecords.filter(
+      (record) => record.company.toString() === company._id.toString()
+    );
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+
+    companyRecords.forEach((record) => {
+      if (record.type === "income") {
+        incomeTotal +=
+          record.cash + record.bank + record.tasdeed + record.swiper;
+      } else if (record.type === "expense") {
+        expenseTotal +=
+          record.cash +
+          record.bank +
+          record.tasdeed +
+          record.swiper +
+          record.serviceFee;
+      }
+    });
+
+    const balance = incomeTotal - expenseTotal;
+
+    if (balance > 0) {
+      let totalProfit = 0;
+      companyRecords.forEach((record) => {
+        if (record.type === "expense") {
+          totalProfit += record.serviceFee;
+        }
+      });
+      over0balanceCompanies.push({
+        id: company._id,
+        name: company.name,
+        balance,
+        totalProfit,
+      });
+      totalProfitAllCompanies += totalProfit;
+      totalToGiveCompanies += balance;
+    } else if (balance < 0) {
+      under0balanceCompanies.push({
+        id: company._id,
+        name: company.name,
+        balance,
+      });
+      totalToGetCompanies += balance;
+    }
+  }
+
+  return {
+    over0balanceCompanies,
+    under0balanceCompanies,
+    totalProfitAllCompanies,
+    totalToGiveCompanies,
+    totalToGetCompanies,
+  };
+}
+
+function processEmployees(employees, allEmployeeRecords) {
+  let over0balanceEmployees = [];
+  let under0balanceEmployees = [];
+  let totalProfitAllEmployees = 0;
+  let totalToGiveEmployees = 0;
+  let totalToGetEmployees = 0;
+
+  // Process employees
+  for (const employee of employees) {
+    const employeeRecords = allEmployeeRecords.filter(
+      (record) => record.employee.toString() === employee._id.toString()
+    );
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+    let totalProfit = 0; // Track total profit for the employee
+
+    employeeRecords.forEach((record) => {
+      if (record.type === "income") {
+        incomeTotal += record.amount;
+      } else if (record.type === "expense") {
+        expenseTotal += record.amount;
+        totalProfit += record.serviceFee;
+      }
+    });
+
+    const balance = incomeTotal - expenseTotal;
+
+    if (balance > 0) {
+      over0balanceEmployees.push({
+        id: employee._id,
+        name: employee.name,
+        balance,
+        totalProfit, // Include total profit for this employee
+      });
+      totalProfitAllEmployees += totalProfit; // Update total profit for all employees
+      totalToGiveEmployees += balance;
+    } else if (balance < 0) {
+      under0balanceEmployees.push({
+        id: employee._id,
+        name: employee.name,
+        balance,
+        totalProfit, // Include total profit for this employee
+      });
+      totalToGetEmployees += balance;
+    }
+  }
+
+  return {
+    over0balanceEmployees,
+    under0balanceEmployees,
+    totalProfitAllEmployees,
+    totalToGiveEmployees,
+    totalToGetEmployees,
+  };
 }

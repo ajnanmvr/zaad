@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
 const TablesPage = () => {
+
+  const [isLoading, setLoading] = useState(true)
   const [employees, setEmployees] = useState<TEmployeeList>([{
     id: "",
     name: "",
@@ -18,6 +20,7 @@ const TablesPage = () => {
     try {
       const data = await axios.get("/api/employee")
       setEmployees(data.data.data)
+      setLoading(false)
     } catch (error) {
       console.log(error);
     }
@@ -29,7 +32,7 @@ const TablesPage = () => {
     <DefaultLayout>
       <Breadcrumb pageName="Employees" />
       <div className="flex flex-col gap-10">
-        <EmployeeList employees={employees} />
+        <EmployeeList employees={employees} isLoading={isLoading} />
       </div>
     </DefaultLayout>
   );

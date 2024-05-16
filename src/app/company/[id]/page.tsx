@@ -1,4 +1,3 @@
-
 "use client"
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
@@ -6,40 +5,33 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TCompanyData } from "@/types/types";
 import { useParams } from "next/navigation";
-import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { useUserContext } from "@/contexts/UserContext";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
-import CardDataStats from "@/components/CardDataStats";
-
 const SingleCompany = () => {
   const router = useRouter()
-  const [company, setCompany] = useState<TCompanyData>({ name: "", documents: [], totalExpenses: 0, totalIncomes: 0, balance: 0, transactions: [] })
+  const [company, setCompany] = useState<TCompanyData | null>(null)
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isEditDocsOpen, setIsEditDocsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true)
   const [editData, setEditData] = useState({
     name: "",
     issueDate: "",
     expiryDate: "",
-    attachment: ""
   });
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
-  const { user } = useUserContext()
-
   const handleDelete = (deleteId: string) => {
     setSelectedDocumentId(deleteId);
     setIsConfirmationOpen(true);
   }
   const handleEdit = (editId: string) => {
-    const selectedDocument = company.documents.find(doc => doc._id === editId);
+    const selectedDocument = company?.documents.find(doc => doc._id === editId);
     if (selectedDocument) {
       setEditData({
         name: `${selectedDocument.name}`,
         issueDate: `${selectedDocument.issueDate}`,
         expiryDate: `${selectedDocument.expiryDate}`,
-        attachment: ""
       });
       setSelectedDocumentId(editId);
       setIsEditDocsOpen(true);
@@ -47,7 +39,6 @@ const SingleCompany = () => {
       console.error("Document not found!");
     }
   }
-
   const confirmDelete = async () => {
     console.log("Deleting Document with ID:", selectedDocumentId);
     const data = await axios.delete(`/api/company/${id}/doc/${selectedDocumentId}`);
@@ -66,7 +57,6 @@ const SingleCompany = () => {
     setIsEditDocsOpen(false);
     fetchData();
   };
-
   const closeModal = () => {
     setSelectedDocumentId(null);
     setIsConfirmationOpen(false);
@@ -79,22 +69,17 @@ const SingleCompany = () => {
       ...editData, [e.target.name]: e.target.value
     })
   }
-
-
   const fetchData = async () => {
     try {
       const data = await axios.get(`/api/company/${id}`)
       setCompany(data.data.data)
+      setIsLoading(false)
     } catch (error) {
       console.log(error);
     }
   }
+  fetchData()
 
-
-
-  useEffect(() => {
-    fetchData()
-  }, [])
 
   return (
     <DefaultLayout>
@@ -158,19 +143,6 @@ const SingleCompany = () => {
                       className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                     />
                   </div>
-
-                </div>
-                <div className="mb-4.5">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Attach file
-                  </label>
-                  <input
-                    type="file"
-                    name="attachment"
-                    value={editData.attachment}
-                    onChange={handleChange}
-                    className="w-full cursor-pointer rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition file:mr-5 file:border-collapse file:cursor-pointer file:border-0 file:border-r file:border-solid file:border-stroke file:bg-whiter file:px-5 file:py-3 file:hover:bg-primary file:hover:bg-opacity-10 focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:file:border-form-strokedark dark:file:bg-white/30 dark:file:text-white dark:focus:border-primary"
-                  />
                 </div>
               </div>
 
@@ -186,8 +158,7 @@ const SingleCompany = () => {
             </div>
           </div>
         )}
-
-        <div className="bg-white dark:bg-boxdark shadow-default rounded-lg overflow-hidden">
+        {isLoading ? <></> : <div className="bg-white dark:bg-boxdark shadow-default rounded-lg overflow-hidden">
           <div className="px-6 py-8 sm:p-10">
             <div className="flex justify-between items-start">
               <div>
@@ -199,31 +170,14 @@ const SingleCompany = () => {
                 </p>
               </div>
               <div className="flex gap-1 items-center">
-
                 <Link href={`/employee/view/${id}`} className="hover:text-primary">
-                  <svg
-                    className="fill-current"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M9.0002 7.79065C11.0814 7.79065 12.7689 6.1594 12.7689 4.1344C12.7689 2.1094 11.0814 0.478149 9.0002 0.478149C6.91895 0.478149 5.23145 2.1094 5.23145 4.1344C5.23145 6.1594 6.91895 7.79065 9.0002 7.79065ZM9.0002 1.7719C10.3783 1.7719 11.5033 2.84065 11.5033 4.16252C11.5033 5.4844 10.3783 6.55315 9.0002 6.55315C7.62207 6.55315 6.49707 5.4844 6.49707 4.16252C6.49707 2.84065 7.62207 1.7719 9.0002 1.7719Z"
-                      fill=""
-                    />
-                    <path
-                      d="M10.8283 9.05627H7.17207C4.16269 9.05627 1.71582 11.5313 1.71582 14.5406V16.875C1.71582 17.2125 1.99707 17.5219 2.3627 17.5219C2.72832 17.5219 3.00957 17.2407 3.00957 16.875V14.5406C3.00957 12.2344 4.89394 10.3219 7.22832 10.3219H10.8564C13.1627 10.3219 15.0752 12.2063 15.0752 14.5406V16.875C15.0752 17.2125 15.3564 17.5219 15.7221 17.5219C16.0877 17.5219 16.3689 17.2407 16.3689 16.875V14.5406C16.2846 11.5313 13.8377 9.05627 10.8283 9.05627Z"
-                      fill=""
-                    />
-                  </svg>
-                </Link>
+                  Employees
+                </Link>|
                 <Link
                   href={`/employee/register/${id}`}
                   className="hover:text-primary"
                 >
-                  New
+                  New Employee
                 </Link> |
 
                 <Link
@@ -296,13 +250,10 @@ const SingleCompany = () => {
                 </div>
               )}
             </div>
+
             {company?.documents?.length !== 0 && (
 
               <div className="mt-8">
-                <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
-                  Documents
-                </h3>
-
                 <div className="max-w-full overflow-x-auto mb-5">
                   <table className="w-full table-auto">
                     <thead>
@@ -346,14 +297,12 @@ const SingleCompany = () => {
                           <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                             <p
                               className={`inline-flex capitalize rounded-full bg-opacity-10 px-3 py-1 text-sm font-medium
-
                              ${status === "valid"
                                   ? "bg-success text-success"
                                   : status === "expired"
                                     ? "bg-danger text-danger"
-                                    : "bg-warning text-warning"
-                                } 
-                      `}
+                                    : status === "renewal" ? "bg-warning text-warning" : "bg-slate-500"
+                                }`}
                             >
                               {status}
                             </p>
@@ -366,7 +315,6 @@ const SingleCompany = () => {
                                   <path d="M12.5 7.5L15.5 5.5L18.5 8.5L16.5 11.5L12.5 7.5Z" fill="#3C50E0" />
                                 </svg>
                               </button>
-
                               <button onClick={() => handleDelete(_id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
@@ -374,7 +322,6 @@ const SingleCompany = () => {
                                   <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
                                   <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
                                 </svg>
-
                               </button>
                             </div>
                           </td>
@@ -385,73 +332,10 @@ const SingleCompany = () => {
                 </div>
               </div>
             )}
-
-
-            {company?.transactions?.length !== 0 && user?.role === "partner" && (
-              <div className="mt-8">
-                <div className=" mt-4 px-2 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-                  <CardDataStats title="Total Income" total={`${company.totalIncomes}AED`} />
-                  <CardDataStats title="Total Expense " total={`${company.totalExpenses}AED`} />
-                  <CardDataStats title="Final Balance" total={`${company.balance}AED`} />
-                  <CardDataStats title="Total Transactions" total={`${company.transactions?.length}`} />
-                </div>
-
-
-                <div className="flex flex-col mt-4">
-
-                  <div className="bg-gray-2 text-left justify-around flex dark:bg-meta-4">
-                    <div className="min-w-[150px] px-4 py-4 font-medium text-black dark:text-white">
-                      Particular                      </div>
-                    <div className="min-w-[220px] px-4 py-4 font-medium text-black dark:text-white xl:pl-11">
-                      Invoice No
-                    </div>
-                    <div className="min-w-[150px] px-4 py-4 font-medium text-black dark:text-white">
-                      Amount                      </div>
-
-                    <div className="min-w-[120px] px-4 py-4 font-medium text-black dark:text-white">
-                      Date                      </div>
-                  </div>
-
-                  {company?.transactions?.map((record, key) => (
-                    <div
-                      className={"grid grid-cols-3 sm:grid-cols-4 border-b border-stroke dark:border-strokedark"}
-                      key={key}
-                    >
-                      <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-                        <p className="text-meta-5">{record.particular}</p>
-                      </div>
-                      <div className="flex items-center justify-center p-2.5 xl:p-5">
-                        <p className="text-black dark:text-white">{record.invoiceNo}</p>
-                      </div>
-
-                      <div className="flex items-center justify-center p-2.5 xl:p-5">
-                        <p className={clsx(record.type === "income" ? "text-meta-3" : "text-red")}>{record.amount}
-
-                          {record.serviceFee !== 0 && (
-                            <> + {record.serviceFee}</>
-                          )}
-                          &nbsp;
-                          <span className="text-xs">AED</span></p>
-                      </div>
-
-
-                      <div className="hidden items-center justify-center p-2.5 sm:flex xl:p-5">
-                        <p className="text-black dark:text-white">{record.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-
-
-
-              </div>
-            )}
           </div>
-        </div>
+        </div>}
       </div>
     </DefaultLayout>
   );
 };
-
 export default SingleCompany;

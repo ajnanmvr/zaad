@@ -1,8 +1,7 @@
 import connect from "@/db/connect";
-import calculateStatus from "@/helpers/calculateStatus";
+import calculateStatus from "@/utils/calculateStatus";
 import Company from "@/models/companies";
-import Records from "@/models/records";
-import { format } from "date-fns";
+import { TCompanyData } from "@/types/types";
 connect();
 
 export async function PUT(
@@ -27,43 +26,17 @@ export async function DELETE(
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
-interface Company {
-  _id: string;
-  name: string;
-  licenseNo: string;
-  companyType: string;
-  emirates: string;
-  phone1: string;
-  phone2: string;
-  email: string;
-  transactionNo: string;
-  isMainland: string;
-  remarks: string;
-  password: {
-    platform: string;
-    username: string;
-    password: string;
-  }[];
-  documents: {
-    _id: string;
-    expiryDate: string;
-    name: string;
-    issueDate: string;
-  }[];
-}
-
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const company: Company | null = await Company.findById(params.id);
+    const company: TCompanyData | null = await Company.findById(params.id);
 
     if (!company) {
       return Response.json({ message: "Company not found" }, { status: 404 });
     }
 
-    // Modify documents structure
     const modifiedDocuments = company.documents.map((document) => ({
       _id: document._id,
       name: document.name,
@@ -72,47 +45,11 @@ export async function GET(
       status: calculateStatus(document.expiryDate),
     }));
 
-    // Sort documents in descending order based on expiryDate
     modifiedDocuments.sort(
       (a, b) =>
         new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
     );
 
-    const records = await Records.find({
-      company: { _id: params.id },
-      published: true,
-    }).sort({
-      createdAt: -1,
-    });
-
-    const transformedData = records.map((record) => ({
-      company: record?.company?.name,
-      type: record.type,
-      employee: record?.employee?.name,
-      particular: record.particular,
-      invoiceNo: record.invoiceNo,
-      self: record?.self,
-      amount: Number(
-        record.cash + record.bank + record.swiper + record.tasdeed
-      ),
-      serviceFee: record?.serviceFee,
-      date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
-    }));
-    // Calculate total expenses and total incomes
-    let totalExpenses = 0;
-    let totalIncomes = 0;
-
-    transformedData.forEach((record) => {
-      if (record.type === "expense") {
-        totalExpenses += record.amount + record.serviceFee;
-      } else {
-        totalIncomes += record.amount;
-      }
-    });
-
-    // Calculate balance
-    const balance = totalIncomes - totalExpenses;
-    // Prepare response data
     const responseData = {
       id: company._id,
       name: company.name,
@@ -127,10 +64,6 @@ export async function GET(
       remarks: company.remarks,
       password: company.password,
       documents: modifiedDocuments,
-      transactions: transformedData,
-      totalExpenses,
-      totalIncomes,
-      balance,
     };
 
     return Response.json({ data: responseData }, { status: 200 });

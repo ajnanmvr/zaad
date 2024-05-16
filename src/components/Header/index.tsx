@@ -22,7 +22,7 @@ const Header = (props: {
     if (searchQuery.trim() !== '') {
       try {
         console.log(encodeURIComponent(searchQuery));
-        const response = await axios.get(`/api/search/${encodeURIComponent(searchQuery)}`);
+        const response = await axios.get(`/api/search?search=${encodeURIComponent(searchQuery)}`);
         setSearchResults(response.data); // Assuming API returns an array of search results
         setIsSearchResults(true)
       } catch (error) {
@@ -30,7 +30,6 @@ const Header = (props: {
       }
     }
   };
-  // console.log(searchResults);
 
 
   return (
@@ -172,22 +171,11 @@ const Header = (props: {
 
         <div className="flex items-center gap-3 2xsm:gap-7">
           <ul className="flex items-center gap-2 2xsm:gap-4">
-            {/* <!-- Dark Mode Toggler --> */}
             <DarkModeSwitcher />
-            {/* <!-- Dark Mode Toggler --> */}
 
-            {/* <!-- Notification  Area --> */}
-            {/* <DropdownNotification /> */}
-            {/* <!-- Notification Menu Area --> */}
-
-            {/* <!-- Chat Notification Area --> */}
-            {/* <DropdownMessage /> */}
-            {/* <!-- Chat Notification Area --> */}
           </ul>
 
-          {/* <!-- User Area --> */}
           <DropdownUser />
-          {/* <!-- User Area --> */}
         </div>
       </div>
     </header >

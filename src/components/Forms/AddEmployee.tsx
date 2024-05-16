@@ -153,6 +153,8 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                     <input
                                         type="text"
                                         name="company"
+                                        autoComplete="off"
+
                                         value={searchValue}
                                         onChange={handleInputChange}
                                         placeholder="Enter company name"

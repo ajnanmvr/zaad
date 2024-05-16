@@ -1,291 +1,108 @@
 import connect from "@/db/connect";
-import Records from "@/models/records";
-
+import Records from "@/models/records"; // Assuming TRecordData is the correct type for your Records model
+import { TRecordData } from "@/types/records";
 connect();
-export async function GET() {
+
+export async function GET(): Promise<Response> {
   try {
-    const [
-      expenseCount,
-      BankExpense,
-      CashExpense,
-      TasdeedExpense,
-      SwiperExpense,
-    ] = await Promise.all([
-      Records.countDocuments({ type: "expense", published: true }),
-      Records.aggregate([
-        { $match: { type: "expense", published: true } },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: "$bank",
-            },
-          },
-        },
-      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-      Records.aggregate([
-        { $match: { type: "expense", published: true } },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: "$cash",
-            },
-          },
-        },
-      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-      Records.aggregate([
-        { $match: { type: "expense", published: true } },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: "$tasdeed",
-            },
-          },
-        },
-      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-      Records.aggregate([
-        { $match: { type: "expense", published: true } },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: "$swiper",
-            },
-          },
-        },
-      ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-    ]);
-    const [incomeCount, BankIncome, CashIncome, TasdeedIncome, SwiperIncome] =
-      await Promise.all([
-        Records.countDocuments({ type: "income", published: true }),
+    // Fetch all documents
+    const allRecords: TRecordData[] = await Records.find({ published: true });
 
-        Records.aggregate([
-          { $match: { type: "income", published: true } },
-          {
-            $group: {
-              _id: null,
-              total: {
-                $sum: "$bank",
-              },
-            },
-          },
-        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-        Records.aggregate([
-          { $match: { type: "income", published: true } },
-          {
-            $group: {
-              _id: null,
-              total: {
-                $sum: "$cash",
-              },
-            },
-          },
-        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-        Records.aggregate([
-          { $match: { type: "income", published: true } },
-          {
-            $group: {
-              _id: null,
-              total: {
-                $sum: "$tasdeed",
-              },
-            },
-          },
-        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-        Records.aggregate([
-          { $match: { type: "income", published: true } },
-          {
-            $group: {
-              _id: null,
-              total: {
-                $sum: "$swiper",
-              },
-            },
-          },
-        ]).then((result) => (result.length > 0 ? result[0].total : 0)),
-      ]);
+    // Process calculations
+    const expenseRecords: TRecordData[] = allRecords.filter(
+      (record) => record.type === "expense"
+    );
+    const incomeRecords: TRecordData[] = allRecords.filter(
+      (record) => record.type === "income"
+    );
 
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
+    const expenseCount: number = expenseRecords.length;
+    const incomeCount: number = incomeRecords.length;
 
-    // Calculate total expenses of the past 7 days
-    const last7DaysDates = [];
-    const daysOfWeekInitials = [];
+    let BankExpense: number = 0,
+      CashExpense: number = 0,
+      TasdeedExpense: number = 0,
+      SwiperExpense: number = 0,
+      BankIncome: number = 0,
+      CashIncome: number = 0,
+      TasdeedIncome: number = 0,
+      SwiperIncome: number = 0;
 
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(currentDate);
+    incomeRecords.forEach((record) => {
+      switch (record.method) {
+        case "bank":
+          BankIncome += record.amount || 0;
+          break;
+        case "cash":
+          CashIncome += record.amount || 0;
+          break;
+        case "tasdeed":
+          TasdeedIncome += record.amount || 0;
+          break;
+        case "swiper":
+          SwiperIncome += record.amount || 0;
+          break;
+        default:
+          break;
+      }
+    });
+
+    expenseRecords.forEach((record) => {
+      switch (record.method) {
+        case "bank":
+          BankExpense += record.amount || 0;
+          break;
+        case "cash":
+          CashExpense += record.amount || 0;
+          break;
+        case "tasdeed":
+          TasdeedExpense += record.amount || 0;
+          break;
+        case "swiper":
+          SwiperExpense += record.amount || 0;
+          break;
+        default:
+          break;
+      }
+    });
+
+    const currentDate: Date = new Date();
+    const currentYear: number = currentDate.getFullYear();
+
+    const last7DaysDates: Date[] = [];
+    const daysOfWeekInitials: string[] = [];
+
+    for (let i: number = 6; i >= 0; i--) {
+      const date: Date = new Date(currentDate);
       date.setDate(currentDate.getDate() - i);
       last7DaysDates.push(date);
-      const dayInitial = date
+      const dayInitial: string = date
         .toLocaleString("en-US", { weekday: "short" })[0]
         .toUpperCase();
       daysOfWeekInitials.push(dayInitial);
     }
 
-    // Fetch expenses and incomes for the last 7 days
-    const [expensesLast7DaysTotal, profitLast7DaysTotal] = await Promise.all([
-      Promise.all(
-        last7DaysDates.map((date) =>
-          Records.aggregate([
-            {
-              $match: {
-                type: "expense",
-                published: true,
-                createdAt: {
-                  $gte: new Date(
-                    date.getFullYear(),
-                    date.getMonth(),
-                    date.getDate()
-                  ),
-                  $lt: new Date(
-                    date.getFullYear(),
-                    date.getMonth(),
-                    date.getDate() + 1
-                  ),
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: {
-                  $sum: {
-                    $add: ["$cash", "$bank", "$swiper", "$tasdeed"],
-                  },
-                },
-              },
-            },
-          ]).then((result) => (result.length > 0 ? result[0].total : 0))
-        )
-      ),
-      Promise.all(
-        last7DaysDates.map((date) =>
-          Records.aggregate([
-            {
-              $match: {
-                type: "expense",
-                published: true,
-                createdAt: {
-                  $gte: new Date(
-                    date.getFullYear(),
-                    date.getMonth(),
-                    date.getDate()
-                  ),
-                  $lt: new Date(
-                    date.getFullYear(),
-                    date.getMonth(),
-                    date.getDate() + 1
-                  ),
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: {
-                  $sum: "$serviceFee",
-                },
-              },
-            },
-          ]).then((result) => (result.length > 0 ? result[0].total : 0))
-        )
-      ),
-    ]);
+    const [expensesLast7DaysTotal, profitLast7DaysTotal] = calculateLast7Days(
+      expenseRecords,
+      last7DaysDates
+    );
 
-    // Calculate last 12 months' expenses and incomes
-    const last12Months = Array.from({ length: 12 }, (_, index) => {
-      let month = currentDate.getMonth() - index;
-      let year = currentYear;
-      if (month < 0) {
-        month += 12;
-        year -= 1; // Adjust year for months before January
-      }
-      return {
-        month: month + 1,
-        name: new Date(year, month, 1).toLocaleString("en-US", {
-          month: "short",
-        }),
-        year,
-      };
-    }).reverse();
+    const last12Months: { month: number; name: string; year: number }[] =
+      calculateLast12Months(currentDate, currentYear);
 
-    const last12MonthsExpenses = Array.from({ length: 12 }, () => 0);
-    const last12MonthsProfit = Array.from({ length: 12 }, () => 0);
+    const [last12MonthsExpenses, last12MonthsProfit] =
+      await calculateLast12MonthsTotals(expenseRecords, last12Months);
 
-    const [expensesLast12Months, profitLast12Months] = await Promise.all([
-      Promise.all(
-        last12Months.map(({ month, year }) =>
-          Records.aggregate([
-            {
-              $match: {
-                type: "expense",
-                published: true,
-                createdAt: {
-                  $gte: new Date(year, month - 1, 1),
-                  $lt: new Date(year, month, 1),
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: {
-                  $sum: {
-                    $add: ["$cash", "$bank", "$swiper", "$tasdeed"],
-                  },
-                },
-              },
-            },
-          ]).then((result) => (result.length > 0 ? result[0].total : 0))
-        )
-      ),
-      Promise.all(
-        last12Months.map(({ month, year }) =>
-          Records.aggregate([
-            {
-              $match: {
-                type: "expense",
-                published: true,
-                createdAt: {
-                  $gte: new Date(year, month - 1, 1),
-                  $lt: new Date(year, month, 1),
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: {
-                  $sum: "$serviceFee",
-                },
-              },
-            },
-          ]).then((result) => (result.length > 0 ? result[0].total : 0))
-        )
-      ),
-    ]);
-
-    expensesLast12Months.forEach((result, index) => {
-      last12MonthsExpenses[index] = result;
-    });
-
-    profitLast12Months.forEach((result, index) => {
-      last12MonthsProfit[index] = result;
-    });
-
-    const monthNames = last12Months.map(({ name }) => name),
-      totalIncomeAmount = Number(
-        BankIncome + CashIncome + TasdeedIncome + SwiperIncome
-      ),
-      totalExpenseAmount = Number(
-        BankExpense + CashExpense + TasdeedExpense + SwiperExpense
-      ),
-      totalBalance = totalIncomeAmount - totalExpenseAmount,
-      bankBalance = BankIncome - BankExpense + (SwiperIncome - SwiperExpense),
-      cashBalance = CashIncome - CashExpense,
-      tasdeedBalance = TasdeedIncome - TasdeedExpense;
+    const monthNames: string[] = last12Months.map(({ name }) => name),
+      totalIncomeAmount: number =
+        BankIncome + CashIncome + TasdeedIncome + SwiperIncome,
+      totalExpenseAmount: number =
+        BankExpense + CashExpense + TasdeedExpense + SwiperExpense,
+      totalBalance: number = totalIncomeAmount - totalExpenseAmount,
+      bankBalance: number =
+        BankIncome - BankExpense + (SwiperIncome - SwiperExpense),
+      cashBalance: number = CashIncome - CashExpense,
+      tasdeedBalance: number = TasdeedIncome - TasdeedExpense;
 
     return Response.json(
       {
@@ -319,4 +136,96 @@ export async function GET() {
     console.error("Error fetching records:", error);
     return Response.json({ error: "Error fetching records" }, { status: 500 });
   }
+}
+
+function calculateLast7Days(
+  expenseRecords: TRecordData[],
+  last7DaysDates: Date[]
+): [number[], number[]] {
+  const expensesLast7DaysTotal: number[] = [];
+  const profitLast7DaysTotal: number[] = [];
+
+  last7DaysDates.forEach((date) => {
+    const expensesTotal: number = expenseRecords
+      .filter(
+        (record) =>
+          new Date(record.createdAt).toDateString() === date.toDateString()
+      )
+      .reduce(
+        (total, record) =>
+          total +
+          (record.amount || 0), // Assuming 'amount' is the correct field for expenses
+        0
+      );
+    expensesLast7DaysTotal.push(expensesTotal);
+
+    // Assuming there's a service fee field in the record
+    const profitTotal: number = expenseRecords
+      .filter(
+        (record) =>
+          new Date(record.createdAt).toDateString() === date.toDateString()
+      )
+      .reduce((total, record) => total + (record.serviceFee || 0), 0);
+    profitLast7DaysTotal.push(profitTotal);
+  });
+
+  return [expensesLast7DaysTotal, profitLast7DaysTotal];
+}
+
+function calculateLast12Months(
+  currentDate: Date,
+  currentYear: number
+): { month: number; name: string; year: number }[] {
+  return Array.from({ length: 12 }, (_, index) => {
+    let month: number = currentDate.getMonth() - index;
+    let year: number = currentYear;
+    if (month < 0) {
+      month += 12;
+      year -= 1; // Adjust year for months before January
+    }
+    return {
+      month: month + 1,
+      name: new Date(year, month, 1).toLocaleString("en-US", {
+        month: "short",
+      }),
+      year,
+    };
+  }).reverse();
+}
+
+async function calculateLast12MonthsTotals(
+  expenseRecords: TRecordData[],
+  last12Months: { month: number; name: string; year: number }[]
+): Promise<[number[], number[]]> {
+  const last12MonthsExpenses: number[] = Array.from({ length: 12 }, () => 0);
+  const last12MonthsProfit: number[] = Array.from({ length: 12 }, () => 0);
+
+  await Promise.all(
+    last12Months.map(async ({ month, year }, index) => {
+      const expensesTotal: number = expenseRecords
+        .filter(
+          (record) =>
+            new Date(record.createdAt).getMonth() === month &&
+            new Date(record.createdAt).getFullYear() === year
+        )
+        .reduce(
+          (total, record) =>
+            total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
+          0
+        );
+      last12MonthsExpenses[index] = expensesTotal;
+
+      // Assuming there's a service fee field in the record
+      const profitTotal: number = expenseRecords
+        .filter(
+          (record) =>
+            new Date(record.createdAt).getMonth() === month &&
+            new Date(record.createdAt).getFullYear() === year
+        )
+        .reduce((total, record) => total + (record.serviceFee || 0), 0);
+      last12MonthsProfit[index] = profitTotal;
+    })
+  );
+
+  return [last12MonthsExpenses, last12MonthsProfit];
 }

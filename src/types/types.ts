@@ -33,18 +33,17 @@ export type TDocuments = {
   name?: string;
   status?: string;
   issueDate?: string;
-  expiryDate?: string;
+  expiryDate: string;
   attachment?: string;
 };
-export type TCompanyList = [
-  {
-    id: string;
-    name: string;
-    expiryDate: string | null;
-    docs: number;
-    status: "expired" | "renewal" | "valid" | "";
-  },
-];
+export type TCompanyList = {
+  id?: string;
+  name: string;
+  expiryDate: string | null;
+  docs: number;
+  status?: "expired" | "renewal" | "valid" | "unknown";
+};
+
 export type TEmployeeList = {
   id: string;
   company: { id: string; name: string };
@@ -71,10 +70,7 @@ export type TEmployeeData = {
   totalExpenses?: number;
 };
 
-
-
 export type TSuggestions = {
   _id: string;
   name: string;
 };
-
