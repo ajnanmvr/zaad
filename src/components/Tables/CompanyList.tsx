@@ -18,7 +18,7 @@ function CompanyList() {
             console.log(error);
         }
     }
-    
+
     useEffect(() => {
         fetchData()
     }, [])
@@ -53,13 +53,12 @@ function CompanyList() {
                 onCancel={cancelDelete}
             />
             <div className="max-w-full overflow-x-auto">
-                {isLoading ? (<>                        <div className="flex bg-gray-2 text-left dark:bg-meta-4 justify-around font-medium text-black dark:text-white">
+                {isLoading ? (<><div className="flex bg-gray-2 text-left dark:bg-meta-4 justify-around font-medium text-black dark:text-white">
                     <div className="min-w-[220px] px-4 py-4 xl:pl-11">Name</div>
                     <div className="min-w-[150px] px-4 py-4">Expiry Date</div>
                     <div className="min-w-[120px] px-4 py-4">Status</div>
                     <div className="px-4 py-4">Actions</div>
-                </div>
-                    <SkeletonList /></>) :
+                </div><SkeletonList /></>) :
                     <table className="w-full table-auto">
                         <thead>
                             <tr className="bg-gray-2 text-left dark:bg-meta-4">

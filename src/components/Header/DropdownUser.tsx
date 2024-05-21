@@ -8,7 +8,6 @@ const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState<any>({});
   const router = useRouter()
-
   const trigger = useRef<any>(null);
   const dropdown = useRef<any>(null);
   const handleLogout = async () => {
@@ -134,7 +133,6 @@ const DropdownUser = () => {
           Log Out
         </button>
       </div>
-      {/* <!-- Dropdown End --> */}
     </div>
   );
 };
