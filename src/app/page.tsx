@@ -41,21 +41,21 @@ export default function Home() {
   }
   const calculateCompanyRenewalsCount = () => {
     const renewalCompanies = companies?.filter(
-      ({ status }) => status === "expired" || "renewal"
+      ({ status }) => status === "expired" || status === "renewal"
     );
     return renewalCompanies?.length;
   };
   const calculateEmployeeRenewalsCount = () => {
     const renewalEmployees = employees?.filter(
-      ({ status }) => status === "expired" || "renewal"
+      ({ status }) => status === "expired" || status === "renewal"
     );
     return renewalEmployees?.length;
   };
 
 
   useEffect(() => {
-    fetchEmployees()
     fetchData()
+    fetchEmployees()
     fetchCompanies()
   }, [])
   return (
@@ -104,7 +104,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Company Renewal" total={`${calculateCompanyRenewalsCount()}`}>
+          <CardDataStats title="Company Renewal" total={`${calculateCompanyRenewalsCount() || 0}`}>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
@@ -123,7 +123,7 @@ export default function Home() {
               />
             </svg>
           </CardDataStats>
-          <CardDataStats title="Employee Renewal" total={`${calculateEmployeeRenewalsCount()}`}>
+          <CardDataStats title="Employee Renewal" total={`${calculateEmployeeRenewalsCount() || 0}`}>
             <svg
               className="fill-primary dark:fill-white"
               width="22"
