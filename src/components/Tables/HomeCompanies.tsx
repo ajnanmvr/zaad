@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const HomeCompanies = () => {
-  const [companies, setCompanies] = useState<TCompanyList>([{
-    id: "",
-    name: "",
-    expiryDate: "",
-    docs: 0,
-    status: ""
-  }])
+  const [companies, setCompanies] = useState<TCompanyList[] | null>(null)
   const fetchCompanies = async () => {
     try {
       const data = await axios.get("/api/company")
@@ -50,7 +44,7 @@ const HomeCompanies = () => {
           </thead>
           <tbody>
 
-            {companies.map(({ id, name, expiryDate, docs, status }, key) => (
+            {companies?.map(({ id, name, expiryDate, docs, status }, key) => (
               <tr key={key}>
                 <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                   <h5 className="font-medium capitalize text-black dark:text-white">
@@ -69,7 +63,7 @@ const HomeCompanies = () => {
                       ? "bg-success text-success"
                       : status === "expired"
                         ? "bg-danger text-danger"
-                        : "bg-warning text-warning"
+                        : status === "renewal" ? "bg-warning text-warning" : "bg-slate-500"
                       }`}
                   >
                     {status}

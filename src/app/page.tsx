@@ -20,21 +20,8 @@ export default function Home() {
       console.log(error);
     }
   }
-  const [companies, setCompanies] = useState<TCompanyList>([{
-    id: "",
-    name: "",
-    expiryDate: "",
-    docs: 0,
-    status: ""
-  }])
-  const [employees, setEmployees] = useState<TEmployeeList>([{
-    id: "",
-    name: "",
-    expiryDate: "",
-    docs: 0,
-    status: "",
-    company: { id: "", name: "" }
-  }])
+  const [companies, setCompanies] = useState<TCompanyList[] | null>(null)
+  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
   const fetchEmployees = async () => {
     try {
       const data = await axios.get("/api/employee")
@@ -53,16 +40,16 @@ export default function Home() {
     }
   }
   const calculateCompanyRenewalsCount = () => {
-    const renewalCompanies = companies.filter(
-      (company) => company.status === "expired" || company.status === "renewal"
+    const renewalCompanies = companies?.filter(
+      ({ status }) => status === "expired" || "renewal"
     );
-    return renewalCompanies.length;
+    return renewalCompanies?.length;
   };
   const calculateEmployeeRenewalsCount = () => {
-    const renewalEmployees = employees.filter(
-      (company) => company.status === "expired" || company.status === "renewal"
+    const renewalEmployees = employees?.filter(
+      ({ status }) => status === "expired" || "renewal"
     );
-    return renewalEmployees.length;
+    return renewalEmployees?.length;
   };
 
 
@@ -189,7 +176,7 @@ export default function Home() {
                   </thead>
                   <tbody>
 
-                    {companies.slice(0, 5).map(({ id, name, expiryDate, docs, status }, key) => (
+                    {companies?.slice(0, 5).map(({ id, name, expiryDate, docs, status }, key) => (
                       <tr key={key}>
                         <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                           <h5 className="font-medium capitalize text-black dark:text-white">
@@ -270,7 +257,7 @@ export default function Home() {
             </h4>
 
             <div>
-              {employees.map((employee, key) => (
+              {employees?.map((employee, key) => (
                 <Link
                   href="/"
                   className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
@@ -287,7 +274,7 @@ export default function Home() {
                       </h5>
                       <p>
                         <span className="text-sm text-black dark:text-white">
-                          {employee.company.name}
+                          {employee?.company?.name}
                         </span>
                         <span className="text-xs"> . {employee.status}</span>
                       </p>

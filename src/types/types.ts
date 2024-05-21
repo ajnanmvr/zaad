@@ -4,6 +4,11 @@ export type TUser = {
   password?: string;
   role?: "partner" | "employee";
 };
+export type TPasswordData = {
+  platform: string;
+  username: string;
+  password: string;
+}
 export type TCompanyData = {
   _id?: string;
   name: string;
@@ -16,11 +21,7 @@ export type TCompanyData = {
   transactionNo?: string;
   isMainland?: "mainland" | "freezone";
   remarks?: string;
-  password?: {
-    platform: string;
-    username: string;
-    password: string;
-  }[];
+  password?: TPasswordData[];
   documents: TDocuments[];
   transactions?: [];
   balance?: number;
@@ -36,6 +37,7 @@ export type TDocuments = {
   expiryDate: string;
   attachment?: string;
 };
+
 export type TCompanyList = {
   id?: string;
   name: string;
@@ -44,15 +46,17 @@ export type TCompanyList = {
   status?: "expired" | "renewal" | "valid" | "unknown";
 };
 
-export type TEmployeeList = {
-  id: string;
-  company: { id: string; name: string };
+export type TBaseData = {
+  _id?: string;
   name: string;
-  expiryDate: string | null;
-  docs: number;
-  status: "expired" | "renewal" | "valid" | "";
-}[];
+};
+
+export type TEmployeeList = TCompanyList & {
+  company: TBaseData
+};
+
 export type TEmployeeData = {
+  _id: string;
   name: string;
   company: TCompanyData;
   isActive: boolean;
@@ -68,9 +72,4 @@ export type TEmployeeData = {
   balance?: number;
   totalIncomes?: number;
   totalExpenses?: number;
-};
-
-export type TSuggestions = {
-  _id: string;
-  name: string;
 };

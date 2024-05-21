@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import { TCompanyData } from "@/types/types";
+import { TCompanyData, TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
 
 connect();
@@ -18,34 +18,15 @@ export async function POST(request: Request) {
   }
 }
 
-interface Document {
-  expiryDate: string;
-}
-
-interface EmployeeData {
-  name: string;
-  _id: string;
-  company: TCompanyData;
-  documents: Document[];
-}
-
-interface EmployeeWithOldestExpiry {
-  id: string;
-  name: string;
-  expiryDate: string | null;
-  docs: number;
-  company: { id?: string; name: string };
-  status: "expired" | "renewal" | "valid" | "unknown";
-}
 
 export async function GET() {
   const today = new Date();
 
-  const employees: EmployeeData[] = await Employee.find({
+  const employees: TEmployeeData[] = await Employee.find({
     published: true,
   }).select("name company documents");
 
-  const data: EmployeeWithOldestExpiry[] = [];
+  const data: TEmployeeList[] = [];
 
   employees.forEach((employee) => {
     let expiryDate: string | null = null;
@@ -59,7 +40,7 @@ export async function GET() {
       }
     });
 
-    let status: EmployeeWithOldestExpiry["status"] = "unknown"; // Default status
+    let status: TEmployeeList["status"] = "unknown"; // Default status
     let formattedExpiryDate = "---";
     if (expiryDate) {
       const expiryDateTime = new Date(expiryDate).getTime();
@@ -86,7 +67,7 @@ export async function GET() {
     data.push({
       id: employee._id,
       name: employee.name,
-      company: { id: employee.company._id, name: employee.company.name },
+      company: { _id: employee.company._id, name: employee.company.name },
       expiryDate: formattedExpiryDate,
       docs: employee.documents.length,
       status,

@@ -4,7 +4,7 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
 import axios from "axios";
 import SkeletonList from "../common/SkeletonList";
-function EmployeeList({ employees, isLoading }: { employees: TEmployeeList, isLoading: boolean }) {
+function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null, isLoading: boolean }) {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
@@ -61,13 +61,13 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList, isLo
                         </thead>
                         <tbody>
 
-                            {employees.map(({ id, name, expiryDate, docs, status, company }, key) => (
+                            {employees?.map(({ id, name, expiryDate, docs, status, company }, key) => (
                                 <tr key={key}>
                                     <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
                                         <h5 className="font-medium capitalize text-black dark:text-white">
                                             {name}
                                         </h5>
-                                        <Link href={`/company/${company?.id}`} className="hover:underline capitalize text-sm">{company?.name}</Link>
+                                        <Link href={`/company/${company?._id}`} className="hover:underline capitalize text-sm">{company?.name}</Link>
                                     </td>
                                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                                         <p className="text-black dark:text-white">
@@ -107,7 +107,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList, isLo
                                                     />
                                                 </svg>
                                             </Link>
-                                            <button onClick={() => handleDelete(id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                                            <button onClick={() => handleDelete(id!)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                                                 <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
                                                     <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />

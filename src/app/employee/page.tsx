@@ -8,14 +8,7 @@ import EmployeeList from "@/components/Tables/EmployeeList";
 const TablesPage = () => {
 
   const [isLoading, setLoading] = useState(true)
-  const [employees, setEmployees] = useState<TEmployeeList>([{
-    id: "",
-    name: "",
-    expiryDate: "",
-    docs: 0,
-    status: "",
-    company: { id: "", name: "" }
-  }])
+  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
   const fetchData = async () => {
     try {
       const data = await axios.get("/api/employee")

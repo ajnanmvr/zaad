@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import { TSuggestions } from "@/types/types";
+import { TBaseData } from "@/types/types";
 import { useEffect, useState } from "react";
 import { debounce } from "lodash";
 import axios from "axios";
@@ -17,7 +17,7 @@ const AddRecord = ({ type }: { type: string }) => {
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedMethod, setSelectedMethod] = useState<string>("");
-  const [searchSuggestions, setSearchSuggestions] = useState<TSuggestions[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
   const [clientFee, setClientFee] = useState<string>("");
   const [recordData, setRecordData] = useState<TRecordData>({
@@ -44,7 +44,7 @@ const AddRecord = ({ type }: { type: string }) => {
   }
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
     try {
-      const response = await axios.get<TSuggestions[]>(`/api/${inputName}/search/${inputValue}`);
+      const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
       setSearchSuggestions(response.data);
     } catch (error) {
       console.error("Error fetching company suggestions:", error);
@@ -62,12 +62,12 @@ const AddRecord = ({ type }: { type: string }) => {
   };
 
 
-  const handleCompanySelection = (selected: TSuggestions) => {
+  const handleCompanySelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
     setRecordData({ ...recordData, employee: undefined, company: selected._id });
     setSearchSuggestions([])
   };
-  const handleEmployeeSelection = (selected: TSuggestions) => {
+  const handleEmployeeSelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
     setRecordData({ ...recordData, company: undefined, employee: selected._id });
     setSearchSuggestions([])
