@@ -18,9 +18,11 @@ function CompanyList() {
             console.log(error);
         }
     }
+    
     useEffect(() => {
         fetchData()
     }, [])
+
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
@@ -44,7 +46,6 @@ function CompanyList() {
 
     return (
         <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
-
             <ConfirmationModal
                 isOpen={isConfirmationOpen}
                 message="Are you sure you want to delete this company?"

@@ -21,6 +21,17 @@ const SingleCompany = () => {
   });
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
+
+  const fetchData = async () => {
+    try {
+      const data = await axios.get(`/api/company/${id}`)
+      setCompany(data.data.data)
+      setIsLoading(false)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   const handleDelete = (deleteId: string) => {
     setSelectedDocumentId(deleteId);
     setIsConfirmationOpen(true);
@@ -69,17 +80,10 @@ const SingleCompany = () => {
       ...editData, [e.target.name]: e.target.value
     })
   }
-  const fetchData = async () => {
-    try {
-      const data = await axios.get(`/api/company/${id}`)
-      setCompany(data.data.data)
-      setIsLoading(false)
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  fetchData()
 
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   return (
     <DefaultLayout>
@@ -170,6 +174,9 @@ const SingleCompany = () => {
                 </p>
               </div>
               <div className="flex gap-1 items-center">
+                <Link href={`/accounts/transactions/company/${id}`} className="hover:text-primary">
+                  Records
+                </Link>|
                 <Link href={`/employee/view/${id}`} className="hover:text-primary">
                   Employees
                 </Link>|

@@ -7,7 +7,9 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 
-const TransactionList = () => {
+const TransactionList = ({ type, id }: {
+  type?: string | string[], id?: string | string[]
+}) => {
   const [records, setRecords] = useState<TRecordList[]>([])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
@@ -20,7 +22,17 @@ const TransactionList = () => {
 
   const fetchData = async () => {
     try {
-      const res = await axios.get(`/api/payment?page=${pageNumber}`);
+      let res: any
+      if (type && id) {
+        if (type === "company") {
+          res = await axios.get(`/api/payment/company/${id}?page=${pageNumber}`);
+        }
+        if (type === "indivudial") {
+          res = await axios.get(`/api/payment?page=${pageNumber}`);
+        }
+      } else {
+        res = await axios.get(`/api/payment?page=${pageNumber}`);
+      }
       setHasMore(res.data.hasMore)
       setRecords(res.data.records);
       setIsLoading(false);
@@ -131,12 +143,12 @@ const TransactionList = () => {
                       <td className="px-4 py-2 border">{selectedRecord.creator}</td>
                     </tr>
                   )}
-                  {selectedRecord.serviceFee && selectedRecord.serviceFee <1 ? (
+                  {selectedRecord.serviceFee && selectedRecord.serviceFee < 1 ? (
                     <tr>
                       <th className="px-4 py-2 border">Service Fee</th>
                       <td className="px-4 py-2 border">{selectedRecord.serviceFee}</td>
                     </tr>
-                  ):<></>}
+                  ) : <></>}
                   {selectedRecord.amount && (
                     <tr>
                       <th className="px-4 py-2 border">Amount</th>
