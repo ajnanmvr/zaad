@@ -4,7 +4,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import { TBaseData } from "@/types/types";
 import { useEffect, useState } from "react";
-import { debounce } from "lodash";
+import { capitalize, debounce } from "lodash";
 import axios from "axios";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
@@ -13,13 +13,14 @@ import { TRecordData } from "@/types/records";
 const AddRecord = ({ type }: { type: string }) => {
   const router = useRouter();
   const { user } = useUserContext();
-  console.log(user)
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedMethod, setSelectedMethod] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
   const [clientFee, setClientFee] = useState<string>("");
+  const [balance, setBalance] = useState(0)
+  const [clientType, setClientType] = useState("")
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
     type,
@@ -34,16 +35,16 @@ const AddRecord = ({ type }: { type: string }) => {
       setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
   }, [selectedOption])
 
-
   const generateServiceFee = (e: any) => {
     const newClientFee = e.target.value
     const newServiceFee = newClientFee - recordData.amount
     setClientFee(newClientFee)
     setRecordData({ ...recordData, serviceFee: newServiceFee })
-
   }
+
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
     try {
+      setClientType(inputName)
       const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
       setSearchSuggestions(response.data);
     } catch (error) {
@@ -61,16 +62,27 @@ const AddRecord = ({ type }: { type: string }) => {
     debounceSearch(searchValue, inputName);
   };
 
+  const fetchBalance = async (Id?: string) => {
+    try {
+      const response = await axios.get<{ balance: number }>(`/api/${clientType}/balance/${Id}`);
+      setBalance(response.data.balance);
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }
 
   const handleCompanySelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
     setRecordData({ ...recordData, employee: undefined, company: selected._id });
     setSearchSuggestions([])
+    fetchBalance(selected._id)
   };
+
   const handleEmployeeSelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
     setRecordData({ ...recordData, company: undefined, employee: selected._id });
     setSearchSuggestions([])
+    fetchBalance(selected._id)
   };
 
   const handleSubmit = async (e: any) => {
@@ -88,17 +100,14 @@ const AddRecord = ({ type }: { type: string }) => {
     setRecordData({ ...recordData, [name]: value });
   };
 
-  console.log(recordData);
 
   return (
     <DefaultLayout>
-      <Breadcrumb pageName={"Add " + recordData?.type} />
+      <Breadcrumb pageName={"Add " + capitalize(recordData?.type)} />
 
       <form className="relative" action="#">
-
         <div className="flex flex-col gap-9">
           <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-
             <div className="p-6.5">
               <div className="mb-4.5">
 
@@ -306,6 +315,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   <div className="w-full xl:w-1/2">
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                       Client Fee
+                      <span className={`text-xs border ${balance >= 0 ? 'text-meta-3' : 'text-red'} rounded-md bg-opacity-10 px-2 py-0.5 ml-2`}>Balance : {balance}</span>
                     </label>
                     <input
                       type="number"

@@ -9,16 +9,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const employeeRecords: TRecordData[] = await Records.find({
+    const companyRecords: TRecordData[] = await Records.find({
       published: true,
-      employee: params.id,
+      company: params.id,
     }).exec();
 
     let incomeTotal = 0;
     let expenseTotal = 0;
     let serviceFee = 0;
 
-    employeeRecords.forEach((record) => {
+    companyRecords.forEach((record) => {
       if (record.type === "income") {
         incomeTotal += record.amount;
       } else if (record.type === "expense") {
@@ -30,10 +30,10 @@ export async function GET(
     });
 
     const balance = incomeTotal - expenseTotal;
-    return new Response(JSON.stringify({balance}), { status: 200 });
+    return new Response(JSON.stringify({ balance }), { status: 200 });
   } catch (error) {
     return new Response(
-      JSON.stringify({ message: "Error fetching employee data", error }),
+      JSON.stringify({ message: "Error fetching company data", error }),
       { status: 500 }
     );
   }
