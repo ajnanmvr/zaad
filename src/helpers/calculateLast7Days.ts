@@ -1,7 +1,7 @@
-import { TRecordData } from "@/types/records";
+import { TRecordDataWithCreatedAt } from "@/types/records";
 
 export default function calculateLast7Days(
-    expenseRecords: TRecordData[],
+    expenseRecords: TRecordDataWithCreatedAt[],
     last7DaysDates: Date[]
   ): [number[], number[]] {
     const expensesLast7DaysTotal: number[] = [];

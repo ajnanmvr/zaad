@@ -2,17 +2,17 @@ import connect from "@/db/connect";
 import calculateLast12Months from "@/helpers/calculateLast12Months";
 import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
 import calculateLast7Days from "@/helpers/calculateLast7Days";
-import Records from "@/models/records"; // Assuming TRecordData is the correct type for your Records model
-import { TRecordData } from "@/types/records";
+import Records from "@/models/records"; // Assuming TRecordDataWithCreatedAt is the correct type for your Records model
+import { TRecordDataWithCreatedAt } from "@/types/records";
 connect();
 
 export async function GET(): Promise<Response> {
   try {
-    const allRecords: TRecordData[] = await Records.find({ published: true });
-    const expenseRecords: TRecordData[] = allRecords.filter(
+    const allRecords: TRecordDataWithCreatedAt[] = await Records.find({ published: true });
+    const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
       (record) => record.type === "expense"
     );
-    const incomeRecords: TRecordData[] = allRecords.filter(
+    const incomeRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
       (record) => record.type === "income"
     );
 

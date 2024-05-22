@@ -1,5 +1,4 @@
 import { TRecordDataWithCreatedAt } from "@/types/records";
-
 async function calculateLast12MonthsTotals(
   expenseRecords: TRecordDataWithCreatedAt[],
   last12Months: { month: number; name: string; year: number }[]
