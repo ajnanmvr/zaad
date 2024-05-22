@@ -21,8 +21,12 @@ export async function GET() {
       Records.find({ published: true }),
     ]);
 
-    const companyRecords = allRecords.filter((record) => record.company);
-    const employeeRecords = allRecords.filter((record) => record.employee);
+    const companyRecords = allRecords.filter(
+      (record) => record.company && record.published
+    );
+    const employeeRecords = allRecords.filter(
+      (record) => record.employee && record.published
+    );
 
     const {
       over0balanceCompanies,

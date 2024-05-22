@@ -14,6 +14,7 @@ export type TRecordData = TRecordBase & {
   employee?: string;
   company?: string;
   remarks: string;
+  published?:boolean
 };
 export type TRecordDataWithCreatedAt = TRecordData & {
   createdAt:Date
