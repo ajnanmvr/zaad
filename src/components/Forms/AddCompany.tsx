@@ -53,9 +53,15 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         e.preventDefault();
 
         try {
-            if (isEditMode) { await axios.put(`/api/company/${edit}`, companyData); }
-            else { await axios.post("/api/company", companyData); }
-            router.push("/company");
+            if (isEditMode) {
+                await axios.put(`/api/company/${edit}`, companyData);
+                router.push(`/company/${edit}`)
+            }
+            else {
+                await axios.post("/api/company", companyData);
+                router.push("/company");
+            }
+
         } catch (error) {
             console.log(error);
         }
@@ -88,7 +94,6 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             name: "",
             issueDate: "",
             expiryDate: "",
-            attachment: ""
         }
         if (!companyData.documents) {
             setCompanyData({ ...companyData, documents: [documents] })

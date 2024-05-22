@@ -13,7 +13,6 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
     const [isEditMode, setisEditMode] = useState(false);
-    const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
     const [employeeData, setEmployeeData] = useState<any>({
         name: "", company: "", documents: [{
             name: "",
@@ -28,11 +27,6 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         }
     }, [])
 
-    useEffect(() => {
-        if (employeeData.isActive) {
-            setIsOptionSelected(true);
-        }
-    }, [employeeData.isActive])
     const fetchData = async () => {
         if (edit !== "") {
             try {
@@ -53,9 +47,14 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const handleSubmit = async (e: any) => {
         e.preventDefault()
         try {
-            if (isEditMode) { await axios.put(`/api/employee/${edit}`, employeeData); }
-            else { await axios.post("/api/employee", employeeData); }
-            router.push("/employee");
+            if (isEditMode) {
+                await axios.put(`/api/employee/${edit}`, employeeData);
+                router.push(`/employee/${edit}`);
+            }
+            else {
+                await axios.post("/api/employee", employeeData);
+                router.push(`/employee/view/${employeeData.company}`);
+            }
         } catch (error) {
             console.log(error);
         }

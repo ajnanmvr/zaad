@@ -1,4 +1,7 @@
 import connect from "@/db/connect";
+import calculateLast12Months from "@/helpers/calculateLast12Months";
+import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
+import calculateLast7Days from "@/helpers/calculateLast7Days";
 import Records from "@/models/records"; // Assuming TRecordData is the correct type for your Records model
 import { TRecordData } from "@/types/records";
 connect();
@@ -6,7 +9,6 @@ connect();
 export async function GET(): Promise<Response> {
   try {
     const allRecords: TRecordData[] = await Records.find({ published: true });
-
     const expenseRecords: TRecordData[] = allRecords.filter(
       (record) => record.type === "expense"
     );
@@ -134,93 +136,4 @@ export async function GET(): Promise<Response> {
     console.error("Error fetching records:", error);
     return Response.json({ error: "Error fetching records" }, { status: 500 });
   }
-}
-
-function calculateLast7Days(
-  expenseRecords: TRecordData[],
-  last7DaysDates: Date[]
-): [number[], number[]] {
-  const expensesLast7DaysTotal: number[] = [];
-  const profitLast7DaysTotal: number[] = [];
-
-  last7DaysDates.forEach((date) => {
-    const expensesTotal: number = expenseRecords
-      .filter(
-        (record) =>
-          new Date(record.createdAt).toDateString() === date.toDateString()
-      )
-      .reduce(
-        (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
-        0
-      );
-    expensesLast7DaysTotal.push(expensesTotal);
-
-    // Assuming there's a service fee field in the record
-    const profitTotal: number = expenseRecords
-      .filter(
-        (record) =>
-          new Date(record.createdAt).toDateString() === date.toDateString()
-      )
-      .reduce((total, record) => total + (record.serviceFee || 0), 0);
-    profitLast7DaysTotal.push(profitTotal);
-  });
-
-  return [expensesLast7DaysTotal, profitLast7DaysTotal];
-}
-
-function calculateLast12Months(
-  currentDate: Date,
-  currentYear: number
-): { month: number; name: string; year: number }[] {
-  return Array.from({ length: 12 }, (_, index) => {
-    let month: number = currentDate.getMonth() - index;
-    let year: number = currentYear;
-    if (month < 0) {
-      month += 12;
-      year -= 1; // Adjust year for months before January
-    }
-    return {
-      month: month + 1,
-      name: new Date(year, month, 1).toLocaleString("en-US", {
-        month: "short",
-      }),
-      year,
-    };
-  }).reverse();
-}
-
-async function calculateLast12MonthsTotals(
-  expenseRecords: TRecordData[],
-  last12Months: { month: number; name: string; year: number }[]
-): Promise<[number[], number[]]> {
-  const last12MonthsExpenses: number[] = Array.from({ length: 12 }, () => 0);
-  const last12MonthsProfit: number[] = Array.from({ length: 12 }, () => 0);
-
-  await Promise.all(
-    last12Months.map(async ({ month, year }, index) => {
-      const expensesTotal: number = expenseRecords
-        .filter(
-          (record) =>
-            new Date(record.createdAt).getMonth() === month &&
-            new Date(record.createdAt).getFullYear() === year
-        )
-        .reduce(
-          (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
-          0
-        );
-      last12MonthsExpenses[index] = expensesTotal;
-
-      // Assuming there's a service fee field in the record
-      const profitTotal: number = expenseRecords
-        .filter(
-          (record) =>
-            new Date(record.createdAt).getMonth() === month &&
-            new Date(record.createdAt).getFullYear() === year
-        )
-        .reduce((total, record) => total + (record.serviceFee || 0), 0);
-      last12MonthsProfit[index] = profitTotal;
-    })
-  );
-
-  return [last12MonthsExpenses, last12MonthsProfit];
 }

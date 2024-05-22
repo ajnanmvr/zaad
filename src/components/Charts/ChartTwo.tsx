@@ -118,7 +118,7 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
         </div>
         <div>
           <div className="relative z-20 inline-block">
-            Today
+            Current Week
             <span className="absolute right-3 top-1/2 z-10 -translate-y-1/2">
               <svg
                 width="10"
