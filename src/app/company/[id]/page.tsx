@@ -81,7 +81,7 @@ const SingleCompany = () => {
     })
   }
 
-  
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const trigger = useRef<any>(null);
   const dropdown = useRef<any>(null);
@@ -277,39 +277,55 @@ const SingleCompany = () => {
                   <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
                     Company Details
                   </h3>
-                  <ul className="grid grid-cols-2 gap-x-4">
-                    <li>
-                      License No:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.licenseNo || "-"}</span>
-                    </li>
-                    <li>
-                      Emirates/Area:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.emirates || "-"}</span>
-                    </li>
-                    <li>
-                      Phone 1:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.phone1 || "-"}</span>
-                    </li>
-                    <li>
-                      Phone 2:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.phone2 || "-"}</span>
-                    </li>
-                    <li>
-                      Email:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.email || "-"}</span>
-                    </li>
-                    <li>
-                      Transaction No:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.transactionNo || "-"}</span>
-                    </li>
-                    <li>
-                      Mainland/Freezone:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.isMainland||"-"}</span>
-                    </li>
-                    <li>
-                      Remarks:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.remarks || "-"}</span>
-                    </li>
+                  <ul className="flex flex-col">
+                    {company?.licenseNo && (
+                      <li>
+                        License No:
+                        <span className="font-medium mx-1 break-words">{company.licenseNo}</span>
+                      </li>
+                    )}
+                    {company?.emirates && (
+                      <li>
+                        Emirates/Area:
+                        <span className="font-medium mx-1 break-words">{company.emirates}</span>
+                      </li>
+                    )}
+                    {company?.phone1 && (
+                      <li>
+                        Phone 1:
+                        <span className="font-medium mx-1 break-words">{company.phone1}</span>
+                      </li>
+                    )}
+                    {company?.phone2 && (
+                      <li>
+                        Phone 2:
+                        <span className="font-medium mx-1 break-words">{company.phone2}</span>
+                      </li>
+                    )}
+                    {company?.email && (
+                      <li>
+                        Email:
+                        <span className="font-medium mx-1 break-words">{company.email}</span>
+                      </li>
+                    )}
+                    {company?.transactionNo && (
+                      <li>
+                        Transaction No:
+                        <span className="font-medium mx-1 break-words">{company.transactionNo}</span>
+                      </li>
+                    )}
+                    {company?.isMainland && (
+                      <li>
+                        Mainland/Freezone:
+                        <span className="font-medium mx-1 break-words">{company.isMainland}</span>
+                      </li>
+                    )}
+                    {company?.remarks && (
+                      <li>
+                        Remarks:
+                        <span className="font-medium mx-1 break-words">{company.remarks}</span>
+                      </li>
+                    )}
                   </ul>
                 </div>
                 {company?.password?.length !== 0 && (
@@ -321,8 +337,8 @@ const SingleCompany = () => {
                       {company?.password?.map((pass, index) => (
                         <li key={index}>
                           <span className="font-medium">{pass.platform}:</span>
-                          <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.username || "-"}</span>
-                          <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{pass.password || "-"}</span>
+                          <span className="font-medium mx-1 break-words">{pass.username}</span>
+                          <span className="font-medium mx-1 break-words">{pass.password}</span>
                         </li>
                       ))}
                     </ul>

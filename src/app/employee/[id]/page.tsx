@@ -276,41 +276,56 @@ const SingleEmployee = () => {
 
 
                 </div></div>
-
               <div>
                 <h3 className="text-lg mt-5 font-semibold text-black dark:text-white mb-2">
                   Employee Details
                 </h3>
                 <ul className="grid sm:grid-cols-2 gap-x-4">
-                  <li>
-                    Emirates ID:                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.emiratesId || "-"}</span>
-                  </li>
-                  <li>
-                    Nationality:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.nationality || "-"}</span>
-                  </li>
-                  <li>
-                    Phone 1:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.phone1 || "-"}</span>
-                  </li>
-                  <li>
-                    Phone 2:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.phone2 || "-"}</span>
-                  </li>
-                  <li>
-                    Email:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.email || "-"}</span>
-                  </li>
-                  <li>
-                    Designation:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.designation || "-"}</span>
-                  </li>
-                  <li>
-                    Remarks:
-                    <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{employee?.remarks || "-"}</span>
-                  </li>
+                  {employee?.emiratesId && (
+                    <li>
+                      Emirates ID:
+                      <span className="font-medium mx-1 break-words">{employee.emiratesId}</span>
+                    </li>
+                  )}
+                  {employee?.nationality && (
+                    <li>
+                      Nationality:
+                      <span className="font-medium mx-1 break-words">{employee.nationality}</span>
+                    </li>
+                  )}
+                  {employee?.phone1 && (
+                    <li>
+                      Phone 1:
+                      <span className="font-medium mx-1 break-words">{employee.phone1}</span>
+                    </li>
+                  )}
+                  {employee?.phone2 && (
+                    <li>
+                      Phone 2:
+                      <span className="font-medium mx-1 break-words">{employee.phone2}</span>
+                    </li>
+                  )}
+                  {employee?.email && (
+                    <li>
+                      Email:
+                      <span className="font-medium mx-1 break-words">{employee.email}</span>
+                    </li>
+                  )}
+                  {employee?.designation && (
+                    <li>
+                      Designation:
+                      <span className="font-medium mx-1 break-words">{employee.designation}</span>
+                    </li>
+                  )}
+                  {employee?.remarks && (
+                    <li>
+                      Remarks:
+                      <span className="font-medium mx-1 break-words">{employee.remarks}</span>
+                    </li>
+                  )}
                 </ul>
               </div>
+
 
 
               {employee?.documents?.length !== 0 && (
