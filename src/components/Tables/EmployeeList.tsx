@@ -4,7 +4,7 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
 import axios from "axios";
 import SkeletonList from "../common/SkeletonList";
-function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null, isLoading: boolean }) {
+function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null, isLoading?: boolean }) {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 

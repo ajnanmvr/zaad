@@ -1,9 +1,9 @@
 import connect from "@/db/connect";
-import { TCompanyData, TEmployeeData, TEmployeeList } from "@/types/types";
+import { TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
-
+import calculateStatus from "@/utils/calculateStatus";
+import processDocuments from "@/helpers/processDocuments";
 connect();
-
 export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
@@ -18,7 +18,6 @@ export async function POST(request: Request) {
   }
 }
 
-
 export async function GET() {
   const today = new Date();
 
@@ -29,58 +28,25 @@ export async function GET() {
   const data: TEmployeeList[] = [];
 
   employees.forEach((employee) => {
-    let expiryDate: string | null = null;
-
-    employee.documents.forEach((document) => {
-      if (
-        !expiryDate ||
-        new Date(document.expiryDate).getTime() < new Date(expiryDate).getTime()
-      ) {
-        expiryDate = document.expiryDate;
-      }
-    });
-
-    let status: TEmployeeList["status"] = "unknown"; // Default status
-    let formattedExpiryDate = "---";
-    if (expiryDate) {
-      const expiryDateTime = new Date(expiryDate).getTime();
-      const timeDiff = expiryDateTime - today.getTime();
-      const daysDiff = timeDiff / (1000 * 3600 * 24); // Convert milliseconds to days
-
-      if (daysDiff < 0) {
-        status = "expired";
-      } else if (daysDiff <= 30) {
-        status = "renewal";
-      } else if (daysDiff > 30) {
-        status = "valid";
-      }
-      formattedExpiryDate = new Date(expiryDateTime).toLocaleDateString(
-        "en-US",
-        {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        }
-      );
-    }
-
+    const { expiryDate, docsCount } = processDocuments(employee.documents);
+    const status = calculateStatus(expiryDate);
     data.push({
       id: employee._id,
       name: employee.name,
-      company: { _id: employee.company._id, name: employee.company.name },
-      expiryDate: formattedExpiryDate,
-      docs: employee.documents.length,
+      company: employee.company,
+      expiryDate,
+      docs: docsCount,
       status,
     });
   });
 
-  // Sort the data by expiryDate, oldest first, null values last
-  data.sort((a, b) => {
-    if (!a.expiryDate && !b.expiryDate) return 0; // If both dates are null, maintain order
-    if (!a.expiryDate) return 1; // Put items with null dates last
-    if (!b.expiryDate) return -1; // Put items with null dates last
-    return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
-  });
+  data.sort((a, b) =>
+    a.expiryDate === "---"
+      ? 1
+      : b.expiryDate === "---"
+        ? -1
+        : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
+  );
 
   return Response.json({ count: employees.length, data }, { status: 200 });
 }
