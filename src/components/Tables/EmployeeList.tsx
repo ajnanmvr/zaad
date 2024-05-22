@@ -64,9 +64,10 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                             {employees?.map(({ id, name, expiryDate, docs, status, company }, key) => (
                                 <tr key={key}>
                                     <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
-                                        <h5 className="font-medium capitalize text-black dark:text-white">
-                                            {name}
-                                        </h5>
+                                        <Link href={`/employee/${id}`} >
+                                            <h5 className="font-medium capitalize text-black dark:text-white">
+                                                {name}
+                                            </h5></Link>
                                         <Link href={`/company/${company?._id}`} className="hover:underline capitalize text-sm">{company?.name}</Link>
                                     </td>
                                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">

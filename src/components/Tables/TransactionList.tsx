@@ -76,7 +76,7 @@ const TransactionList = ({ type, id }: {
 
   return (
     <>
-      <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
+      <div className="rounded-sm border  border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
         <ConfirmationModal
           isOpen={isConfirmationOpen}
           message="Are you sure you want to delete this payment record?"
@@ -174,7 +174,6 @@ const TransactionList = ({ type, id }: {
 
 
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Payments List</p>
-
           <div className="gap-1 flex">
 
             <Link

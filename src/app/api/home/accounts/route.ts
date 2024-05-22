@@ -5,10 +5,8 @@ connect();
 
 export async function GET(): Promise<Response> {
   try {
-    // Fetch all documents
     const allRecords: TRecordData[] = await Records.find({ published: true });
 
-    // Process calculations
     const expenseRecords: TRecordData[] = allRecords.filter(
       (record) => record.type === "expense"
     );
@@ -152,9 +150,7 @@ function calculateLast7Days(
           new Date(record.createdAt).toDateString() === date.toDateString()
       )
       .reduce(
-        (total, record) =>
-          total +
-          (record.amount || 0), // Assuming 'amount' is the correct field for expenses
+        (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
         0
       );
     expensesLast7DaysTotal.push(expensesTotal);
@@ -209,8 +205,7 @@ async function calculateLast12MonthsTotals(
             new Date(record.createdAt).getFullYear() === year
         )
         .reduce(
-          (total, record) =>
-            total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
+          (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
           0
         );
       last12MonthsExpenses[index] = expensesTotal;

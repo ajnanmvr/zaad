@@ -14,6 +14,7 @@ export type TRecordData = TRecordBase & {
   employee?: string;
   company?: string;
   remarks: string;
+  createdAt: Date; // Add this line
 };
 
 export type TRecordList = TRecordBase & {

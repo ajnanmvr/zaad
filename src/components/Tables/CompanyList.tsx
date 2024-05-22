@@ -81,10 +81,11 @@ function CompanyList() {
                             {companies?.map(({ id, name, expiryDate, docs, status }, key) => (
                                 <tr key={key}>
                                     <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
-                                        <h5 className="font-medium capitalize text-black dark:text-white">
+                                        <Link href={`/company/${id}`} >  <h5 className="font-medium capitalize text-black dark:text-white">
                                             {name}
                                         </h5>
                                         <p className="text-sm">{docs} Docs</p>
+                                        </Link>
                                     </td>
                                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                                         <p className="text-black dark:text-white">

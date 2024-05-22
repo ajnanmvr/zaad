@@ -302,7 +302,7 @@ const SingleCompany = () => {
                     </li>
                     <li>
                       Mainland/Freezone:
-                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.isMainland ? "Mainland" : "Freezone"}</span>
+                      <span className="bg-primary font-medium mx-1 border-primary bg-opacity-20 border rounded px-1">{company?.isMainland||"-"}</span>
                     </li>
                     <li>
                       Remarks:

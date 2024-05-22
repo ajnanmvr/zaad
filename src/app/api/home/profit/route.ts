@@ -2,18 +2,26 @@ import connect from "@/db/connect";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Records from "@/models/records";
+import { TRecordData } from "@/types/records";
+import { TCompanyData, TEmployeeData } from "@/types/types";
+
 connect();
 
 export async function GET() {
   try {
-    // Load all necessary data
-    const [companies, employees, allCompanyRecords, allEmployeeRecords] =
-      await Promise.all([
-        Company.find({ published: true }),
-        Employee.find({ published: true }),
-        Records.find({ company: { $exists: true }, published: true }),
-        Records.find({ employee: { $exists: true }, published: true }),
-      ]);
+    const [companies, employees, allRecords]: [
+      TCompanyData[],
+      TEmployeeData[],
+      TRecordData[],
+    ] = await Promise.all([
+      Company.find({ published: true }),
+      Employee.find({ published: true }),
+      Records.find({ published: true }),
+    ]);
+
+    // Filter records for companies and employees
+    const companyRecords = allRecords.filter((record) => record.company);
+    const employeeRecords = allRecords.filter((record) => record.employee);
 
     // Process companies
     const {
@@ -22,7 +30,7 @@ export async function GET() {
       totalProfitAllCompanies,
       totalToGiveCompanies,
       totalToGetCompanies,
-    } = processCompanies(companies, allCompanyRecords);
+    } = processCompanies(companies, companyRecords);
 
     // Process employees
     const {
@@ -31,7 +39,7 @@ export async function GET() {
       totalProfitAllEmployees,
       totalToGiveEmployees,
       totalToGetEmployees,
-    } = processEmployees(employees, allEmployeeRecords);
+    } = processEmployees(employees, employeeRecords);
 
     // Calculate overall profits and amounts to give/get
     const profit = totalProfitAllEmployees + totalProfitAllCompanies;
@@ -61,7 +69,10 @@ export async function GET() {
   }
 }
 
-function processCompanies(companies, allCompanyRecords) {
+function processCompanies(
+  companies: TCompanyData[],
+  companyRecords: TRecordData[]
+) {
   let over0balanceCompanies = [];
   let under0balanceCompanies = [];
   let totalProfitAllCompanies = 0;
@@ -70,23 +81,20 @@ function processCompanies(companies, allCompanyRecords) {
 
   // Process companies
   for (const company of companies) {
-    const companyRecords = allCompanyRecords.filter(
-      (record) => record.company.toString() === company._id.toString()
+    const companyId = company._id?.toString();
+    if (!companyId) continue; // Skip if company._id is undefined
+
+    const companyRecordsFiltered = companyRecords.filter(
+      (record) => record.company?.toString() === companyId
     );
     let incomeTotal = 0;
     let expenseTotal = 0;
 
-    companyRecords.forEach((record) => {
+    companyRecordsFiltered.forEach((record) => {
       if (record.type === "income") {
-        incomeTotal +=
-          record.cash + record.bank + record.tasdeed + record.swiper;
+        incomeTotal += record.amount;
       } else if (record.type === "expense") {
-        expenseTotal +=
-          record.cash +
-          record.bank +
-          record.tasdeed +
-          record.swiper +
-          record.serviceFee;
+        expenseTotal += record.amount;
       }
     });
 
@@ -94,8 +102,8 @@ function processCompanies(companies, allCompanyRecords) {
 
     if (balance > 0) {
       let totalProfit = 0;
-      companyRecords.forEach((record) => {
-        if (record.type === "expense") {
+      companyRecordsFiltered.forEach((record) => {
+        if (record.type === "expense" && record.serviceFee) {
           totalProfit += record.serviceFee;
         }
       });
@@ -126,7 +134,10 @@ function processCompanies(companies, allCompanyRecords) {
   };
 }
 
-function processEmployees(employees, allEmployeeRecords) {
+function processEmployees(
+  employees: TEmployeeData[],
+  employeeRecords: TRecordData[]
+) {
   let over0balanceEmployees = [];
   let under0balanceEmployees = [];
   let totalProfitAllEmployees = 0;
@@ -135,19 +146,24 @@ function processEmployees(employees, allEmployeeRecords) {
 
   // Process employees
   for (const employee of employees) {
-    const employeeRecords = allEmployeeRecords.filter(
-      (record) => record.employee.toString() === employee._id.toString()
+    const employeeId = employee._id?.toString();
+    if (!employeeId) continue; // Skip if employee._id is undefined
+
+    const employeeRecordsFiltered = employeeRecords.filter(
+      (record) => record.employee?.toString() === employeeId
     );
     let incomeTotal = 0;
     let expenseTotal = 0;
     let totalProfit = 0; // Track total profit for the employee
 
-    employeeRecords.forEach((record) => {
+    employeeRecordsFiltered.forEach((record) => {
       if (record.type === "income") {
         incomeTotal += record.amount;
       } else if (record.type === "expense") {
         expenseTotal += record.amount;
-        totalProfit += record.serviceFee;
+        if (record.serviceFee) {
+          totalProfit += record.serviceFee;
+        }
       }
     });
 
