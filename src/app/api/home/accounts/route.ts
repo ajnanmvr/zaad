@@ -8,7 +8,9 @@ connect();
 
 export async function GET(): Promise<Response> {
   try {
-    const allRecords: TRecordDataWithCreatedAt[] = await Records.find({ published: true });
+    const allRecords: TRecordDataWithCreatedAt[] = await Records.find({
+      published: true,
+    });
     const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
       (record) => record.type === "expense"
     );

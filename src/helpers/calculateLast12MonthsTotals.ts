@@ -11,7 +11,7 @@ async function calculateLast12MonthsTotals(
       const expensesTotal: number = expenseRecords
         .filter(
           (record) =>
-            new Date(record?.createdAt).getMonth() === month &&
+            new Date(record?.createdAt).getMonth() + 1 === month &&
             new Date(record?.createdAt).getFullYear() === year
         )
         .reduce(
@@ -24,7 +24,7 @@ async function calculateLast12MonthsTotals(
       const profitTotal: number = expenseRecords
         .filter(
           (record) =>
-            new Date(record.createdAt).getMonth() === month &&
+            new Date(record.createdAt).getMonth() + 1 === month &&
             new Date(record.createdAt).getFullYear() === year
         )
         .reduce((total, record) => total + (record.serviceFee || 0), 0);
