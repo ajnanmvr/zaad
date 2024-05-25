@@ -60,10 +60,10 @@ export default function AccountsDashboard() {
       console.log(error);
     }
   }
+
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(profitsData);
 
   return (
     <DefaultLayout>
@@ -102,7 +102,7 @@ export default function AccountsDashboard() {
             <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
           </div>
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} />
+            <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} color="border-meta-3" />
             <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} />
             <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees * (-1)}AED`} />
             <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} />
