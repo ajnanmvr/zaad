@@ -37,13 +37,15 @@ export async function GET(
       return Response.json({ message: "Company not found" }, { status: 404 });
     }
 
-    const modifiedDocuments = company.documents.map((document) => ({
-      _id: document._id,
-      name: document.name,
-      issueDate: document.issueDate,
-      expiryDate: document.expiryDate,
-      status: calculateStatus(document.expiryDate),
-    }));
+    const modifiedDocuments = company.documents.map(
+      ({ _id, name, issueDate, expiryDate }) => ({
+        _id,
+        name,
+        issueDate,
+        expiryDate,
+        status: calculateStatus(expiryDate),
+      })
+    );
 
     modifiedDocuments.sort(
       (a, b) =>
