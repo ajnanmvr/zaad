@@ -1,6 +1,6 @@
 import connect from "@/db/connect";
-import Records from "@/models/records";
-import { format } from "date-fns";
+import Invoice from "@/models/invoice";
+import { TInvoiceItemsData } from "@/types/invoice";
 import { NextRequest } from "next/server";
 
 connect();
@@ -8,9 +8,9 @@ connect();
 export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
-    const data = await Records.create(reqBody);
+    const data = await Invoice.create(reqBody);
     return Response.json(
-      { message: "Created new payment record", data },
+      { message: "Created new payment invoice", data },
       { status: 201 }
     );
   } catch (error) {
@@ -23,51 +23,49 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;
-
-    const records = await Records.find({ published: true })
+    const invoice = await Invoice.find({ published: true })
       .populate(["createdBy", "company", "employee"])
       .skip(+pageNumber * contentPerSection)
       .limit(contentPerSection + 1)
       .sort({ createdAt: -1 });
 
-    if (!records || records.length === 0) {
+    if (!invoice || invoice.length === 0) {
       return Response.json(
-        { message: "No records found", count: 0, hasMore: false, records: [] },
+        { message: "No invoice found", count: 0, hasMore: false, records: [] },
         { status: 200 }
       );
     }
-    const hasMore = records.length > contentPerSection;
-    const transformedData = records
+
+    const hasMore = invoice.length > contentPerSection;
+    const transformedData = invoice
       .slice(0, contentPerSection)
-      .map((record) => {
+      .map((invoice) => {
         const client = () => {
-          const { company, employee, self } = record;
+          const { company, employee, other } = invoice;
           return company
             ? { name: company.name, id: company._id, type: "company" }
             : employee
               ? { name: employee.name, id: employee._id, type: "employee" }
-              : self
-                ? { name: self, type: "self" }
+              : other
+                ? { name: other, type: "other" }
                 : null;
         };
 
         return {
-          id: record._id,
-          type: record.type,
+          id: invoice._id,
           client: client(),
-          method: record.method,
-          particular: record.particular,
-          invoiceNo: record.invoiceNo,
-          amount: record.amount,
-          serviceFee: record.serviceFee,
-          creator: record.createdBy.username,
-          status: record.status,
-          date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+          title: invoice.title,
+          invoiceNo: invoice.suffix + invoice.invoiceNo,
+          amount: invoice.items.reduce(
+            (acc: number, item: TInvoiceItemsData) =>
+              acc + item.rate * item.quantity,
+            0
+          ),
+          date: invoice.date,
         };
       });
-
     return Response.json(
-      { count: transformedData.length, hasMore, records: transformedData },
+      { hasMore, invoices: transformedData },
       { status: 200 }
     );
   } catch (error) {

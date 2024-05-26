@@ -27,8 +27,8 @@ const TransactionList = ({ type, id }: {
         if (type === "company") {
           res = await axios.get(`/api/payment/company/${id}?page=${pageNumber}`);
         }
-        if (type === "indivudial") {
-          res = await axios.get(`/api/payment?page=${pageNumber}`);
+        if (type === "employee") {
+          res = await axios.get(`/api/payment/individual/${id}?page=${pageNumber}`);
         }
       } else {
         res = await axios.get(`/api/payment?page=${pageNumber}`);

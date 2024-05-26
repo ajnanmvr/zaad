@@ -1,5 +1,5 @@
 "use client"
-import { TRecordList } from "@/types/records";
+import { TInvoiceList } from "@/types/invoice";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
@@ -7,15 +7,13 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 
-const TransactionList = ({ type, id }: {
+const InvoiceList = ({ type, id }: {
   type?: string | string[], id?: string | string[]
 }) => {
-  const [records, setRecords] = useState<TRecordList[]>([])
+  const [invoices, setInvoices] = useState<TInvoiceList[]>([])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
   const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
@@ -25,16 +23,16 @@ const TransactionList = ({ type, id }: {
       let res: any
       if (type && id) {
         if (type === "company") {
-          res = await axios.get(`/api/payment/company/${id}?page=${pageNumber}`);
+          res = await axios.get(`/api/invoice/company/${id}?page=${pageNumber}`);
         }
-        if (type === "indivudial") {
-          res = await axios.get(`/api/payment?page=${pageNumber}`);
+        if (type === "individual") {
+          res = await axios.get(`/api/invoice/employee/${id}?page=${pageNumber}`);
         }
       } else {
-        res = await axios.get(`/api/payment?page=${pageNumber}`);
+        res = await axios.get(`/api/invoice?page=${pageNumber}`);
       }
       setHasMore(res.data.hasMore)
-      setRecords(res.data.records);
+      setInvoices(res.data.invoices);
       setIsLoading(false);
       setIsBtnDisabled(false)
     } catch (error) {
@@ -58,19 +56,15 @@ const TransactionList = ({ type, id }: {
     setSelectedRecordId(id);
     setIsConfirmationOpen(true);
   }
-  const handleInfo = (record: TRecordList) => {
-    setSelectedRecord(record);
-    setIsInfoOpen(true);
-  };
+
   const confirmDelete = async () => {
-    await axios.delete(`/api/payment/${selectedRecordId}`)
+    await axios.delete(`/api/invoice/${selectedRecordId}`)
     setIsConfirmationOpen(false);
     fetchData()
   }
   const cancelAction = () => {
     setSelectedRecordId(null);
     setIsConfirmationOpen(false);
-    setIsInfoOpen(false);
   }
   console.log(hasMore);
 
@@ -83,116 +77,20 @@ const TransactionList = ({ type, id }: {
           onConfirm={confirmDelete}
           onCancel={cancelAction}
         />
-        {isInfoOpen && selectedRecord && (
-          <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
-            <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Payment Details</h2>
-              <table className="table-auto w-full">
-                <tbody>
-                  {selectedRecord.client && (
-                    <>
-                      <tr>
-                        <th className="px-4 py-2 border">Client Name</th>
-                        <td className="px-4 py-2 border">{selectedRecord.client.name}</td>
-                      </tr>
-                      <tr>
-                        <th className="px-4 py-2 border">Client Type</th>
-                        <td className="px-4 py-2 border">{selectedRecord.client.type}</td>
-                      </tr>
-                    </>
-                  )}
-                  {selectedRecord.particular && (
-                    <tr>
-                      <th className="px-4 py-2 border">Particular</th>
-                      <td className="px-4 py-2 border">{selectedRecord.particular}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.invoiceNo && (
-                    <tr>
-                      <th className="px-4 py-2 border">Invoice No</th>
-                      <td className="px-4 py-2 border">{selectedRecord.invoiceNo}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.type && (
-                    <tr>
-                      <th className="px-4 py-2 border">Income/ Expense</th>
-                      <td className="px-4 py-2 border">{selectedRecord.type}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.method && (
-                    <tr>
-                      <th className="px-4 py-2 border">Method</th>
-                      <td className="px-4 py-2 border">{selectedRecord.method}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.date && (
-                    <tr>
-                      <th className="px-4 py-2 border">Date</th>
-                      <td className="px-4 py-2 border">{selectedRecord.date}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.status && (
-                    <tr>
-                      <th className="px-4 py-2 border">Status</th>
-                      <td className="px-4 py-2 border">{selectedRecord.status}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.creator && (
-                    <tr>
-                      <th className="px-4 py-2 border">Creator</th>
-                      <td className="px-4 py-2 border">{selectedRecord.creator}</td>
-                    </tr>
-                  )}
-                  {selectedRecord.serviceFee && selectedRecord.serviceFee < 1 ? (
-                    <tr>
-                      <th className="px-4 py-2 border">Service Fee</th>
-                      <td className="px-4 py-2 border">{selectedRecord.serviceFee}</td>
-                    </tr>
-                  ) : <></>}
-                  {selectedRecord.amount && (
-                    <tr>
-                      <th className="px-4 py-2 border">Amount</th>
-                      <td className="px-4 py-2 border">{selectedRecord.amount} AED</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              <Link className="mt-4" href={`/${selectedRecord?.client?.type}/${selectedRecord?.client?.id}`}>
-                Go to Client Page
-              </Link>
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={cancelAction}
-                  className="px-4 py-2 bg-red hover:bg-red-600 text-white rounded-lg"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Payments List</p>
+        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Invoice List</p>
           <div className="gap-1 flex">
 
             <Link
 
-              href={"transactions/income"}
-              className="inline-flex items-center justify-center rounded-md bg-meta-3 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
+              href={"invoice/new"}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
-              Income
+              New Invoice
             </Link>
-            <Link
-              href={"transactions/expense"}
-              className="inline-flex items-center justify-center rounded-md bg-red px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
-              Expense
-            </Link>
+
           </div>
         </h4>
-
         <div className="flex flex-col capitalize">
           <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-5">
 
@@ -203,18 +101,18 @@ const TransactionList = ({ type, id }: {
             </div>
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Particular
+                Title
               </h5>
             </div>
 
             <div className="p-2.5 text-center xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Method
+                Date
               </h5>
             </div>
             <div className="p-2.5 text-center xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Transaction
+                Amount
               </h5>
             </div>
 
@@ -228,40 +126,38 @@ const TransactionList = ({ type, id }: {
 
 
 
-            {isLoading ? <SkeletonList /> : records.map((record, key) => (
+            {isLoading ? <SkeletonList /> : invoices?.map((record, key) => (
               <div
-                className={`grid grid-cols-3 sm:grid-cols-5 ${key === records.length - 1
+                className={`grid grid-cols-3 sm:grid-cols-5 ${key === invoices.length - 1
                   ? ""
                   : "border-b border-stroke dark:border-strokedark"
                   }`}
                 key={key}
               >
-                <Link href={`/${record?.client?.type}/${record?.client?.id}`} className="flex items-center gap-3 p-2.5 xl:p-5">
-                  <p className="hidden capitalize text-black dark:text-white sm:block">
+                <div className="flex items-center gap-3 p-2.5 xl:p-5">
+
+                  {record?.client?.type === "company" || record.client.type === "employee" ? <Link href={`/${record?.client?.type}/${record?.client?.id}`} className="hidden capitalize text-black dark:text-white sm:block">
                     {record?.client?.name}
-                  </p>
-                </Link>
+                  </Link> : <div className="hidden capitalize text-black dark:text-white sm:block">
+                    {record?.client?.name}<span className="text-sm border bordr-meta-5 text-red rounded-md bg-opacity-10 px-1 ml-2">Special</span>
+                  </div>
+                  } </div>
+
+
 
                 <div className="hidden items-center p-2.5 sm:flex xl:p-5">
-                  <p className="text-meta-5">{record?.particular}</p>
+                  <p className="text-meta-5">{record?.title}</p>
                 </div>
-                <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  {record?.method}{record?.status && (
-                    <span className="text-sm border bordr-meta-5 text-meta-5 rounded-md bg-opacity-10 px-1 ml-2">{record.status}</span>
-                  )}
+                <div className="flex items-center justify-center gap-3 p-2.5 xl:p-5">
+                  <p className="hidden capitalize text-black dark:text-white sm:block">
+                    {record?.date || "N/A"}
+                  </p>
                 </div>
-
-                <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
-
-                    {record?.type === "expense" && record?.serviceFee && record?.serviceFee !== 0 ? (
-                      <span> + {record?.serviceFee}</span>
-                    ) : <></>}
-                    &nbsp;
-                    <span className="text-xs">AED</span></p>
+                <div className="flex items-center justify-center gap-3 p-2.5 xl:p-5">
+                  <p className="hidden capitalize text-meta-3 sm:block">
+                    {record?.amount} AED
+                  </p>
                 </div>
-
-
                 <div className="flex justify-center items-center">
                   {!type && !id && (
                     <Link href={`/accounts/transactions/${record?.client?.type}/${record?.client?.id}`} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
@@ -270,12 +166,12 @@ const TransactionList = ({ type, id }: {
                       </svg>
                     </Link>
                   )}
-                  <button onClick={() => handleInfo(record)} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="9" stroke="gray" />
-                      <path d="M12.5 7.5C12.5 7.77614 12.2761 8 12 8C11.7239 8 11.5 7.77614 11.5 7.5C11.5 7.22386 11.7239 7 12 7C12.2761 7 12.5 7.22386 12.5 7.5Z" fill="gray" />
-                      <path d="M12 17V10" stroke="gray" />
+                  <button className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="3.5" stroke="gray" />
+                      <path d="M20.188 10.9343C20.5762 11.4056 20.7703 11.6412 20.7703 12C20.7703 12.3588 20.5762 12.5944 20.188 13.0657C18.7679 14.7899 15.6357 18 12 18C8.36427 18 5.23206 14.7899 3.81197 13.0657C3.42381 12.5944 3.22973 12.3588 3.22973 12C3.22973 11.6412 3.42381 11.4056 3.81197 10.9343C5.23206 9.21014 8.36427 6 12 6C15.6357 6 18.7679 9.21014 20.188 10.9343Z" stroke="gray" />
                     </svg>
+
                   </button>
                   <button onClick={() => handleDelete(record?.id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                     <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -305,10 +201,10 @@ const TransactionList = ({ type, id }: {
         <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
         <button
           onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isBtnDisabled || !hasMore || !records.length}
+          disabled={isBtnDisabled || !hasMore || !invoices.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            (isBtnDisabled || !hasMore || !records.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            (isBtnDisabled || !hasMore || !invoices.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Next
@@ -317,4 +213,4 @@ const TransactionList = ({ type, id }: {
   );
 };
 
-export default TransactionList;
+export default InvoiceList;

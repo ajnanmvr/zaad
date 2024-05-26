@@ -1,13 +1,12 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
+import InvoiceList from "@/components/Tables/InvoiceList";
 
 export default function Invoice() {
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Invoices" />
-      <div className="flex flex-col gap-10">
-        
-      </div>
+      <InvoiceList />
     </DefaultLayout>
   )
 }

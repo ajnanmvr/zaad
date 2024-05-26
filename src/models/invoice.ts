@@ -4,7 +4,7 @@ const InvoiceSchema = new Schema(
     title: String,
     suffix: String,
     invoiceNo: {
-      type: String,
+      type: Number,
       required: [true, "please provide an invoice number"],
     },
     company: {
@@ -15,6 +15,7 @@ const InvoiceSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "employees",
     },
+    other: String,
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "users",
@@ -26,7 +27,7 @@ const InvoiceSchema = new Schema(
     },
     date: String,
     items: [{ title: String, desc: String, rate: Number, quantity: Number }],
-    notes: String,
+    remarks: String,
   },
   {
     timestamps: true,
