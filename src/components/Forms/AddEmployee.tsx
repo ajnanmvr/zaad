@@ -14,12 +14,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const [searchValue, setSearchValue] = useState<string>("");
     const [isEditMode, setisEditMode] = useState(false);
     const [employeeData, setEmployeeData] = useState<any>({
-        name: "", company: "", documents: [{
-            name: "",
-            issueDate: "",
-            expiryDate: "",
-            attachment: ""
-        }]
+        name: "", company: "", documents: []
     });
     useEffect(() => {
         if (company) {
@@ -84,7 +79,10 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         setEmployeeData({ ...employeeData, company: selected._id });
         setSearchSuggestions([])
     };
-
+    const handleDeleteDocument = (index: number) => {
+        const updatedItems = employeeData.documents.filter((doc: any, docIndex: number) => docIndex !== index);
+        setEmployeeData({ ...employeeData, documents: updatedItems });
+    };
     let documents = {
         name: "",
         issueDate: "",
@@ -337,6 +335,20 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                         </div>
 
                                     </div>
+                                    <button
+                                        className="flex w-full justify-center rounded items-center text-red border border-red hover:bg-red p-3 font-medium hover:bg-opacity-10 transition-colors duration-300"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleDeleteDocument(index);
+                                        }}
+                                    >
+                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
+                                        </svg>
+                                        Delete</button>
                                     {/* <div className="mb-4.5">
                                         <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                             Attach file
@@ -352,7 +364,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                 </div>
                             ))}
 
-                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
+                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
                                 Add Document                </button>
                         </div>
                     </div>

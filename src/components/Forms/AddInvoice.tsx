@@ -20,10 +20,7 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
         createdBy: user?._id,
 
         title: "", company: "", items: [{
-            title: "",
-            desc: "",
-            rate: "",
-            quantity: ""
+
         }]
     });
     useEffect(() => {
@@ -88,6 +85,11 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
         setSearchValue(selected.name)
         setInvoiceData({ ...invoiceData, company: selected._id });
         setSearchSuggestions([])
+    };
+
+    const handleDeleteDocument = (index: number) => {
+        const updatedItems = invoiceData.items.filter((item: any, itemIndex: number) => itemIndex !== index);
+        setInvoiceData({ ...invoiceData, items: updatedItems });
     };
 
     let items = {
@@ -196,8 +198,9 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                         Invoice Number</label>
                                     <input
-                                        type="text"
+                                        type="number"
                                         name="invoiceNo"
+                                        onWheel={(e: any) => e.target.blur()}
                                         value={invoiceData?.invoiceNo}
                                         onChange={handleChange}
                                         placeholder="Invoice number"
@@ -254,70 +257,85 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
                         </div>
                         <div className="px-6.5 pb-6.5">
                             {invoiceData?.items?.map((doc: any, index: number) => (
-                                <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
-                                    <div className="mb-4.5">
-                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                            Title <span className="text-meta-1">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="title"
-                                            required
-                                            value={invoiceData.items[index]?.title}
-                                            onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
-                                            placeholder="Enter title of the item"
-                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                            Description
-                                        </label>
-                                        <textarea
-                                            rows={6}
-                                            name="desc"
-                                            placeholder="Description Here"
-                                            value={invoiceData.items[index]?.desc}
-                                            onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
-                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                        ></textarea>
-                                    </div>
-                                    <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-
-                                        <div className="w-full xl:w-1/2">
+                                    <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
+                                        <div className="mb-4.5">
                                             <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Rate
+                                                Title <span className="text-meta-1">*</span>
                                             </label>
                                             <input
                                                 type="text"
-                                                name="rate"
-                                                value={invoiceData.items[index]?.rate}
-                                                onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
-                                                placeholder="Enter Rate"
-                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                            />
-                                        </div>
-                                        <div className="w-full xl:w-1/2">
-                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Quantity
-                                                <span className="text-meta-1">*</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="quantity"
-                                                value={invoiceData.items[index]?.quantity}
-                                                onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
-                                                placeholder="Enter Quantity"
+                                                name="title"
                                                 required
+                                                value={invoiceData.items[index]?.title}
+                                                onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
+                                                placeholder="Enter title of the item"
                                                 className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                             />
                                         </div>
+                                        <div className="mb-3">
+                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                                Description
+                                            </label>
+                                            <textarea
+                                                rows={6}
+                                                name="desc"
+                                                placeholder="Description Here"
+                                                value={invoiceData.items[index]?.desc}
+                                                onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
+                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                            ></textarea>
+                                        </div>
+                                        <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
 
+                                            <div className="w-full xl:w-1/2">
+                                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                                    Rate
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    onWheel={(e: any) => e.target.blur()}
+                                                    name="rate"
+                                                    value={invoiceData.items[index]?.rate}
+                                                    onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
+                                                    placeholder="Enter Rate"
+                                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                                />
+                                            </div>
+                                            <div className="w-full xl:w-1/2">
+                                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                                    Quantity
+                                                    <span className="text-meta-1">*</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="quantity"
+                                                    onWheel={(e: any) => e.target.blur()}
+                                                    value={invoiceData.items[index]?.quantity}
+                                                    onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
+                                                    placeholder="Enter Quantity"
+                                                    required
+                                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                                />
+                                            </div>
+
+                                        </div>
+                                        <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
+                                        onClick={(e) => {
+                                            e.preventDefault()
+                                            handleDeleteDocument(index)
+                                        }}>
+                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
+                                        </svg>
+                                        Delete</button>
                                     </div>
-                                </div>
+
                             ))}
 
-                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
+                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
                                 Add Item                </button>
                         </div>
                     </div>

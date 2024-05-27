@@ -12,16 +12,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const [selectedOption, setSelectedOption] = useState<string>("");
     const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
     const [companyData, setCompanyData] = useState<any>({
-        name: "", documents: [{
-            name: "",
-            issueDate: "",
-            expiryDate: "",
-            attachment: ""
-        }], password: [{
-            platform: "",
-            username: "",
-            password: "",
-        }]
+        name: "", documents: [], password: []
     });
 
     useEffect(() => {
@@ -66,7 +57,14 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             console.log(error);
         }
     };
-
+    const handleDeleteDocument = (index: number) => {
+        const updatedItems = companyData.documents.filter((doc: any, docIndex: number) => docIndex !== index);
+        setCompanyData({ ...companyData, documents: updatedItems });
+    };
+    const handleDeletePassword = (index: number) => {
+        const updatedItems = companyData.password.filter((doc: any, docIndex: number) => docIndex !== index);
+        setCompanyData({ ...companyData, password: updatedItems });
+    };
     const handlePasswordChange = (index: number, field: string, value: string) => {
         const updatedPasswords = [...companyData.password];
         updatedPasswords[index][field] = value;
@@ -382,11 +380,24 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
                                     </div>
 
-
+                                    <button
+                                        className="flex w-full justify-center rounded items-center text-red border border-red hover:bg-red p-3 font-medium hover:bg-opacity-10 transition-colors duration-300"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleDeletePassword(index);
+                                        }}
+                                    >
+                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
+                                        </svg>
+                                        Delete</button>
                                 </div>
 
                             ))}
-                            <button onClick={handleAddPassword} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
+                            <button onClick={handleAddPassword} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
                                 Add Platform
                             </button>
                         </div>
@@ -456,10 +467,22 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                             className="w-full cursor-pointer rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition file:mr-5 file:border-collapse file:cursor-pointer file:border-0 file:border-r file:border-solid file:border-stroke file:bg-whiter file:px-5 file:py-3 file:hover:bg-primary file:hover:bg-opacity-10 focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:file:border-form-strokedark dark:file:bg-white/30 dark:file:text-white dark:focus:border-primary"
                                         />
                                     </div> */}
+                                    <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
+                                        onClick={(e) => {
+                                            e.preventDefault()
+                                            handleDeleteDocument(index)
+                                        }}>
+                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
+                                        </svg>
+                                        Delete</button>
                                 </div>
                             ))}
 
-                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded bg-green-700 p-3 font-medium text-gray hover:bg-opacity-90">
+                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
                                 Add Document                </button>
                         </div>
                     </div>
