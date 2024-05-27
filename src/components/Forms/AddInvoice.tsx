@@ -19,24 +19,22 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [isEditMode, setisEditMode] = useState(false);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
-        suffix: "",
         date: new Date().toISOString().split('T')[0],
-        title: "", company: "", items: [{
-        }]
     });
 
     const fetchData = async () => {
-        if (edit !== "") {
-            try {
-                const { data } = await axios.get(`/api/employee/${edit}`, invoiceData);
+
+        try {
+            if (edit) {
+                const { data } = await axios.get(`/api/invoice/${edit}`);
                 setInvoiceData(data.data);
                 setisEditMode(true)
-
-            } catch (error) {
-                console.log(error);
+            } else {
+                const { data } = await axios.get(`/api/invoice/number`);
+                setInvoiceData({ ...invoiceData, invoiceNo: data.invoiceNo, suffix: data?.suffix })
             }
-        } else {
-            setisEditMode(false)
+        } catch (error) {
+            console.log(error);
         }
     }
     useEffect(() => {
@@ -58,7 +56,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         }
     };
 
-
     const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
         try {
             const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
@@ -77,7 +74,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         const inputName = e.target.name;
         debounceSearch(searchValue, inputName);
     };
-
 
     const handleCompanySelection = (selected: TBaseData) => {
         setSearchValue(selected.name)
@@ -295,7 +291,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         value={invoiceData?.suffix}
                                         onChange={handleChange}
                                         placeholder="Enter a suffix"
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        className="w-full uppercase rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                     />
                                 </div>
 

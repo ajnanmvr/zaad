@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const { suffix, invoiceNo } = await Invoice.findOne()
       .sort({ createdAt: -1 })
       .select("invoiceNo suffix");
-    return Response.json({ suffix, invoiceNo }, { status: 201 });
+    return Response.json({ suffix, invoiceNo: invoiceNo + 1 }, { status: 201 });
   } catch (error) {
     return Response.json(error, { status: 401 });
   }
