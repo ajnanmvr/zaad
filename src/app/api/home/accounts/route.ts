@@ -5,7 +5,7 @@ import calculateLast7Days from "@/helpers/calculateLast7Days";
 import Records from "@/models/records"; // Assuming TRecordDataWithCreatedAt is the correct type for your Records model
 import { TRecordDataWithCreatedAt } from "@/types/records";
 connect();
-
+export const dynamic = 'force-dynamic'
 export async function GET(): Promise<Response> {
   try {
     const allRecords: TRecordDataWithCreatedAt[] = await Records.find({

@@ -6,9 +6,9 @@ import { TRecordData } from "@/types/records";
 import { TCompanyData, TEmployeeData } from "@/types/types";
 import processCompanies from "@/helpers/processCompanies";
 import processEmployees from "@/helpers/processEmployees";
+export const dynamic = 'force-dynamic'
 
 connect();
-
 export async function GET() {
   try {
     const [companies, employees, allRecords]: [
