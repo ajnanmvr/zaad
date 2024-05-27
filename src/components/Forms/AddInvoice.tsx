@@ -124,7 +124,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const breadCrumb = isEditMode ? "Edit Invoice" : "Add Invoice"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Invoice"
 
-    console.log(invoiceData);
 
     return (
         <DefaultLayout>

@@ -64,7 +64,6 @@ const SingleCompany = () => {
   const saveEdits = async () => {
     console.log("Updating Document with ID:", selectedDocumentId);
     const data = await axios.put(`/api/company/${id}/doc/${selectedDocumentId}`, editData);
-    console.log(data);
     setIsEditDocsOpen(false);
     fetchData();
   };

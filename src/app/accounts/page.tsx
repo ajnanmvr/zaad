@@ -75,9 +75,9 @@ export default function AccountsDashboard() {
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} />
-            <CardDataStats title="Total Credit" total={`${profitsData.totalToGet * (-1)}AED`} />
-            <CardDataStats title="Total Debit" total={`${profitsData.totalToGive}AED`} />
             <CardDataStats title="Total Profit" total={`${profitsData.profit}AED`} />
+            <CardDataStats title="Total Credit" total={`${profitsData.totalToGet * (-1)}AED`} border="border-meta-3"/>
+            <CardDataStats title="Total Debit" total={`${profitsData.totalToGive}AED`} border="border-red" />
           </div>
 
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
@@ -104,10 +104,10 @@ export default function AccountsDashboard() {
             <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
           </div>
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} color="border-meta-3" />
-            <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} />
-            <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees * (-1)}AED`} />
-            <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} />
+            <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} border="border-meta-3" />
+            <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} border="border-red" />
+            <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees * (-1)}AED`} border="border-meta-3" />
+            <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} border="border-red"/>
           </div>
 
           <div className="mt-4 flex flex-col gap-4">

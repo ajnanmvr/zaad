@@ -57,7 +57,6 @@ const SingleEmployee = () => {
   const confirmDelete = async () => {
     console.log("Deleting Document with ID:", selectedDocumentId);
     const data = await axios.delete(`/api/employee/${id}/doc/${selectedDocumentId}`);
-    console.log(data);
     fetchData();
     setIsConfirmationOpen(false);
   };

@@ -34,7 +34,6 @@ function CompanyList() {
     const confirmDelete = async () => {
         console.log("Deleting company with ID:", selectedCompanyId);
         const data = await axios.delete(`/api/company/${selectedCompanyId}`)
-        console.log(data);
         fetchData()
         setIsConfirmationOpen(false);
     }

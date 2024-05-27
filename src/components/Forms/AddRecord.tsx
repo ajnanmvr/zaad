@@ -35,6 +35,13 @@ const AddRecord = ({ type }: { type: string }) => {
       setRecordData({ ...recordData, self: "zaad", company: undefined, employee: undefined })
   }, [selectedOption])
 
+  useEffect(() => {
+    if (clientFee !== "") {
+      const newServiceFee = parseFloat(clientFee) - recordData.amount;
+      setRecordData((prevData) => ({ ...prevData, serviceFee: newServiceFee }));
+    }
+  }, [recordData.amount]);
+  
   const generateServiceFee = (e: any) => {
     const newClientFee = e.target.value
     const newServiceFee = newClientFee - recordData.amount

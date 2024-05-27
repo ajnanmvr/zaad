@@ -16,7 +16,6 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
     const confirmDelete = async () => {
         console.log("Deleting employee with ID:", selectedEmployeeId);
         const data = await axios.delete(`/api/employee/${selectedEmployeeId}`)
-        console.log(data);
         window.location.reload();
         setIsConfirmationOpen(false);
     }

@@ -114,7 +114,6 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     }
     const breadCrumb = isEditMode ? "Edit Company" : "Add Company"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Company"
-    console.log(companyData);
 
     return (
         <DefaultLayout>

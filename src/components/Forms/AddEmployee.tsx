@@ -113,7 +113,6 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     }
     const breadCrumb = isEditMode ? "Edit Employee" : "Add Employee"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Employee"
-    console.log(employeeData);
 
     return (
         <DefaultLayout>
