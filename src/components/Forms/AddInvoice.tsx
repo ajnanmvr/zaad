@@ -9,25 +9,21 @@ import { debounce } from "lodash";
 import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
 
-const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
+const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
     const { user } = useUserContext();
 
     const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
+    const [selectedOption, setSelectedOption] = useState<string>("");
     const [isEditMode, setisEditMode] = useState(false);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
-
+        suffix: "",
+        date: new Date().toISOString().split('T')[0],
         title: "", company: "", items: [{
-
         }]
     });
-    useEffect(() => {
-        if (company) {
-            setInvoiceData({ ...invoiceData, company })
-        }
-    }, [])
 
     const fetchData = async () => {
         if (edit !== "") {
@@ -61,6 +57,8 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
             console.log(error);
         }
     };
+
+
     const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
         try {
             const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
@@ -83,9 +81,16 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
 
     const handleCompanySelection = (selected: TBaseData) => {
         setSearchValue(selected.name)
-        setInvoiceData({ ...invoiceData, company: selected._id });
+        setInvoiceData({ ...invoiceData, employee: undefined, other: undefined, company: selected._id });
         setSearchSuggestions([])
     };
+
+    const handleEmployeeSelection = (selected: TBaseData) => {
+        setSearchValue(selected.name)
+        setInvoiceData({ ...invoiceData, company: undefined, other: undefined, employee: selected._id });
+        setSearchSuggestions([])
+    };
+
 
     const handleDeleteDocument = (index: number) => {
         const updatedItems = invoiceData.items.filter((item: any, itemIndex: number) => itemIndex !== index);
@@ -151,34 +156,134 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 />
                             </div>
-                            {!company && (
-                                <>
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Company Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="company"
-                                        autoComplete="off"
 
-                                        value={searchValue}
-                                        onChange={handleInputChange}
-                                        placeholder="Enter company name"
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                    />
-                                    <ul className="flex flex-wrap gap-1 my-2">
-                                        {searchSuggestions.map((company, key) => (
-                                            <li
 
-                                                className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+                            <div className="mb-4.5 flex flex-col">
+                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                    Client Type
+                                    <span className="text-meta-1">*</span>
+                                </label>
 
-                                                key={key} onClick={() => handleCompanySelection(company)}>
-                                                {company.name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </>
-                            )}
+                                <div className="relative z-20 bg-transparent dark:bg-form-input">
+                                    <select
+                                        value={selectedOption}
+                                        name="client-type"
+                                        onChange={(e) => {
+                                            setSelectedOption(e.target.value);
+                                            setSearchValue("");
+                                        }}
+                                        className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
+                                    >
+                                        <option value="" disabled className="text-body dark:text-bodydark">
+                                            Select any one
+                                        </option>
+                                        <option value="company" className="text-body dark:text-bodydark">
+                                            Company
+                                        </option>
+                                        <option value="employee" className="text-body dark:text-bodydark">
+                                            Individual
+                                        </option>
+                                        <option value="other" className="text-body dark:text-bodydark">
+                                            Other
+                                        </option>
+                                    </select>
+
+                                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                                        <svg
+                                            className="fill-current"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <g opacity="0.8">
+                                                <path
+                                                    fillRule="evenodd"
+                                                    clipRule="evenodd"
+                                                    d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                                                    fill=""
+                                                ></path>
+                                            </g>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="mb-4.5">
+                                {selectedOption === "employee" && (
+                                    <>
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Individual Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="employee"
+                                            onChange={handleInputChange}
+                                            value={searchValue}
+                                            autoComplete="off"
+                                            placeholder="Enter individual name"
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        />
+                                        <ul className="flex flex-wrap gap-1 mt-2">
+                                            {searchSuggestions.map((employee, key) => (
+                                                <li
+                                                    className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+                                                    key={key} onClick={() => handleEmployeeSelection(employee)}>
+                                                    {employee.name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </>
+                                )}
+
+                                {selectedOption === "company" && (
+                                    <>
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Company Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="company"
+                                            value={searchValue}
+                                            autoComplete="off"
+                                            onChange={handleInputChange}
+                                            placeholder="Enter company name"
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        />
+                                        <ul className="flex flex-wrap gap-1 mt-2">
+                                            {searchSuggestions.map((company, key) => (
+                                                <li
+
+                                                    className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
+
+                                                    key={key} onClick={() => handleCompanySelection(company)}>
+                                                    {company.name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </>
+                                )}
+
+
+                                {selectedOption === "other" && (
+                                    <>
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Client Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="other"
+                                            value={invoiceData?.other}
+                                            onChange={(e) => {
+                                                setInvoiceData({ ...invoiceData, company: undefined, employee: undefined, other: e.target.value });
+                                            }}
+                                            placeholder="Enter cient name"
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        />
+                                    </>
+                                )}
+                            </div>
                             <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
                                 <div className="w-full xl:w-1/2">
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
@@ -257,69 +362,69 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
                         </div>
                         <div className="px-6.5 pb-6.5">
                             {invoiceData?.items?.map((doc: any, index: number) => (
-                                    <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
-                                        <div className="mb-4.5">
+                                <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
+                                    <div className="mb-4.5">
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Title <span className="text-meta-1">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            required
+                                            value={invoiceData.items[index]?.title}
+                                            onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
+                                            placeholder="Enter title of the item"
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Description
+                                        </label>
+                                        <textarea
+                                            rows={6}
+                                            name="desc"
+                                            placeholder="Description Here"
+                                            value={invoiceData.items[index]?.desc}
+                                            onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        ></textarea>
+                                    </div>
+                                    <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                                        <div className="w-full xl:w-1/2">
                                             <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Title <span className="text-meta-1">*</span>
+                                                Rate
                                             </label>
                                             <input
-                                                type="text"
-                                                name="title"
-                                                required
-                                                value={invoiceData.items[index]?.title}
-                                                onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
-                                                placeholder="Enter title of the item"
+                                                type="number"
+                                                onWheel={(e: any) => e.target.blur()}
+                                                name="rate"
+                                                value={invoiceData.items[index]?.rate}
+                                                onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
+                                                placeholder="Enter Rate"
                                                 className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                             />
                                         </div>
-                                        <div className="mb-3">
+                                        <div className="w-full xl:w-1/2">
                                             <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Description
+                                                Quantity
+                                                <span className="text-meta-1">*</span>
                                             </label>
-                                            <textarea
-                                                rows={6}
-                                                name="desc"
-                                                placeholder="Description Here"
-                                                value={invoiceData.items[index]?.desc}
-                                                onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
+                                            <input
+                                                type="number"
+                                                name="quantity"
+                                                onWheel={(e: any) => e.target.blur()}
+                                                value={invoiceData.items[index]?.quantity}
+                                                onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
+                                                placeholder="Enter Quantity"
+                                                required
                                                 className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                            ></textarea>
+                                            />
                                         </div>
-                                        <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
 
-                                            <div className="w-full xl:w-1/2">
-                                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                    Rate
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    onWheel={(e: any) => e.target.blur()}
-                                                    name="rate"
-                                                    value={invoiceData.items[index]?.rate}
-                                                    onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
-                                                    placeholder="Enter Rate"
-                                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                                />
-                                            </div>
-                                            <div className="w-full xl:w-1/2">
-                                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                    Quantity
-                                                    <span className="text-meta-1">*</span>
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="quantity"
-                                                    onWheel={(e: any) => e.target.blur()}
-                                                    value={invoiceData.items[index]?.quantity}
-                                                    onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
-                                                    placeholder="Enter Quantity"
-                                                    required
-                                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                                />
-                                            </div>
-
-                                        </div>
-                                        <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
+                                    </div>
+                                    <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
                                         onClick={(e) => {
                                             e.preventDefault()
                                             handleDeleteDocument(index)
@@ -331,7 +436,7 @@ const AddInvoice = ({ company, edit }: { company?: string | string[], edit?: str
                                             <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
                                         </svg>
                                         Delete</button>
-                                    </div>
+                                </div>
 
                             ))}
 

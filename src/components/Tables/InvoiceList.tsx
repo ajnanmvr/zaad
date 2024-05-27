@@ -73,7 +73,7 @@ const InvoiceList = ({ type, id }: {
       <div className="rounded-sm border  border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
         <ConfirmationModal
           isOpen={isConfirmationOpen}
-          message="Are you sure you want to delete this payment record?"
+          message="Are you sure you want to delete this invoice?"
           onConfirm={confirmDelete}
           onCancel={cancelAction}
         />
@@ -92,8 +92,13 @@ const InvoiceList = ({ type, id }: {
           </div>
         </h4>
         <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-5">
+          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
 
+            <div className="p-2.5 xl:p-5">
+              <h5 className="text-sm font-medium uppercase xsm:text-base">
+                Invoice No
+              </h5>
+            </div>
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 Client
@@ -128,18 +133,23 @@ const InvoiceList = ({ type, id }: {
 
             {isLoading ? <SkeletonList /> : invoices?.map((record, key) => (
               <div
-                className={`grid grid-cols-3 sm:grid-cols-5 ${key === invoices.length - 1
+                className={`grid grid-cols-3 sm:grid-cols-6 ${key === invoices.length - 1
                   ? ""
                   : "border-b border-stroke dark:border-strokedark"
                   }`}
                 key={key}
               >
                 <div className="flex items-center gap-3 p-2.5 xl:p-5">
+                  <p className="hidden uppercase text-meta-5 sm:block">
+                    {record?.invoiceNo}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 p-2.5 xl:p-5">
 
                   {record?.client?.type === "company" || record.client.type === "employee" ? <Link href={`/${record?.client?.type}/${record?.client?.id}`} className="hidden capitalize text-black dark:text-white sm:block">
                     {record?.client?.name}
                   </Link> : <div className="hidden capitalize text-black dark:text-white sm:block">
-                    {record?.client?.name}<span className="text-sm border bordr-meta-5 text-red rounded-md bg-opacity-10 px-1 ml-2">Special</span>
+                    {record?.client?.name}<span className="text-sm border bordr-meta-5 text-red rounded-md bg-opacity-10 px-1 ml-2">Other</span>
                   </div>
                   } </div>
 
