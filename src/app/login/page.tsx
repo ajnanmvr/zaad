@@ -12,7 +12,7 @@ const SignIn: React.FC = () => {
     e.preventDefault()
     try {
       await axios.post("/api/users/auth/login", user)
-      router.push("/")
+      router.refresh()
     } catch (error: any) {
       console.log("Login Failed", error);
       setError(error.response.data.error)
@@ -46,7 +46,7 @@ const SignIn: React.FC = () => {
               </Link>
 
               <p className="2xl:px-20">
-        empowering businesses to enhance productivity & compliance. 
+                empowering businesses to enhance productivity & compliance.
 
 
               </p>
