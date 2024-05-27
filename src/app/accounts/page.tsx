@@ -34,6 +34,7 @@ export default function AccountsDashboard() {
     expensesLast7DaysTotal: [0],
     daysOfWeekInitials: [""]
   })
+  
   const [profitsData, setProfitsData] = useState({
     over0balanceCompanies: [{ name: "", balance: 0, id: "" }],
     under0balanceCompanies: [{ name: "", balance: 0, id: "" }],
