@@ -2,6 +2,7 @@ import Invoice from "@/models/invoice";
 import connect from "@/db/connect";
 import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
+import { NextRequest } from "next/server";
 connect();
 export async function DELETE(
   request: Request,
@@ -26,10 +27,12 @@ export async function PUT(
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const editmode = searchParams.get("editmode");
     const res = await Invoice.findById(params.id).populate([
       "createdBy",
       "company",
@@ -56,22 +59,41 @@ export async function GET(
             ? { name: other, type: "other" }
             : null;
     };
-    const data = {
-      title,
-      invoiceNo: suffix + invoiceNo,
-      client: client(),
-      creator: createdBy.username,
-      amount: items.reduce(
-        (acc: number, item: TInvoiceItemsData) =>
-          acc + item.rate * item.quantity,
-        0
-      ),
-      items,
-      date: formatDate(date),
-      remarks,
+    const editModeData = () => {
+      delete res.company;
+      delete res.createdBy;
+      return { company: company._id, createdBy: createdBy._id, ...res };
     };
+    const data =
+      editmode === null
+        ? {
+            title,
+            invoiceNo: suffix + invoiceNo,
+            client: client(),
+            creator: createdBy.username,
+            amount: items.reduce(
+              (acc: number, item: TInvoiceItemsData) =>
+                acc + item.rate * item.quantity,
+              0
+            ),
+            items,
+            date: formatDate(date),
+            remarks,
+          }
+        : {
+            company: company?._id,
+            employee: employee?._id,
+            other,
+            title,
+            suffix,
+            invoiceNo,
+            createdBy:createdBy._id,
+            date,
+            items,
+            remarks,
+          };
 
-    return Response.json( res , { status: 200 });
+    return Response.json(data, { status: 200 });
   } catch (error) {
     return Response.json(
       { message: "Error fetching employee data", error },
