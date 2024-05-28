@@ -97,7 +97,7 @@ const TransactionList = ({ type, id }: {
                       </tr>
                       <tr>
                         <th className="px-4 py-2 border">Client Type</th>
-                        <td className="px-4 py-2 border">{selectedRecord.client.type}</td>
+                        <td className="px-4 py-2 border">{selectedRecord.client?.type}</td>
                       </tr>
                     </>
                   )}

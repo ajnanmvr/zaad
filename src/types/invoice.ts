@@ -7,7 +7,7 @@ export type TInvoiceData = {
   createdBy: string;
   date: string;
   items: TInvoiceItemsData[];
-  notes: string;
+  remarks: string;
 };
 export type TInvoiceList = {
   id: string;
