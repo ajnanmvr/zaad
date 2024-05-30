@@ -26,7 +26,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
         try {
             if (edit) {
-                const { data } = await axios.get(`/api/invoice/${edit}`);
+                const { data } = await axios.get(`/api/invoice/${edit}?editmode`);
                 setInvoiceData(data);
                 setisEditMode(true)
             } else {
@@ -123,8 +123,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     }
     const breadCrumb = isEditMode ? "Edit Invoice" : "Add Invoice"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Invoice"
-
-
     return (
         <DefaultLayout>
             <Breadcrumb pageName={`${breadCrumb}`} />
@@ -315,7 +313,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                             <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
                                 <div className="w-full xl:w-1/2">
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Invoice Number Suffix
+                                        Invoice Suffix
                                     </label>
                                     <input
                                         type="text"
