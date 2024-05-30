@@ -30,8 +30,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 setInvoiceData(data);
                 setisEditMode(true)
             } else {
-                const { data } = await axios.get(`/api/invoice/number`);
-                setInvoiceData({ ...invoiceData, invoiceNo: data.invoiceNo, suffix: data?.suffix })
+                const { data } = await axios.get(`/api/invoice/prev`);
+                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: data.invoiceNo, suffix: data?.suffix })
             }
         } catch (error) {
             console.log(error);
@@ -377,7 +377,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                     rows={6}
                                     name="remarks"
                                     placeholder="Remarks Here"
-                                    value={invoiceData?.notes}
+                                    value={invoiceData?.remarks}
                                     onChange={handleChange}
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 ></textarea>

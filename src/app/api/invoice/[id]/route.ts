@@ -53,6 +53,7 @@ export async function GET(
       location,
       advance,
     } = res;
+    
     const client = () => {
       return company
         ? { name: company.name, id: company._id, type: "company" }

@@ -5,10 +5,13 @@ connect();
 
 export async function GET(request: Request) {
   try {
-    const { suffix, invoiceNo } = await Invoice.findOne()
+    const { suffix, invoiceNo, title } = await Invoice.findOne()
       .sort({ createdAt: -1 })
       .select("invoiceNo suffix title");
-    return Response.json({ suffix, invoiceNo: invoiceNo + 1 }, { status: 201 });
+    return Response.json(
+      { suffix, invoiceNo: invoiceNo + 1, title },
+      { status: 201 }
+    );
   } catch (error) {
     return Response.json(error, { status: 401 });
   }
