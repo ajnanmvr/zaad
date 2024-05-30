@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         return {
           id: invoice._id,
           client: client(),
-          title: invoice.title,
+          purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
           amount: invoice.items.reduce(
             (acc: number, item: TInvoiceItemsData) =>

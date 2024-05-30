@@ -16,6 +16,9 @@ const InvoiceSchema = new Schema(
       ref: "employees",
     },
     other: String,
+    location: String,
+    purpose: String,
+    advance: Number,
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "users",

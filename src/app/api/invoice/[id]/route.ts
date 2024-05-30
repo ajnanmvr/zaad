@@ -46,6 +46,9 @@ export async function GET(
       date,
       items,
       remarks,
+      purpose,
+      location,
+      advance,
     } = res;
     const client = () => {
       return company
@@ -69,9 +72,12 @@ export async function GET(
       items,
       date: formatDate(date),
       remarks,
+      purpose,
+      location,
+      advance,
     };
 
-    return Response.json( res , { status: 200 });
+    return Response.json(res, { status: 200 });
   } catch (error) {
     return Response.json(
       { message: "Error fetching employee data", error },
