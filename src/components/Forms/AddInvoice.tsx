@@ -296,7 +296,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         </div></>
                                 )
                             }
-                                                        <div className="mb-4.5">
+                            <div className="mb-4.5">
                                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                     Location <span className="text-meta-1">*</span>
                                 </label>
@@ -352,6 +352,22 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                 </div>
                             </div>
 
+
+                            <div className="mb-4.5">
+                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                    Advance
+                                </label>
+                                <input
+                                    type="number"
+                                    name="advance"
+                                    value={invoiceData?.advance}
+                                    onWheel={(e: any) => e.target.blur()}
+                                    onChange={handleChange}
+                                    required
+                                    placeholder="Advance payment"
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                />
+                            </div>
 
                             <div className="mb-6">
                                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">

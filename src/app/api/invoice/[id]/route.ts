@@ -67,6 +67,13 @@ export async function GET(
       delete res.createdBy;
       return { company: company._id, createdBy: createdBy._id, ...res };
     };
+    const commonData = {
+      items,
+      remarks,
+      advance,
+      purpose,
+      location,
+    };
     const data =
       editmode === null
         ? {
@@ -79,9 +86,11 @@ export async function GET(
                 acc + item.rate * item.quantity,
               0
             ),
-            items,
             date: formatDate(date),
-            remarks,
+            ...commonData,
+            balance: function () {
+              return this.amount - advance;
+            },
           }
         : {
             company: company?._id,
@@ -90,10 +99,9 @@ export async function GET(
             title,
             suffix,
             invoiceNo,
-            createdBy:createdBy._id,
+            createdBy: createdBy._id,
             date,
-            items,
-            remarks,
+            ...commonData,
           };
 
     return Response.json(data, { status: 200 });

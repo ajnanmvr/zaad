@@ -106,7 +106,7 @@ const InvoiceList = ({ type, id }: {
             </div>
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Title
+                Purpose
               </h5>
             </div>
 
@@ -156,7 +156,7 @@ const InvoiceList = ({ type, id }: {
 
 
                 <div className="hidden items-center p-2.5 sm:flex xl:p-5">
-                  <p className="text-meta-5">{record?.title}</p>
+                  <p className="text-meta-5">{record?.purpose}</p>
                 </div>
                 <div className="flex items-center justify-center gap-3 p-2.5 xl:p-5">
                   <p className="hidden capitalize text-black dark:text-white sm:block">
@@ -169,7 +169,7 @@ const InvoiceList = ({ type, id }: {
                   </p>
                 </div>
                 <div className="flex justify-center items-center">
-                  <Link href={`/accounts/invoice/${record?.id}/edit`} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
+                  <Link href={`/accounts/invoice/${record?.id}`} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="3.5" stroke="gray" />
                       <path d="M20.188 10.9343C20.5762 11.4056 20.7703 11.6412 20.7703 12C20.7703 12.3588 20.5762 12.5944 20.188 13.0657C18.7679 14.7899 15.6357 18 12 18C8.36427 18 5.23206 14.7899 3.81197 13.0657C3.42381 12.5944 3.22973 12.3588 3.22973 12C3.22973 11.6412 3.42381 11.4056 3.81197 10.9343C5.23206 9.21014 8.36427 6 12 6C15.6357 6 18.7679 9.21014 20.188 10.9343Z" stroke="gray" />

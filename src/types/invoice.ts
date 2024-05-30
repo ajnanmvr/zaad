@@ -8,10 +8,13 @@ export type TInvoiceData = {
   date: string;
   items: TInvoiceItemsData[];
   remarks: string;
+  advance: number;
+  location: string;
+  purpose: string;
 };
 export type TInvoiceList = {
   id: string;
-  title: string;
+  purpose: string;
   invoiceNo: string;
   client: {
     name: string;
