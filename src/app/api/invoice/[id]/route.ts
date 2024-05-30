@@ -53,7 +53,7 @@ export async function GET(
       location,
       advance,
     } = res;
-    
+
     const client = () => {
       return company
         ? { name: company.name, id: company._id, type: "company" }
@@ -89,9 +89,6 @@ export async function GET(
             ),
             date: formatDate(date),
             ...commonData,
-            balance: function () {
-              return this.amount - advance;
-            },
           }
         : {
             company: company?._id,
@@ -101,7 +98,7 @@ export async function GET(
             suffix,
             invoiceNo,
             createdBy: createdBy._id,
-            date,
+            date: formatDate(date),
             ...commonData,
           };
 

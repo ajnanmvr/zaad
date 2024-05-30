@@ -94,11 +94,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     };
 
     let items = {
-        name: "",
-        issueDate: "",
-        expiryDate: "",
-        attachment: ""
-    }
+        quantity: 1
+}
 
     const handleAddDocument = (e: any) => {
         e.preventDefault()
@@ -123,6 +120,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     }
     const breadCrumb = isEditMode ? "Edit Invoice" : "Add Invoice"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Invoice"
+    console.log(invoiceData);
+    
     return (
         <DefaultLayout>
             <Breadcrumb pageName={`${breadCrumb}`} />
@@ -298,7 +297,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                             }
                             <div className="mb-4.5">
                                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Location <span className="text-meta-1">*</span>
+                                    Location 
                                 </label>
                                 <input
                                     type="text"

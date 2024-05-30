@@ -1,6 +1,7 @@
 import connect from "@/db/connect";
 import Invoice from "@/models/invoice";
 import { TInvoiceItemsData } from "@/types/invoice";
+import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 
 connect();
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
               acc + item.rate * item.quantity,
             0
           ),
-          date: invoice.date,
+          date: formatDate(invoice.date),
         };
       });
     return Response.json(
