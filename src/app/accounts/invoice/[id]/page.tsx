@@ -84,16 +84,22 @@ function SingleInvoice() {
 
             <div className="w-full border-t font-bold flex justify-between py-2">
               <p>Total</p>
-              <p>{invoice?.amount || 0}.00 AED</p>
+              <p>{invoice?.amount || 0} AED</p>
             </div>
-            <div className="w-full border-t font-bold flex justify-between py-2">
-              <p>Advance</p>
-              <p>{invoice?.advance || 0}.00 AED</p>
-            </div>
-            <div className="w-full border-t font-bold flex justify-between py-2">
-              <p>Balance</p>
-              <p>{(invoice?.amount || 0) - (invoice?.advance || 0)}.00 AED</p>
-            </div>
+            {
+              invoice?.title !== "CASH RECEIPT" ? (
+                <>
+                  <div className="w-full border-t font-bold flex justify-between py-2">
+                    <p>Advance </p>
+                    <p>{invoice?.advance || 0} AED</p>
+                  </div>
+                  <div className="w-full border-t font-bold flex justify-between py-2">
+                    <p>Balance</p>
+                    <p>{(invoice?.amount || 0) - (invoice?.advance || 0)} AED</p>
+                  </div>
+                </>
+              ) : (<></>)
+            }
             <p className="mt-10 text-xl font-bold">Thank You!</p>
           </div>
 
