@@ -270,7 +270,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                             <button onClick={handleSubmit} className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
                                 {confirmBtn}
                             </button>
-                            <Link href={"/employee"} className="mt-2 flex w-full justify-center rounded p-3 font-medium text-gray hover:bg-opacity-90">
+                            <Link href={"/employee"} className="mt-2 flex w-full justify-center rounded p-3 font-medium text-red hover:bg-opacity-10 hover:bg-red transition-colors duration-300 border border-red">
                                 Cancel
                             </Link>
                         </div>
