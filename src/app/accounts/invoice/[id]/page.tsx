@@ -56,24 +56,27 @@ function SingleInvoice() {
                 <p className="font-semibold">{invoice?.invoiceNo}</p>
               </div>
             </div>
-            <p className="border border-green-950 rounded-md px-3 py-1.5 font-semibold text-lg text-green-950 mt-8">Purpose: {invoice?.purpose || "---"}</p>
+            <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>
 
             <table className="w-full text-left mt-2 mb-8">
-              <thead>
-                <tr className="h-16">
+              <thead className="border-y mb-10">
+                <tr>
                   <th>Description</th>
                   <th className="text-center">Rate</th>
                   <th className="text-center">Quantity</th>
                   <th className="text-center">Amount</th>
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody>
                 {invoice?.items?.map((item, index) => (
                   <tr key={index}>
-                    <td>{item.title}</td>
-                    <td className="text-center">{item.rate}</td>
+                    <td>
+                      <p className="font-semibold">{item.title}</p>
+                      <p className="text-sm">{item.desc}</p>
+                    </td>
+                    <td className="text-center">{item.rate} AED</td>
                     <td className="text-center">{item.quantity}</td>
-                    <td className="text-center">{item.rate * item.quantity}</td>
+                    <td className="text-center font-semibold">{item.rate * item.quantity} AED</td>
                   </tr>
                 ))}
               </tbody>

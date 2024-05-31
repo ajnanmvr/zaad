@@ -8,7 +8,11 @@ import processCompanies from "@/helpers/processCompanies";
 import processEmployees from "@/helpers/processEmployees";
 
 connect();
+
+export const dynamic = "force-dynamic";
+
 export async function GET() {
+
   try {
     const [companies, employees, allRecords]: [
       TCompanyData[],
