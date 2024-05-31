@@ -2,6 +2,7 @@ export type TInvoiceData = {
   title: string;
   suffix: string;
   invoiceNo: string;
+  trn: string;
   createdBy: string;
   client: string;
   date: string;

@@ -54,6 +54,12 @@ function SingleInvoice() {
               <div className="flex flex-col items-end">
                 <p className="text-sm">INVOICE NUMBER</p>
                 <p className="font-semibold">{invoice?.invoiceNo}</p>
+                {
+                  invoice?.trn && (
+                    <>                <p className="text-sm">TRN NUMBER</p>
+                      <p className="font-semibold">{invoice?.trn}</p></>
+                  )
+                }
               </div>
             </div>
             <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>

@@ -9,6 +9,7 @@ const InvoiceSchema = new Schema(
     },
     client: String,
     location: String,
+    trn: String,
     purpose: String,
     advance: Number,
     createdBy: {

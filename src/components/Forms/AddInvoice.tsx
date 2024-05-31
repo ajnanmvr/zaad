@@ -127,7 +127,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                     name="purpose"
                                     value={invoiceData?.purpose}
                                     onChange={handleChange}
-                                    required
                                     placeholder="Enter invoice purpose"
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 />
@@ -213,7 +212,19 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                     value={invoiceData?.advance}
                                     onWheel={(e: any) => e.target.blur()}
                                     onChange={handleChange}
-                                    required
+                                    placeholder="Advance payment"
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                />
+                            </div>
+                            <div className="mb-4.5">
+                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                    TRN Number
+                                </label>
+                                <input
+                                    type="text"
+                                    name="trn"
+                                    value={invoiceData?.trn}
+                                    onChange={handleChange}
                                     placeholder="Advance payment"
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 />
