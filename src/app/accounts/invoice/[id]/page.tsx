@@ -44,7 +44,7 @@ function SingleInvoice() {
             <div className="flex w-full justify-between mt-10">
               <div>
                 <p className="text-sm">BILLED TO</p>
-                <p className="text-xl font-semibold">{invoice?.client?.name}</p>
+                <p className="text-xl font-semibold">{invoice?.client}</p>
                 <p>{invoice?.location}</p>
               </div>
               <div>

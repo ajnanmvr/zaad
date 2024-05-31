@@ -146,12 +146,11 @@ const InvoiceList = ({ type, id }: {
                 </div>
                 <div className="flex items-center gap-3 p-2.5 xl:p-5">
 
-                  {record?.client?.type === "company" || record.client?.type === "employee" ? <Link href={`/${record?.client?.type}/${record?.client?.id}`} className="hidden capitalize text-black dark:text-white sm:block">
-                    {record?.client?.name}
-                  </Link> : <div className="hidden capitalize text-black dark:text-white sm:block">
-                    {record?.client?.name}<span className="text-sm border bordr-meta-5 text-red rounded-md bg-opacity-10 px-1 ml-2">Other</span>
+
+                  <div className="hidden capitalize text-black dark:text-white sm:block">
+                    {record?.client}
                   </div>
-                  } </div>
+                </div>
 
 
 

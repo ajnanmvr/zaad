@@ -3,11 +3,7 @@ export type TInvoiceData = {
   suffix: string;
   invoiceNo: string;
   createdBy: string;
-  client: {
-    name: string;
-    id?: string;
-    type: string;
-  };
+  client: string;
   date: string;
   items: TInvoiceItemsData[];
   remarks: string;
@@ -21,11 +17,7 @@ export type TInvoiceList = {
   id: string;
   purpose: string;
   invoiceNo: string;
-  client: {
-    name: string;
-    id?: string;
-    type: string;
-  };
+  client: string;
   amount: number;
   date: string;
 };

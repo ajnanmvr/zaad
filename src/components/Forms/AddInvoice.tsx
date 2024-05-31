@@ -13,9 +13,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
     const { user } = useUserContext();
 
-    const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
-    const [searchValue, setSearchValue] = useState<string>("");
-    const [selectedOption, setSelectedOption] = useState<string>("");
     const [isEditMode, setisEditMode] = useState(false);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
@@ -56,36 +53,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         }
     };
 
-    const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
-        try {
-            const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
-            setSearchSuggestions(response.data);
-        } catch (error) {
-            console.error("Error fetching company suggestions:", error);
-        }
-    };
 
-    const debounceSearch = debounce((input: string, name: string) => {
-        fetchsearchSuggestions(input, name);
-    }, 300);
 
-    const handleInputChange = (e: any) => {
-        setSearchValue(e.target.value)
-        const inputName = e.target.name;
-        debounceSearch(searchValue, inputName);
-    };
-
-    const handleCompanySelection = (selected: TBaseData) => {
-        setSearchValue(selected.name)
-        setInvoiceData({ ...invoiceData, employee: undefined, other: undefined, company: selected._id });
-        setSearchSuggestions([])
-    };
-
-    const handleEmployeeSelection = (selected: TBaseData) => {
-        setSearchValue(selected.name)
-        setInvoiceData({ ...invoiceData, company: undefined, other: undefined, employee: selected._id });
-        setSearchSuggestions([])
-    };
 
 
     const handleDeleteDocument = (index: number) => {
@@ -164,138 +133,20 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                 />
                             </div>
 
+                            <div className="mb-4.5">
+                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                    Client Name
+                                </label>
+                                <input
+                                    type="text"
+                                    name="client"
+                                    onChange={handleChange}
+                                    value={invoiceData?.client}
+                                    placeholder="Enter client name"
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                />
+                            </div>
 
-                            {
-                                !edit && (
-                                    <>
-                                        <div className="mb-4.5 flex flex-col">
-                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Client Type
-                                                <span className="text-meta-1">*</span>
-                                            </label>
-
-                                            <div className="relative z-20 bg-transparent dark:bg-form-input">
-                                                <select
-                                                    value={selectedOption}
-                                                    name="client-type"
-                                                    onChange={(e) => {
-                                                        setSelectedOption(e.target.value);
-                                                        setSearchValue("");
-                                                    }}
-                                                    className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-
-                                                >
-                                                    <option value="" disabled className="text-body dark:text-bodydark">
-                                                        Select any one
-                                                    </option>
-                                                    <option value="company" className="text-body dark:text-bodydark">
-                                                        Company
-                                                    </option>
-                                                    <option value="employee" className="text-body dark:text-bodydark">
-                                                        Individual
-                                                    </option>
-                                                    <option value="other" className="text-body dark:text-bodydark">
-                                                        Other
-                                                    </option>
-                                                </select>
-
-                                                <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                                                    <svg
-                                                        className="fill-current"
-                                                        width="24"
-                                                        height="24"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <g opacity="0.8">
-                                                            <path
-                                                                fillRule="evenodd"
-                                                                clipRule="evenodd"
-                                                                d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                                                fill=""
-                                                            ></path>
-                                                        </g>
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="mb-4.5">
-                                            {selectedOption === "employee" && (
-                                                <>
-                                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                        Individual Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="employee"
-                                                        onChange={handleInputChange}
-                                                        value={searchValue}
-                                                        autoComplete="off"
-                                                        placeholder="Enter individual name"
-                                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                                    />
-                                                    <ul className="flex flex-wrap gap-1 mt-2">
-                                                        {searchSuggestions.map((employee, key) => (
-                                                            <li
-                                                                className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
-                                                                key={key} onClick={() => handleEmployeeSelection(employee)}>
-                                                                {employee.name}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </>
-                                            )}
-
-                                            {selectedOption === "company" && (
-                                                <>
-                                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                        Company Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="company"
-                                                        value={searchValue}
-                                                        autoComplete="off"
-                                                        onChange={handleInputChange}
-                                                        placeholder="Enter company name"
-                                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                                    />
-                                                    <ul className="flex flex-wrap gap-1 mt-2">
-                                                        {searchSuggestions.map((company, key) => (
-                                                            <li
-
-                                                                className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
-
-                                                                key={key} onClick={() => handleCompanySelection(company)}>
-                                                                {company.name}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </>
-                                            )}
-
-
-                                            {selectedOption === "other" && (
-                                                <>
-                                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                        Client Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="other"
-                                                        value={invoiceData?.other}
-                                                        onChange={(e) => {
-                                                            setInvoiceData({ ...invoiceData, company: undefined, employee: undefined, other: e.target.value });
-                                                        }}
-                                                        placeholder="Enter cient name"
-                                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                                    />
-                                                </>
-                                            )}
-                                        </div></>
-                                )
-                            }
                             <div className="mb-4.5">
                                 <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                     Location
@@ -305,8 +156,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                     name="location"
                                     value={invoiceData?.location}
                                     onChange={handleChange}
-                                    required
-                                    autoComplete="off"
                                     placeholder="Enter client location"
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 />
@@ -452,7 +301,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         <div className="w-full xl:w-1/2">
                                             <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                                 Quantity
-                                                <span className="text-meta-1">*</span>
                                             </label>
                                             <input
                                                 type="number"

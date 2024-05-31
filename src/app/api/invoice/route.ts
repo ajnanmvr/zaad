@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;
     const invoice = await Invoice.find({ published: true })
-      .populate(["createdBy", "company", "employee"])
+      .populate("createdBy")
       .skip(+pageNumber * contentPerSection)
       .limit(contentPerSection + 1)
       .sort({ createdAt: -1 });
@@ -41,20 +41,9 @@ export async function GET(request: NextRequest) {
     const transformedData = invoice
       .slice(0, contentPerSection)
       .map((invoice) => {
-        const client = () => {
-          const { company, employee, other } = invoice;
-          return company
-            ? { name: company.name, id: company._id, type: "company" }
-            : employee
-              ? { name: employee.name, id: employee._id, type: "employee" }
-              : other
-                ? { name: other, type: "other" }
-                : null;
-        };
-
         return {
           id: invoice._id,
-          client: client(),
+          client: invoice.client,
           purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
           amount: invoice.items.reduce(
