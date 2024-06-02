@@ -20,6 +20,7 @@ function SingleInvoice() {
       console.log(error);
     }
   }
+  
   const componentRef = useRef(null)
   useEffect(() => {
     fetchData()
@@ -27,23 +28,19 @@ function SingleInvoice() {
 
   return (
     <DefaultLayout>
-      {isLoading ? <div className="flex justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-      </div> : <>
-        <ReactToPrint trigger={() => <p
-          className=" items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90"
-        >
-          
-          Download</p>} content={() => componentRef.current} />
-
-        <div className="relative" ref={componentRef}>
-
-          <img src="/images/invoice.jpg" alt="Invoice Bg" />
-          <div className="absolute top-0 text-lg text-[#000000] flex justify-center w-full mt-[35%] ">
-            
-
+      {isLoading ?
+        <div className="flex justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+        </div> :
+        <>
+          <ReactToPrint trigger={() => <p className="items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90" >
+            Download</p>} content={() => componentRef.current} />
+          <div className="relative" ref={componentRef}>
+            <img src="/images/invoice.jpg" alt="Invoice Bg" />
+            <div className="absolute top-0 text-lg text-[#000000] flex justify-center w-full mt-[35%] ">
+            </div>
           </div>
-        </div></>
+        </>
       }
 
     </DefaultLayout>
