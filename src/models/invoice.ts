@@ -7,16 +7,9 @@ const InvoiceSchema = new Schema(
       type: Number,
       required: [true, "please provide an invoice number"],
     },
-    company: {
-      type: Schema.Types.ObjectId,
-      ref: "companies",
-    },
-    employee: {
-      type: Schema.Types.ObjectId,
-      ref: "employees",
-    },
-    other: String,
+    client: String,
     location: String,
+    trn: String,
     purpose: String,
     advance: Number,
     createdBy: {

@@ -2,25 +2,23 @@ export type TInvoiceData = {
   title: string;
   suffix: string;
   invoiceNo: string;
-  company: string;
-  employee: string;
+  trn: string;
   createdBy: string;
+  client: string;
   date: string;
   items: TInvoiceItemsData[];
   remarks: string;
   advance: number;
   location: string;
   purpose: string;
+  amount:number,
+  balance:number,
 };
 export type TInvoiceList = {
   id: string;
   purpose: string;
   invoiceNo: string;
-  client: {
-    name: string;
-    id?: string;
-    type: string;
-  };
+  client: string;
   amount: number;
   date: string;
 };

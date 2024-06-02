@@ -33,15 +33,9 @@ export async function GET(
   try {
     const searchParams = request.nextUrl.searchParams;
     const editmode = searchParams.get("editmode");
-    const res = await Invoice.findById(params.id).populate([
-      "createdBy",
-      "company",
-      "employee",
-    ]);
+    const res = await Invoice.findById(params.id).populate("createdBy");
     const {
-      company,
-      employee,
-      other,
+      client,
       title,
       suffix,
       invoiceNo,
@@ -52,35 +46,23 @@ export async function GET(
       purpose,
       location,
       advance,
+      trn,
     } = res;
-    
-    const client = () => {
-      return company
-        ? { name: company.name, id: company._id, type: "company" }
-        : employee
-          ? { name: employee.name, id: employee._id, type: "employee" }
-          : other
-            ? { name: other, type: "other" }
-            : null;
-    };
-    const editModeData = () => {
-      delete res.company;
-      delete res.createdBy;
-      return { company: company._id, createdBy: createdBy._id, ...res };
-    };
+
     const commonData = {
       items,
       remarks,
       advance,
       purpose,
       location,
+      client,
+      title,
+      trn,
     };
     const data =
       editmode === null
         ? {
-            title,
             invoiceNo: suffix + invoiceNo,
-            client: client(),
             creator: createdBy.username,
             amount: items.reduce(
               (acc: number, item: TInvoiceItemsData) =>
@@ -89,19 +71,12 @@ export async function GET(
             ),
             date: formatDate(date),
             ...commonData,
-            balance: function () {
-              return this.amount - advance;
-            },
           }
         : {
-            company: company?._id,
-            employee: employee?._id,
-            other,
-            title,
             suffix,
             invoiceNo,
             createdBy: createdBy._id,
-            date,
+            date: date || new Date(),
             ...commonData,
           };
 

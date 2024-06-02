@@ -5,7 +5,9 @@ connect();
 
 export async function GET(request: Request) {
   try {
-    const { suffix, invoiceNo, title } = await Invoice.findOne()
+    const { suffix, invoiceNo, title } = await Invoice.findOne({
+      published: true,
+    })
       .sort({ createdAt: -1 })
       .select("invoiceNo suffix title");
     return Response.json(
