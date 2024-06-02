@@ -80,9 +80,9 @@ function SingleInvoice() {
                       <p className="font-semibold">{item.title}</p>
                       <p className="text-sm">{item.desc}</p>
                     </td>
-                    <td className="text-center">{item.rate} AED</td>
+                    <td className="text-center">{item.rate}</td>
                     <td className="text-center">{item.quantity}</td>
-                    <td className="text-center font-semibold">{item.rate * item.quantity} AED</td>
+                    <td className="text-center">{item.rate * item.quantity}</td>
                   </tr>
                 ))}
               </tbody>
