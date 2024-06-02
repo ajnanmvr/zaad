@@ -20,7 +20,7 @@ function SingleInvoice() {
       console.log(error);
     }
   }
-  
+
   const componentRef = useRef(null)
   useEffect(() => {
     fetchData()
@@ -41,7 +41,7 @@ function SingleInvoice() {
 
           <img src="/images/invoice.jpg" alt="Invoice Bg" />
           <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
-            <p className="bg-green-950 text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
+            <p className="bg-primary text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
             <div className="flex w-full justify-between mt-10">
               <div>
                 <p className="text-sm">BILLED TO</p>
@@ -81,9 +81,9 @@ function SingleInvoice() {
                       <p className="font-semibold">{item.title}</p>
                       <p className="text-sm">{item.desc}</p>
                     </td>
-                    <td className="text-center">{item.rate}</td>
+                    <td className="text-center">{item.rate.toFixed(2)}</td>
                     <td className="text-center">{item.quantity}</td>
-                    <td className="text-center">{item.rate * item.quantity}</td>
+                    <td className="text-center">{(item.rate * item.quantity).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -91,23 +91,24 @@ function SingleInvoice() {
 
             <div className="w-full border-t font-bold flex justify-between py-2">
               <p>Total</p>
-              <p>{invoice?.amount || 0} AED</p>
+              <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
             </div>
             {
               invoice?.title !== "CASH RECEIPT" ? (
                 <>
                   <div className="w-full border-t font-bold flex justify-between py-2">
                     <p>Advance </p>
-                    <p>{invoice?.advance || 0} AED</p>
+                    <p>{(invoice?.advance || 0).toFixed(2)} AED</p>
                   </div>
                   <div className="w-full border-t font-bold flex justify-between py-2">
                     <p>Balance</p>
-                    <p>{(invoice?.amount || 0) - (invoice?.advance || 0)} AED</p>
+                    <p>{((invoice?.amount || 0) - (invoice?.advance || 0)).toFixed(2)} AED</p>
                   </div>
                 </>
               ) : (<></>)
             }
             <p className="mt-10 text-xl font-bold">Thank You!</p>
+            <hr className="h-2 mt-10 border-primary bg-primary w-full" />
           </div>
 
         </div>
