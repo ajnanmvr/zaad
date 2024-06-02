@@ -108,7 +108,6 @@ function SingleInvoice() {
               ) : (<></>)
             }
             <p className="mt-10 text-xl font-bold">Thank You!</p>
-            <hr className="h-2 mt-10 border-primary bg-primary w-full" />
           </div>
 
         </div>
