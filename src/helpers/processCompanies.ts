@@ -21,10 +21,15 @@ export default function processCompanies(
     );
     let incomeTotal = 0;
     let expenseTotal = 0;
+    let advanceTotal = 0;
 
     companyRecordsFiltered.forEach((record) => {
       if (record.type === "income") {
-        incomeTotal += record.amount;
+        if (record.status === "Advance") {
+          advanceTotal += record.amount;
+        } else {
+          incomeTotal += record.amount;
+        }
       } else if (record.type === "expense") {
         expenseTotal += record.amount + (record.serviceFee ?? 0);
       }
