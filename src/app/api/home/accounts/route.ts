@@ -5,7 +5,7 @@ import calculateLast7Days from "@/helpers/calculateLast7Days";
 import Records from "@/models/records"; // Assuming TRecordDataWithCreatedAt is the correct type for your Records model
 import { TRecordDataWithCreatedAt } from "@/types/records";
 connect();
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 export async function GET(): Promise<Response> {
   try {
     const allRecords: TRecordDataWithCreatedAt[] = await Records.find({
@@ -28,7 +28,8 @@ export async function GET(): Promise<Response> {
       BankIncome: number = 0,
       CashIncome: number = 0,
       TasdeedIncome: number = 0,
-      SwiperIncome: number = 0;
+      SwiperIncome: number = 0,
+      profit: number = 0;
 
     incomeRecords.forEach((record) => {
       switch (record.method) {
@@ -65,6 +66,9 @@ export async function GET(): Promise<Response> {
           break;
         default:
           break;
+      }
+      if (record?.serviceFee || 0 > 0) {
+        profit += record.serviceFee || 0;
       }
     });
 
@@ -131,6 +135,7 @@ export async function GET(): Promise<Response> {
         monthNames,
         last12MonthsExpenses,
         last12MonthsProfit,
+        profit,
       },
       { status: 200 }
     );

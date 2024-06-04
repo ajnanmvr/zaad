@@ -126,7 +126,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
       data: [],
     },
     {
-      name: "Profitable",
+      name: "Profit",
       data: [],
     },
   ]);
@@ -138,7 +138,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
         data: expense,
       },
       {
-        name: "Profitable",
+        name: "Profit",
         data: profit,
       },
 
@@ -159,11 +159,11 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
       <div className="flex flex-wrap items-start justify-between gap-3 sm:flex-nowrap">
         <div className="flex w-full flex-wrap gap-3 sm:gap-5">
           <div className="flex min-w-47.5">
-            <span className="mr-2 mt-1 flex h-4 w-full max-w-4 items-center justify-center rounded-full border border-primary">
-              <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-primary"></span>
+            <span className="mr-2 mt-1 flex h-4 w-full max-w-4 items-center justify-center rounded-full border border-[#3c50e0]">
+              <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-[#3c50e0]"></span>
             </span>
             <div className="w-full">
-              <p className="font-semibold text-primary">Profitable Amount</p>
+              <p className="font-semibold text-[#3c50e0]">Profit Amount</p>
               <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
             </div>
           </div>

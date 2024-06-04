@@ -76,7 +76,7 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   };
   const [seriesData, setSeriesData] = useState<ChartTwoState["series"]>([
     {
-      name: "Profitable",
+      name: "Profit",
       data: [],
     },
     {
@@ -90,7 +90,7 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   useEffect(() => {
     setSeriesData([
       {
-        name: "Profitable",
+        name: "Profit",
         data: profit,
       },
       {

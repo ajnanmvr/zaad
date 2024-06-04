@@ -41,7 +41,7 @@ const AddRecord = ({ type }: { type: string }) => {
       setRecordData((prevData) => ({ ...prevData, serviceFee: newServiceFee }));
     }
   }, [recordData.amount]);
-  
+
   const generateServiceFee = (e: any) => {
     const newClientFee = e.target.value
     const newServiceFee = newClientFee - recordData.amount
@@ -357,11 +357,18 @@ const AddRecord = ({ type }: { type: string }) => {
                         <option value="" disabled className="text-body dark:text-bodydark">
                           Select any status
                         </option>
+                        {selectedOption === "self" && (
+                          <option value="Self Deposit" className="text-body dark:text-bodydark">
+                            Self Deposit
+                          </option>)}
                         <option value="Advance" className="text-body dark:text-bodydark">
                           Advance
                         </option>
                         <option value="Credit" className="text-body dark:text-bodydark">
-                          Credit
+                          Credit (Income)
+                        </option>
+                        <option value="Credit" className="text-body dark:text-bodydark">
+                          Debit (Pay Out)
                         </option>
                         <option value="Ready Cash" className="text-body dark:text-bodydark">
                           Ready Cash

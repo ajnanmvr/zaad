@@ -32,7 +32,8 @@ export default function AccountsDashboard() {
     monthNames: [""],
     profitLast7DaysTotal: [0],
     expensesLast7DaysTotal: [0],
-    daysOfWeekInitials: [""]
+    daysOfWeekInitials: [""],
+    profit: 0
   })
 
   const [profitsData, setProfitsData] = useState({
@@ -75,7 +76,7 @@ export default function AccountsDashboard() {
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} />
-            <CardDataStats title="Total Profit" total={`${profitsData.profit}AED`} />
+            <CardDataStats title="Total Profit" total={`${accountsData.profit}AED`} />
             <CardDataStats title="Total Credit" total={`${profitsData.totalToGet * (-1)}AED`} border="border-meta-3" />
             <CardDataStats title="Total Debit" total={`${profitsData.totalToGive}AED`} border="border-red" />
           </div>
@@ -102,6 +103,12 @@ export default function AccountsDashboard() {
             <CardDataStats title="Bank Expense" total={`${accountsData.BankExpense}AED`} />
             <CardDataStats title="Tasdeed Expense" total={`${accountsData.TasdeedExpense}AED`} />
             <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
+          </div>
+          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats title="Recieved Profit" total={`${profitsData.profit}AED`} />
+            <CardDataStats title="Credit Profit" total={`${accountsData.profit - profitsData.profit}AED`} />
+            <CardDataStats title="Profit Today" total={`${accountsData.profitLast7DaysTotal[6]}AED`} />
+            <CardDataStats title="Profit This Month" total={`${accountsData.last12MonthsProfit[11]}AED`} />
           </div>
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} border="border-meta-3" />

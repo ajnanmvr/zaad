@@ -297,7 +297,7 @@ const TransactionList = ({ type, id }: {
           disabled={pageNumber === 0 || isBtnDisabled}
           className={clsx(
             "px-3 py-1 mr-2 rounded-md",
-            isBtnDisabled || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            isBtnDisabled || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Back
@@ -308,7 +308,7 @@ const TransactionList = ({ type, id }: {
           disabled={isBtnDisabled || !hasMore || !records.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            (isBtnDisabled || !hasMore || !records.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-blue-500 bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            (isBtnDisabled || !hasMore || !records.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Next
