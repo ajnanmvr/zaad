@@ -7,6 +7,7 @@ connect();
 export async function POST(request: Request) {
   try {
     const reqBody = await request.json();
+    console.log(reqBody);
     const data = await Employee.create(reqBody);
 
     return Response.json(

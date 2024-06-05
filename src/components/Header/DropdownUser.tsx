@@ -3,10 +3,11 @@ import Link from "next/link";
 import Image from "next/image";
 import axios from "axios";
 import { useRouter } from 'next/navigation'
+import { useUserContext } from "@/contexts/UserContext";
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [user, setUser] = useState<any>({});
+  const { user } = useUserContext();
   const router = useRouter()
   const trigger = useRef<any>(null);
   const dropdown = useRef<any>(null);
@@ -18,19 +19,6 @@ const DropdownUser = () => {
       console.log({ message: "can't log out", error });
     }
   }
-  const me = async () => {
-    try {
-      const data = await axios.get("/api/users/auth/me")
-      setUser(data.data)
-    } catch (error) {
-      console.log({ message: "can'tdd", error });
-    }
-  }
-
-
-  useEffect(() => {
-    me()
-  }, [])
 
   // close on click outside
   useEffect(() => {
@@ -66,12 +54,11 @@ const DropdownUser = () => {
         className="flex items-center gap-4"
         href="#"
       >
-        <span className="hidden capitalize text-right lg:block">
+        <span className="hidden capitalize  text-right lg:block">
           <span className="block text-sm font-medium text-black dark:text-white">
-            {user?.user?.username}
+            {user?.username}
           </span>
-          <span className="block text-xs">            {user?.user?.role}
-          </span>
+          <span className="block text-xs">{user?.role}</span>
         </span>
 
         <span className="h-12 w-12 rounded-full">

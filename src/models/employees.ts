@@ -24,6 +24,13 @@ const EmployeeSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    password: [
+      {
+        platform: String,
+        username: String,
+        password: String,
+      },
+    ],
     documents: [
       {
         name: String,
@@ -33,7 +40,7 @@ const EmployeeSchema = new Schema(
       },
     ],
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 EmployeeSchema.pre("find", function (next) {
@@ -41,5 +48,6 @@ EmployeeSchema.pre("find", function (next) {
   next();
 });
 
-const Employee =mongoose.models.employees || mongoose.model("employees", EmployeeSchema);
+const Employee =
+  mongoose.models.employees || mongoose.model("employees", EmployeeSchema);
 export default Employee;

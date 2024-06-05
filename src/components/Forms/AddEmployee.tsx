@@ -83,13 +83,37 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         const updatedItems = employeeData.documents.filter((doc: any, docIndex: number) => docIndex !== index);
         setEmployeeData({ ...employeeData, documents: updatedItems });
     };
+    const handleDeletePassword = (index: number) => {
+        const updatedItems = employeeData.password.filter((doc: any, docIndex: number) => docIndex !== index);
+        setEmployeeData({ ...employeeData, password: updatedItems });
+    };
     let documents = {
         name: "",
         issueDate: "",
         expiryDate: "",
         attachment: ""
     }
+    const handlePasswordChange = (index: number, field: string, value: string) => {
+        const updatedPasswords = [...employeeData.password];
+        updatedPasswords[index][field] = value;
+        setEmployeeData({ ...employeeData, password: updatedPasswords });
+    };
+    const handleAddPassword = (e: any) => {
+        e.preventDefault()
+        let password = {
+            platform: "",
+            username: "",
+            password: "",
+        }
+        if (!employeeData.password) {
+            setEmployeeData({ ...employeeData, password: [password] })
+        }
+        else {
+            const updatedPasswords = [...employeeData.password, password];
+            setEmployeeData({ ...employeeData, password: updatedPasswords });
+        }
 
+    };
     const handleAddDocument = (e: any) => {
         e.preventDefault()
         if (!employeeData.documents) {
@@ -113,6 +137,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     }
     const breadCrumb = isEditMode ? "Edit Employee" : "Add Employee"
     const confirmBtn = isEditMode ? "Save Edits" : "Save Employee"
+    console.log(employeeData);
 
     return (
         <DefaultLayout>
@@ -280,7 +305,82 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                 </div>
 
                 <div className="flex flex-col gap-9">
+                    <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+                        <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
+                            <h3 className="font-medium text-black dark:text-white">
+                                Usernames and Passwords
+                            </h3>
+                        </div>
+                        <div className="px-6.5 pb-6.5">
+                            {employeeData?.password?.map((item: any, index: number) => (
+                                <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
+                                    <div className="mb-4.5">
+                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                            Platform
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="platform"
+                                            value={employeeData?.password[index]?.platform}
+                                            placeholder="Enter platform name"
+                                            onChange={(e) => handlePasswordChange(index, 'platform', e.target.value)}
+                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        />
+                                    </div>
 
+                                    <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                                        <div className="w-full xl:w-1/2">
+                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                                Username
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="username"
+                                                value={employeeData?.password[index]?.username}
+                                                onChange={(e) => handlePasswordChange(index, 'username', e.target.value)}
+                                                placeholder="Enter username"
+                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                            />
+                                        </div>
+                                        <div className="w-full xl:w-1/2">
+                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="password"
+                                                value={employeeData?.password[index]?.password}
+                                                onChange={(e) => handlePasswordChange(index, 'password', e.target.value)}
+                                                placeholder="Enter the password"
+                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                            />
+                                        </div>
+
+                                    </div>
+
+                                    <button
+                                        className="flex w-full justify-center rounded items-center text-red border border-red hover:bg-red p-3 font-medium hover:bg-opacity-10 transition-colors duration-300"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleDeletePassword(index);
+                                        }}
+                                    >
+                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
+                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
+                                        </svg>
+                                        Delete</button>
+                                </div>
+
+                            ))}
+                            <button onClick={handleAddPassword} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
+                                Add Platform
+                            </button>
+                        </div>
+                    </div>
                     <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
                         <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
                             <h3 className="font-medium text-black dark:text-white">
