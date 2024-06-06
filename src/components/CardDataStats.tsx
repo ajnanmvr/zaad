@@ -27,8 +27,6 @@ const CardDataStats: React.FC<CardDataStatsProps> = ({
             {children}
           </div>
         )}
-
-
         <div className="mt-4 flex items-end justify-between">
           <div>
             <h4 className={`text-title-md font-bold ${color ? `text-${color}` : "text-black dark:text-white"}`}>
