@@ -64,6 +64,7 @@ export async function GET(
       email: employee.email,
       designation: employee.designation,
       remarks: employee.remarks,
+      password: employee.password,
       documents: modifiedDocuments,
     };
 

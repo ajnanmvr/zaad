@@ -15,11 +15,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
-        quotation: "false"
+        invoiceNo: 1
     });
 
     const fetchData = async () => {
-
         try {
             if (edit) {
                 const { data } = await axios.get(`/api/invoice/${edit}?editmode`);
@@ -51,10 +50,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
             console.log(error);
         }
     };
-
-
-
-
 
     const handleDeleteDocument = (index: number) => {
         const updatedItems = invoiceData.items.filter((item: any, itemIndex: number) => itemIndex !== index);

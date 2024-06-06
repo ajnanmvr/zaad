@@ -1,6 +1,8 @@
 export type TInvoiceData = {
   title: string;
   suffix: string;
+  quotation: string;
+  message: string;
   invoiceNo: string;
   trn: string;
   createdBy: string;
@@ -11,8 +13,8 @@ export type TInvoiceData = {
   advance: number;
   location: string;
   purpose: string;
-  amount:number,
-  balance:number,
+  amount: number;
+  balance: number;
 };
 export type TInvoiceList = {
   id: string;

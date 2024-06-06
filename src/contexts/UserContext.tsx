@@ -43,7 +43,6 @@ const UserProvider: React.FC<UserProviderProps> = ({ children }: UserProviderPro
         } catch (error) {
             await axios.get("/api/users/auth/logout")
             console.error("Unable to fetch user data", error);
-
         }
     };
 
