@@ -49,7 +49,10 @@ export default function AccountsDashboard() {
     totalToGetEmployees: 0,
     profit: 0,
     totalToGive: 0,
-    totalToGet: 0
+    totalToGet: 0,
+    advanceEmployees: 0,
+    advanceCompanies: 0
+
   })
 
   const fetchData = async () => {
@@ -93,6 +96,12 @@ export default function AccountsDashboard() {
             <ChartTwo dates={accountsData.daysOfWeekInitials} profit={accountsData.profitLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} />
           </div>
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats title="Recieved Profit" total={`${profitsData.profit}AED`} />
+            <CardDataStats title="Credit Profit" total={`${accountsData.profit - profitsData.profit}AED`} />
+            <CardDataStats title="Profit This Month" total={`${accountsData.last12MonthsProfit[11]}AED`} />
+            <CardDataStats title="Advance Amount" total={`${profitsData.advanceCompanies + profitsData.advanceEmployees}AED`} />
+          </div>
+          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats title="Cash Income" total={`${accountsData.CashIncome}AED`} />
             <CardDataStats title="Bank Income" total={`${accountsData.BankIncome}AED`} />
             <CardDataStats title="Tasdeed Income" total={`${accountsData.TasdeedIncome}AED`} />
@@ -103,12 +112,6 @@ export default function AccountsDashboard() {
             <CardDataStats title="Bank Expense" total={`${accountsData.BankExpense}AED`} />
             <CardDataStats title="Tasdeed Expense" total={`${accountsData.TasdeedExpense}AED`} />
             <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
-          </div>
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Recieved Profit" total={`${profitsData.profit}AED`} />
-            <CardDataStats title="Credit Profit" total={`${accountsData.profit - profitsData.profit}AED`} />
-            <CardDataStats title="Profit Today" total={`${accountsData.profitLast7DaysTotal[6]}AED`} />
-            <CardDataStats title="Profit This Month" total={`${accountsData.last12MonthsProfit[11]}AED`} />
           </div>
           <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} color="meta-3" />

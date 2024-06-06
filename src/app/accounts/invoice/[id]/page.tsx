@@ -114,7 +114,57 @@ function SingleInvoice() {
                 ) : (<></>)
               }
               <p className="mt-10 text-xl font-bold">Thank You!</p>
-            </div></> : <></>}
+            </div></>
+            :
+            <>
+              <img src="/images/quotation.png" alt="quotation Bg" />
+              <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[23%] flex-col uppercase px-20">
+
+                <p className="font-semibold text-right w-full">DATE: {invoice?.date}</p>
+                <div className="w-full">
+                  <p className="text-sm">TO</p>
+                  <p className="text-xl font-semibold">{invoice?.client}</p>
+                  <p>{invoice?.location}</p>
+                </div>
+
+
+                <p className="w-full mt-10 normal-case">
+                  {invoice?.message}
+                </p>
+                <table className="w-full text-left mt-10 mb-8">
+                  <thead className="border-y mb-10">
+                    <tr>
+                      <th>Description</th>
+                      <th className="text-center">Rate</th>
+                      <th className="text-center">Quantity</th>
+                      <th className="text-center">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoice?.items?.map((item, index) => (
+                      <tr key={index}>
+                        <td>
+                          <p className="font-semibold">{item.title}</p>
+                          <p className="text-sm">{item.desc}</p>
+                        </td>
+                        <td className="text-center">{item.rate.toFixed(2)}</td>
+                        <td className="text-center">{item.quantity}</td>
+                        <td className="text-center">{(item.rate * item.quantity).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="w-full border-t font-bold flex justify-between py-2">
+                  <p>Total</p>
+                  <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
+                </div>
+                <p className="mt-10 w-full normal-case">For any further assistance please Feel Free to contact us.
+                </p>
+                <p className="w-full font-semibold mt-2">NOTE:</p>
+                <p className="w-full normal-case">All the Aforementioned Costs as Per the approximate Fees Structure of The Authorities,
+                  It May Subject to Vary If the Authorities Will Change the Fee Structure. </p>
+              </div></>}
 
         </div>
       </>

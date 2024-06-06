@@ -21,14 +21,12 @@ const CardDataStats: React.FC<CardDataStatsProps> = ({
 }) => {
   return (
     <div className="bg-white rounded">
-      <div className={`rounded-sm border px-7.5 py-6 shadow-default dark:bg-boxdark ${color ? `border-${color} bg-opacity-5 bg-${color} }` : "border-stroke bg-white dark:border-strokedark"}`}>
+      <div className={`rounded-sm border px-7.5 py-6 shadow-default dark:bg-boxdark ${color ? `border-${color} bg-opacity-5 bg-${color} text-${color} }` : "border-stroke bg-white dark:border-strokedark"}`}>
         {children && (
           <div className={`flex h-11.5 w-11.5 items-center justify-center rounded-full bg-meta-2 dark:bg-meta-4`}>
             {children}
           </div>
         )}
-
-
         <div className="mt-4 flex items-end justify-between">
           <div>
             <h4 className={`text-title-md font-bold ${color ? `text-${color}` : "text-black dark:text-white"}`}>
@@ -42,7 +40,6 @@ const CardDataStats: React.FC<CardDataStatsProps> = ({
               } ${levelDown && "text-meta-5"} `}
           >
             {rate}
-
             {levelUp && (
               <svg
                 className="fill-meta-3"

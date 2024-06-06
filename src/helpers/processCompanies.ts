@@ -10,6 +10,7 @@ export default function processCompanies(
   let totalProfitAllCompanies = 0;
   let totalToGiveCompanies = 0;
   let totalToGetCompanies = 0;
+  let advanceCompanies = 0;
 
   // Process companies
   for (const company of companies) {
@@ -21,12 +22,11 @@ export default function processCompanies(
     );
     let incomeTotal = 0;
     let expenseTotal = 0;
-    let advanceTotal = 0;
 
     companyRecordsFiltered.forEach((record) => {
       if (record.type === "income") {
         if (record.status === "Advance") {
-          advanceTotal += record.amount;
+          advanceCompanies += record.amount;
         } else {
           incomeTotal += record.amount;
         }
@@ -68,5 +68,6 @@ export default function processCompanies(
     totalProfitAllCompanies,
     totalToGiveCompanies,
     totalToGetCompanies,
+    advanceCompanies,
   };
 }
