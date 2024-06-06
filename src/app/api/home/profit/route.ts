@@ -12,7 +12,6 @@ connect();
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-
   try {
     const [companies, employees, allRecords]: [
       TCompanyData[],
@@ -37,6 +36,7 @@ export async function GET() {
       totalProfitAllCompanies,
       totalToGiveCompanies,
       totalToGetCompanies,
+      advanceCompanies,
     } = processCompanies(companies, companyRecords);
 
     const {
@@ -45,6 +45,7 @@ export async function GET() {
       totalProfitAllEmployees,
       totalToGiveEmployees,
       totalToGetEmployees,
+      advanceEmployees,
     } = processEmployees(employees, employeeRecords);
 
     const profit = totalProfitAllEmployees + totalProfitAllCompanies;
@@ -66,6 +67,8 @@ export async function GET() {
         profit,
         totalToGive,
         totalToGet,
+        advanceEmployees,
+        advanceCompanies,
       },
       { status: 200 }
     );

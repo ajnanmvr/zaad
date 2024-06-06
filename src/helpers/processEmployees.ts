@@ -10,6 +10,7 @@ export default function processEmployees(
   let totalProfitAllEmployees = 0;
   let totalToGiveEmployees = 0;
   let totalToGetEmployees = 0;
+  let advanceEmployees = 0;
 
   // Process employees
   for (const employee of employees) {
@@ -22,12 +23,11 @@ export default function processEmployees(
     let incomeTotal = 0;
     let expenseTotal = 0;
     let serviceFee = 0;
-    let advanceTotal = 0;
 
     employeeRecordsFiltered.forEach((record) => {
       if (record.type === "income") {
         if (record.status === "Advance") {
-          advanceTotal += record.amount;
+          advanceEmployees += record.amount;
         } else {
           incomeTotal += record.amount;
         }
@@ -67,5 +67,6 @@ export default function processEmployees(
     totalProfitAllEmployees,
     totalToGiveEmployees,
     totalToGetEmployees,
+    advanceEmployees,
   };
 }
