@@ -209,10 +209,6 @@ const SingleCompany = () => {
                   </p>
                 </div>
                 <div className="flex gap-1 items-center">
-
-
-
-
                   <div className="relative">
                     <Link
                       ref={trigger}
@@ -251,7 +247,6 @@ const SingleCompany = () => {
                       className={`absolute right-0 mt-4 py-3 flex w-40 flex-col rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark ${dropdownOpen === true ? "block" : "hidden"
                         }`}
                     >
-
                       <Link href={`/accounts/transactions/company/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
                         Records
                       </Link>
@@ -327,6 +322,7 @@ const SingleCompany = () => {
                     )}
                   </ul>
                 </div>
+
                 {company?.password?.length !== 0 && (
                   <div className="">
                     <h3 className="text-xl font-semibold text-black dark:text-white mb-2">

@@ -32,7 +32,7 @@ function SingleInvoice() {
       {isLoading ? <div className="flex justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div> : <>
-        {invoice?.remarks && <p className="border-red border rounded-xl px-3 py-2 mb-2 flex items-center"><span className="bg-red text-white font-bold px-2 inline mr-2">Remarks:</span>
+        {invoice?.remarks && <p className="border-yellow-600 border rounded-xl px-3 py-2 mb-2 flex items-center"><span className="bg-yellow-600 text-white font-bold px-2 rounded-md inline mr-2">Remarks:</span>
           {invoice?.remarks}
         </p>}
         <ReactToPrint trigger={() =>
@@ -42,78 +42,79 @@ function SingleInvoice() {
         } content={() => componentRef.current} />
 
         <div className="relative" ref={componentRef}>
-          <img src="/images/invoice.jpg" alt="Invoice Bg" />
-          <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
-            <p className="bg-primary text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
-            <div className="flex w-full justify-between mt-10">
-              <div>
-                <p className="text-sm">BILLED TO</p>
-                <p className="text-xl font-semibold">{invoice?.client}</p>
-                <p>{invoice?.location}</p>
-              </div>
-              <div>
-                <p className="text-sm">ISSUED DATE</p>
-                <p className="font-semibold">{invoice?.date}</p>
-              </div>
-              <div className="flex flex-col items-end">
-                <p className="text-sm">INVOICE NUMBER</p>
-                <p className="font-semibold">{invoice?.invoiceNo}</p>
-                {
-                  invoice?.trn &&
-                  <>
-                    <p className="text-sm">TRN NUMBER</p>
-                    <p className="font-semibold">{invoice?.trn}</p>
-                  </>
+          {invoice?.quotation !== "true" ? <>
+            <img src="/images/invoice.jpg" alt="Invoice Bg" />
+            <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
+              <p className="bg-primary text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
+              <div className="flex w-full justify-between mt-10">
+                <div>
+                  <p className="text-sm">BILLED TO</p>
+                  <p className="text-xl font-semibold">{invoice?.client}</p>
+                  <p>{invoice?.location}</p>
+                </div>
+                <div>
+                  <p className="text-sm">ISSUED DATE</p>
+                  <p className="font-semibold">{invoice?.date}</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  <p className="text-sm">INVOICE NUMBER</p>
+                  <p className="font-semibold">{invoice?.invoiceNo}</p>
+                  {
+                    invoice?.trn &&
+                    <>
+                      <p className="text-sm">TRN NUMBER</p>
+                      <p className="font-semibold">{invoice?.trn}</p>
+                    </>
 
-                }
+                  }
+                </div>
               </div>
-            </div>
-            <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>
+              <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>
 
-            <table className="w-full text-left mt-2 mb-8">
-              <thead className="border-y mb-10">
-                <tr>
-                  <th>Description</th>
-                  <th className="text-center">Rate</th>
-                  <th className="text-center">Quantity</th>
-                  <th className="text-center">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice?.items?.map((item, index) => (
-                  <tr key={index}>
-                    <td>
-                      <p className="font-semibold">{item.title}</p>
-                      <p className="text-sm">{item.desc}</p>
-                    </td>
-                    <td className="text-center">{item.rate.toFixed(2)}</td>
-                    <td className="text-center">{item.quantity}</td>
-                    <td className="text-center">{(item.rate * item.quantity).toFixed(2)}</td>
+              <table className="w-full text-left mt-2 mb-8">
+                <thead className="border-y mb-10">
+                  <tr>
+                    <th>Description</th>
+                    <th className="text-center">Rate</th>
+                    <th className="text-center">Quantity</th>
+                    <th className="text-center">Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {invoice?.items?.map((item, index) => (
+                    <tr key={index}>
+                      <td>
+                        <p className="font-semibold">{item.title}</p>
+                        <p className="text-sm">{item.desc}</p>
+                      </td>
+                      <td className="text-center">{item.rate.toFixed(2)}</td>
+                      <td className="text-center">{item.quantity}</td>
+                      <td className="text-center">{(item.rate * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            <div className="w-full border-t font-bold flex justify-between py-2">
-              <p>Total</p>
-              <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
-            </div>
-            {
-              invoice?.title !== "CASH RECEIPT" ? (
-                <>
-                  <div className="w-full border-t font-bold flex justify-between py-2">
-                    <p>Advance </p>
-                    <p>{(invoice?.advance || 0).toFixed(2)} AED</p>
-                  </div>
-                  <div className="w-full border-t font-bold flex justify-between py-2">
-                    <p>Balance</p>
-                    <p>{((invoice?.amount || 0) - (invoice?.advance || 0)).toFixed(2)} AED</p>
-                  </div>
-                </>
-              ) : (<></>)
-            }
-            <p className="mt-10 text-xl font-bold">Thank You!</p>
-          </div>
+              <div className="w-full border-t font-bold flex justify-between py-2">
+                <p>Total</p>
+                <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
+              </div>
+              {
+                invoice?.title !== "CASH RECEIPT" ? (
+                  <>
+                    <div className="w-full border-t font-bold flex justify-between py-2">
+                      <p>Advance </p>
+                      <p>{(invoice?.advance || 0).toFixed(2)} AED</p>
+                    </div>
+                    <div className="w-full border-t font-bold flex justify-between py-2">
+                      <p>Balance</p>
+                      <p>{((invoice?.amount || 0) - (invoice?.advance || 0)).toFixed(2)} AED</p>
+                    </div>
+                  </>
+                ) : (<></>)
+              }
+              <p className="mt-10 text-xl font-bold">Thank You!</p>
+            </div></> : <></>}
 
         </div>
       </>

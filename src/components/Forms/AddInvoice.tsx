@@ -15,10 +15,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
+        invoiceNo: 1
     });
 
     const fetchData = async () => {
-
         try {
             if (edit) {
                 const { data } = await axios.get(`/api/invoice/${edit}?editmode`);

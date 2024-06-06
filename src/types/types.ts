@@ -59,6 +59,7 @@ export type TEmployeeList = TCompanyList & {
 export type TEmployeeData = {
   _id: string;
   name: string;
+  password: TPasswordData[];
   company: TCompanyData;
   isActive: boolean;
   emiratesId?: string;
