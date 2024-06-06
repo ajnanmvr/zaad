@@ -32,13 +32,16 @@ function SingleInvoice() {
       {isLoading ? <div className="flex justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div> : <>
-        <ReactToPrint trigger={() => <p
-          className=" items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90"
-        >
-          Download</p>} content={() => componentRef.current} />
+        {invoice?.remarks && <p className="border-red border rounded-xl px-3 py-2 mb-2 flex items-center"><span className="bg-red text-white font-bold px-2 inline mr-2">Remarks:</span>
+          {invoice?.remarks}
+        </p>}
+        <ReactToPrint trigger={() =>
+          <p className="items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90">
+            Download / Print
+          </p>
+        } content={() => componentRef.current} />
 
         <div className="relative" ref={componentRef}>
-
           <img src="/images/invoice.jpg" alt="Invoice Bg" />
           <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
             <p className="bg-primary text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
@@ -56,10 +59,12 @@ function SingleInvoice() {
                 <p className="text-sm">INVOICE NUMBER</p>
                 <p className="font-semibold">{invoice?.invoiceNo}</p>
                 {
-                  invoice?.trn && (
-                    <>                <p className="text-sm">TRN NUMBER</p>
-                      <p className="font-semibold">{invoice?.trn}</p></>
-                  )
+                  invoice?.trn &&
+                  <>
+                    <p className="text-sm">TRN NUMBER</p>
+                    <p className="font-semibold">{invoice?.trn}</p>
+                  </>
+
                 }
               </div>
             </div>

@@ -2,13 +2,14 @@ export type TUser = {
   id: string;
   username: string;
   password?: string;
+  fullname?: string;
   role?: "partner" | "employee";
 };
 export type TPasswordData = {
   platform: string;
   username: string;
   password: string;
-}
+};
 export type TCompanyData = {
   _id?: string;
   name: string;
@@ -52,7 +53,7 @@ export type TBaseData = {
 };
 
 export type TEmployeeList = TCompanyList & {
-  company: TBaseData
+  company: TBaseData;
 };
 
 export type TEmployeeData = {

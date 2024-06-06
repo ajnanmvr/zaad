@@ -5,7 +5,7 @@ import { type TUser } from "@/types/types";
 connect();
 export async function POST(request: Request) {
   try {
-    const { username, password,role }: TUser = await request.json();
+    const { username, password, role, fullname }: TUser = await request.json();
 
     const existingUserName: TUser | null = await User.findOne({ username });
     if (existingUserName) {
@@ -15,8 +15,13 @@ export async function POST(request: Request) {
       );
     }
     const salt = await bcryptjs.genSalt(10);
-    const hashedPassword= await bcryptjs.hash(password!, salt);
-    const newUser = new User({ username, password: hashedPassword ,role});
+    const hashedPassword = await bcryptjs.hash(password!, salt);
+    const newUser = new User({
+      username,
+      password: hashedPassword,
+      role,
+      fullname,
+    });
     const savedUser = await newUser.save();
 
     return Response.json(

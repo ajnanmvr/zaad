@@ -47,6 +47,8 @@ export async function GET(
       location,
       advance,
       trn,
+      quotation,
+      message
     } = res;
 
     const commonData = {
@@ -58,6 +60,8 @@ export async function GET(
       client,
       title,
       trn,
+      quotation,
+      message
     };
     const data =
       editmode === null

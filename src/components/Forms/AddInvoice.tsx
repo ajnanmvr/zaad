@@ -15,7 +15,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
-        quotation: "false"
     });
 
     const fetchData = async () => {
@@ -51,10 +50,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
             console.log(error);
         }
     };
-
-
-
-
 
     const handleDeleteDocument = (index: number) => {
         const updatedItems = invoiceData.items.filter((item: any, itemIndex: number) => itemIndex !== index);

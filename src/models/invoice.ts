@@ -18,7 +18,10 @@ const InvoiceSchema = new Schema(
       default: true,
     },
     date: String,
-    quotation: String,
+    quotation: {
+      type: String,
+      default: false,
+    },
     message: String,
     items: [{ title: String, desc: String, rate: Number, quantity: Number }],
     remarks: String,
