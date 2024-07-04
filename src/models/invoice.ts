@@ -9,6 +9,7 @@ const InvoiceSchema = new Schema(
     trn: String,
     purpose: String,
     advance: Number,
+    showBalance:String,
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "users",

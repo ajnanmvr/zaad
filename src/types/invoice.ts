@@ -14,6 +14,7 @@ export type TInvoiceData = {
   location: string;
   purpose: string;
   amount: number;
+  showBalance:string,
   balance: number;
 };
 export type TInvoiceList = {

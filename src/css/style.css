@@ -9,13 +9,7 @@
     size: A4;
     margin: 0;
   }
-  html,
-  body {
-    background-color: white;
-    width: 210mm !important;
-    height: 297mm !important;
-    overflow: hidden;
-  }
+ 
 }
 @layer base {
   body {
