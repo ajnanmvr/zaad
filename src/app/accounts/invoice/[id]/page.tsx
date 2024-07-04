@@ -100,7 +100,7 @@ function SingleInvoice() {
                 <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
               </div>
               {
-                invoice?.title !== "CASH RECEIPT" ? (
+                invoice?.showBalance !== "hide" ? (
                   <>
                     <div className="w-full border-t font-bold flex justify-between py-2">
                       <p>Advance </p>
