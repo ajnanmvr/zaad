@@ -119,8 +119,6 @@ const AddRecord = ({ type }: { type: string }) => {
     const { name, value } = e.target;
     setRecordData({ ...recordData, [name]: value });
   };
-console.log(recordData);
-
 
   return (
     <DefaultLayout>

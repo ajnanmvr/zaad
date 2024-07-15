@@ -81,9 +81,7 @@ export default function AccountsDashboard() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Total Transactions"
-              total={(
-                accountsData.expenseCount + accountsData.incomeCount
-              ).toFixed(2)}
+              total={`${accountsData.expenseCount + accountsData.incomeCount}`}
             />
             <CardDataStats
               title="Total Profit"

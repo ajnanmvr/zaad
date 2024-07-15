@@ -266,7 +266,7 @@ const SingleCompany = () => {
                   </div>
                 </div></div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 min-h-44">
                 <div>
                   <h3 className="text-xl font-semibold text-black dark:text-white mb-2">
                     Company Details
