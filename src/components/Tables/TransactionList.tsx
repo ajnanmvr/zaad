@@ -16,6 +16,7 @@ const TransactionList = ({ type, id }: {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -58,7 +59,6 @@ const TransactionList = ({ type, id }: {
     setPageNumber(page);
   };
 
-
   const handleDelete = (id: string) => {
     setSelectedRecordId(id);
     setIsConfirmationOpen(true);
@@ -68,13 +68,18 @@ const TransactionList = ({ type, id }: {
     setIsInfoOpen(true);
   };
   const confirmDelete = async () => {
-    await axios.delete(`/api/payment/${selectedRecordId}`)
     setIsConfirmationOpen(false);
+    setIsSecondConfirmationOpen(true);
+  }
+  const secondConfirmDelete = async () => {
+    await axios.delete(`/api/payment/${selectedRecordId}`)
+    setIsSecondConfirmationOpen(false);
     fetchData()
   }
   const cancelAction = () => {
     setSelectedRecordId(null);
     setIsConfirmationOpen(false);
+    setIsSecondConfirmationOpen(false);
     setIsInfoOpen(false);
   }
   console.log(cards);
@@ -108,6 +113,12 @@ const TransactionList = ({ type, id }: {
           isOpen={isConfirmationOpen}
           message="Are you sure you want to delete this payment record?"
           onConfirm={confirmDelete}
+          onCancel={cancelAction}
+        />
+        <ConfirmationModal
+          isOpen={isSecondConfirmationOpen}
+          message="Are you really sure you want to delete this payment record? This action cannot be undone."
+          onConfirm={secondConfirmDelete}
           onCancel={cancelAction}
         />
         {isInfoOpen && selectedRecord && (
