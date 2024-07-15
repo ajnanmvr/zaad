@@ -6,11 +6,13 @@ import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
+import CardDataStats from "../CardDataStats";
 
 const TransactionList = ({ type, id }: {
   type?: string | string[], id?: string | string[]
 }) => {
   const [records, setRecords] = useState<TRecordList[]>([])
+  const [cards, setCards] = useState([0, 0, 0, 0])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -30,6 +32,9 @@ const TransactionList = ({ type, id }: {
         if (type === "employee") {
           res = await axios.get(`/api/payment/individual/${id}?page=${pageNumber}`);
         }
+        let { balance, totalIncome, totalExpense, totalTransactions } = res.data
+        setCards([balance, totalIncome, totalExpense, totalTransactions])
+
       } else {
         res = await axios.get(`/api/payment?page=${pageNumber}`);
       }
@@ -72,11 +77,33 @@ const TransactionList = ({ type, id }: {
     setIsConfirmationOpen(false);
     setIsInfoOpen(false);
   }
-  console.log(hasMore);
+  console.log(cards);
 
   return (
     <>
-      <div className="rounded-sm border  border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
+      {type && (
+        <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+          <CardDataStats
+            title="Total Transactions"
+            total={`${cards[3]}`}
+          />
+          <CardDataStats
+            title="Total Income"
+            total={`${cards[1]} AED`}
+            color="meta-3"
+          />
+          <CardDataStats
+            title="Total Expense"
+            total={`${cards[2]} AED`}
+            color="red"
+          />
+          <CardDataStats
+            title="Balance"
+            total={`${cards[0]} AED`}
+          />
+        </div>
+      )}
+      <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
         <ConfirmationModal
           isOpen={isConfirmationOpen}
           message="Are you sure you want to delete this payment record?"
@@ -87,6 +114,7 @@ const TransactionList = ({ type, id }: {
           <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
             <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
               <h2 className="text-lg font-semibold mb-4">Payment Details</h2>
+
               <table className="table-auto w-full">
                 <tbody>
                   {selectedRecord.client && (
@@ -171,8 +199,6 @@ const TransactionList = ({ type, id }: {
             </div>
           </div>
         )}
-
-
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Payments List</p>
           <div className="gap-1 flex">
 

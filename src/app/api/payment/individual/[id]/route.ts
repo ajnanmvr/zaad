@@ -5,9 +5,7 @@ import { NextRequest } from "next/server";
 
 connect();
 
-
-export async function GET(request: NextRequest, { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const pageNumber = searchParams.get("page") || 0;
@@ -21,10 +19,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
         if (!records || records.length === 0) {
             return Response.json(
-                { message: "No records found", count: 0, hasMore: false, records: [] },
+                { message: "No records found", count: 0, hasMore: false, records: [], balance: 0, totalIncome: 0, totalExpense: 0, totalTransactions: 0 },
                 { status: 200 }
             );
         }
+
         const hasMore = records.length > contentPerSection;
         const transformedData = records
             .slice(0, contentPerSection)
@@ -55,8 +54,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
                 };
             });
 
+        const allRecords = await Records.find({ published: true, employee: { _id: params.id } });
+
+        const totalIncome = allRecords.reduce((acc, record) => acc + (record.type === 'income' ? record.amount : 0), 0);
+        const totalExpense = allRecords.reduce((acc, record) => acc + (record.type === 'expense' ? record.amount : 0), 0);
+        const balance = totalIncome - totalExpense;
+        const totalTransactions = allRecords.length;
+
         return Response.json(
-            { count: transformedData.length, hasMore, records: transformedData },
+            { count: transformedData.length, hasMore, records: transformedData, balance, totalIncome, totalExpense, totalTransactions },
             { status: 200 }
         );
     } catch (error) {
