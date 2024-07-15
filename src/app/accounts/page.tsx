@@ -33,8 +33,8 @@ export default function AccountsDashboard() {
     profitLast7DaysTotal: [0],
     expensesLast7DaysTotal: [0],
     daysOfWeekInitials: [""],
-    profit: 0
-  })
+    profit: 0,
+  });
 
   const [profitsData, setProfitsData] = useState({
     over0balanceCompanies: [{ name: "", balance: 0, id: "" }],
@@ -51,108 +51,208 @@ export default function AccountsDashboard() {
     totalToGive: 0,
     totalToGet: 0,
     advanceEmployees: 0,
-    advanceCompanies: 0
-
-  })
+    advanceCompanies: 0,
+  });
 
   const fetchData = async () => {
     try {
-      const { data } = await axios.get("/api/home/accounts")
-      const profit = await axios.get("/api/home/profit")
-      setAccountsData(data)
-      setProfitsData(profit.data)
-      setLoading(false)
+      const { data } = await axios.get("/api/home/accounts");
+      const profit = await axios.get("/api/home/profit");
+      setAccountsData(data);
+      setProfitsData(profit.data);
+      setLoading(false);
     } catch (error) {
       console.log(error);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   return (
     <DefaultLayout>
-      {isLoading ? (<div className="flex justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-      </div>) : (
+      {isLoading ? (
+        <div className="flex justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+        </div>
+      ) : (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Total Transactions" total={`${accountsData.expenseCount + accountsData.incomeCount}`} />
-            <CardDataStats title="Total Profit" total={`${accountsData.profit}AED`} />
-            <CardDataStats title="Total Credit" total={`${profitsData.totalToGet * (-1)}AED`} color="meta-3" />
-            <CardDataStats title="Total Debit" total={`${profitsData.totalToGive}AED`} color="red" />
+            <CardDataStats
+              title="Total Transactions"
+              total={(
+                accountsData.expenseCount + accountsData.incomeCount
+              ).toFixed(2)}
+            />
+            <CardDataStats
+              title="Total Profit"
+              total={`${accountsData.profit.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Total Credit"
+              total={`${(profitsData.totalToGet * -1).toFixed(2)} AED`}
+              color="meta-3"
+            />
+            <CardDataStats
+              title="Total Debit"
+              total={`${profitsData.totalToGive.toFixed(2)} AED`}
+              color="red"
+            />
           </div>
 
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Total Balance" total={`${accountsData.totalBalance}AED`} />
-            <CardDataStats title="Cash Balance" total={`${accountsData.cashBalance}AED`} />
-            <CardDataStats title="Bank Balance" total={`${accountsData.bankBalance}AED`} />
-            <CardDataStats title="Tasdeed Balance" total={`${accountsData.tasdeedBalance}AED`} />
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Total Balance"
+              total={`${accountsData.totalBalance.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Cash Balance"
+              total={`${accountsData.cashBalance.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Bank Balance"
+              total={`${accountsData.bankBalance.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Tasdeed Balance"
+              total={`${accountsData.tasdeedBalance.toFixed(2)} AED`}
+            />
           </div>
 
           <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-            <ChartOne months={accountsData.monthNames} profit={accountsData.last12MonthsProfit} expense={accountsData.last12MonthsExpenses} />
-            <ChartTwo dates={accountsData.daysOfWeekInitials} profit={accountsData.profitLast7DaysTotal} expense={accountsData.expensesLast7DaysTotal} />
+            <ChartOne
+              months={accountsData.monthNames}
+              profit={accountsData.last12MonthsProfit}
+              expense={accountsData.last12MonthsExpenses}
+            />
+            <ChartTwo
+              dates={accountsData.daysOfWeekInitials}
+              profit={accountsData.profitLast7DaysTotal}
+              expense={accountsData.expensesLast7DaysTotal}
+            />
           </div>
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Recieved Profit" total={`${profitsData.profit}AED`} />
-            <CardDataStats title="Credit Profit" total={`${accountsData.profit - profitsData.profit}AED`} />
-            <CardDataStats title="Profit This Month" total={`${accountsData.last12MonthsProfit[11]}AED`} />
-            <CardDataStats title="Advance Amount" total={`${profitsData.advanceCompanies + profitsData.advanceEmployees}AED`} />
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Received Profit"
+              total={`${profitsData.profit.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Credit Profit"
+              total={`${(accountsData.profit - profitsData.profit).toFixed(2)
+                } AED`}
+            />
+            <CardDataStats
+              title="Profit This Month"
+              total={`${accountsData.last12MonthsProfit[11].toFixed(2)
+                } AED`}
+            />
+            <CardDataStats
+              title="Advance Amount"
+              total={`${(
+                  profitsData.advanceCompanies + profitsData.advanceEmployees
+                ).toFixed(2)
+                } AED`}
+            />
           </div>
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Cash Income" total={`${accountsData.CashIncome}AED`} />
-            <CardDataStats title="Bank Income" total={`${accountsData.BankIncome}AED`} />
-            <CardDataStats title="Tasdeed Income" total={`${accountsData.TasdeedIncome}AED`} />
-            <CardDataStats title="Swiper Income" total={`${accountsData.SwiperIncome}AED`} />
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Cash Income"
+              total={`${accountsData.CashIncome.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Bank Income"
+              total={`${accountsData.BankIncome.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Tasdeed Income"
+              total={`${accountsData.TasdeedIncome.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Swiper Income"
+              total={`${accountsData.SwiperIncome.toFixed(2)} AED`}
+            />
           </div>
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Cash Expense" total={`${accountsData.CashExpense}AED`} />
-            <CardDataStats title="Bank Expense" total={`${accountsData.BankExpense}AED`} />
-            <CardDataStats title="Tasdeed Expense" total={`${accountsData.TasdeedExpense}AED`} />
-            <CardDataStats title="Swiper Expense" total={`${accountsData.SwiperExpense}AED`} />
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Cash Expense"
+              total={`${accountsData.CashExpense.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Bank Expense"
+              total={`${accountsData.BankExpense.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Tasdeed Expense"
+              total={`${accountsData.TasdeedExpense.toFixed(2)} AED`}
+            />
+            <CardDataStats
+              title="Swiper Expense"
+              total={`${accountsData.SwiperExpense.toFixed(2)} AED`}
+            />
           </div>
-          <div className=" mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Companies Credit" total={`${profitsData.totalToGetCompanies * (-1)}AED`} color="meta-3" />
-            <CardDataStats title="Companies Debit" total={`${profitsData.totalToGiveCompanies}AED`} color="red" />
-            <CardDataStats title="Individual Credit" total={`${profitsData.totalToGetEmployees * (-1)}AED`} color="meta-3" />
-            <CardDataStats title="Individual Debit" total={`${profitsData.totalToGiveEmployees}AED`} color="red" />
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Companies Credit"
+              total={`${(profitsData.totalToGetCompanies * -1).toFixed(2)
+                } AED`}
+              color="meta-3"
+            />
+            <CardDataStats
+              title="Companies Debit"
+              total={`${profitsData.totalToGiveCompanies.toFixed(2)} AED`}
+              color="red"
+            />
+            <CardDataStats
+              title="Individual Credit"
+              total={`${(profitsData.totalToGetEmployees * -1).toFixed(2)
+                } AED`}
+              color="meta-3"
+            />
+            <CardDataStats
+              title="Individual Debit"
+              total={`${profitsData.totalToGiveEmployees.toFixed(2)} AED`}
+              color="red"
+            />
           </div>
 
           <div className="mt-4 flex flex-col gap-4">
-            {profitsData.over0balanceCompanies.length !== 0 && (<div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-              <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                Company Debit List
-              </h4>
+            {profitsData.over0balanceCompanies.length !== 0 && (
+              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
+                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
+                  Company Debit List
+                </h4>
 
-              <div>
-                {profitsData.over0balanceCompanies.map((data, key) => (
-                  <Link
-                    href={`/company/${data.id}`}
-                    className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-                    key={key}
-                  >
-                    <div
-                      className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
-                    ></div>
+                <div>
+                  {profitsData.over0balanceCompanies.map((data, key) => (
+                    <Link
+                      href={`/company/${data.id}`}
+                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
+                      key={key}
+                    >
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
 
-                    <div className="flex flex-1 items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-black dark:text-white">
-                          {data.name}
-                        </h5>
+                      <div className="flex flex-1 items-center justify-between">
+                        <div>
+                          <h5 className="font-medium text-black dark:text-white">
+                            {data.name}
+                          </h5>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-red">
+                            {data.balance.toFixed(2)} AED
+                          </h5>
+                        </div>
                       </div>
-                      <div>
-                        <h5 className="font-medium text-red">
-                          {data.balance}AED
-                        </h5>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>)}
+            )}
             {profitsData.under0balanceCompanies.length !== 0 && (
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
@@ -166,9 +266,7 @@ export default function AccountsDashboard() {
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
                     >
-                      <div
-                        className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
-                      ></div>
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
 
                       <div className="flex flex-1 items-center justify-between">
                         <div>
@@ -178,16 +276,16 @@ export default function AccountsDashboard() {
                         </div>
                         <div>
                           <h5 className="font-medium text-meta-3">
-                            {data.balance * (-1)}AED
+                            {(data.balance * -1).toFixed(2)} AED
                           </h5>
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
-              </div>)}
+              </div>
+            )}
             {profitsData.over0balanceEmployees.length !== 0 && (
-
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Individual Debit List
@@ -200,9 +298,7 @@ export default function AccountsDashboard() {
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
                     >
-                      <div
-                        className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"
-                      ></div>
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
 
                       <div className="flex flex-1 items-center justify-between">
                         <div>
@@ -212,16 +308,16 @@ export default function AccountsDashboard() {
                         </div>
                         <div>
                           <h5 className="font-medium text-red">
-                            {data.balance}AED
+                            {data.balance.toFixed(2)} AED
                           </h5>
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
-              </div>)}
+              </div>
+            )}
             {profitsData.under0balanceEmployees.length !== 0 && (
-
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Individual Credit List
@@ -234,9 +330,7 @@ export default function AccountsDashboard() {
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
                     >
-                      <div
-                        className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"
-                      ></div>
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
 
                       <div className="flex flex-1 items-center justify-between">
                         <div>
@@ -246,15 +340,18 @@ export default function AccountsDashboard() {
                         </div>
                         <div>
                           <h5 className="font-medium text-meta-3">
-                            {data.balance * (-1)}AED
+                            {(data.balance * -1).toFixed(2)} AED
                           </h5>
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
-              </div>)}
-          </div></>)}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </DefaultLayout>
   );
 }
