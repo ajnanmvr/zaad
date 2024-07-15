@@ -26,7 +26,6 @@ const RecordSchema = new Schema(
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "users",
-      required: [true, "Please Define a Creator"],
     },
     self: String,
     published: {

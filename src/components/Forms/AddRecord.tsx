@@ -94,6 +94,19 @@ const AddRecord = ({ type }: { type: string }) => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    switch (true) {
+      case !recordData.company && !recordData.employee && !recordData.self:
+        alert("Please select a client from any type");
+        return;
+      case !recordData.particular:
+        alert("Please fill in the particular.");
+        return;
+      case !recordData.method:
+        alert("Please select a payment method.");
+        return;
+      default:
+        break;
+    }
     try {
       await axios.post("/api/payment", recordData);
       router.push("/accounts/transactions");
@@ -106,6 +119,7 @@ const AddRecord = ({ type }: { type: string }) => {
     const { name, value } = e.target;
     setRecordData({ ...recordData, [name]: value });
   };
+console.log(recordData);
 
 
   return (
@@ -245,6 +259,7 @@ const AddRecord = ({ type }: { type: string }) => {
                   <input
                     type="text"
                     name="particular"
+                    required={true}
                     value={recordData?.particular}
                     onChange={handleChange}
                     placeholder="Select particular"
