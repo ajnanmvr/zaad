@@ -62,6 +62,9 @@ export default function processCompanies(
     }
   }
 
+  over0balanceCompanies.sort((a, b) => a.name.localeCompare(b.name));
+  under0balanceCompanies.sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     over0balanceCompanies,
     under0balanceCompanies,

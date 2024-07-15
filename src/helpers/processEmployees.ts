@@ -61,6 +61,10 @@ export default function processEmployees(
     }
   }
 
+  // Sort employees by name in alphabetical order
+  over0balanceEmployees.sort((a, b) => a.name.localeCompare(b.name));
+  under0balanceEmployees.sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     over0balanceEmployees,
     under0balanceEmployees,
