@@ -126,7 +126,7 @@ const AddRecord = ({ type }: { type: string }) => {
 
       <form className="relative" action="#">
         <div className="flex flex-col gap-9">
-          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+          <div className={`rounded-sm border ${type === "income" ? "border-meta-3" : type === "expense" ? "border-red" : "border-stroke dark:border-strokedark"} bg-white shadow-default  dark:bg-boxdark`}>
             <div className="p-6.5">
               <div className="mb-4.5">
 

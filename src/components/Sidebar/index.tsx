@@ -513,19 +513,19 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             <li>
                               <Link
                                 href="/accounts/transactions/income"
-                                className={`group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ${pathname.includes("income") && "text-white"
+                                className={`group relative flex items-center gap-2.5 rounded-md px-4 font-medium hover:bg-meta-3 hover:bg-opacity-10 text-bodydark2 duration-300 ease-in-out hover:text-white ${pathname.includes("income") && "text-white"
                                   }`}
                               >
-                                Income
+                                <div className="h-5 w-5 bg-meta-3 font-bold text-white dark:text-black flex justify-center items-center text-xl rounded-full">+</div> Income
                               </Link>
                             </li>
                             <li>
                               <Link
                                 href="/accounts/transactions/expense"
-                                className={`group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ${pathname.includes("expense") && "text-white"
+                                className={`group relative flex items-center gap-2.5 rounded-md px-4 font-medium hover:bg-red hover:bg-opacity-10 text-bodydark2 duration-300 ease-in-out hover:text-white ${pathname.includes("expense") && "text-white"
                                   }`}
                               >
-                                Expense
+                                <div className="h-5 w-5 bg-red font-bold text-white dark:text-black flex justify-center items-center text-xl rounded-full">-</div>Expense
                               </Link>
                             </li>
                           </ul>
