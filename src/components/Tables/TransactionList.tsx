@@ -94,17 +94,17 @@ const TransactionList = ({ type, id }: {
           />
           <CardDataStats
             title="Total Income"
-            total={`${cards[1]} AED`}
+            total={`${cards[1].toFixed(2)} AED`}
             color="meta-3"
           />
           <CardDataStats
             title="Total Expense"
-            total={`${cards[2]} AED`}
+            total={`${cards[2].toFixed(2)} AED`}
             color="red"
           />
           <CardDataStats
             title="Balance"
-            total={`${cards[0]} AED`}
+            total={`${cards[0].toFixed(2)} AED`}
           />
         </div>
       )}
