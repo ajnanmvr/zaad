@@ -210,7 +210,8 @@ const TransactionList = ({ type, id }: {
             </div>
           </div>
         )}
-        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Payments List</p>
+        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">
+          <p className="text-lg">Payments List</p>
           <div className="gap-1 flex">
 
             <Link
