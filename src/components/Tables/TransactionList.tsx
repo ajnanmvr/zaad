@@ -20,6 +20,7 @@ const TransactionList = ({ type, id }: {
   const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isSelfOpen, setSelfOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
   const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
@@ -125,6 +126,22 @@ const TransactionList = ({ type, id }: {
           onConfirm={secondConfirmDelete}
           onCancel={cancelAction}
         />
+        {isSelfOpen && (<div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
+          <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
+
+            the option will be availabele soon
+
+
+            <div className="flex justify-end">
+              <button onClick={() => { setSelfOpen(false) }} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
+                Cancel
+              </button>
+              <button onClick={() => { setSelfOpen(false) }} className="px-4 py-2 bg-red hover:bg-red-600 text-white rounded-lg">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>)}
         {isInfoOpen && selectedRecord && (
           <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
             <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
@@ -217,9 +234,13 @@ const TransactionList = ({ type, id }: {
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">
           <p className="text-lg">Payments List</p>
           <div className="gap-1 flex">
-
+            <div
+              onClick={() => setSelfOpen(true)}
+              className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
+            ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
+              Self Deposit
+            </div>
             <Link
-
               href={"/accounts/transactions/income"}
               className="inline-flex items-center justify-center rounded-md bg-meta-3 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             >
@@ -232,6 +253,7 @@ const TransactionList = ({ type, id }: {
             ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
               Expense
             </Link>
+
           </div>
         </h4>
 
