@@ -6,14 +6,17 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import { TCompanyList } from "@/types/types";
 import SkeletonList from "../common/SkeletonList";
-function CompanyList() {
+function CompanyList({ sort }: { sort?: string }) {
     const [isLoading, setLoading] = useState(true);
     const [companies, setCompanies] = useState<TCompanyList[] | null>(null)
     const fetchData = async () => {
         try {
-            const data = await axios.get("/api/company")
+            const { data } = await axios.get("/api/company")
             setLoading(false)
-            setCompanies(data.data.data)
+            const sortedData = sort === "a"
+                ? data.data.sort((a: TCompanyList, b: TCompanyList) => a.name.localeCompare(b.name))
+                : data.data;
+            setCompanies(sortedData);
         } catch (error) {
             console.log(error);
         }
@@ -80,10 +83,10 @@ function CompanyList() {
                             {companies?.map(({ id, name, expiryDate, docs, status }, key) => (
                                 <tr key={key}>
                                     <td className="border-b border-[#eee] px-4 py-5 pl-9 dark:border-strokedark xl:pl-11">
-                                        <Link href={`/company/${id}`} >  <h5 className="font-medium capitalize text-black dark:text-white">
+                                        <Link href={sort === "a" ? `/accounts/transactions/company/${id}` : `/company/${id}`} >  <h5 className="font-medium capitalize text-black dark:text-white">
                                             {name}
                                         </h5>
-                                        <p className="text-sm">{docs} Docs</p>
+                                            <p className="text-sm">{docs} Docs</p>
                                         </Link>
                                     </td>
                                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
@@ -105,7 +108,7 @@ function CompanyList() {
                                     </td>
                                     <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                                         <div className="flex items-center space-x-3.5">
-                                            <Link href={`/company/${id}`} className="hover:text-primary">
+                                            <Link href={sort === "a" ? `/accounts/transactions/company/${id}` : `/company/${id}`} className="hover:text-primary">
                                                 <svg
                                                     className="fill-current"
                                                     width="18"
