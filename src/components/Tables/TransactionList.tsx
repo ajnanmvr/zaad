@@ -88,28 +88,29 @@ const TransactionList = ({ type, id }: {
   return (
     <>
 
-      <Breadcrumb pageName={`${records[0]?.client?.name || type}'s transactions`} />
       {type && (
-        <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-          <CardDataStats
-            title="Total Transactions"
-            total={`${cards[3]}`}
-          />
-          <CardDataStats
-            title="Total Income"
-            total={`${cards[1].toFixed(2)} AED`}
-            color="meta-3"
-          />
-          <CardDataStats
-            title="Total Expense"
-            total={`${cards[2].toFixed(2)} AED`}
-            color="red"
-          />
-          <CardDataStats
-            title="Balance"
-            total={`${cards[0].toFixed(2)} AED`}
-          />
-        </div>
+        <>
+          <Breadcrumb pageName={`${records[0]?.client?.name || type}'s transactions`} />
+          <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+            <CardDataStats
+              title="Total Transactions"
+              total={`${cards[3]}`}
+            />
+            <CardDataStats
+              title="Total Income"
+              total={`${cards[1].toFixed(2)} AED`}
+              color="meta-3"
+            />
+            <CardDataStats
+              title="Total Expense"
+              total={`${cards[2].toFixed(2)} AED`}
+              color="red"
+            />
+            <CardDataStats
+              title="Balance"
+              total={`${cards[0].toFixed(2)} AED`}
+            />
+          </div></>
       )}
       <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
         <ConfirmationModal
@@ -298,13 +299,13 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{(record?.amount || 0).toFixed(2)}
+                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
                     <span className="text-xs"> AED</span></p>
                 </div>
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
 
                   {record?.type === "expense" && record?.serviceFee && record?.serviceFee != 0 && (
-                    <p className={clsx((record?.serviceFee || 0) > 0 ? "bg-meta-3" : "bg-red", "px-2 text-white dark:text-black rounded-md")}> {record?.serviceFee?.toFixed(2)} <span className="text-xs">AED</span></p>
+                    <p className={clsx((record?.serviceFee || 0) > 0 ? "bg-meta-3" : "bg-red", "px-2 text-white dark:text-black rounded-md")}> {record?.serviceFee} <span className="text-xs">AED</span></p>
                   )}
                 </div>
 
