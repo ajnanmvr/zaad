@@ -12,7 +12,7 @@ const RecordSchema = new Schema(
     method: {
       type: String,
       required: [true, "Please provide a payment method"],
-      enum: ["bank", "cash", "tasdeed", "swiper"],
+      enum: ["bank", "cash", "tasdeed", "swiper","service fee"],
     },
     type: {
       type: String,

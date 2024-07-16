@@ -528,6 +528,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                                 <div className="h-5 w-5 bg-red font-bold text-white dark:text-black flex justify-center items-center text-xl rounded-full">-</div>Expense
                               </Link>
                             </li>
+                            {/* <li>
+                              <Link
+                                href="/accounts/transactions"
+                                className={`group relative flex items-center gap-2.5 rounded-md px-4 font-medium hover:bg-meta-5 hover:bg-opacity-10 text-bodydark2 duration-300 ease-in-out hover:text-white`}
+                              >
+                                <div className="h-5 w-5 bg-meta-5 font-bold text-white dark:text-black flex justify-center items-center text-sm rounded-full">$</div>Self Deposit
+                              </Link>
+                            </li> */}
                           </ul>
                         </div>
                         {/* <!-- Dropdown Menu End --> */}

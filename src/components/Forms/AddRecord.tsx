@@ -119,6 +119,7 @@ const AddRecord = ({ type }: { type: string }) => {
     const { name, value } = e.target;
     setRecordData({ ...recordData, [name]: value });
   };
+  console.log(recordData);
 
   return (
     <DefaultLayout>
@@ -297,6 +298,8 @@ const AddRecord = ({ type }: { type: string }) => {
                         Tasdeed                      </option>
                       <option value="swiper" className="text-body dark:text-bodydark">
                         Swiper                      </option>
+                      {type === "expense" && <option value="service fee" className="text-body dark:text-bodydark">
+                        Service Fee                      </option>}
                     </select>
 
                     <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">

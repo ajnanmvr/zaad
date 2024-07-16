@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
+import SelfDepositModal from "../Modals/SelfDepositModal";
 
 const TransactionList = ({ type, id }: {
   type?: string | string[], id?: string | string[]
@@ -126,22 +127,11 @@ const TransactionList = ({ type, id }: {
           onConfirm={secondConfirmDelete}
           onCancel={cancelAction}
         />
-        {isSelfOpen && (<div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
-          <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
+        <SelfDepositModal
+          isOpen={isSelfOpen}
+          cancel={() => setSelfOpen(false)}
+        />
 
-            the option will be availabele soon
-
-
-            <div className="flex justify-end">
-              <button onClick={() => { setSelfOpen(false) }} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
-                Cancel
-              </button>
-              <button onClick={() => { setSelfOpen(false) }} className="px-4 py-2 bg-red hover:bg-red-600 text-white rounded-lg">
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>)}
         {isInfoOpen && selectedRecord && (
           <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
             <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
