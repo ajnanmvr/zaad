@@ -4,7 +4,6 @@ import TransactionList from "@/components/Tables/TransactionList";
 const TablesPage = () => {
   return (
     <DefaultLayout>
-      <Breadcrumb pageName="Transactions" />
       <TransactionList />
     </DefaultLayout>
   );

@@ -7,6 +7,7 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
 const TransactionList = ({ type, id }: {
   type?: string | string[], id?: string | string[]
@@ -86,6 +87,8 @@ const TransactionList = ({ type, id }: {
 
   return (
     <>
+
+      <Breadcrumb pageName={`${records[0]?.client?.name || type}'s transactions`} />
       {type && (
         <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
           <CardDataStats
@@ -290,10 +293,10 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount.toFixed(2)}
+                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
 
                     {record?.type === "expense" && record?.serviceFee && record?.serviceFee !== 0 ? (
-                      <span> + {record?.serviceFee.toFixed(2)}</span>
+                      <span> + {record?.serviceFee}</span>
                     ) : <></>}
                     &nbsp;
                     <span className="text-xs">AED</span></p>
