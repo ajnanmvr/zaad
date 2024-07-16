@@ -268,7 +268,7 @@ const TransactionList = ({ type, id }: {
             </div>
             <div className="p-2.5 text-center xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Transaction
+                Amount
               </h5>
             </div>
             <div className="p-2.5 text-center xl:p-5">
