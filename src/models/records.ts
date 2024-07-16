@@ -36,6 +36,7 @@ const RecordSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "employees",
     },
+    remarks:String
   },
   {
     timestamps: true,

@@ -29,4 +29,5 @@ export type TRecordList = TRecordBase & {
     type: string;
   };
   date: string;
+  remarks:string
 };

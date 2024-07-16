@@ -80,14 +80,14 @@ const AddRecord = ({ type }: { type: string }) => {
 
   const handleCompanySelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
-    setRecordData({ ...recordData, employee: undefined, company: selected._id });
+    setRecordData({ ...recordData, employee: undefined, company: selected._id, self: undefined });
     setSearchSuggestions([])
     fetchBalance(selected._id)
   };
 
   const handleEmployeeSelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
-    setRecordData({ ...recordData, company: undefined, employee: selected._id });
+    setRecordData({ ...recordData, company: undefined, employee: selected._id, self: undefined });
     setSearchSuggestions([])
     fetchBalance(selected._id)
   };

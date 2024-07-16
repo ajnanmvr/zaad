@@ -198,6 +198,7 @@ const TransactionList = ({ type, id }: {
                       <td className="px-4 py-2 border">{selectedRecord.creator}</td>
                     </tr>
                   )}
+
                   {selectedRecord.serviceFee && selectedRecord.serviceFee < 1 ? (
                     <tr>
                       <th className="px-4 py-2 border">Profit</th>
@@ -208,6 +209,11 @@ const TransactionList = ({ type, id }: {
                     <tr>
                       <th className="px-4 py-2 border">Amount</th>
                       <td className="px-4 py-2 border">{selectedRecord.amount} AED</td>
+                    </tr>
+                  )}                {selectedRecord.remarks && (
+                    <tr>
+                      <th className="px-4 py-2 border">Remarks</th>
+                      <td className="px-4 py-2 border">{selectedRecord.remarks}</td>
                     </tr>
                   )}
                 </tbody>
