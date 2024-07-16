@@ -187,7 +187,7 @@ const TransactionList = ({ type, id }: {
                   )}
                   {selectedRecord.serviceFee && selectedRecord.serviceFee < 1 ? (
                     <tr>
-                      <th className="px-4 py-2 border">Service Fee</th>
+                      <th className="px-4 py-2 border">Profit</th>
                       <td className="px-4 py-2 border">{selectedRecord.serviceFee}</td>
                     </tr>
                   ) : <></>}
@@ -235,7 +235,7 @@ const TransactionList = ({ type, id }: {
         </h4>
 
         <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-5">
+          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
 
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
@@ -258,6 +258,11 @@ const TransactionList = ({ type, id }: {
                 Transaction
               </h5>
             </div>
+            <div className="p-2.5 text-center xl:p-5">
+              <h5 className="text-sm font-medium uppercase xsm:text-base">
+                Profit
+              </h5>
+            </div>
 
             <div className="hidden p-2.5 text-center sm:block xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
@@ -271,7 +276,7 @@ const TransactionList = ({ type, id }: {
 
             {isLoading ? <SkeletonList /> : records.map((record, key) => (
               <div
-                className={`grid grid-cols-3 sm:grid-cols-5 ${key === records.length - 1
+                className={`grid grid-cols-3 sm:grid-cols-6 ${key === records.length - 1
                   ? ""
                   : "border-b border-stroke dark:border-strokedark"
                   }`}
@@ -293,13 +298,14 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
+                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{(record?.amount || 0).toFixed(2)}
+                    <span className="text-xs"> AED</span></p>
+                </div>
+                <div className="flex items-center justify-center p-2.5 xl:p-5">
 
-                    {record?.type === "expense" && record?.serviceFee && record?.serviceFee !== 0 ? (
-                      <span> + {record?.serviceFee}</span>
-                    ) : <></>}
-                    &nbsp;
-                    <span className="text-xs">AED</span></p>
+                  {record?.type === "expense" && record?.serviceFee && record?.serviceFee != 0 && (
+                    <p className={clsx((record?.serviceFee || 0) > 0 ? "bg-meta-3" : "bg-red", "px-2 text-white dark:text-black rounded-md")}> {record?.serviceFee?.toFixed(2)} <span className="text-xs">AED</span></p>
+                  )}
                 </div>
 
 
