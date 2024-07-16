@@ -290,10 +290,10 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
+                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount.toFixed(2)}
 
                     {record?.type === "expense" && record?.serviceFee && record?.serviceFee !== 0 ? (
-                      <span> + {record?.serviceFee}</span>
+                      <span> + {record?.serviceFee.toFixed(2)}</span>
                     ) : <></>}
                     &nbsp;
                     <span className="text-xs">AED</span></p>
