@@ -50,8 +50,6 @@ export default function AccountsDashboard() {
     profit: 0,
     totalToGive: 0,
     totalToGet: 0,
-    advanceEmployees: 0,
-    advanceCompanies: 0,
   });
 
   const fetchData = async () => {
@@ -148,9 +146,7 @@ export default function AccountsDashboard() {
             />
             <CardDataStats
               title="Advance Amount"
-              total={`${(
-                  profitsData.advanceCompanies + profitsData.advanceEmployees
-                ).toFixed(2)
+              total={`${accountsData.profitLast7DaysTotal[6].toFixed(2)
                 } AED`}
             />
           </div>
