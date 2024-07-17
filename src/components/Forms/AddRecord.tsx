@@ -28,6 +28,7 @@ const AddRecord = ({ type }: { type: string }) => {
     invoiceNo: "",
     particular: "",
     remarks: "",
+    number: 0, suffix: ""
   });
 
   useEffect(() => {
@@ -77,6 +78,14 @@ const AddRecord = ({ type }: { type: string }) => {
       console.error("Error fetching balance:", error);
     }
   }
+  const fetchPrev = async (Id?: string) => {
+    try {
+      const { data } = await axios.get<{ number: number, suffix: string }>("/api/payment/prev");
+      setRecordData({ ...recordData, number: data?.number, suffix: data?.suffix })
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }
 
   const handleCompanySelection = (selected: TBaseData) => {
     setSearchValue(selected.name)
@@ -104,6 +113,9 @@ const AddRecord = ({ type }: { type: string }) => {
       case !recordData.method:
         alert("Please select a payment method.");
         return;
+      case !recordData.number:
+        alert("Please enter a transaction number.");
+        return;
       default:
         break;
     }
@@ -120,6 +132,10 @@ const AddRecord = ({ type }: { type: string }) => {
     setRecordData({ ...recordData, [name]: value });
   };
   console.log(recordData);
+  useEffect(() => {
+    fetchPrev()
+  }, [])
+
 
   return (
     <DefaultLayout>
@@ -238,8 +254,47 @@ const AddRecord = ({ type }: { type: string }) => {
 
 
               </div>
+              <div className="mb-6">
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">Particular</label>
+                <input
+                  type="text"
+                  name="particular"
+                  required={true}
+                  value={recordData?.particular}
+                  onChange={handleChange}
+                  placeholder="Enter particular"
+                  className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
 
               <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Transaction Suffix
+                  </label>
+                  <input
+                    type="text"
+                    name="suffix"
+                    value={recordData?.suffix}
+                    onChange={handleChange}
+                    placeholder="Enter a suffix"
+                    className="w-full uppercase rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Transaction Number</label>
+                  <input
+                    type="number"
+                    name="number"
+                    onWheel={(e: any) => e.target.blur()}
+                    value={recordData?.number}
+                    onChange={handleChange}
+                    placeholder="Invoice number"
+                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  />
+                </div>
 
                 <div className="w-full xl:w-1/2">
                   <label className="mb-3 block text-sm font-medium text-black dark:text-white">Invoice Number</label>
@@ -249,19 +304,6 @@ const AddRecord = ({ type }: { type: string }) => {
                     value={recordData?.invoiceNo}
                     onChange={handleChange}
                     placeholder="Enter invoice number"
-                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                  />
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Particular</label>
-                  <input
-                    type="text"
-                    name="particular"
-                    required={true}
-                    value={recordData?.particular}
-                    onChange={handleChange}
-                    placeholder="Select particular"
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                   />
                 </div>

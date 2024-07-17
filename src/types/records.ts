@@ -6,6 +6,8 @@ type TRecordBase = {
   method?: string;
   status?: string;
   serviceFee?: number;
+  number: number;
+  suffix: string;
 };
 
 export type TRecordData = TRecordBase & {
@@ -14,11 +16,11 @@ export type TRecordData = TRecordBase & {
   employee?: string;
   company?: string;
   remarks: string;
-  published?:boolean
+  published?: boolean;
 };
 export type TRecordDataWithCreatedAt = TRecordData & {
-  createdAt:Date
-}
+  createdAt: Date;
+};
 
 export type TRecordList = TRecordBase & {
   creator: string;
@@ -29,5 +31,5 @@ export type TRecordList = TRecordBase & {
     type: string;
   };
   date: string;
-  remarks:string
+  remarks: string;
 };

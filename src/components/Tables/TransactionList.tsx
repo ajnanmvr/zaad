@@ -144,6 +144,12 @@ const TransactionList = ({ type, id }: {
 
               <table className="table-auto w-full">
                 <tbody>
+                  {selectedRecord.number && (
+                    <tr>
+                      <th className="px-4 py-2 border">Transaction ID</th>
+                      <td className="px-4 py-2 border">{selectedRecord.suffix + selectedRecord.number}</td>
+                    </tr>
+                  )}
                   {selectedRecord.client && (
                     <>
                       <tr>
@@ -259,8 +265,13 @@ const TransactionList = ({ type, id }: {
         </h4>
 
         <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
+          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-7">
 
+            <div className="p-2.5 xl:p-5">
+              <h5 className="text-sm font-medium uppercase xsm:text-base">
+                ID
+              </h5>
+            </div>
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 Client
@@ -300,12 +311,17 @@ const TransactionList = ({ type, id }: {
 
             {isLoading ? <SkeletonList /> : records.map((record, key) => (
               <div
-                className={`grid grid-cols-3 sm:grid-cols-6 ${key === records.length - 1
+                className={`grid grid-cols-3 sm:grid-cols-7 ${key === records.length - 1
                   ? ""
                   : "border-b border-stroke dark:border-strokedark"
                   }`}
                 key={key}
               >
+                <div className="flex items-center gap-3 p-2.5 xl:p-5">
+                  <p className="hidden uppercase text-black dark:text-white sm:block">
+                    {record?.suffix + record?.number || ""}
+                  </p>
+                </div>
                 <Link href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`} className="flex items-center gap-3 p-2.5 xl:p-5">
                   <p className="hidden capitalize text-black dark:text-white sm:block">
                     {record?.client?.name}

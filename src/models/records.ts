@@ -1,6 +1,8 @@
 import mongoose, { Schema } from "mongoose";
 const RecordSchema = new Schema(
   {
+    suffix: String,
+    number: Number,
     invoiceNo: String,
     particular: String,
     serviceFee: Number,
