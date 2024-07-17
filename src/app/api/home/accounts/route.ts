@@ -2,15 +2,17 @@ import connect from "@/db/connect";
 import calculateLast12Months from "@/helpers/calculateLast12Months";
 import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
 import calculateLast7Days from "@/helpers/calculateLast7Days";
-import Records from "@/models/records"; // Assuming TRecordDataWithCreatedAt is the correct type for your Records model
+import Records from "@/models/records";
 import { TRecordDataWithCreatedAt } from "@/types/records";
+import { filterData } from "@/utils/filterData";
+import { NextRequest } from "next/server";
 connect();
 export const dynamic = "force-dynamic";
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  const searchParams = request.nextUrl.searchParams;
   try {
-    const allRecords: TRecordDataWithCreatedAt[] = await Records.find({
-      published: true,
-    });
+    const filter = filterData(searchParams, true);
+    const allRecords: TRecordDataWithCreatedAt[] = await Records.find(filter);
     const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
       (record) => record.type === "expense"
     );
@@ -71,6 +73,8 @@ export async function GET(): Promise<Response> {
         profit += record.serviceFee || 0;
       }
     });
+    if (searchParams.toString() === "") {
+    }
 
     const currentDate: Date = new Date();
     const currentYear: number = currentDate.getFullYear();

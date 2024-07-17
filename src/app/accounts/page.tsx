@@ -7,9 +7,14 @@ import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
+const baseData = {
+  y: "", m: ""
+}
 export default function AccountsDashboard() {
   const [isLoading, setLoading] = useState(true);
+  const [isFilterOpen, setFilterOpen] = useState(false);
+  const [filterDummy, setFilterDummy] = useState({ ...baseData });
+  const [filter, setFilter] = useState({ ...baseData });
   const [accountsData, setAccountsData] = useState({
     expenseCount: 0,
     totalExpenseAmount: 0,
@@ -53,20 +58,56 @@ export default function AccountsDashboard() {
   });
 
   const fetchData = async () => {
+    let query = "";
+
+    if (filter.m !== "current" && filter.m && filter.y) {
+      query = `?m=${filter.m}&y=${filter.y}`;
+    }
+    else if (!filter.m && filter.y) {
+      query = `?y=${filter.y}`;
+    }
+    else if (filter.m && filter.m !== "current") {
+      query = `?m=${filter.m}`;
+    }
+    else if (filter.m === "current") {
+      query = `?m=current`;
+    }
+
     try {
-      const { data } = await axios.get("/api/home/accounts");
-      const profit = await axios.get("/api/home/profit");
-      setAccountsData(data);
+      setLoading(true)
+      const accounts = await axios.get('/api/home/accounts' + query);
+      const profit = await axios.get("/api/home/profit" + query);
+      setAccountsData(accounts.data);
       setProfitsData(profit.data);
       setLoading(false);
     } catch (error) {
       console.log(error);
     }
   };
+  const handleFilter = () => {
+    setFilter(filterDummy)
+    setFilterOpen(false)
+  }
+  const handleCancelFilter = () => {
+    setFilterDummy({ ...filter })
+    setFilterOpen(false)
+  }
+  const handleCurrentFilter = () => {
+    setFilter({ m: "current", y: "" })
+    setFilterDummy({ m: "current", y: "" })
+    setFilterOpen(false)
+  }
+  const handleAllFilter = () => {
+    setFilter({ m: "", y: "" })
+    setFilterDummy({ m: "", y: "" })
+    setFilterOpen(false)
+  }
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filter]);
+
+  console.log(filter);
 
   return (
     <DefaultLayout>
@@ -76,7 +117,158 @@ export default function AccountsDashboard() {
         </div>
       ) : (
         <>
+
+
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-title-md2 capitalize font-semibold text-black dark:text-white">
+              Accounts Report</h2>
+            <button onClick={() => setFilterOpen(true)} className=" inline-flex gap-3 border-primary border font-semibold text-white bg-primary transition-colors duration-300 rounded hover:bg-opacity-90 p-3 capitalize">
+
+              {filter.m && filter.y ? filter.m + " / " + filter.y : filter.m || filter.y ? filter.m + filter.y : "All Time"}
+
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 12L5 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M19 20L19 18" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M5 20L5 16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M19 12L19 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M12 7L12 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M12 20L12 12" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="5" cy="14" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="9" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="19" cy="15" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+
+
+
+          {isFilterOpen && <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-999">
+            <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
+              <p className='text-center font-bold text-xl my-2 text-primary'>Filter Accounts Data</p>
+
+
+              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Month</label>
+                  <div className="relative z-20 bg-transparent dark:bg-form-input">
+
+                    <select
+                      value={filterDummy.m}
+                      name="from"
+                      onChange={(e) => {
+                        setFilterDummy({ ...filterDummy, m: e.target.value })
+                      }}
+                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
+                    >
+                      <option value="" className="text-body dark:text-bodydark">
+                        None
+                      </option>
+                      <option value="current" className="text-body dark:text-bodydark">
+                        This Month
+                      </option>
+                      <option value="1" className="text-body dark:text-bodydark">
+                        Jan
+                      </option>
+                      <option value="2" className="text-body dark:text-bodydark">
+                        Feb                      </option>
+                      <option value="3" className="text-body dark:text-bodydark">
+                        Mar                      </option>
+                      <option value="4" className="text-body dark:text-bodydark">
+                        Apr                      </option>
+                      <option value="5" className="text-body dark:text-bodydark">
+                        May                      </option>
+                      <option value="6" className="text-body dark:text-bodydark">
+                        Jun                      </option>
+                      <option value="7" className="text-body dark:text-bodydark">
+                        Jul                      </option>
+                      <option value="8" className="text-body dark:text-bodydark">
+                        Aug                      </option>
+                      <option value="9" className="text-body dark:text-bodydark">
+                        Sep                      </option>
+                      <option value="10" className="text-body dark:text-bodydark">
+                        Oct                      </option>
+                      <option value="11" className="text-body dark:text-bodydark">
+                        Nov                      </option>
+                      <option value="12" className="text-body dark:text-bodydark">
+                        Dec                      </option>
+                    </select>
+
+                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                      <svg className="fill-current"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g opacity="0.8">
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                          ></path>
+                        </g>
+                      </svg>
+                    </span>
+
+                  </div>
+                </div>
+
+                <div className="w-full xl:w-1/2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Year</label>
+
+                  <div className="relative z-20 bg-transparent dark:bg-form-input">
+                    <input type="text"
+                      placeholder="Enter Year"
+                      value={filterDummy.y}
+                      name="y"
+                      onChange={(e) => {
+                        setFilterDummy({ ...filterDummy, y: e.target.value })
+                      }}
+                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+                    />
+
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="flex justify-between">
+                <div className="inline-flex items-center gap-2">
+                  <button onClick={handleCurrentFilter} className="text-primary hover:text-meta-10">
+                    This Month
+                  </button>  | <button onClick={handleAllFilter} className=" text-primary hover:text-meta-10">
+                    All Time
+                  </button>
+                </div>
+                <div>
+                  <button onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
+                    Cancel
+                  </button>
+                  <button onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>}
+
+
+
+
+
+
+
+
+
+
+
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+
             <CardDataStats
               title="Total Transactions"
               total={`${accountsData.expenseCount + accountsData.incomeCount}`}

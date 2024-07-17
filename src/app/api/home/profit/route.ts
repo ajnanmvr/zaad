@@ -6,12 +6,16 @@ import { TRecordData } from "@/types/records";
 import { TCompanyData, TEmployeeData } from "@/types/types";
 import processCompanies from "@/helpers/processCompanies";
 import processEmployees from "@/helpers/processEmployees";
+import { NextRequest } from "next/server";
+import { filterData } from "@/utils/filterData";
 
 connect();
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const filter = filterData(searchParams,false);
   try {
     const [companies, employees, allRecords]: [
       TCompanyData[],
@@ -20,7 +24,7 @@ export async function GET() {
     ] = await Promise.all([
       Company.find({ published: true }),
       Employee.find({ published: true }),
-      Records.find({ published: true }),
+      Records.find(filter),
     ]);
 
     const companyRecords = allRecords.filter(
@@ -36,7 +40,6 @@ export async function GET() {
       totalProfitAllCompanies,
       totalToGiveCompanies,
       totalToGetCompanies,
-      advanceCompanies,
     } = processCompanies(companies, companyRecords);
 
     const {
@@ -45,7 +48,6 @@ export async function GET() {
       totalProfitAllEmployees,
       totalToGiveEmployees,
       totalToGetEmployees,
-      advanceEmployees,
     } = processEmployees(employees, employeeRecords);
 
     const profit = totalProfitAllEmployees + totalProfitAllCompanies;
@@ -67,8 +69,6 @@ export async function GET() {
         profit,
         totalToGive,
         totalToGet,
-        advanceEmployees,
-        advanceCompanies,
       },
       { status: 200 }
     );
