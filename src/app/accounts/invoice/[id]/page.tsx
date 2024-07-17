@@ -22,10 +22,10 @@ function SingleInvoice() {
   }
 
   const componentRef = useRef(null)
+
   useEffect(() => {
     fetchData()
   }, [])
-  console.log(invoice);
 
   return (
     <DefaultLayout>
