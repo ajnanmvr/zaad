@@ -19,6 +19,7 @@ const InvoiceSchema = new Schema(
       default: true,
     },
     date: String,
+    validTo: String,
     quotation: {
       type: String,
       default: false,
