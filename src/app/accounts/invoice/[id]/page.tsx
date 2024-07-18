@@ -66,11 +66,10 @@ function SingleInvoice() {
                       <p className="text-sm">TRN NUMBER</p>
                       <p className="font-semibold">{invoice?.trn}</p>
                     </>
-
                   }
                 </div>
               </div>
-              <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>
+              <p className="font-semibold text-lg mt-4">Purpose: {invoice?.purpose || "---"}</p>
 
               <table className="w-full text-left mt-2 mb-8">
                 <thead className="border-y mb-10">
@@ -119,20 +118,25 @@ function SingleInvoice() {
               :
               <>
 
-                <p className="font-semibold text-right w-full">DATE: {invoice?.date}</p>
-                {invoice?.validTo !== "---" ? <p className="font-semibold text-right w-full">VALID TO: {invoice?.validTo}</p> : null}
-                <div className="w-full">
+       <div className="flex justify-between w-full">
+       <div className="flex-grow">
                   <p className="text-sm">TO</p>
                   <p className="text-xl font-semibold">{invoice?.client}</p>
                   <p>{invoice?.location}</p>
                 </div>
+        <div className="text-sm"> <p className="text-right w-full">DATE: {invoice?.date}</p>
+                {invoice?.validTo !== "---" ? <p className="text-right w-full">VALID TO: {invoice?.validTo}</p> : null}
+                {invoice?.invoiceNo !== "---" ? <p className="text-right w-full">INVOICE NO: {invoice?.invoiceNo}</p> : null}
+               </div>
+
+       </div>
 
 
-                <p className="w-full mt-10 normal-case">
+                <p className="w-full mt-4 text-sm normal-case">
                   Thank you for considering Zaad Business Documents Services. We are delighted to provide you with the following quotation
                 </p>
 
-                {invoice?.message && <p className="w-full mt-10 normal-case">
+                {invoice?.message && <p className="w-full text-sm mt-4 normal-case">
                   {invoice?.message}
                 </p>}
                 <p className="font-semibold text-lg mt-8">Purpose: {invoice?.purpose || "---"}</p>
@@ -165,9 +169,9 @@ function SingleInvoice() {
                   <p>Total</p>
                   <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
                 </div>
-                <p className="mt-10 w-full normal-case">We look forward to assisting you,Please let us know if you have any questions or need further information.</p>
-                <p className="w-full font-semibold mt-2">NOTE:</p>
-                <p className="w-full normal-case">All the aforementioned costs as per the approximate fees structure of the authorities, it may subject to vary if the authorities will change the fee structure. </p>
+                <p className="mt-10 text-sm w-full normal-case">We look forward to assisting you,Please let us know if you have any questions or need further information.</p>
+                <p className="w-full text-sm font-semibold mt-2">NOTE:</p>
+                <p className="w-full text-sm normal-case">All the aforementioned costs as per the approximate fees structure of the authorities, it may subject to vary if the authorities will change the fee structure. </p>
               </>}</div>
 
         </div>
