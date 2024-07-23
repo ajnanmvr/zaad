@@ -22,6 +22,7 @@ const TransactionList = ({ type, id }: {
   const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isSelfOpen, setSelfOpen] = useState(false);
+  const [isFilterOpen, setFilterOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
   const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
@@ -241,8 +242,12 @@ const TransactionList = ({ type, id }: {
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">
           <p className="text-lg">Payments List</p>
           <div className="gap-1 flex">
-            <div
-              onClick={() => setSelfOpen(true)}
+            <div onClick={() => setSelfOpen(true)}
+              className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
+            ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
+              Self Deposit
+            </div>
+            <div onClick={() => setSelfOpen(true)}
               className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
               Self Deposit
