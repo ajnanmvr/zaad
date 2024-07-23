@@ -8,6 +8,7 @@ export type TInvoiceData = {
   createdBy: string;
   client: string;
   date: string;
+  validTo: string;
   items: TInvoiceItemsData[];
   remarks: string;
   advance: number;

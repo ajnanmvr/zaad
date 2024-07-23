@@ -41,6 +41,7 @@ export async function GET(
       invoiceNo,
       createdBy,
       date,
+      validTo,
       items,
       remarks,
       purpose,
@@ -76,6 +77,7 @@ export async function GET(
               0
             ),
             date: formatDate(date),
+            validTo: formatDate(validTo),
             ...commonData,
           }
         : {
@@ -83,6 +85,7 @@ export async function GET(
             invoiceNo,
             createdBy: createdBy._id,
             date: date || new Date(),
+            validTo,
             ...commonData,
           };
 

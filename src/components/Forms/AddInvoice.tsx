@@ -281,7 +281,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         name="date"
                                         value={invoiceData?.date}
                                         onChange={handleChange}
-                                        placeholder="Enter invoice number"
                                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                     />
                                 </div>
@@ -317,7 +316,19 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                             </div>
 
 
-                            {invoiceData.quotation === "true" ?
+                            {invoiceData.quotation === "true" ?<>
+                                <div className="mb-2.5">
+                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                                        Valid To
+                                    </label>
+                                    <input type="date"
+                                        name="validTo"
+                                        placeholder="Quotation message Here"
+                                        value={invoiceData?.validTo}
+                                        onChange={handleChange}
+                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                   />
+                                </div>
                                 <div className="mb-2.5">
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                         Quotation Message
@@ -330,7 +341,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         onChange={handleChange}
                                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                     ></textarea>
-                                </div>
+                                </div></>
                                 : <></>
                             }
                             <div className="mb-6">

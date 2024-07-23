@@ -22,10 +22,10 @@ function SingleInvoice() {
   }
 
   const componentRef = useRef(null)
-
   useEffect(() => {
     fetchData()
   }, [])
+  console.log(invoice);
 
   return (
     <DefaultLayout>
@@ -42,9 +42,10 @@ function SingleInvoice() {
         } content={() => componentRef.current} />
 
         <div className="relative" ref={componentRef}>
-          {invoice?.quotation !== "true" ? <>
-            <img src="/images/invoice.jpg" alt="Invoice Bg" />
-            <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
+          <img src="/images/invoice.jpg" alt="quotation Bg" />
+          <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
+
+            {invoice?.quotation !== "true" ? <>
               <p className="bg-primary text-white px-4 py-2 text-xl rounded-md font-semibold">{invoice?.title}</p>
               <div className="flex w-full justify-between mt-10">
                 <div>
@@ -65,7 +66,6 @@ function SingleInvoice() {
                       <p className="text-sm">TRN NUMBER</p>
                       <p className="font-semibold">{invoice?.trn}</p>
                     </>
-
                   }
                 </div>
               </div>
@@ -114,25 +114,35 @@ function SingleInvoice() {
                 ) : (<></>)
               }
               <p className="mt-10 text-xl font-bold">Thank You!</p>
-            </div></>
-            :
-            <>
-              <img src="/images/quotation.png" alt="quotation Bg" />
-              <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[23%] flex-col uppercase px-20">
+            </>
+              :
+              <>
 
-                <p className="font-semibold text-right w-full">DATE: {invoice?.date}</p>
-                <div className="w-full">
+       <div className="flex justify-between w-full">
+       <div className="flex-grow">
                   <p className="text-sm">TO</p>
                   <p className="text-xl font-semibold">{invoice?.client}</p>
                   <p>{invoice?.location}</p>
                 </div>
+        <div className="text-sm"> <p className="text-right w-full">DATE: {invoice?.date}</p>
+                {invoice?.validTo !== "---" ? <p className="text-right w-full">VALID TO: {invoice?.validTo}</p> : null}
+                {invoice?.invoiceNo !== "---" ? <p className="text-right w-full">INVOICE NO: {invoice?.invoiceNo}</p> : null}
+               </div>
+
+       </div>
 
 
-                <p className="w-full mt-10 normal-case">
-                  {invoice?.message}
+                <p className="w-full mt-3 text-sm normal-case">
+                  Thank you for considering Zaad Business Documents Services. We are delighted to provide you with the following quotation
                 </p>
-                <table className="w-full text-left mt-10 mb-8">
-                  <thead className="border-y mb-10">
+
+                {invoice?.message && <p className="w-full text-sm mt-4 normal-case">
+                  {invoice?.message}
+                </p>}
+                <p className="font-semibold text-lg mt-3">Purpose: {invoice?.purpose || "---"}</p>
+
+                <table className="w-full text-left mt-3">
+                  <thead className="border-y">
                     <tr>
                       <th>Description</th>
                       <th className="text-center">Rate</th>
@@ -159,18 +169,16 @@ function SingleInvoice() {
                   <p>Total</p>
                   <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
                 </div>
-                <p className="mt-10 w-full normal-case">For any further assistance please Feel Free to contact us.
-                </p>
-                <p className="w-full font-semibold mt-2">NOTE:</p>
-                <p className="w-full normal-case">All the Aforementioned Costs as Per the approximate Fees Structure of The Authorities,
-                  It May Subject to Vary If the Authorities Will Change the Fee Structure. </p>
-              </div></>}
+                <p className="mt-3 text-sm w-full normal-case">We look forward to assisting you, Please let us know if you have any questions or need further information.</p>
+                <p className="w-full text-sm font-semibold mt-2">NOTE:</p>
+                <p className="w-full text-sm normal-case">All the aforementioned costs as per the approximate fees structure of the authorities, it may subject to vary if the authorities will change the fee structure. </p>
+              </>}</div>
 
         </div>
       </>
       }
 
-    </DefaultLayout>
+    </DefaultLayout >
   )
 }
 
