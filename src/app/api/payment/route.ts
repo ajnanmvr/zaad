@@ -22,9 +22,19 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
+    const method = searchParams.get("m");
+    const type = searchParams.get("t");
     const contentPerSection = 10;
 
-    const records = await Records.find({ published: true })
+    const query: { [key: string]: any } = { published: true };
+    if (method) {
+      query.method = method;
+    }
+    if (type) {
+      query.type = type;
+    }
+
+    const records = await Records.find(query)
       .populate(["createdBy", "company", "employee"])
       .skip(+pageNumber * contentPerSection)
       .limit(contentPerSection + 1)

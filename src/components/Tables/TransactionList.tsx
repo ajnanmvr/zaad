@@ -9,6 +9,9 @@ import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import SelfDepositModal from "../Modals/SelfDepositModal";
+const baseData = {
+  t: "", m: ""
+}
 
 const TransactionList = ({ type, id }: {
   type?: string | string[], id?: string | string[]
@@ -24,29 +27,41 @@ const TransactionList = ({ type, id }: {
   const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [filterDummy, setFilterDummy] = useState({ ...baseData });
+  const [filter, setFilter] = useState({ ...baseData });
   const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
   const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
 
   const fetchData = async () => {
     try {
       let res: any
+      let query = "";
+
+      if (filter.t) {
+        query += `&t=${filter.t}`;
+      }
+      if (filter.m) {
+        query += `&m=${filter.m}`;
+      }
+      console.log(query);
+
       if (type) {
         if (id) {
           if (type === "company") {
-            res = await axios.get(`/api/payment/company/${id}?page=${pageNumber}`);
+            res = await axios.get(`/api/payment/company/${id}?page=${pageNumber + query}`);
           }
           if (type === "employee") {
-            res = await axios.get(`/api/payment/individual/${id}?page=${pageNumber}`);
+            res = await axios.get(`/api/payment/individual/${id}?page=${pageNumber + query}`);
           }
         }
         if (type === "self") {
-          res = await axios.get(`/api/payment/self?page=${pageNumber}`);
+          res = await axios.get(`/api/payment/self?page=${pageNumber + query}`);
         }
         let { balance, totalIncome, totalExpense, totalTransactions } = res.data
         setCards([balance, totalIncome, totalExpense, totalTransactions])
 
       } else {
-        res = await axios.get(`/api/payment?page=${pageNumber}`);
+        res = await axios.get(`/api/payment?page=${pageNumber + query}`);
       }
       setHasMore(res.data.hasMore)
       setRecords(res.data.records);
@@ -62,7 +77,7 @@ const TransactionList = ({ type, id }: {
   useEffect(() => {
     setIsBtnDisabled(true)
     fetchData();
-  }, [pageNumber]);
+  }, [pageNumber, filter]);
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
@@ -90,6 +105,15 @@ const TransactionList = ({ type, id }: {
     setIsConfirmationOpen(false);
     setIsSecondConfirmationOpen(false);
     setIsInfoOpen(false);
+  }
+
+  const handleFilter = () => {
+    setFilter(filterDummy)
+    setFilterOpen(false)
+  }
+  const handleCancelFilter = () => {
+    setFilterDummy({ ...filter })
+    setFilterOpen(false)
   }
   console.log(cards);
 
@@ -137,7 +161,120 @@ const TransactionList = ({ type, id }: {
           isOpen={isSelfOpen}
           cancel={() => setSelfOpen(false)}
         />
+        {isFilterOpen && <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-999">
+          <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
+            <p className='text-center font-bold text-xl my-2 text-primary'>Filter Transaction Data</p>
+            <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+              <div className="w-full xl:w-1/2">
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">Type</label>
+                <div className="relative z-20 bg-transparent dark:bg-form-input">
 
+                  <select value={filterDummy.t}
+                    name="type"
+                    onChange={(e) => {
+                      setFilterDummy({ ...filterDummy, t: e.target.value })
+                    }}
+                    className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"                  >
+                    <option value="" className="text-body dark:text-bodydark">
+                      All
+                    </option>
+                    <option value="income" className="text-body dark:text-bodydark">
+                      Income
+                    </option>
+                    <option value="expense" className="text-body dark:text-bodydark">
+                      Expense
+                    </option>
+                  </select>
+
+                  <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                    <svg className="fill-current"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g opacity="0.8">
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                        ></path>
+                      </g>
+                    </svg>
+                  </span>
+
+                </div>
+              </div>
+              <div className="w-full xl:w-1/2">
+                <label className="mb-3 block text-sm font-medium text-black dark:text-white">Method</label>
+                <div className="relative z-20 bg-transparent dark:bg-form-input">
+
+                  <select value={filterDummy.m}
+                    name="method"
+                    onChange={(e) => {
+                      setFilterDummy({ ...filterDummy, m: e.target.value })
+                    }}
+                    className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+
+                  >
+                    <option value="" className="text-body dark:text-bodydark">
+                      All
+                    </option>
+                    <option value="cash" className="text-body dark:text-bodydark">
+                      Cash
+                    </option>
+                    <option value="bank" className="text-body dark:text-bodydark">
+                      Bank
+                    </option>
+                    <option value="tasdeed" className="text-body dark:text-bodydark">
+                      Tasdeed                      </option>
+                    <option value="swiper" className="text-body dark:text-bodydark">
+                      Swiper                      </option>
+                  </select>
+
+                  <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
+                    <svg className="fill-current"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g opacity="0.8">
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
+                        ></path>
+                      </g>
+                    </svg>
+                  </span>
+
+                </div>
+              </div>
+
+
+
+            </div>
+
+            <div className="flex justify-between">
+              <div className="inline-flex items-center gap-2">
+                <button onClick={() => { setFilter(baseData); setFilterDummy(baseData); setFilterOpen(false) }} className="text-red hover:bg-red hover:text-white px-2 py-1 rounded">
+                  Clear Filter
+                </button>
+              </div>
+              <div>
+                <button onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
+                  Cancel
+                </button>
+                <button onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>}
         {isInfoOpen && selectedRecord && (
           <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
             <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
@@ -242,10 +379,12 @@ const TransactionList = ({ type, id }: {
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">
           <p className="text-lg">Payments List</p>
           <div className="gap-1 flex">
-            <div onClick={() => setSelfOpen(true)}
-              className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            ><svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
-              Self Deposit
+            <div onClick={() => setFilterOpen(true)}
+              className="inline-flex capitalize justify-center items-center gap-1 hover:bg-meta-5 cursor-pointer rounded hover:bg-opacity-10 px-4 py-1 text-center font-medium text-primary"
+            >                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.65811 19.7806L9.81622 20.255H9.81622L9.65811 19.7806ZM14.6581 18.114L14.8162 18.5883H14.8162L14.6581 18.114ZM19.7071 7.29289L20.0607 7.64645L19.7071 7.29289ZM15.2929 11.7071L14.9393 11.3536L15.2929 11.7071ZM5 4.5H19V3.5H5V4.5ZM4.5 6.58579V5H3.5V6.58579H4.5ZM9.06065 11.3535L4.64645 6.93934L3.93934 7.64645L8.35355 12.0607L9.06065 11.3535ZM8.49999 12.4142V19.3063H9.49999V12.4142H8.49999ZM8.49999 19.3063C8.49999 19.9888 9.16869 20.4708 9.81622 20.255L9.49999 19.3063V19.3063H8.49999ZM9.81622 20.255L14.8162 18.5883L14.5 17.6396L9.49999 19.3063L9.81622 20.255ZM14.8162 18.5883C15.2246 18.4522 15.5 18.0701 15.5 17.6396H14.5L14.8162 18.5883ZM15.5 17.6396V12.4142H14.5V17.6396H15.5ZM19.3536 6.93934L14.9393 11.3536L15.6464 12.0607L20.0607 7.64645L19.3536 6.93934ZM19.5 5V6.58579H20.5V5H19.5ZM20.0607 7.64645C20.342 7.36514 20.5 6.98361 20.5 6.58579H19.5C19.5 6.71839 19.4473 6.84557 19.3536 6.93934L20.0607 7.64645ZM15.5 12.4142C15.5 12.2816 15.5527 12.1544 15.6464 12.0607L14.9393 11.3536C14.658 11.6349 14.5 12.0164 14.5 12.4142H15.5ZM8.35355 12.0607C8.44731 12.1544 8.49999 12.2816 8.49999 12.4142H9.49999C9.49999 12.0164 9.34196 11.6349 9.06065 11.3535L8.35355 12.0607ZM3.5 6.58579C3.5 6.98361 3.65804 7.36514 3.93934 7.64645L4.64645 6.93934C4.55268 6.84557 4.5 6.71839 4.5 6.58579H3.5ZM19 4.5C19.2761 4.5 19.5 4.72386 19.5 5H20.5C20.5 4.17157 19.8284 3.5 19 3.5V4.5ZM5 3.5C4.17157 3.5 3.5 4.17157 3.5 5H4.5C4.5 4.72386 4.72386 4.5 5 4.5V3.5Z" fill="gray" />
+              </svg>
+              {filter.m || filter.t ? filter.m + " " + filter.t : "Filter"}
             </div>
             <div onClick={() => setSelfOpen(true)}
               className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
