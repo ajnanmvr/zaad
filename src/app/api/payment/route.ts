@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const pageNumber = searchParams.get("page") || 0;
     const method = searchParams.get("m");
     const type = searchParams.get("t");
-    const contentPerSection = 10;
+    const contentPerSection = 25;
 
     const query: { [key: string]: any } = { published: true };
     if (method) {
