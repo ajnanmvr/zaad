@@ -425,7 +425,7 @@ const AddRecord = ({ type }: { type: string }) => {
                         <option value="Credit" className="text-body dark:text-bodydark">
                           Credit (Income)
                         </option>
-                        <option value="Credit" className="text-body dark:text-bodydark">
+                        <option value="Debit" className="text-body dark:text-bodydark">
                           Debit (Pay Out)
                         </option>
                         <option value="Ready Cash" className="text-body dark:text-bodydark">
