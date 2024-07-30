@@ -463,7 +463,7 @@ const TransactionList = ({ type, id }: {
               >
                 <div className="flex items-center gap-3 p-2.5 xl:p-5">
                   <p className="hidden uppercase text-black dark:text-white sm:block">
-                    {record?.suffix + record?.number || ""}
+                    {(record?.suffix || "") + (record?.number || "")}
                   </p>
                 </div>
                 <Link href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`} className="flex items-center gap-3 p-2.5 xl:p-5">
