@@ -1,13 +1,19 @@
 import { URLSearchParams } from "url";
 
-export function filterData(searchParams: URLSearchParams, considerStart: boolean): any {
+export function filterData(
+  searchParams: URLSearchParams,
+  considerStart: boolean
+): any {
   const currentMonth = new Date().getMonth() + 1; // Months are zero-based, so add 1
   const currentYear = new Date().getFullYear();
 
   const monthParam = searchParams.get("m");
   const yearParam = searchParams.get("y");
 
-  let filter: any = { published: true };
+  let filter: any = {
+    published: true,
+    method: { $ne: "liability" },
+  };
 
   if (yearParam) {
     const year = parseInt(yearParam, 10);

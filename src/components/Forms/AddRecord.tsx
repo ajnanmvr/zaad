@@ -312,7 +312,7 @@ const AddRecord = ({ type }: { type: string }) => {
                 <div className="w-full xl:w-1/2">
 
                   <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Payment Method
+                    Method
                     <span className="text-meta-1">*</span>
                   </label>
 
@@ -340,6 +340,8 @@ const AddRecord = ({ type }: { type: string }) => {
                         Tasdeed                      </option>
                       <option value="swiper" className="text-body dark:text-bodydark">
                         Swiper                      </option>
+                      {type === "income" && <option value="liability" className="text-body dark:text-bodydark">
+                        Liability                     </option>}
                       {type === "expense" && <option value="service fee" className="text-body dark:text-bodydark">
                         Service Fee                      </option>}
                     </select>
@@ -430,6 +432,9 @@ const AddRecord = ({ type }: { type: string }) => {
                         </option>
                         <option value="Ready Cash" className="text-body dark:text-bodydark">
                           Ready Cash
+                        </option>
+                        <option value="liability" className="text-body dark:text-bodydark">
+                          Liability Payment
                         </option>
                       </select>
 

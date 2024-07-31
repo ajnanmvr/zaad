@@ -482,7 +482,7 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "income" ? "text-meta-3" : "text-red")}>{record?.amount}
+                  <p className={clsx(record?.type === "expense" ? "text-red" : record.method === "liability" ? "text-meta-6" : "text-meta-3")}>{record?.amount}
                     <span className="text-xs"> AED</span></p>
                 </div>
                 <div className="flex items-center justify-center p-2.5 xl:p-5">

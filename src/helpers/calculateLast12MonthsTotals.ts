@@ -14,7 +14,8 @@ async function calculateLast12MonthsTotals(
           .filter(
             (record) =>
               new Date(record?.createdAt).getMonth() + 1 === month &&
-              new Date(record?.createdAt).getFullYear() === year
+              new Date(record?.createdAt).getFullYear() === year &&
+              record?.self === "zaad"
           )
           .reduce(
             (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses

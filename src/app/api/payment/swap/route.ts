@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       type: "expense",
       amount,
       particular: `Money removed from ${from} to add in ${to}`,
-      self: "zaad",
+      self: "Zaad (Self Deposit)",
       status: "Self Deposit",
       method: from,
     });
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       type: "income",
       amount,
       particular: `Money recieved as exchange from ${from}`,
-      self: "zaad",
+      self: "Zaad (Self Deposit)",
       status: "Self Deposit",
       method: to,
     });

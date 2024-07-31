@@ -75,7 +75,11 @@ export async function GET(
     });
 
     const totalIncome = allRecords.reduce(
-      (acc, record) => acc + (record.type === "income" ? record.amount : 0),
+      (acc, record) =>
+        acc +
+        (record.type === "income" && record.method !== "liability"
+          ? record.amount
+          : 0),
       0
     );
     const totalExpense = allRecords.reduce(

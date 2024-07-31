@@ -12,7 +12,8 @@ export default function calculateLast7Days(
       expenseRecords
         .filter(
           (record) =>
-            new Date(record.createdAt).toDateString() === date.toDateString()
+            new Date(record.createdAt).toDateString() === date.toDateString() &&
+            record?.self === "zaad"
         )
         .reduce(
           (total, record) => total + (record.amount || 0), // Assuming 'amount' is the correct field for expenses
