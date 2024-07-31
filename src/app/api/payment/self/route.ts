@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
           serviceFee: record.serviceFee?.toFixed(2),
           creator: record.createdBy.username,
           status: record.status,
+          number: record.number,
+          suffix: record.suffix,
           date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
         };
       });

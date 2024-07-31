@@ -5,10 +5,7 @@ import { NextRequest } from "next/server";
 
 connect();
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
@@ -16,7 +13,7 @@ export async function GET(
 
     const records = await Records.find({
       published: true,
-      employee: { _id: params.id },
+      $or: [{ method: "liability" }, { status: "liability" }],
     })
       .populate(["createdBy", "company", "employee"])
       .skip(+pageNumber * contentPerSection)
@@ -73,19 +70,18 @@ export async function GET(
 
     const allRecords = await Records.find({
       published: true,
-      employee: { _id: params.id },
+      $or: [{ method: "liability" }, { status: "liability" }],
     });
 
     const totalIncome = allRecords.reduce(
-      (acc, record) =>
-        acc +
-        (record.type === "income" && record.method !== "liability"
-          ? record.amount
-          : 0),
+      (acc, record) => acc + (record.type === "income" ? record.amount : 0),
       0
     );
     const totalExpense = allRecords.reduce(
-      (acc, record) => acc + (record.type === "expense" ? record.amount : 0),
+      (acc, record) =>
+        acc +
+        (record.type === "expense" ? record.amount : 0) +
+        (record.serviceFee || 0),
       0
     );
     const balance = totalIncome - totalExpense;

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .select("invoiceNo suffix title");
     return Response.json(
-      { suffix, invoiceNo: invoiceNo + 1, title },
+      { suffix, invoiceNo: invoiceNo + 1 || 1, title },
       { status: 201 }
     );
   } catch (error) {

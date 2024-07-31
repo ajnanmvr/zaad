@@ -437,8 +437,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 </li>
                 <li>
                   <Link
-                    href="/accounts/liability"
-                    className={`group relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-graydark dark:hover:bg-meta-4 ${pathname === "/accounts/liability" && "bg-graydark dark:bg-meta-4"
+                    href="/accounts/transactions/liability"
+                    className={`group relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-graydark dark:hover:bg-meta-4 ${pathname === "/accounts/transactions/liability" && "bg-graydark dark:bg-meta-4"
                       }`}
                   >
                     <svg
