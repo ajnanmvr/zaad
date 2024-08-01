@@ -56,10 +56,7 @@ const TransactionList = ({ type, id }: {
         }
         if (type === "self") {
           res = await axios.get(`/api/payment/self?page=${pageNumber + query}`);
-        } else
-          if (type === "liability") {
-            res = await axios.get(`/api/payment/liability?page=${pageNumber + query}`);
-          }
+        } 
         let { balance, totalIncome, totalExpense, totalTransactions } = res.data
         setCards([balance, totalIncome, totalExpense, totalTransactions])
 
