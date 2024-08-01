@@ -1,13 +1,11 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
-import { format } from "date-fns";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 connect();
 
 export async function GET(request: NextRequest) {
   try {
-
     const records = await Records.find({
       published: true,
       $or: [{ method: "liability" }, { status: "liability" }],
@@ -16,7 +14,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 });
 
     if (!records || records.length === 0) {
-      return Response.json(
+      return NextResponse.json(
         {
           message: "No records found",
           count: 0,
@@ -27,65 +25,62 @@ export async function GET(request: NextRequest) {
         { status: 200 }
       );
     }
-    const transformedData = records
-      .map((record) => {
-        const client = () => {
-          const { company, employee, self } = record;
-          return company
-            ? { name: company.name, id: company._id, type: "company" }
-            : employee
-              ? { name: employee.name, id: employee._id, type: "employee" }
-                : null;
-        };
 
-        return {
-          id: record._id,
-          type: record.type,
-          client: client(),
-          method: record.method,
-          particular: record.particular,
-          invoiceNo: record.invoiceNo,
-          amount: record.amount?.toFixed(2),
-          serviceFee: record.serviceFee?.toFixed(2),
-          creator: record.createdBy.username,
-          status: record.status,
-          number: record.number,
-          suffix: record.suffix,
-          date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
-        };
-      });
+    interface Client {
+      name: string;
+      id: string;
+      type: "company" | "employee";
+    }
 
-    const allRecords = await Records.find({
-      published: true,
-      $or: [{ method: "liability" }, { status: "liability" }],
+    interface GroupedData {
+      [key: string]: {
+        client: Client;
+        income: number;
+        expense: number;
+      };
+    }
+
+    const groupedData = records.reduce((acc: GroupedData, record: any) => {
+      const client: Client | null = (() => {
+        const { company, employee } = record;
+        return company
+          ? { name: company.name, id: company._id, type: "company" }
+          : employee
+            ? { name: employee.name, id: employee._id, type: "employee" }
+            : null;
+      })();
+
+      if (client) {
+        if (!acc[client.id]) {
+          acc[client.id] = {
+            client,
+            income: 0,
+            expense: 0
+          };
+        }
+
+        if (record.type === "income") {
+          acc[client.id].income += record.amount;
+        } else if (record.type === "expense") {
+          acc[client.id].expense += record.amount;
+        }
+      }
+
+      return acc;
+    }, {} as GroupedData);
+
+    const transformedData = Object.values(groupedData).map((data) => ({
+      client: data.client,
+      netAmount: data.income - data.expense,
+    }));
+
+    return NextResponse.json({
+      message: "Records retrieved successfully",
+      count: records.length,
+      records: transformedData,
+      amount: transformedData.reduce((acc, data) => acc + data.netAmount, 0),
     });
-
-    const totalIncome = allRecords.reduce(
-      (acc, record) => acc + (record.type === "income" ? record.amount : 0),
-      0
-    );
-    const totalExpense = allRecords.reduce(
-      (acc, record) =>
-        acc +
-        (record.type === "expense" ? record.amount : 0) +
-        (record.serviceFee || 0),
-      0
-    );
-    const balance = totalIncome - totalExpense;
-    const totalTransactions = allRecords.length;
-
-    return Response.json(
-      {
-        count: transformedData.length,
-        records: transformedData,
-        balance,
-        totalIncome,
-        totalExpense,
-        totalTransactions,
-      },
-      { status: 200 }
-    );
   } catch (error) {
-    return Response.json({ error }, { status: 401 });
+    return NextResponse.json({ message: "Error retrieving records", error }, { status: 500 });
   }
 }
