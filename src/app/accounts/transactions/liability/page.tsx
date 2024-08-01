@@ -48,8 +48,7 @@ const TransactionList = () => {
             Current Liability
           </h4>
           <p>
-            Net Liability  :                     <span className={clsx(amount > 0 ? "bg-meta-6" : "bg-meta-3", "px-2 text-white dark:text-black rounded-md")}> {amount.toFixed(2)} <span className="text-xs">AED</span></span>
-
+            Net Liability  :<span className={clsx(amount > 0 ? "bg-meta-6" : "bg-meta-3", "px-2 text-white dark:text-black rounded-md")}> {amount} <span className="text-xs">AED</span></span>
           </p>
         </div>
 
@@ -70,7 +69,7 @@ const TransactionList = () => {
                 </div>
                 <div>
                   <h5 className={clsx(data.netAmount > 0 ? "text-meta-6" : "text-meta-3","font-medium")}>
-                    {data.netAmount.toFixed(2)} AED
+                    {data.netAmount} AED
                   </h5>
                 </div>
               </div>
