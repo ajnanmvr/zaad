@@ -487,15 +487,15 @@ const TransactionList = ({ type, id }: {
                 </div>
 
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
-                  <p className={clsx(record?.type === "expense" ? "text-red" : record.method === "liability" ? "text-meta-6" : "text-meta-3")}>{record?.amount.toFixed(2)}
+                  <p className={clsx(record?.type === "expense" ? "text-red" : record.method === "liability" ? "text-meta-6" : "text-meta-3")}>{record?.amount}
                     <span className="text-xs"> AED</span></p>
                 </div>
                 <div className="flex items-center justify-center p-2.5 xl:p-5">
 
                   {record?.type === "expense" && record?.serviceFee && record?.serviceFee != 0 && (
                     <div>
-                      <p className={clsx((record?.serviceFee || 0) > 0 ? "bg-meta-3" : "bg-red", "ml-2 px-2 text-white dark:text-black rounded-md")}> {record?.serviceFee.toFixed(2)} <span className="text-xs">AED</span></p>
-                      <p>{(record.serviceFee + record.amount).toFixed(2)}</p>
+                      <p className={clsx((record?.serviceFee || 0) > 0 ? "bg-meta-3" : "bg-red", "ml-2 px-2 text-white dark:text-black rounded-md")}> {record?.serviceFee} <span className="text-xs">AED</span></p>
+                      <p>{record.serviceFee + record.amount}</p>
                     </div>
                   )}
                 </div>
