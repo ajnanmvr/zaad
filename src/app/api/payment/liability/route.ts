@@ -7,17 +7,12 @@ connect();
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const pageNumber = searchParams.get("page") || 0;
-    const contentPerSection = 10;
 
     const records = await Records.find({
       published: true,
       $or: [{ method: "liability" }, { status: "liability" }],
     })
       .populate(["createdBy", "company", "employee"])
-      .skip(+pageNumber * contentPerSection)
-      .limit(contentPerSection + 1)
       .sort({ createdAt: -1 });
 
     if (!records || records.length === 0) {
@@ -25,20 +20,14 @@ export async function GET(request: NextRequest) {
         {
           message: "No records found",
           count: 0,
-          hasMore: false,
           records: [],
           balance: 0,
           totalIncome: 0,
-          totalExpense: 0,
-          totalTransactions: 0,
         },
         { status: 200 }
       );
     }
-
-    const hasMore = records.length > contentPerSection;
     const transformedData = records
-      .slice(0, contentPerSection)
       .map((record) => {
         const client = () => {
           const { company, employee, self } = record;
@@ -46,8 +35,6 @@ export async function GET(request: NextRequest) {
             ? { name: company.name, id: company._id, type: "company" }
             : employee
               ? { name: employee.name, id: employee._id, type: "employee" }
-              : self
-                ? { name: self, type: "self" }
                 : null;
         };
 
@@ -90,7 +77,6 @@ export async function GET(request: NextRequest) {
     return Response.json(
       {
         count: transformedData.length,
-        hasMore,
         records: transformedData,
         balance,
         totalIncome,

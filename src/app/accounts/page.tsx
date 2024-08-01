@@ -300,19 +300,19 @@ export default function AccountsDashboard() {
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Total Balance"
-              total={`${accountsData.totalBalance < 0 || accountsData.totalBalance > 0 ? "0.00" : accountsData.totalBalance.toFixed(2)} AED`}
+              total={`${accountsData.totalBalance.toFixed(2)} AED`}
             />
             <CardDataStats
               title="Cash Balance"
-              total={`${accountsData.cashBalance < 0 || accountsData.cashBalance > 0 ? "0.00" : accountsData.cashBalance.toFixed(2)} AED`}
+              total={`${accountsData.cashBalance.toFixed(2)} AED`}
             />
             <CardDataStats
               title="Bank Balance"
-              total={`${accountsData.bankBalance < 0 || accountsData.bankBalance > 0 ? "0.00" : accountsData.bankBalance.toFixed(2)} AED`}
+              total={`${accountsData.bankBalance.toFixed(2)} AED`}
             />
             <CardDataStats
               title="Tasdeed Balance"
-              total={`${accountsData.tasdeedBalance < 0 || accountsData.tasdeedBalance > 0 ? "0.00" : accountsData.tasdeedBalance.toFixed(2)} AED`}
+              total={`${accountsData.tasdeedBalance.toFixed(2)} AED`}
             />
           </div>
 
