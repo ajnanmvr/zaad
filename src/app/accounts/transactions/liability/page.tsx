@@ -41,7 +41,6 @@ const TransactionList = () => {
 
   return (
     <DefaultLayout>
-
       <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
         <div className="flex justify-between items-center mb-6 px-7.5 ">
           <h4 className="text-xl font-semibold text-black dark:text-white">
