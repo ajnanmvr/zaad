@@ -2,12 +2,14 @@ import connect from "@/db/connect";
 import calculateStatus from "@/utils/calculateStatus";
 import Company from "@/models/companies";
 import { TCompanyData } from "@/types/types";
-connect();
+
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+await connect();
+
   const { id } = params;
   const reqBody = await request.json();
   await Company.findByIdAndUpdate(id, reqBody);
@@ -21,6 +23,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+await connect();
+
   const { id } = params;
   await Company.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
@@ -31,6 +35,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+await connect();
+
     const company: TCompanyData | null = await Company.findById(params.id);
 
     if (!company) {

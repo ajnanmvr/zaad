@@ -1,7 +1,6 @@
 import connect from "@/db/connect";
 import Company from "@/models/companies";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
-connect();
 export async function PUT(
   request: Request,
   { params }: { params: { id: string; doc: string } }
@@ -11,6 +10,7 @@ export async function PUT(
   const Data = await Company.findById(id);
 
   try {
+    await connect();
     const { data, documentIndex } = await fetchDocuments(id, doc,Data);
     if (!data) {
       return Response.json({ message: "Company not found" });
@@ -42,6 +42,8 @@ export async function DELETE(
   const Data = await Company.findById(id);
 
   try {
+await connect();
+
     const { data, documentIndex } = await fetchDocuments(id, doc,Data);
     if (!data) {
       return Response.json({ message: "Company not found" });

@@ -3,9 +3,10 @@ import { TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
 import calculateStatus from "@/utils/calculateStatus";
 import processDocuments from "@/helpers/processDocuments";
-connect();
 export async function POST(request: Request) {
   try {
+await connect();
+
     const reqBody = await request.json();
     console.log(reqBody);
     const data = await Employee.create(reqBody);
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const today = new Date();
+  await connect();
 
   const employees: TEmployeeData[] = await Employee.find({
     published: true,

@@ -3,9 +3,10 @@ import Company from "@/models/companies";
 import { TCompanyData, TCompanyList } from "@/types/types";
 import calculateStatus from "@/utils/calculateStatus";
 import processDocuments from "@/helpers/processDocuments";
-connect();
 export async function POST(request: Request) {
   try {
+    await connect();
+
     const reqBody = await request.json();
     const data = await Company.create(reqBody);
     return Response.json(
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
   }
 }
 export async function GET() {
+await connect();
+
   const companies: TCompanyData[] = await Company.find({
     published: true,
   }).select("name documents");

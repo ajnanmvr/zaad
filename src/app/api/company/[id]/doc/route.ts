@@ -1,8 +1,6 @@
 import connect from "@/db/connect";
 import Company from "@/models/companies";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
-connect();
-
 export async function POST(
   request: Request,
   { params }: { params: { id: string; doc: string } }
@@ -11,6 +9,8 @@ export async function POST(
   const reqBody = await request.json();
   const Data = await Company.findById(id);
   try {
+    await connect();
+
     const { data } = await fetchDocuments(id, doc, Data);
     if (!data) {
       return Response.json({ message: "Company not found" });

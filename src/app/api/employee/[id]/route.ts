@@ -3,12 +3,12 @@ import calculateStatus from "@/utils/calculateStatus";
 import Records from "@/models/records";
 import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
-connect();
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  await connect();
   const { id } = params;
   const reqBody = await request.json();
   await Employee.findByIdAndUpdate(id, reqBody);
@@ -22,6 +22,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  await connect();
+
   const { id } = params;
   await Employee.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
@@ -32,6 +34,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await connect();
+
     const employee = (await Employee.findById(params.id).populate(
       "company"
     )) as TEmployeeData;

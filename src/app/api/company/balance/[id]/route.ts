@@ -2,13 +2,14 @@ import connect from "@/db/connect";
 import Records from "@/models/records";
 import { TRecordData } from "@/types/records";
 
-connect();
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+await connect();
+
     const companyRecords: TRecordData[] = await Records.find({
       published: true,
       company: params.id,
