@@ -3,10 +3,9 @@ import Records from "@/models/records";
 import { format } from "date-fns";
 import { NextRequest } from "next/server";
 
-connect();
-
 export async function GET(request: NextRequest) {
   try {
+    await connect();
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;

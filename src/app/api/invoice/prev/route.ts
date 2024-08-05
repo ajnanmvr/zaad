@@ -1,10 +1,9 @@
 import connect from "@/db/connect";
 import Invoice from "@/models/invoice";
 
-connect();
-
 export async function GET(request: Request) {
   try {
+    await connect();
     let { suffix, invoiceNo, title } = await Invoice.findOne({
       published: true,
     })

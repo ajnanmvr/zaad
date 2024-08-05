@@ -4,10 +4,9 @@ import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 
-connect();
-
 export async function POST(request: Request) {
   try {
+    await connect();
     const reqBody = await request.json();
     const data = await Invoice.create(reqBody);
     return Response.json(
@@ -21,6 +20,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: NextRequest) {
   try {
+    await connect();
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;

@@ -2,10 +2,11 @@ import connect from "@/db/connect";
 import Records from "@/models/records";
 import { NextRequest, NextResponse } from "next/server";
 
-connect();
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
+    await connect();
+
     const records = await Records.find({
       published: true,
       $or: [{ method: "liability" }, { status: "liability" }],

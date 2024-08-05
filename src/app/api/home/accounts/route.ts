@@ -6,11 +6,11 @@ import Records from "@/models/records";
 import { TRecordDataWithCreatedAt } from "@/types/records";
 import { filterData } from "@/utils/filterData";
 import { NextRequest } from "next/server";
-connect();
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest): Promise<Response> {
   const searchParams = request.nextUrl.searchParams;
   try {
+    await connect();
     const filter = filterData(searchParams, true);
     const allRecords: TRecordDataWithCreatedAt[] = await Records.find(filter);
     const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(

@@ -9,14 +9,14 @@ import processEmployees from "@/helpers/processEmployees";
 import { NextRequest } from "next/server";
 import { filterData } from "@/utils/filterData";
 
-connect();
-
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  try {
+  await connect();
+
   const searchParams = request.nextUrl.searchParams;
   const filter = filterData(searchParams,false);
-  try {
     const [companies, employees, allRecords]: [
       TCompanyData[],
       TEmployeeData[],

@@ -5,12 +5,15 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string; doc: string } }
 ) {
-  const { id, doc } = params;
-  const { name, issueDate, expiryDate, attachment } = await request.json();
-  const Data = await Company.findById(id);
-
+  
   try {
     await connect();
+    const { id, doc } = params;
+    const { name, issueDate, expiryDate, attachment } = await request.json();
+    const Data = await Company.findById(id);
+
+
+
     const { data, documentIndex } = await fetchDocuments(id, doc,Data);
     if (!data) {
       return Response.json({ message: "Company not found" });
@@ -38,11 +41,11 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string; doc: string } }
 ) {
-  const { id, doc } = params;
-  const Data = await Company.findById(id);
-
+  
   try {
-await connect();
+    await connect();
+    const { id, doc } = params;
+    const Data = await Company.findById(id);
 
     const { data, documentIndex } = await fetchDocuments(id, doc,Data);
     if (!data) {

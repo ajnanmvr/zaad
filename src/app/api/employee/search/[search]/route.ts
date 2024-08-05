@@ -2,13 +2,13 @@
 import connect from "@/db/connect";
 import Employee from "@/models/employees";
 
-connect();
-
 export async function GET(
   request: Request,
   { params }: { params: { search: string } }
 ) {
   try {
+    await connect();
+
     const companies = await Employee.find({
       name: { $regex: params.search, $options: "i" },
       published: true,

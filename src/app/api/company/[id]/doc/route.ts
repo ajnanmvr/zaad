@@ -5,11 +5,11 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string; doc: string } }
 ) {
-  const { id, doc } = params;
-  const reqBody = await request.json();
-  const Data = await Company.findById(id);
   try {
     await connect();
+    const { id, doc } = params;
+    const reqBody = await request.json();
+    const Data = await Company.findById(id);
 
     const { data } = await fetchDocuments(id, doc, Data);
     if (!data) {

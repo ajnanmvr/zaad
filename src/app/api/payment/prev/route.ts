@@ -1,10 +1,9 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
 
-connect();
-
 export async function GET(request: Request) {
   try {
+    await connect();
     let { suffix, number } = await Records.findOne({
       published: true,
     })

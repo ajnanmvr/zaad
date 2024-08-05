@@ -1,16 +1,17 @@
 import connect from "@/db/connect";
 import Employee from "@/models/employees";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
-connect();
 export async function PUT(
   request: Request,
   { params }: { params: { id: string; doc: string } }
 ) {
+  try {
+  await connect();
+
   const { id, doc } = params;
   const { name, issueDate, expiryDate, attachment } = await request.json();
   const Data = await Employee.findById(id);
 
-  try {
     const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
       return Response.json({ message: "Employee not found" });
@@ -35,10 +36,12 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string; doc: string } }
 ) {
+  try {
+  await connect();
+
   const { id, doc } = params;
   const Data = await Employee.findById(id);
 
-  try {
     const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
       return Response.json({ message: "Employee not found" });

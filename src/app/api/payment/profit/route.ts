@@ -1,10 +1,9 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
 
-connect();
-
 export async function POST(request: Request) {
   try {
+    await connect();
     const reqBody = await request.json();
     await Records.create(reqBody);
     let { amount, number, type, method, ...rest } = reqBody;

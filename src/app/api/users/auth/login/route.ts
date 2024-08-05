@@ -3,10 +3,11 @@ import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
-
-connect();
 export async function POST(request: Request) {
   try {
+
+    await connect();
+
     const reqBody = await request.json();
     const { username, password } = reqBody;
     const existingUser = await User.findOne({ username, published: true });

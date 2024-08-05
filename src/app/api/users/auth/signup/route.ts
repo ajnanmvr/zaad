@@ -2,9 +2,10 @@ import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { type TUser } from "@/types/types";
-connect();
 export async function POST(request: Request) {
   try {
+    await connect();
+
     const { username, password, role, fullname }: TUser = await request.json();
 
     const existingUserName: TUser | null = await User.findOne({ username });

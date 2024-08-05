@@ -3,11 +3,11 @@ import connect from "@/db/connect";
 import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
-connect();
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  await connect();
   const { id } = params;
   await Invoice.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
@@ -17,6 +17,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  await connect();
   const { id } = params;
   const reqBody = await request.json();
   await Invoice.findByIdAndUpdate(id, reqBody);
@@ -31,6 +32,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await connect();
     const searchParams = request.nextUrl.searchParams;
     const editmode = searchParams.get("editmode");
     const res = await Invoice.findById(params.id).populate("createdBy");
