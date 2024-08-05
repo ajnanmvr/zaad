@@ -1,17 +1,20 @@
 import connect from "@/db/connect";
+import { HttpStatusCode } from 'axios';  
 import Records from "@/models/records";
 import { format } from "date-fns";
 import { NextRequest } from "next/server";
 
-connect();
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    await connect();
+
     const reqBody = await request.json();
     const data = await Records.create(reqBody);
     return Response.json(
       { message: "Created new payment record", data },
-      { status: 201 }
+      { status: HttpStatusCode.Created }
     );
   } catch (error) {
     return Response.json(error, { status: 401 });
@@ -20,6 +23,8 @@ export async function POST(request: Request) {
 
 export async function GET(request: NextRequest) {
   try {
+    await connect();
+
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const method = searchParams.get("m");
@@ -46,7 +51,11 @@ export async function GET(request: NextRequest) {
         { status: 200 }
       );
     }
+
     const hasMore = records.length > contentPerSection;
+
+
+
     const transformedData = records
       .slice(0, contentPerSection)
       .map((record) => {
@@ -70,7 +79,7 @@ export async function GET(request: NextRequest) {
           invoiceNo: record.invoiceNo,
           amount: record.amount?.toFixed(2),
           serviceFee: record.serviceFee?.toFixed(2),
-          creator: record.createdBy.username,
+          creator: record?.createdBy?.username,
           status: record.status,
           remarks: record.remarks,
           number: record.number,
@@ -78,6 +87,7 @@ export async function GET(request: NextRequest) {
           date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
         };
       });
+        console.log(Date.now());
 
     return Response.json(
       { count: transformedData.length, hasMore, records: transformedData },

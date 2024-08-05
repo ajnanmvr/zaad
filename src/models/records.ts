@@ -46,5 +46,5 @@ const RecordSchema = new Schema(
 );
 
 const Records =
-  mongoose.models.records || mongoose.model("records", RecordSchema);
+  mongoose.models.Record || mongoose.model("Record", RecordSchema);
 export default Records;
