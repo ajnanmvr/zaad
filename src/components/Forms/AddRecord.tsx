@@ -52,9 +52,11 @@ const AddRecord = ({ type }: { type: string }) => {
 
   const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
     try {
-      setClientType(inputName)
-      const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
-      setSearchSuggestions(response.data);
+      if (inputValue.length > 0) {
+        setClientType(inputName)
+        const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
+        setSearchSuggestions(response.data);
+      }
     } catch (error) {
       console.error("Error fetching company suggestions:", error);
     }
@@ -120,7 +122,11 @@ const AddRecord = ({ type }: { type: string }) => {
         break;
     }
     try {
-      await axios.post("/api/payment", recordData);
+      if(recordData?.status === "Profit"){
+        await axios.post("/api/profit", recordData);
+      }else{
+        await axios.post("/api/payment", recordData);
+      }
       router.push("/accounts/transactions");
     } catch (error) {
       console.log(error);
@@ -431,6 +437,9 @@ const AddRecord = ({ type }: { type: string }) => {
                           </option>
                           <option value="Ready Cash" className="text-body dark:text-bodydark">
                             Ready Cash
+                          </option>
+                          <option value="Profit" className="text-body dark:text-bodydark">
+                            Instant Profit
                           </option></>
                       )}
                       {type === "expense" && (
@@ -441,7 +450,7 @@ const AddRecord = ({ type }: { type: string }) => {
                           <option value="liability" className="text-body dark:text-bodydark">
                             Liability Payment
                           </option>
-                          </>
+                        </>
                       )}
 
                     </select>
@@ -488,10 +497,7 @@ const AddRecord = ({ type }: { type: string }) => {
               </button>
             </div>
           </div>
-
-
         </div>
-
       </form>
     </DefaultLayout>
   );
