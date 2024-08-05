@@ -12,13 +12,11 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .select("invoiceNo suffix title");
 
-      if (invoiceNo<1){
-        return Response.json(
-          { suffix, invoiceNo:1, title },
-          { status: 201 })
-      }
+    if (invoiceNo < 1) {
+      return Response.json({ suffix, invoiceNo: 1, title }, { status: 201 });
+    }
     return Response.json(
-      { suffix, invoiceNo: invoiceNo + 1, title },
+      { suffix, invoiceNo: 1 + (invoiceNo || 0), title },
       { status: 201 }
     );
   } catch (error) {
