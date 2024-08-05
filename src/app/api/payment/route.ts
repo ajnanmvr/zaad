@@ -87,8 +87,6 @@ export async function GET(request: NextRequest) {
           date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
         };
       });
-        console.log(Date.now());
-
     return Response.json(
       { count: transformedData.length, hasMore, records: transformedData },
       { status: 200 }
