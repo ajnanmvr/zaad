@@ -26,7 +26,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 setisEditMode(true)
             } else {
                 const { data } = await axios.get(`/api/invoice/prev`);
-                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data.invoiceNo+1, suffix: data?.suffix })
+                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data.invoiceNo + 1, suffix: data?.suffix })
             }
         } catch (error) {
             console.log(error);
@@ -316,7 +316,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                             </div>
 
 
-                            {invoiceData.quotation === "true" ?<>
+                            {invoiceData.quotation === "true" ? <>
                                 <div className="mb-2.5">
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                         Valid To
@@ -327,7 +327,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                         value={invoiceData?.validTo}
                                         onChange={handleChange}
                                         className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                   />
+                                    />
                                 </div>
                                 <div className="mb-2.5">
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">

@@ -1,6 +1,7 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
 
+export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     await connect();
