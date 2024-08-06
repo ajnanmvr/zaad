@@ -122,9 +122,9 @@ const AddRecord = ({ type }: { type: string }) => {
         break;
     }
     try {
-      if(recordData?.status === "Profit"){
-        await axios.post("/api/profit", recordData);
-      }else{
+      if (recordData?.status === "Profit") {
+        await axios.post("/api/payment/profit", recordData);
+      } else {
         await axios.post("/api/payment", recordData);
       }
       router.push("/accounts/transactions");
