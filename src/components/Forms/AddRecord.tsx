@@ -83,7 +83,7 @@ const AddRecord = ({ type }: { type: string }) => {
   const fetchPrev = async (Id?: string) => {
     try {
       const { data } = await axios.get<{ number: number, suffix: string }>("/api/payment/prev");
-      setRecordData({ ...recordData, number: data?.number, suffix: data?.suffix })
+      setRecordData({ ...recordData, number: +data?.number + 1, suffix: data?.suffix })
     } catch (error) {
       console.error("Error fetching balance:", error);
     }

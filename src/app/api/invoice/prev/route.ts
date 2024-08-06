@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return Response.json({ suffix, invoiceNo: 1, title }, { status: 201 });
     }
     return Response.json(
-      { suffix, invoiceNo: 1 + (invoiceNo || 0), title },
+      { suffix, invoiceNo: invoiceNo || 0, title },
       { status: 201 }
     );
   } catch (error) {

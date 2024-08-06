@@ -26,7 +26,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 setisEditMode(true)
             } else {
                 const { data } = await axios.get(`/api/invoice/prev`);
-                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: data.invoiceNo, suffix: data?.suffix })
+                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data.invoiceNo+1, suffix: data?.suffix })
             }
         } catch (error) {
             console.log(error);
