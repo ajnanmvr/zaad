@@ -409,7 +409,7 @@ const TransactionList = ({ type, id }: {
         </h4>
 
         <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-8">
+          <div className="grid grid-cols-3 rounded-sm bg-slate-200 dark:bg-meta-4 sm:grid-cols-8">
 
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
@@ -460,7 +460,7 @@ const TransactionList = ({ type, id }: {
 
             {isLoading ? <SkeletonList /> : records.map((record, key) => (
               <div
-                className={`grid grid-cols-3 sm:grid-cols-8 ${key === records.length - 1
+                className={`grid grid-cols-3 sm:grid-cols-8 ${key % 2 !== 0 ? 'bg-gray dark:bg-slate-800' : ''} ${key === records.length - 1
                   ? ""
                   : "border-b border-stroke dark:border-strokedark"
                   }`}

@@ -1,7 +1,9 @@
 import connect from "@/db/connect";
 import Records from "@/models/records";
-import { format } from "date-fns";
+import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
+
+const DUBAI_TIME_ZONE = "Asia/Dubai";
 
 export async function GET(
   request: NextRequest,
@@ -54,6 +56,8 @@ export async function GET(
                 : null;
         };
 
+        const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
+
         return {
           id: record._id,
           type: record.type,
@@ -67,7 +71,9 @@ export async function GET(
           status: record.status,
           number: record.number,
           suffix: record.suffix,
-          date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+          date: format(createdAtInDubai, "MMM-dd hh:mma", {
+            timeZone: DUBAI_TIME_ZONE,
+          }),
         };
       });
 

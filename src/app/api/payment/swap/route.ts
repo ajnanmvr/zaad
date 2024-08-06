@@ -23,7 +23,6 @@ export async function POST(request: Request) {
       status: "Self Deposit",
       method: to,
     });
-    // const data = await Records.create(reqBody);
     return Response.json({ message:"Self Deposit Completed Successfully" }, { status: 201 });
   } catch (error) {
     return Response.json(error, { status: 401 });

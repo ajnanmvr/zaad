@@ -1,10 +1,12 @@
 import connect from "@/db/connect";
 import { HttpStatusCode } from 'axios';  
 import Records from "@/models/records";
-import { format } from "date-fns";
+import { toZonedTime, format } from "date-fns-tz";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+const DUBAI_TIME_ZONE = 'Asia/Dubai';
 
 export async function POST(request: Request) {
   try {
@@ -54,8 +56,6 @@ export async function GET(request: NextRequest) {
 
     const hasMore = records.length > contentPerSection;
 
-
-
     const transformedData = records
       .slice(0, contentPerSection)
       .map((record) => {
@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
                 ? { name: self, type: "self" }
                 : null;
         };
+
+        const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
 
         return {
           id: record._id,
@@ -84,9 +86,10 @@ export async function GET(request: NextRequest) {
           remarks: record.remarks,
           number: record.number,
           suffix: record.suffix,
-          date: format(new Date(record.createdAt), "MMM-dd hh:mma"),
+          date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
         };
       });
+
     return Response.json(
       { count: transformedData.length, hasMore, records: transformedData },
       { status: 200 }
