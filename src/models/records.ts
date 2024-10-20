@@ -14,7 +14,7 @@ const RecordSchema = new Schema(
     method: {
       type: String,
       required: [true, "Please provide a payment method"],
-      enum: ["bank", "cash", "tasdeed", "swiper","service fee","liability"],
+      enum: ["bank", "cash", "tasdeed", "swiper", "service fee", "liability"],
     },
     type: {
       type: String,
@@ -38,7 +38,11 @@ const RecordSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "employees",
     },
-    remarks:String
+    remarks: String,
+    edited: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -22,15 +22,15 @@ const TransactionList = ({ type, id }: {
   const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] = useState(false);
-  const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
+  const [pageNumber, setPageNumber] = useState(0);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
-  const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
-  const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBtnDisabled, setIsBtnDisabled] = useState(true);
 
   const fetchData = async () => {
     try {
@@ -362,6 +362,9 @@ const TransactionList = ({ type, id }: {
                   )}
                 </tbody>
               </table>
+              <Link className="mt-4 text-meta-5 border py-1 hover:bg-meta-5 hover:bg-opacity-10 rounded px-4" href={`transactions/edit/${selectedRecord?.type}/${selectedRecord.id}`}>
+                Edit
+              </Link>
               <Link className="mt-4" href={`/${selectedRecord?.client?.type}/${selectedRecord?.client?.id}`}>
                 Go to Client Page
               </Link>

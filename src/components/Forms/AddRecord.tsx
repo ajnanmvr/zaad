@@ -9,9 +9,12 @@ import axios from "axios";
 import clsx from "clsx";
 import { useUserContext } from "@/contexts/UserContext";
 import { TRecordData } from "@/types/records";
+import { useParams } from "next/navigation"
 
-const AddRecord = ({ type }: { type: string }) => {
+
+const AddRecord = ({ type, edit }: { type: string, edit?: boolean }) => {
   const router = useRouter();
+  const { id } = useParams()
   const { user } = useUserContext();
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
@@ -82,10 +85,15 @@ const AddRecord = ({ type }: { type: string }) => {
   }
   const fetchPrev = async (Id?: string) => {
     try {
-      const { data } = await axios.get<{ number: number, suffix: string }>("/api/payment/prev");
-      setRecordData({ ...recordData, number: +data?.number + 1, suffix: data?.suffix })
+      if (!edit) {
+        const { data } = await axios.get<{ number: number, suffix: string }>("/api/payment/prev");
+        setRecordData({ ...recordData, number: +data?.number + 1, suffix: data?.suffix })
+      } else {
+        const { data } = await axios.get(`/api/payment/${id}`);
+        setRecordData(data)
+      }
     } catch (error) {
-      console.error("Error fetching balance:", error);
+      console.error("Error fetching", error);
     }
   }
 
@@ -122,10 +130,14 @@ const AddRecord = ({ type }: { type: string }) => {
         break;
     }
     try {
-      if (recordData?.status === "Profit") {
-        await axios.post("/api/payment/profit", recordData);
+      if (!edit) {
+        if (recordData?.status === "Profit") {
+          await axios.post("/api/payment/profit", recordData);
+        } else {
+          await axios.post("/api/payment", recordData);
+        }
       } else {
-        await axios.post("/api/payment", recordData);
+        await axios.put(`/api/payment/${id}`, recordData);
       }
       router.push("/accounts/transactions");
     } catch (error) {
@@ -137,7 +149,9 @@ const AddRecord = ({ type }: { type: string }) => {
     const { name, value } = e.target;
     setRecordData({ ...recordData, [name]: value });
   };
+
   console.log(recordData);
+
   useEffect(() => {
     fetchPrev()
   }, [])
