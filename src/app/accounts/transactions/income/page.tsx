@@ -1,10 +1,8 @@
-import AddRecord from '@/components/Forms/AddRecord'
-import React from 'react'
+import AddRecord from "@/components/Forms/AddRecord";
+import React from "react";
 
 function IncomePage() {
-  return (
-    <AddRecord type="income" />
-  )
+  return <AddRecord type="income" />;
 }
 
-export default IncomePage
+export default IncomePage;

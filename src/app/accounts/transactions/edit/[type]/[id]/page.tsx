@@ -1,22 +1,11 @@
-"use client"
-import EditRecord from "@/components/Forms/AddRecord"
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import axios from "axios"
+"use client";
+import EditRecord from "@/components/Forms/AddRecord";
+import { useParams } from "next/navigation";
 
 function EditTransaction() {
-    const { id }: { id: string } = useParams()
-    const [isLoading, setIsLoading] = useState(true)
-    const [singleData, setSingleData] = useState()
-    const { type } = useParams()
+  const { type } = useParams();
 
-    return (
-        <div> {isLoading ? <div className="flex justify-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-        </div> :
-            <EditRecord type={type.toString()} edit={true} />}
-        </div>
-    )
+  return <EditRecord type={type.toString()} edit={true} />;
 }
 
-export default EditTransaction
+export default EditTransaction;
