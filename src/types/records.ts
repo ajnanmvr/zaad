@@ -32,4 +32,5 @@ export type TRecordList = TRecordBase & {
   };
   date: string;
   remarks: string;
+  edited?: boolean;
 };

@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
           remarks: record.remarks,
           number: record.number,
           suffix: record.suffix,
+          edited:record.edited,
           date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
         };
       });
