@@ -4,9 +4,23 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
 import axios from "axios";
 import SkeletonList from "../common/SkeletonList";
-function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null, isLoading?: boolean }) {
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null | undefined, isLoading?: boolean }) {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+    const queryClient = useQueryClient();
+
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => axios.delete(`/api/employee/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["employees"] });
+            toast.success("employee deleted successfully");
+        }, onError: () => {
+            toast.error("Failed to delete employee");
+        }
+    });
 
     const handleDelete = (id: string) => {
         setSelectedEmployeeId(id);
@@ -14,16 +28,18 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
     }
 
     const confirmDelete = async () => {
-        console.log("Deleting employee with ID:", selectedEmployeeId);
-        const data = await axios.delete(`/api/employee/${selectedEmployeeId}`)
-        window.location.reload();
-        setIsConfirmationOpen(false);
+        if (selectedEmployeeId) {
+            deleteMutation.mutate(selectedEmployeeId);
+            setIsConfirmationOpen(false);
+        }
     }
 
     const cancelDelete = () => {
         setSelectedEmployeeId(null);
         setIsConfirmationOpen(false);
     }
+
+
 
     return (
         <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
@@ -107,7 +123,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                                                     />
                                                 </svg>
                                             </Link>
-                                            <button onClick={() => handleDelete(id!)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                                            <button title="Delete Employee" onClick={() => handleDelete(id!)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                                                 <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
                                                     <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />

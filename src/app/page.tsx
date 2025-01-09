@@ -1,46 +1,19 @@
 "use client";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import CardDataStats from "@/components/CardDataStats";
-import { useEffect, useState } from "react";
-import axios from "axios";
 import { TCompanyList, TEmployeeList } from "@/types/types";
 import Link from "next/link";
 import clsx from "clsx";
+import { useQuery } from "@tanstack/react-query";
+import { fetchCompanies, fetchCountData, fetchEmployees } from "@/libs/queries";
+import { toast } from "react-hot-toast";
 
 export default function Home() {
-  const [isLoading, setLoading] = useState(true);
-  const [homeData, setHomeData] = useState({
-    company: 0, employee: 0
-  })
 
-  const fetchData = async () => {
-    try {
-      const { data } = await axios.get("/api/home/expiry")
-      setHomeData(data)
-      setLoading(false)
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  const [companies, setCompanies] = useState<TCompanyList[] | null>(null)
-  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
-  const fetchEmployees = async () => {
-    try {
-      const data = await axios.get("/api/employee")
-      setEmployees(data.data.data.slice(0, 5))
-    } catch (error) {
-      console.log(error);
-    }
-  }
+  const { data: homeData, isLoading: homeLoading, isError: homeError } = useQuery<{ company: string, employee: string }>({ queryKey: ["count"], queryFn: fetchCountData })
+  const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery<TCompanyList[] | null>({ queryKey: ["companies"], queryFn: fetchCompanies })
+  const { data: employees, isLoading: employeeLoading, isError: employeeError } = useQuery<TEmployeeList[] | null>({ queryKey: ["employees"], queryFn: fetchEmployees })
 
-  const fetchCompanies = async () => {
-    try {
-      const data = await axios.get("/api/company")
-      setCompanies(data.data.data)
-    } catch (error) {
-      console.log(error);
-    }
-  }
   const calculateCompanyRenewalsCount = () => {
     const renewalCompanies = companies?.filter(
       ({ status }) => status === "expired" || status === "renewal"
@@ -53,19 +26,25 @@ export default function Home() {
     );
     return renewalEmployees?.length;
   };
-  useEffect(() => {
-    fetchData()
-    fetchEmployees()
-    fetchCompanies()
-  }, [])
+
+  if (homeError) {
+    toast.error("An error occurred while fetching data");
+  }
+  if (companyError) {
+    toast.error("An error occurred while fetching company data");
+  }
+  if (employeeError) {
+    toast.error("An error occurred while fetching employee data");
+  }
+
   return (
     <DefaultLayout>
-      {isLoading ? (<div className="flex justify-center">
+      {homeLoading && companyLoading && employeeLoading ? (<div className="flex justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div>) : (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Total Companies" total={`${homeData?.company}`}>
+            <CardDataStats loading={homeLoading} title="Total Companies" total={`${homeData?.company}`}>
               <svg
                 className="fill-primary dark:fill-white"
                 width="22"
@@ -84,7 +63,7 @@ export default function Home() {
                 />
               </svg>
             </CardDataStats>
-            <CardDataStats title="Total Employees" total={`${homeData?.employee}`} >
+            <CardDataStats loading={homeLoading} title="Total Employees" total={`${homeData?.employee}`} >
               <svg
                 className="fill-primary dark:fill-white"
                 width="20"
@@ -107,7 +86,7 @@ export default function Home() {
                 />
               </svg>
             </CardDataStats>
-            <CardDataStats title="Company Renewal" total={`${calculateCompanyRenewalsCount() || 0}`}>
+            <CardDataStats loading={companyLoading} title="Company Renewal" total={`${calculateCompanyRenewalsCount() || 0}`}>
               <svg
                 className="fill-primary dark:fill-white"
                 width="22"
@@ -126,7 +105,7 @@ export default function Home() {
                 />
               </svg>
             </CardDataStats>
-            <CardDataStats title="Employee Renewal" total={`${calculateEmployeeRenewalsCount() || 0}`}>
+            <CardDataStats loading={employeeLoading} title="Employee Renewal" total={`${calculateEmployeeRenewalsCount() || 0}`}>
               <svg
                 className="fill-primary dark:fill-white"
                 width="22"
@@ -153,7 +132,7 @@ export default function Home() {
 
           <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
 
-            <div className="col-span-12 xl:col-span-8">
+            {!companyLoading && <div className="col-span-12 xl:col-span-8">
               <div className="rounded-sm border border-stroke bg-white px-5 pb-5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
                 <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
                   Company List
@@ -225,7 +204,8 @@ export default function Home() {
                                   />
                                 </svg>
                               </Link>
-                              <button className="hover:text-primary">
+                              <Link href={`/employee/view/${id}`} className="hover:text-primary">
+
                                 <svg
                                   className="fill-current"
                                   width="18"
@@ -243,7 +223,7 @@ export default function Home() {
                                     fill=""
                                   />
                                 </svg>
-                              </button>
+                              </Link>
                             </div>
                           </td>
                         </tr>
@@ -253,8 +233,10 @@ export default function Home() {
                 </div>
 
               </div>
-            </div>
-            <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
+            </div>}
+
+
+            {!employeeLoading && <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
               <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                 Employees
               </h4>
@@ -293,8 +275,10 @@ export default function Home() {
                   </Link>
                 ))}
               </div>
-            </div>
-          </div></>)}
+            </div>}
+          </div>
+        </>)}
+
     </DefaultLayout>
   );
 }

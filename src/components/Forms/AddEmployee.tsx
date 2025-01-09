@@ -7,9 +7,12 @@ import { useRouter } from "next/navigation";
 import { TBaseData } from "@/types/types";
 import { debounce } from "lodash";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
     const router = useRouter()
+    const queryClient = useQueryClient();
     const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
     const [isEditMode, setisEditMode] = useState(false);
@@ -20,40 +23,61 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         if (company) {
             setEmployeeData({ ...employeeData, company })
         }
-    }, [])
+    }, [company,employeeData])
 
-    const fetchData = async () => {
-        if (edit !== "") {
-            try {
-                const { data } = await axios.get(`/api/employee/${edit}`, employeeData);
-                setEmployeeData(data.data);
-                setisEditMode(true)
+    const { data } = useQuery<any>({
+        queryKey: [`${edit}`], queryFn: async () => {
+            const { data } = await axios.get(`/api/employee/${edit}`);
+            return (data.data);
+        },
+        enabled: edit !== ""
+    });
 
-            } catch (error) {
-                console.log(error);
-            }
+    useEffect(() => {
+        if (edit) {
+            setisEditMode(true)
+            setEmployeeData(data)
         } else {
             setisEditMode(false)
         }
-    }
-    useEffect(() => {
-        fetchData()
-    }, [])
-    const handleSubmit = async (e: any) => {
-        e.preventDefault()
-        try {
-            if (isEditMode) {
-                await axios.put(`/api/employee/${edit}`, employeeData);
-                router.push(`/employee/${edit}`);
+    }, [edit, data])
+    console.log(isEditMode);
+
+    const mutation = useMutation(
+        {
+            mutationFn: async (employeeData) => {
+                if (isEditMode) {
+                    await axios.put(`/api/employee/${edit}`, employeeData);
+                } else {
+                    await axios.post("/api/employee", employeeData);
+                }
+            },
+            onMutate: () => {
+                toast.loading("Saving employee details");
+            },
+            onSuccess: () => {
+                if (isEditMode) {
+                    router.replace(`/employee/${edit}`);
+                } else {
+                    router.push("/employee");
+                }
+                toast.dismiss()
+                toast.success("employee details saved successfully");
+                queryClient.invalidateQueries({ queryKey: ["employees"] });
+            },
+
+            onError: () => {
+                toast.dismiss()
+                toast.error("Failed to save employee details");
             }
-            else {
-                await axios.post("/api/employee", employeeData);
-                router.push(`/employee/view/${employeeData.company}`);
-            }
-        } catch (error) {
-            console.log(error);
         }
+    );
+
+    const handleSubmit = async (e: any) => {
+        e.preventDefault();
+        mutation.mutate(employeeData);
     };
+
     const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
         try {
             const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
@@ -158,7 +182,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                 <input
                                     type="text"
                                     name="name"
-                                    value={employeeData.name}
+                                    value={employeeData?.name}
                                     onChange={handleChange}
                                     required
                                     placeholder="Enter employee name"
@@ -424,6 +448,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                                 Expiry Date <span className="text-meta-1">*</span>
                                             </label>
                                             <input
+                                                title="Expiry Date"
                                                 type="date"
                                                 name="expiryDate"
                                                 value={employeeData.documents[index]?.expiryDate}

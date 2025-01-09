@@ -120,6 +120,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
                                     <div className="relative z-20 bg-transparent dark:bg-form-input">
                                         <select
+                                        title="Invoice Type"
                                             value={invoiceData.quotation}
                                             name="quotation"
                                             onChange={handleChange}
@@ -164,6 +165,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
                                     <div className="relative z-20 bg-transparent dark:bg-form-input">
                                         <select
+                                        title="Balance"
                                             value={invoiceData.showBalance}
                                             name="showBalance"
                                             onChange={handleChange}
@@ -277,6 +279,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                         Date</label>
                                     <input
+                                    title="Date"
                                         type="date"
                                         name="date"
                                         value={invoiceData?.date}

@@ -1,31 +1,13 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+"use client"
+import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { TUser } from '@/types/user';
 
-interface User {
-    username: string;
-    _id: string;
-    fullname: string;
-    role: string
-}
-
-interface UserContextType {
-    user: User | null;
-}
-
-const initialContext: UserContextType = {
-    user: null,
-};
-
-export const UserContext = createContext<UserContextType>(initialContext);
-
+export const UserContext = createContext<{ user: TUser | null }>({ user: null });
 export const useUserContext = () => useContext(UserContext);
 
-interface UserProviderProps {
-    children: React.ReactNode;
-}
-
-const UserProvider: React.FC<UserProviderProps> = ({ children }: UserProviderProps) => {
-    const [user, setUser] = useState<User>(
+const UserProvider = ({ children }: { children: React.ReactNode }) => {
+    const [user, setUser] = useState<TUser>(
         {
             username: "",
             _id: "",
@@ -33,7 +15,6 @@ const UserProvider: React.FC<UserProviderProps> = ({ children }: UserProviderPro
             role: ""
         }
     );
-
     const fetchUserData = async () => {
         try {
             const response = await axios.get("/api/users/auth/me");

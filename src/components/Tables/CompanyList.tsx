@@ -1,33 +1,40 @@
-
 "use client"
 import axios from "axios";
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TCompanyList } from "@/types/types";
 import SkeletonList from "../common/SkeletonList";
-function CompanyList({ sort }: { sort?: string }) {
-    const [isLoading, setLoading] = useState(true);
-    const [companies, setCompanies] = useState<TCompanyList[] | null>(null)
-    const fetchData = async () => {
-        try {
-            const { data } = await axios.get("/api/company")
-            setLoading(false)
-            const sortedData = sort === "a"
-                ? data.data.sort((a: TCompanyList, b: TCompanyList) => a.name.localeCompare(b.name))
-                : data.data;
-            setCompanies(sortedData);
-        } catch (error) {
-            console.log(error);
-        }
-    }
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchCompanies } from "@/libs/queries";
+import { is } from "date-fns/locale";
+import toast from "react-hot-toast";
 
-    useEffect(() => {
-        fetchData()
-    }, [])
+function CompanyList({ sort }: { sort?: string }) {
+
+    const queryClient = useQueryClient();
+    const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery<TCompanyList[] | null>({ queryKey: ["companies"], queryFn: fetchCompanies });
 
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => {
+            return axios.delete(`/api/company/${id}`);
+        },
+        onMutate: () => {
+            toast.loading("Deleting company...");
+        },
+        onSuccess: () => {
+            toast.dismiss();
+            toast.success("Company deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ["companies"] });
+        },
+        onError: () => {
+            toast.dismiss();
+            toast.error("Failed to delete company");
+        }
+    });
 
     const handleDelete = (id: string) => {
         setSelectedCompanyId(id);
@@ -35,16 +42,18 @@ function CompanyList({ sort }: { sort?: string }) {
     }
 
     const confirmDelete = async () => {
-        console.log("Deleting company with ID:", selectedCompanyId);
-        const data = await axios.delete(`/api/company/${selectedCompanyId}`)
-        fetchData()
-        setIsConfirmationOpen(false);
+        if (selectedCompanyId) {
+            deleteMutation.mutate(selectedCompanyId);
+            setIsConfirmationOpen(false);
+        }
     }
 
     const cancelDelete = () => {
         setSelectedCompanyId(null);
         setIsConfirmationOpen(false);
     }
+
+    if (companyError) { toast.error("Failed to fetch companies") }
 
     return (
         <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
@@ -55,7 +64,7 @@ function CompanyList({ sort }: { sort?: string }) {
                 onCancel={cancelDelete}
             />
             <div className="max-w-full overflow-x-auto">
-                {isLoading ? (<><div className="flex bg-gray-2 text-left dark:bg-meta-4 justify-around font-medium text-black dark:text-white">
+                {companyLoading ? (<><div className="flex bg-gray-2 text-left dark:bg-meta-4 justify-around font-medium text-black dark:text-white">
                     <div className="min-w-[220px] px-4 py-4 xl:pl-11">Name</div>
                     <div className="min-w-[150px] px-4 py-4">Expiry Date</div>
                     <div className="min-w-[120px] px-4 py-4">Status</div>
@@ -146,14 +155,13 @@ function CompanyList({ sort }: { sort?: string }) {
                                                     />
                                                 </svg>
                                             </Link>
-                                            <button onClick={() => handleDelete(id!)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                                            <button title="Delete company" onClick={() => handleDelete(id!)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                                                 <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
                                                     <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
                                                     <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
                                                     <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
                                                 </svg>
-
                                             </button>
                                         </div>
                                     </td>

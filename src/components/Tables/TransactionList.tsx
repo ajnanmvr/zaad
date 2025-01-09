@@ -184,6 +184,7 @@ const TransactionList = ({
                   </label>
                   <div className="relative z-20 bg-transparent dark:bg-form-input">
                     <select
+                      title="filter by transaction type"
                       value={filterDummy.t}
                       name="type"
                       onChange={(e) => {
@@ -235,6 +236,7 @@ const TransactionList = ({
                   <div className="relative z-20 bg-transparent dark:bg-form-input">
                     <select
                       value={filterDummy.m}
+                      title="filter by transaction method"
                       name="method"
                       onChange={(e) => {
                         setFilterDummy({ ...filterDummy, m: e.target.value });
@@ -411,7 +413,7 @@ const TransactionList = ({
                     </tr>
                   )}
                   {selectedRecord.serviceFee &&
-                  selectedRecord.serviceFee < 1 ? (
+                    selectedRecord.serviceFee < 1 ? (
                     <tr>
                       <th className="px-4 py-2 border">Profit</th>
                       <td className="px-4 py-2 border">
@@ -577,11 +579,10 @@ const TransactionList = ({
             ) : (
               records.map((record, key) => (
                 <div
-                  className={`grid grid-cols-3 sm:grid-cols-8 ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${
-                    key === records.length - 1
-                      ? ""
-                      : "border-b border-stroke dark:border-strokedark"
-                  }`}
+                  className={`grid grid-cols-3 sm:grid-cols-8 ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${key === records.length - 1
+                    ? ""
+                    : "border-b border-stroke dark:border-strokedark"
+                    }`}
                   key={key}
                 >
                   <div className="flex justify-center flex-col gap-1 p-2.5 xl:p-5">
@@ -675,6 +676,7 @@ const TransactionList = ({
                       </Link>
                     )}
                     <button
+                      title="view transaction details"
                       onClick={() => handleInfo(record)}
                       className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1"
                     >
@@ -694,6 +696,7 @@ const TransactionList = ({
                       </svg>
                     </button>
                     <button
+                      title="delete transaction record"
                       onClick={() => handleDelete(record?.id)}
                       className="hover:bg-red rounded hover:bg-opacity-10 p-1"
                     >

@@ -5,27 +5,18 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
+import { useQuery } from "@tanstack/react-query";
+import { fetchEmployees } from "@/libs/queries";
+import toast from "react-hot-toast";
 const TablesPage = () => {
+  const { data: employees, isLoading: employeeLoading, isError: employeeError } = useQuery<TEmployeeList[] | null>({ queryKey: ["employees"], queryFn: fetchEmployees })
+  if (employeeError) { toast.error("Failed to fetch employees") }
 
-  const [isLoading, setLoading] = useState(true)
-  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
-  const fetchData = async () => {
-    try {
-      const data = await axios.get("/api/employee")
-      setEmployees(data.data.data)
-      setLoading(false)
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  useEffect(() => {
-    fetchData()
-  }, [])
   return (
     <DefaultLayout>
       <Breadcrumb pageName="Employees" />
       <div className="flex flex-col gap-10">
-        <EmployeeList employees={employees} isLoading={isLoading} />
+        <EmployeeList employees={employees} isLoading={employeeLoading} />
       </div>
     </DefaultLayout>
   );

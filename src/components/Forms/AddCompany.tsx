@@ -5,9 +5,12 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
+    const queryClient = useQueryClient();
     const [isEditMode, setisEditMode] = useState(false);
     const [selectedOption, setSelectedOption] = useState<string>("");
     const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
@@ -15,48 +18,65 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         name: "", documents: [], password: []
     });
 
+    const { data } = useQuery<any>({
+        queryKey: [`${edit}`], queryFn: async () => {
+            const { data } = await axios.get(`/api/company/${edit}`);
+            return (data.data);
+        },
+        enabled: edit !== ""
+    });
+
     useEffect(() => {
         if (companyData.isMainland) {
             setIsOptionSelected(true);
         }
-    }, [companyData.isMainland])
+    }, [companyData?.isMainland])
 
-    const fetchData = async () => {
+
+    useEffect(() => {
         if (edit !== "") {
-            try {
-                const { data } = await axios.get(`/api/company/${edit}`, companyData);
-                setCompanyData(data.data);
-                setisEditMode(true)
-
-            } catch (error) {
-                console.log(error);
-            }
+            setisEditMode(true)
+            setCompanyData(data)
         } else {
             setisEditMode(false)
         }
-    }
-    useEffect(() => {
-        fetchData()
-    }, [])
+    }, [edit, data])
 
+    const mutation = useMutation(
+        {
+            mutationFn: async (companyData) => {
+                if (isEditMode) {
+                    await axios.put(`/api/company/${edit}`, companyData);
+                } else {
+                    await axios.post("/api/company", companyData);
+                }
+            },
+            onMutate: () => {
+                toast.loading("Saving company details");
+            },
+            onSuccess: () => {
+                if (isEditMode) {
+                    router.replace(`/company/${edit}`);
+                } else {
+                    router.push("/company");
+                }
+                toast.dismiss()
+                toast.success("Company details saved successfully");
+                queryClient.invalidateQueries({ queryKey: ["companies"] });
+            },
+
+            onError: () => {
+                toast.dismiss()
+                toast.error("Failed to save company details");
+            }
+        }
+    );
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
-
-        try {
-            if (isEditMode) {
-                await axios.put(`/api/company/${edit}`, companyData);
-                router.push(`/company/${edit}`)
-            }
-            else {
-                await axios.post("/api/company", companyData);
-                router.push("/company");
-            }
-
-        } catch (error) {
-            console.log(error);
-        }
+        mutation.mutate(companyData);
     };
+
     const handleDeleteDocument = (index: number) => {
         const updatedItems = companyData.documents.filter((doc: any, docIndex: number) => docIndex !== index);
         setCompanyData({ ...companyData, documents: updatedItems });
@@ -136,7 +156,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                 <input
                                     type="text"
                                     name="name"
-                                    value={companyData.name}
+                                    value={companyData?.name}
                                     onChange={handleChange}
                                     required
                                     placeholder="Enter company name"
@@ -256,6 +276,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
                                 <div className="relative z-20 bg-transparent dark:bg-form-input">
                                     <select
+                                        title="Select any one"
                                         value={selectedOption}
                                         name="isMainland"
                                         onChange={(e) => {
@@ -445,6 +466,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                                 Expiry Date <span className="text-meta-1">*</span>
                                             </label>
                                             <input
+                                                title="expiry date"
                                                 type="date"
                                                 name="expiryDate"
                                                 value={companyData.documents[index]?.expiryDate}
@@ -454,18 +476,6 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                             />
                                         </div>
                                     </div>
-                                    {/* <div className="mb-4.5">
-                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                            Attach file
-                                        </label>
-                                        <input
-                                            type="file"
-                                            name="attachment"
-                                            value={companyData.documents[index]?.attachment}
-                                            onChange={(e) => handleDocumentChange(index, 'attachment', e.target.value)}
-                                            className="w-full cursor-pointer rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition file:mr-5 file:border-collapse file:cursor-pointer file:border-0 file:border-r file:border-solid file:border-stroke file:bg-whiter file:px-5 file:py-3 file:hover:bg-primary file:hover:bg-opacity-10 focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:file:border-form-strokedark dark:file:bg-white/30 dark:file:text-white dark:focus:border-primary"
-                                        />
-                                    </div> */}
                                     <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
                                         onClick={(e) => {
                                             e.preventDefault()
