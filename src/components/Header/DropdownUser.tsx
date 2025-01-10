@@ -2,35 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import axios from "axios";
+import { useRouter } from 'next/navigation'
 import { useUserContext } from "@/contexts/UserContext";
-import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 
 const DropdownUser = () => {
-  const queryClient = useQueryClient();
-  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user } = useUserContext();
+  const router = useRouter()
   const trigger = useRef<any>(null);
   const dropdown = useRef<any>(null);
-
-
-  const { refetch: logout } = useQuery({
-    queryKey: ["logout"], queryFn: async () => {
-      const response = await axios.get("/api/users/auth/logout");
-      return response.data;
-    }, enabled: false,
-  }
-  );
   const handleLogout = async () => {
-    await logout()
-    router.replace("/login")
-    queryClient.invalidateQueries({ queryKey: ["user"] });
-    toast.success("Logged out successfully");
+    try {
+      await axios.get("/api/users/auth/logout")
+      router.push('/login')
+    } catch (error) {
+      console.log({ message: "can't log out", error });
+    }
   }
 
-
+  // close on click outside
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
       if (!dropdown.current) return;
