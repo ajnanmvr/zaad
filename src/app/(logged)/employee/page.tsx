@@ -1,8 +1,6 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
-import { useEffect, useState } from "react";
 import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import { useQuery } from "@tanstack/react-query";

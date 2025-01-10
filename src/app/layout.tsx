@@ -1,9 +1,9 @@
 import "flatpickr/dist/flatpickr.min.css";
 import "@/css/satoshi.css";
 import "@/css/style.css";
-import UserProvider from "@/contexts/UserContext";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
 import { Toaster } from "react-hot-toast";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 export default function RootLayout({
   children,
@@ -17,10 +17,9 @@ export default function RootLayout({
       <body>
         <div className="dark:bg-boxdark-2 dark:text-bodydark">
           <ReactQueryProvider>
-            <UserProvider>
-              <Toaster />
               {children}
-            </UserProvider>
+            <ReactQueryDevtools initialIsOpen={false} />
+            <Toaster />
           </ReactQueryProvider>
         </div>
       </body>

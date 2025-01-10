@@ -6,50 +6,41 @@ import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
-const InvoiceList = ({ type, id }: {
-  type?: string | string[], id?: string | string[]
-}) => {
+const InvoiceList = () => {
+  const queryClient = useQueryClient()
   const [invoices, setInvoices] = useState<TInvoiceList[]>([])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [pageNumber, setPageNumber] = useState(0); // Pagination starts at page 1
+  const [pageNumber, setPageNumber] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true); // New state for loading indicator
-  const [isBtnDisabled, setIsBtnDisabled] = useState(true); // New state for loading indicator
+  const [isBtnDisabled, setIsBtnDisabled] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      let res: any
-      if (type && id) {
-        if (type === "company") {
-          res = await axios.get(`/api/invoice/company/${id}?page=${pageNumber}`);
-        }
-        if (type === "individual") {
-          res = await axios.get(`/api/invoice/employee/${id}?page=${pageNumber}`);
-        }
-      } else {
-        res = await axios.get(`/api/invoice?page=${pageNumber}`);
-      }
-      setHasMore(res.data.hasMore)
-      setInvoices(res.data.invoices);
-      setIsLoading(false);
-      setIsBtnDisabled(false)
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setIsLoading(false);
-      setHasMore(false)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['invoices', pageNumber], queryFn: async () => {
+      const { data } = await axios.get(`/api/invoice?page=${pageNumber}`)
+
+      return data
     }
-  };
+  })
+  console.log(data);
 
   useEffect(() => {
-    setIsBtnDisabled(true)
-    fetchData();
-  }, [pageNumber]);
+    if (data) {
+      setInvoices(data.invoices)
+      setHasMore(data.hasMore)
+      setIsBtnDisabled(false)
+    }
+  }, [data])
+
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
   };
+
 
 
   const handleDelete = (id: string) => {
@@ -57,16 +48,31 @@ const InvoiceList = ({ type, id }: {
     setIsConfirmationOpen(true);
   }
 
+
+  const { mutate } = useMutation({
+    mutationFn: async (id: string | null) => await axios.delete(`/api/invoice/${id}`),
+    onMutate: () => toast.loading("Deleting invoice..."),
+    onSuccess: () => {
+      toast.dismiss()
+      toast.success("Invoice deleted successfully")
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    onError: () => {
+      toast.dismiss()
+      toast.error("Failed to delete invoice")
+    }
+  })
+
+
   const confirmDelete = async () => {
-    await axios.delete(`/api/invoice/${selectedRecordId}`)
+    mutate(selectedRecordId)
     setIsConfirmationOpen(false);
-    fetchData()
   }
+
   const cancelAction = () => {
     setSelectedRecordId(null);
     setIsConfirmationOpen(false);
   }
-  console.log(hasMore);
 
   return (
     <>
@@ -182,7 +188,7 @@ const InvoiceList = ({ type, id }: {
                     </svg>
                   </Link>
 
-                  <button onClick={() => handleDelete(record?.id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
+                  <button title="delete invoice" onClick={() => handleDelete(record?.id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
                       <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />

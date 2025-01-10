@@ -1,9 +1,9 @@
 "use client"
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 interface Client {
   name: string;
@@ -18,25 +18,16 @@ interface TransformedData {
 
 
 const TransactionList = () => {
-  const [records, setRecords] = useState<TransformedData[]>([])
-  const [amount, setAmount] = useState(0)
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      const { data } = await axios.get(`/api/payment/liability`);
-      setRecords(data.records);
-      setAmount(data.amount);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setIsLoading(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ["liability"], queryFn: async () => {
+      const response = await axios.get(`/api/payment/liability`);
+      return response.data;
     }
-  };
+  })
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const amount = data?.amount ?? 0;
+  const records: TransformedData[] = data?.records ?? [];
 
 
   return (

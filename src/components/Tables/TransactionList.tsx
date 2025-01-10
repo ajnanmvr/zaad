@@ -9,9 +9,21 @@ import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import SelfDepositModal from "../Modals/SelfDepositModal";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 const baseData = {
   t: "",
   m: "",
+};
+const generateQuery = (filter: typeof baseData) => {
+  let query = "";
+  if (filter.t) {
+    query += `&t=${filter.t}`;
+  }
+  if (filter.m) {
+    query += `&m=${filter.m}`;
+  }
+  return query;
 };
 
 const TransactionList = ({
@@ -21,8 +33,8 @@ const TransactionList = ({
   type?: string | string[];
   id?: string | string[];
 }) => {
-  const [records, setRecords] = useState<TRecordList[]>([]);
-  const [cards, setCards] = useState([0, 0, 0, 0]);
+  const queryClient = useQueryClient();
+
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(
     null
@@ -34,61 +46,41 @@ const TransactionList = ({
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
-  const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
   const [isBtnDisabled, setIsBtnDisabled] = useState(true);
+  const [records, setRecords] = useState<TRecordList[]>([]);
+  const [cards, setCards] = useState([0, 0, 0, 0]);
 
-  const fetchData = async () => {
-    try {
-      let res: any;
-      let query = "";
 
-      if (filter.t) {
-        query += `&t=${filter.t}`;
-      }
-      if (filter.m) {
-        query += `&m=${filter.m}`;
-      }
-      console.log(query);
+  const query = generateQuery(filter)
 
-      if (type) {
-        if (id) {
-          if (type === "company") {
-            res = await axios.get(
-              `/api/payment/company/${id}?page=${pageNumber + query}`
-            );
-          } else if (type === "employee") {
-            res = await axios.get(
-              `/api/payment/individual/${id}?page=${pageNumber + query}`
-            );
-          }
-        }
-        if (type === "self") {
-          res = await axios.get(`/api/payment/self?page=${pageNumber + query}`);
-        }
-        let { balance, totalIncome, totalExpense, totalTransactions } =
-          res.data;
-        setCards([balance, totalIncome, totalExpense, totalTransactions]);
-      } else {
-        res = await axios.get(`/api/payment?page=${pageNumber + query}`);
-      }
-      setHasMore(res.data.hasMore);
-      setRecords(res.data.records);
-      setIsLoading(false);
-      setIsBtnDisabled(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setIsLoading(false);
-      setHasMore(false);
-    }
-  };
+  const { data: paymentData, isLoading } = useQuery({
+    queryKey: ["payment", pageNumber, type, id],
+    queryFn: async () => {
+      const res = await axios.get(`/api/payment${type ? ("/" + (type === "self" ? type : (type + "/" + id))) : ""}?page=${pageNumber + query}`)
+      return res.data;
+    },
+    placeholderData: keepPreviousData,
+
+  })
+
+  console.log(paymentData);
 
   useEffect(() => {
-    setIsBtnDisabled(true);
-    fetchData();
-  }, [pageNumber, filter]);
+    if (paymentData) {
+      setRecords(paymentData.records);
+      setHasMore(paymentData.hasMore);
+      setIsBtnDisabled(false);
+      if (type) {
+        const { balance, totalIncome, totalExpense, totalTransactions } =
+          paymentData;
+        setCards([balance, totalIncome, totalExpense, totalTransactions])
+      }
+    }
+  }, [paymentData]);
+
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
@@ -106,11 +98,31 @@ const TransactionList = ({
     setIsConfirmationOpen(false);
     setIsSecondConfirmationOpen(true);
   };
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => {
+      return axios.delete(`/api/payment/${id}`);
+    },
+    onMutate: () => {
+      toast.loading("Deleting payment record...");
+    },
+    onSuccess: () => {
+      toast.dismiss();
+      toast.success("Record deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["payment"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["profits"] });
+    },
+    onError: () => {
+      toast.dismiss();
+      toast.error("Failed to delete record");
+    }
+  });
+
   const secondConfirmDelete = async () => {
-    await axios.delete(`/api/payment/${selectedRecordId}`);
+    deleteMutation.mutate(selectedRecordId!);
     setIsSecondConfirmationOpen(false);
-    fetchData();
   };
+
   const cancelAction = () => {
     setSelectedRecordId(null);
     setIsConfirmationOpen(false);
@@ -126,7 +138,6 @@ const TransactionList = ({
     setFilterDummy({ ...filter });
     setFilterOpen(false);
   };
-  console.log(cards);
 
   return (
     <>
@@ -136,18 +147,21 @@ const TransactionList = ({
             pageName={`${records[0]?.client?.name || type}'s transactions`}
           />
           <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats title="Total Transactions" total={`${cards[3]}`} />
+            <CardDataStats loading={isLoading} title="Total Transactions" total={`${cards[3]}`} />
             <CardDataStats
+              loading={isLoading}
               title="Total Income"
               total={`${cards[1].toFixed(2)} AED`}
               color="meta-3"
             />
             <CardDataStats
+              loading={isLoading}
               title="Total Expense"
               total={`${cards[2].toFixed(2)} AED`}
               color="red"
             />
             <CardDataStats
+              loading={isLoading}
               title="Balance"
               total={`${cards[0].toFixed(2)} AED`}
             />
@@ -577,7 +591,7 @@ const TransactionList = ({
             {isLoading ? (
               <SkeletonList />
             ) : (
-              records.map((record, key) => (
+              records?.map((record, key) => (
                 <div
                   className={`grid grid-cols-3 sm:grid-cols-8 ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${key === records.length - 1
                     ? ""

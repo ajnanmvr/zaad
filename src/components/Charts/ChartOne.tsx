@@ -19,6 +19,7 @@ type ChartOneProps = {
 }
 
 const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
+  const [year, prevYear] = [new Date().getFullYear(), new Date().getFullYear() - 1]
   const options: ApexOptions = {
     legend: {
       show: false,
@@ -65,10 +66,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
       width: [2, 2],
       curve: "straight",
     },
-    // labels: {
-    //   show: false,
-    //   position: "top",
-    // },
+
     grid: {
       xaxis: {
         lines: {
@@ -164,7 +162,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
             </span>
             <div className="w-full">
               <p className="font-semibold text-[#3c50e0]">Profit Amount</p>
-              <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
+              <p className="text-sm font-medium">{months[0]} {prevYear} - {months[11]} {year}</p>
             </div>
           </div>
           <div className="flex min-w-47.5">
@@ -173,8 +171,7 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
             </span>
             <div className="w-full">
               <p className="font-semibold text-secondary">Total Expense</p>
-              <p className="text-sm font-medium">12.04.2022 - 12.05.2022</p>
-            </div>
+              <p className="text-sm font-medium">{months[0]} {prevYear} - {months[11]} {year}</p>            </div>
           </div>
 
 

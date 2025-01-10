@@ -5,89 +5,51 @@ import ChartTwo from "@/components/Charts/ChartTwo";
 import CardDataStats from "@/components/CardDataStats";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import ReactToPrint from "react-to-print";
 import ReportPage from "@/components/ReportPage";
+import { TAccountsData, TProfitsData } from "@/types/dashboard";
+import { useQuery } from "@tanstack/react-query";
 const baseData = {
   y: "", m: ""
 }
 export default function AccountsDashboard() {
-  const [isLoading, setLoading] = useState(true);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [isPrint, setIsPrint] = useState(false);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
   const componentRef = useRef(null)
-  const [accountsData, setAccountsData] = useState({
-    expenseCount: 0,
-    totalExpenseAmount: 0,
-    incomeCount: 0,
-    totalIncomeAmount: 0,
-    totalBalance: 0,
-    bankBalance: 0,
-    cashBalance: 0,
-    tasdeedBalance: 0,
-    BankIncome: 0,
-    CashIncome: 0,
-    TasdeedIncome: 0,
-    SwiperIncome: 0,
-    BankExpense: 0,
-    CashExpense: 0,
-    TasdeedExpense: 0,
-    SwiperExpense: 0,
-    last12MonthsExpenses: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    last12MonthsProfit: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    monthNames: [""],
-    profitLast7DaysTotal: [0],
-    expensesLast7DaysTotal: [0],
-    daysOfWeekInitials: [""],
-    profit: 0,
-  });
 
-  const [profitsData, setProfitsData] = useState({
-    over0balanceCompanies: [{ name: "", balance: 0, id: "" }],
-    under0balanceCompanies: [{ name: "", balance: 0, id: "" }],
-    totalProfitAllCompanies: 0,
-    totalToGiveCompanies: 0,
-    totalToGetCompanies: 0,
-    over0balanceEmployees: [{ name: "", balance: 0, id: "" }],
-    under0balanceEmployees: [{ name: "", balance: 0, id: "" }],
-    totalProfitAllEmployees: 0,
-    totalToGiveEmployees: 0,
-    totalToGetEmployees: 0,
-    profit: 0,
-    totalToGive: 0,
-    totalToGet: 0,
-  });
-
-  const fetchData = async () => {
+  const generateQuery = (filter: { m: string; y: string }) => {
     let query = "";
 
     if (filter.m !== "current" && filter.m && filter.y) {
       query = `?m=${filter.m}&y=${filter.y}`;
-    }
-    else if (!filter.m && filter.y) {
+    } else if (!filter.m && filter.y) {
       query = `?y=${filter.y}`;
-    }
-    else if (filter.m && filter.m !== "current") {
+    } else if (filter.m && filter.m !== "current") {
       query = `?m=${filter.m}`;
-    }
-    else if (filter.m === "current") {
+    } else if (filter.m === "current") {
       query = `?m=current`;
     }
-
-    try {
-      setLoading(true)
-      const accounts = await axios.get('/api/home/accounts' + query);
-      const profit = await axios.get("/api/home/profit" + query);
-      setAccountsData(accounts.data);
-      setProfitsData(profit.data);
-      setLoading(false);
-    } catch (error) {
-      console.log(error);
-    }
+    return query;
   };
+
+  const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
+    queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
+      const { data } = await axios.get('/api/home/accounts' + generateQuery(filter))
+      return data
+    }
+  })
+  const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
+    queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
+      const { data } = await axios.get('/api/home/profit' + generateQuery(filter))
+      return data
+    }
+  })
+
+
   const handleFilter = () => {
     setFilter(filterDummy)
     setFilterOpen(false)
@@ -107,15 +69,9 @@ export default function AccountsDashboard() {
     setFilterOpen(false)
   }
 
-  useEffect(() => {
-    fetchData();
-  }, [filter]);
-
-  console.log(filter);
-
   return (
     <DefaultLayout>
-      {isLoading ? (
+      {accountsLoading && profitsLoading ? (
         <div className="flex justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
         </div>
@@ -143,7 +99,7 @@ export default function AccountsDashboard() {
             <h2 className="text-title-md2 capitalize font-semibold text-black dark:text-white">
               Accounts Report</h2>
             <div>
-              <button onClick={() => setIsPrint(true)} className=" text-primary mr-5 hover:text-meta-10">
+              <button type="button" onClick={() => setIsPrint(true)} className=" text-primary mr-5 hover:text-meta-10">
                 Export Report
               </button>
               <button onClick={() => setFilterOpen(true)} className=" inline-flex gap-3 border-primary border font-semibold text-white bg-primary transition-colors duration-300 rounded hover:bg-opacity-90 p-3 capitalize">
@@ -174,6 +130,7 @@ export default function AccountsDashboard() {
                   <div className="relative z-20 bg-transparent dark:bg-form-input">
 
                     <select
+                      title="Select Month"
                       value={filterDummy.m}
                       name="from"
                       onChange={(e) => {
@@ -257,17 +214,17 @@ export default function AccountsDashboard() {
 
               <div className="flex justify-between">
                 <div className="inline-flex items-center gap-2">
-                  <button onClick={handleCurrentFilter} className="text-primary hover:text-meta-10">
+                  <button type="button" onClick={handleCurrentFilter} className="text-primary hover:text-meta-10">
                     This Month
-                  </button>  | <button onClick={handleAllFilter} className=" text-primary hover:text-meta-10">
+                  </button>  | <button type="button" onClick={handleAllFilter} className=" text-primary hover:text-meta-10">
                     All Time
                   </button>
                 </div>
                 <div>
-                  <button onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
+                  <button type="button" onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
                     Cancel
                   </button>
-                  <button onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
+                  <button type="button" onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
                     Apply
                   </button>
                 </div>
@@ -279,20 +236,20 @@ export default function AccountsDashboard() {
 
             <CardDataStats
               title="Total Transactions"
-              total={`${accountsData.expenseCount + accountsData.incomeCount}`}
+              total={`${(accountsData?.expenseCount ?? 0) + (accountsData?.incomeCount ?? 0)}`}
             />
             <CardDataStats
               title="Total Profit"
-              total={`${accountsData.profit.toFixed(2)} AED`}
+              total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Total Credit"
-              total={`${(profitsData.totalToGet * -1).toFixed(2)} AED`}
+              total={`${((profitsData?.totalToGet ?? 0) * -1).toFixed(2)} AED`}
               color="meta-3"
             />
             <CardDataStats
               title="Total Debit"
-              total={`${profitsData.totalToGive.toFixed(2)} AED`}
+              total={`${(profitsData?.totalToGive ?? 0).toFixed(2)} AED`}
               color="red"
             />
           </div>
@@ -300,53 +257,53 @@ export default function AccountsDashboard() {
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Total Balance"
-              total={`${accountsData.totalBalance.toFixed(2)} AED`}
+              total={`${(accountsData?.totalBalance ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Cash Balance"
-              total={`${accountsData.cashBalance.toFixed(2)} AED`}
+              total={`${(accountsData?.cashBalance ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Bank Balance"
-              total={`${accountsData.bankBalance.toFixed(2)} AED`}
+              total={`${(accountsData?.bankBalance ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Tasdeed Balance"
-              total={`${accountsData.tasdeedBalance.toFixed(2)} AED`}
+              total={`${(accountsData?.tasdeedBalance ?? 0).toFixed(2)} AED`}
             />
           </div>
 
           <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
             <ChartOne
-              months={accountsData.monthNames}
-              profit={accountsData.last12MonthsProfit}
-              expense={accountsData.last12MonthsExpenses}
+              months={accountsData?.monthNames ?? []}
+              profit={accountsData?.last12MonthsProfit ?? []}
+              expense={accountsData?.last12MonthsExpenses ?? []}
             />
             <ChartTwo
-              dates={accountsData.daysOfWeekInitials}
-              profit={accountsData.profitLast7DaysTotal}
-              expense={accountsData.expensesLast7DaysTotal}
+              dates={accountsData?.daysOfWeekInitials ?? []}
+              profit={accountsData?.profitLast7DaysTotal ?? []}
+              expense={accountsData?.expensesLast7DaysTotal ?? []}
             />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Received Profit"
-              total={`${profitsData.profit.toFixed(2)} AED`}
+              total={`${profitsData?.profit.toFixed(2)} AED`}
             />
             <CardDataStats
               title="Credit Profit"
-              total={`${(accountsData.profit - profitsData.profit).toFixed(2)
+              total={`${((accountsData?.profit ?? 0) - (profitsData?.profit ?? 0)).toFixed(2)}
                 } AED`}
             />
             <CardDataStats
               title="Profit This Month"
-              total={`${accountsData.last12MonthsProfit[11].toFixed(2)
+              total={`${accountsData?.last12MonthsProfit[11].toFixed(2)
                 } AED`}
             />
             <CardDataStats
               title="Today Profit"
-              total={`${accountsData.profitLast7DaysTotal[6].toFixed(2)
+              total={`${accountsData?.profitLast7DaysTotal[6].toFixed(2)
                 } AED`}
             />
           </div>
@@ -354,75 +311,75 @@ export default function AccountsDashboard() {
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Cash Income"
-              total={`${accountsData.CashIncome.toFixed(2)} AED`}
+              total={`${(accountsData?.CashIncome ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Bank Income"
-              total={`${accountsData.BankIncome.toFixed(2)} AED`}
+              total={`${(accountsData?.BankIncome ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Tasdeed Income"
-              total={`${accountsData.TasdeedIncome.toFixed(2)} AED`}
+              total={`${(accountsData?.TasdeedIncome ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Swiper Income"
-              total={`${accountsData.SwiperIncome.toFixed(2)} AED`}
+              total={`${(accountsData?.SwiperIncome ?? 0).toFixed(2)} AED`}
             />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Cash Expense"
-              total={`${accountsData.CashExpense.toFixed(2)} AED`}
+              total={`${(accountsData?.CashExpense ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Bank Expense"
-              total={`${accountsData.BankExpense.toFixed(2)} AED`}
+              total={`${(accountsData?.BankExpense ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Tasdeed Expense"
-              total={`${accountsData.TasdeedExpense.toFixed(2)} AED`}
+              total={`${(accountsData?.TasdeedExpense ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Swiper Expense"
-              total={`${accountsData.SwiperExpense.toFixed(2)} AED`}
+              total={`${(accountsData?.SwiperExpense ?? 0).toFixed(2)} AED`}
             />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
               title="Companies Credit"
-              total={`${(profitsData.totalToGetCompanies * -1).toFixed(2)
-                } AED`}
+              total={`${((profitsData?.totalToGetCompanies ?? 0) * -1).toFixed(2)}
+                AED`}
               color="meta-3"
             />
             <CardDataStats
               title="Companies Debit"
-              total={`${profitsData.totalToGiveCompanies.toFixed(2)} AED`}
+              total={`${(profitsData?.totalToGiveCompanies ?? 0).toFixed(2)} AED`}
               color="red"
             />
             <CardDataStats
               title="Individual Credit"
-              total={`${(profitsData.totalToGetEmployees * -1).toFixed(2)
-                } AED`}
+              total={`${((profitsData?.totalToGetEmployees ?? 0) * -1).toFixed(2)}
+                AED`}
               color="meta-3"
             />
             <CardDataStats
               title="Individual Debit"
-              total={`${profitsData.totalToGiveEmployees.toFixed(2)} AED`}
+              total={`${(profitsData?.totalToGiveEmployees ?? 0).toFixed(2)} AED`}
               color="red"
             />
           </div>
 
           <div className="mt-4 flex flex-col gap-4">
-            {profitsData.over0balanceCompanies.length !== 0 && (
+            {(profitsData?.over0balanceCompanies ?? []).length !== 0 && (
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Company Debit List
                 </h4>
 
                 <div>
-                  {profitsData.over0balanceCompanies.map((data, key) => (
+                  {profitsData?.over0balanceCompanies.map((data, key) => (
                     <Link
                       href={`/company/${data.id}`}
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
@@ -447,14 +404,14 @@ export default function AccountsDashboard() {
                 </div>
               </div>
             )}
-            {profitsData.under0balanceCompanies.length !== 0 && (
+            {profitsData?.under0balanceCompanies?.length !== 0 && (
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Company Credit List
                 </h4>
 
                 <div>
-                  {profitsData.under0balanceCompanies.map((data, key) => (
+                  {profitsData?.under0balanceCompanies?.map((data, key) => (
                     <Link
                       href={`/company/${data.id}`}
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
@@ -479,14 +436,14 @@ export default function AccountsDashboard() {
                 </div>
               </div>
             )}
-            {profitsData.over0balanceEmployees.length !== 0 && (
+            {profitsData?.over0balanceEmployees?.length !== 0 && (
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Individual Debit List
                 </h4>
 
                 <div>
-                  {profitsData.over0balanceEmployees.map((data, key) => (
+                  {(profitsData?.over0balanceEmployees ?? []).map((data, key) => (
                     <Link
                       href={`/employee/${data.id}`}
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
@@ -511,14 +468,14 @@ export default function AccountsDashboard() {
                 </div>
               </div>
             )}
-            {profitsData.under0balanceEmployees.length !== 0 && (
+            {profitsData?.under0balanceEmployees?.length !== 0 && (
               <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
                 <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
                   Individual Credit List
                 </h4>
 
                 <div>
-                  {profitsData.under0balanceEmployees.map((data, key) => (
+                  {(profitsData?.under0balanceEmployees ?? []).map((data, key) => (
                     <Link
                       href={`/employee/${data.id}`}
                       className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"

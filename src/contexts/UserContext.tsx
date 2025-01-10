@@ -1,36 +1,19 @@
 "use client"
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useContext } from 'react';
 import axios from 'axios';
 import { TUser } from '@/types/user';
+import { useQuery } from '@tanstack/react-query';
 
 export const UserContext = createContext<{ user: TUser | null }>({ user: null });
 export const useUserContext = () => useContext(UserContext);
 
 const UserProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState<TUser>(
-        {
-            username: "",
-            _id: "",
-            fullname: "",
-            role: ""
-        }
-    );
-    const fetchUserData = async () => {
-        try {
+    const { data: user } = useQuery({
+        queryKey: ["user"], queryFn: async () => {
             const response = await axios.get("/api/users/auth/me");
-            console.log(response)
-            setUser(response.data.user);
-
-        } catch (error) {
-            await axios.get("/api/users/auth/logout")
-            console.error("Unable to fetch user data", error);
+            return response.data.user
         }
-    };
-
-    useEffect(() => {
-        fetchUserData();
-    }, []);
-
+    })
     return (
         <UserContext.Provider value={{ user }}>
             {children}
