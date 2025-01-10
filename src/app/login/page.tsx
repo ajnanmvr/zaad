@@ -18,7 +18,6 @@ const SignIn = () => {
       toast.dismiss()
       toast.success("Logged in successfully")
       queryClient.invalidateQueries({ queryKey: ["user"] })
-      router.replace("/")
     },
     onError: (error) => {
       toast.dismiss()
@@ -28,7 +27,8 @@ const SignIn = () => {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
-    mutate(user)
+    await mutate(user)
+    router.replace("/")
   }
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
