@@ -239,8 +239,8 @@ export default function AccountsDashboard() {
               total={`${(accountsData?.expenseCount ?? 0) + (accountsData?.incomeCount ?? 0)}`}
             />
             <CardDataStats
-              title="Total Profit"
-              total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}
+              title="Net Profit"
+              total={`${(accountsData?.netProfit ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Total Credit"
@@ -288,12 +288,12 @@ export default function AccountsDashboard() {
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats
-              title="Received Profit"
-              total={`${profitsData?.profit.toFixed(2)} AED`}
+              title="Office Expense"
+              total={`${accountsData?.zaadExpenseTotal.toFixed(2)} AED`}
             />
             <CardDataStats
-              title="Credit Profit"
-              total={`${((accountsData?.profit ?? 0) - (profitsData?.profit ?? 0)).toFixed(2)} AED`}
+              title="Total Profit"
+              total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Profit This Month"

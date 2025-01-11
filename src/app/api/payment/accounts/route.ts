@@ -79,6 +79,22 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (searchParams.toString() === "") {
     }
 
+    const zaadExpense: number = parseFloat(
+      expenseRecords
+        .filter((record) => record?.self === "zaad")
+        .reduce((total, record) => total + (record.amount || 0), 0)
+        .toFixed(2)
+    );
+
+    const zaadIncome: number = parseFloat(
+      incomeRecords
+        .filter((record) => record?.self === "zaad")
+        .reduce((total, record) => total + (record.amount || 0), 0)
+        .toFixed(2)
+    );
+    const zaadBalance: number = zaadExpense - zaadIncome;
+    const netProfit: number = parseFloat((profit - zaadBalance).toFixed(2));
+
     const currentDate: Date = new Date();
     const currentYear: number = currentDate.getFullYear();
 
@@ -143,6 +159,8 @@ export async function GET(request: NextRequest): Promise<Response> {
         last12MonthsExpenses,
         last12MonthsProfit,
         profit,
+        zaadExpenseTotal: zaadBalance,
+        netProfit,
       },
       { status: 200 }
     );

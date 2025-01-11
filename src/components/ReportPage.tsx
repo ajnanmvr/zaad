@@ -16,16 +16,16 @@ const ReportPage = ({ profitsData, accountsData }: { profitsData: any, accountsD
               <td className="px-4 py-2 whitespace-nowrap">{accountsData.expenseCount + accountsData.incomeCount}</td>
             </tr>
             <tr className="border-b border-gray-300">
+              <td className="px-4 py-2 whitespace-nowrap">Net Profit</td>
+              <td className="px-4 py-2 whitespace-nowrap">{accountsData.netProfit.toFixed(2)} AED</td>
+            </tr>
+            <tr className="border-b border-gray-300">
               <td className="px-4 py-2 whitespace-nowrap">Total Profit</td>
               <td className="px-4 py-2 whitespace-nowrap">{accountsData.profit.toFixed(2)} AED</td>
             </tr>
             <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Received Profit</td>
-              <td className="px-4 py-2 whitespace-nowrap">{profitsData.profit.toFixed(2)} AED</td>
-            </tr>
-            <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Credit Profit</td>
-              <td className="px-4 py-2 whitespace-nowrap">{(accountsData.profit - profitsData.profit).toFixed(2)} AED</td>
+              <td className="px-4 py-2 whitespace-nowrap">Office Expense</td>
+              <td className="px-4 py-2 whitespace-nowrap">{accountsData.zaadExpenseTotal.toFixed(2)} AED</td>
             </tr>
             <tr className="border-b border-gray-300">
               <td className="px-4 py-2 whitespace-nowrap">Profit This Month</td>
