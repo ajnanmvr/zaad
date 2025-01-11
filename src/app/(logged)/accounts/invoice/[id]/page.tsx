@@ -118,18 +118,18 @@ function SingleInvoice() {
               :
               <>
 
-       <div className="flex justify-between w-full">
-       <div className="flex-grow">
-                  <p className="text-sm">TO</p>
-                  <p className="text-xl font-semibold">{invoice?.client}</p>
-                  <p>{invoice?.location}</p>
-                </div>
-        <div className="text-sm"> <p className="text-right w-full">DATE: {invoice?.date}</p>
-                {invoice?.validTo !== "---" ? <p className="text-right w-full">VALID TO: {invoice?.validTo}</p> : null}
-                {invoice?.invoiceNo !== "---" ? <p className="text-right w-full">INVOICE NO: {invoice?.invoiceNo}</p> : null}
-               </div>
+                <div className="flex justify-between w-full">
+                  <div className="flex-grow">
+                    <p className="text-sm">TO</p>
+                    <p className="text-xl font-semibold">{invoice?.client}</p>
+                    <p>{invoice?.location}</p>
+                  </div>
+                  <div className="text-sm"> <p className="text-right w-full">DATE: {invoice?.date}</p>
+                    {invoice?.validTo !== "---" ? <p className="text-right w-full">VALID TO: {invoice?.validTo}</p> : null}
+                    {invoice?.invoiceNo !== "---" ? <p className="text-right w-full">INVOICE NO: {invoice?.invoiceNo}</p> : null}
+                  </div>
 
-       </div>
+                </div>
 
 
                 <p className="w-full mt-3 text-sm normal-case">
