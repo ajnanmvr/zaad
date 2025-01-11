@@ -1,6 +1,5 @@
 import connect from "@/db/connect";
 import calculateStatus from "@/utils/calculateStatus";
-import Records from "@/models/records";
 import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
 import { NextRequest } from "next/server";

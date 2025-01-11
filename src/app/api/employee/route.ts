@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await connect();
-
+  await isAuthenticated(request);
   const employees: TEmployeeData[] = await Employee.find({
     published: true,
   }).select("name company documents");
