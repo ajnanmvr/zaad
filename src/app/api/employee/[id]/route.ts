@@ -3,12 +3,16 @@ import calculateStatus from "@/utils/calculateStatus";
 import Records from "@/models/records";
 import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await isAuthenticated(request);
+
   const { id } = params;
   const reqBody = await request.json();
   await Employee.findByIdAndUpdate(id, reqBody);
@@ -19,10 +23,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await isAuthenticated(request);
 
   const { id } = params;
   await Employee.findByIdAndUpdate(id, { published: false });
@@ -30,11 +35,12 @@ export async function DELETE(
 }
 
 export async function GET(
-  request: Request,
+  request:NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connect();
+    await isAuthenticated(request);
 
     const employee = (await Employee.findById(params.id).populate(
       "company"

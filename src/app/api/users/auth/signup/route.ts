@@ -2,7 +2,8 @@ import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { type TUser } from "@/types/types";
-export async function POST(request: Request) {
+import { NextRequest } from "next/server";
+export async function POST(request:NextRequest) {
   try {
     await connect();
 

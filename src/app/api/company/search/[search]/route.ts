@@ -1,15 +1,17 @@
 // Import necessary modules and models
 import connect from "@/db/connect";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Company from "@/models/companies";
+import { NextRequest } from "next/server";
 
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { search: string } }
 ) {
   try {
 await connect();
-
+await isAuthenticated(request);
     const companies = await Company.find({
       name: { $regex: params.search, $options: "i" },
       published: true,

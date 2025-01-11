@@ -38,13 +38,13 @@ export default function AccountsDashboard() {
 
   const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
     queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/home/accounts' + generateQuery(filter))
+      const { data } = await axios.get('/api/payment/accounts' + generateQuery(filter))
       return data
     }
   })
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
     queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/home/profit' + generateQuery(filter))
+      const { data } = await axios.get('/api/payment/profits' + generateQuery(filter))
       return data
     }
   })

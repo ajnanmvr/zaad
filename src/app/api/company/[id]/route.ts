@@ -2,13 +2,16 @@ import connect from "@/db/connect";
 import calculateStatus from "@/utils/calculateStatus";
 import Company from "@/models/companies";
 import { TCompanyData } from "@/types/types";
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
 await connect();
+await isAuthenticated(request);
 
   const { id } = params;
   const reqBody = await request.json();
@@ -20,10 +23,11 @@ await connect();
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
 await connect();
+await isAuthenticated(request);
 
   const { id } = params;
   await Company.findByIdAndUpdate(id, { published: false });
@@ -31,11 +35,12 @@ await connect();
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
 await connect();
+await isAuthenticated(request);
 
     const company: TCompanyData | null = await Company.findById(params.id);
 

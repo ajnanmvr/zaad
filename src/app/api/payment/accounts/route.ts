@@ -2,6 +2,7 @@ import connect from "@/db/connect";
 import calculateLast12Months from "@/helpers/calculateLast12Months";
 import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
 import calculateLast7Days from "@/helpers/calculateLast7Days";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { TRecordDataWithCreatedAt } from "@/types/records";
 import { filterData } from "@/utils/filterData";
@@ -11,6 +12,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   const searchParams = request.nextUrl.searchParams;
   try {
     await connect();
+    await isAuthenticated(request);
+
     const filter = filterData(searchParams, true);
     const allRecords: TRecordDataWithCreatedAt[] = await Records.find(filter);
     const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(

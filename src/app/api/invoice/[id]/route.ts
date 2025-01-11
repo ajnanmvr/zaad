@@ -4,7 +4,7 @@ import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 export async function DELETE(
-  request: Request,
+  request:NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
@@ -14,7 +14,7 @@ export async function DELETE(
 }
 
 export async function PUT(
-  request: Request,
+  request:NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();

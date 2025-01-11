@@ -1,12 +1,15 @@
 import connect from "@/db/connect";
 import Employee from "@/models/employees";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
   try {
   await connect();
+  await isAuthenticated(request);
 
   const { id, doc } = params;
   const { name, issueDate, expiryDate, attachment } = await request.json();
@@ -33,11 +36,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
   try {
   await connect();
+  await isAuthenticated(request);
 
   const { id, doc } = params;
   const Data = await Employee.findById(id);

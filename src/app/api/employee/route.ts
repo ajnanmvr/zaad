@@ -3,9 +3,12 @@ import { TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
 import calculateStatus from "@/utils/calculateStatus";
 import processDocuments from "@/helpers/processDocuments";
-export async function POST(request: Request) {
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
+export async function POST(request: NextRequest) {
   try {
-await connect();
+    await connect();
+    await isAuthenticated(request);
 
     const reqBody = await request.json();
     console.log(reqBody);

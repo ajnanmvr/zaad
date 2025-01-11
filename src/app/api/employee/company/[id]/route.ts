@@ -1,12 +1,16 @@
-import { TCompanyData, TEmployeeData, TEmployeeList } from "@/types/types";
+import { TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
 import processDocuments from "@/helpers/processDocuments";
 import calculateStatus from "@/utils/calculateStatus";
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
+import connect from "@/db/connect";
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const today = new Date();
+  await connect();
+  await isAuthenticated(request);
 
   const employees: TEmployeeData[] = await Employee.find({
     published: true,

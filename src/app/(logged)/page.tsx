@@ -5,12 +5,11 @@ import { TCompanyList, TEmployeeList } from "@/types/types";
 import Link from "next/link";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCompanies, fetchCountData, fetchEmployees } from "@/libs/queries";
+import { fetchCompanies,  fetchEmployees } from "@/libs/queries";
 import { toast } from "react-hot-toast";
 
 export default function Home() {
 
-  const { data: homeData, isLoading: homeLoading, isError: homeError } = useQuery<{ company: string, employee: string }>({ queryKey: ["count"], queryFn: fetchCountData })
   const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery<TCompanyList[] | null>({ queryKey: ["companies"], queryFn: fetchCompanies })
   const { data: employees, isLoading: employeeLoading, isError: employeeError } = useQuery<TEmployeeList[] | null>({ queryKey: ["employees"], queryFn: fetchEmployees })
 
@@ -27,9 +26,6 @@ export default function Home() {
     return renewalEmployees?.length;
   };
 
-  if (homeError) {
-    toast.error("An error occurred while fetching data");
-  }
   if (companyError) {
     toast.error("An error occurred while fetching company data");
   }
@@ -39,12 +35,12 @@ export default function Home() {
 
   return (
     <DefaultLayout>
-      {homeLoading && companyLoading && employeeLoading ? (<div className="flex justify-center">
+      {companyLoading && employeeLoading ? (<div className="flex justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div>) : (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats loading={homeLoading} title="Total Companies" total={`${homeData?.company}`}>
+            <CardDataStats loading={companyLoading} title="Total Companies" total={`${companies?.length}`}>
               <svg
                 className="fill-primary dark:fill-white"
                 width="22"
@@ -63,7 +59,7 @@ export default function Home() {
                 />
               </svg>
             </CardDataStats>
-            <CardDataStats loading={homeLoading} title="Total Employees" total={`${homeData?.employee}`} >
+            <CardDataStats loading={employeeLoading} title="Total Employees" total={`${employees?.length}`} >
               <svg
                 className="fill-primary dark:fill-white"
                 width="20"
@@ -242,7 +238,7 @@ export default function Home() {
               </h4>
 
               <div>
-                {employees?.slice(0, 5).map((employee, key) => (
+                {employees?.slice(0, 7).map((employee, key) => (
                   <Link
                     href="/"
                     className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"

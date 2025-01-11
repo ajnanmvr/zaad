@@ -8,12 +8,15 @@ import processCompanies from "@/helpers/processCompanies";
 import processEmployees from "@/helpers/processEmployees";
 import { NextRequest } from "next/server";
 import { filterData } from "@/utils/filterData";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
   await connect();
+  await isAuthenticated(request);
+
 
   const searchParams = request.nextUrl.searchParams;
   const filter = filterData(searchParams,false);

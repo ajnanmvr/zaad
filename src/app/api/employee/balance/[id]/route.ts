@@ -1,14 +1,17 @@
 import connect from "@/db/connect";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { TRecordData } from "@/types/records";
+import { NextRequest } from "next/server";
 
 
 export async function GET(
-  request: Request,
+  request:NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connect();
+    await isAuthenticated(request);
 
     const employeeRecords: TRecordData[] = await Records.find({
       published: true,

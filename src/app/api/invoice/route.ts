@@ -4,7 +4,7 @@ import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 
-export async function POST(request: Request) {
+export async function POST(request:NextRequest) {
   try {
     await connect();
     const reqBody = await request.json();

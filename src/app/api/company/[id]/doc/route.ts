@@ -1,12 +1,15 @@
 import connect from "@/db/connect";
 import Company from "@/models/companies";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
+import { NextRequest } from "next/server";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
   try {
     await connect();
+    await isAuthenticated(request);
     const { id, doc } = params;
     const reqBody = await request.json();
     const Data = await Company.findById(id);

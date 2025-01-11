@@ -2,8 +2,8 @@ import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { NextResponse } from "next/server";
-export async function POST(request: Request) {
+import { NextRequest, NextResponse } from "next/server";
+export async function POST(request:NextRequest) {
   try {
     await connect();
     const reqBody = await request.json();
