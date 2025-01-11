@@ -49,7 +49,6 @@ const TransactionList = ({
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
   const [hasMore, setHasMore] = useState(true);
-  const [isBtnDisabled, setIsBtnDisabled] = useState(true);
   const [records, setRecords] = useState<TRecordList[]>([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
 
@@ -72,7 +71,6 @@ const TransactionList = ({
     if (paymentData) {
       setRecords(paymentData.records);
       setHasMore(paymentData.hasMore);
-      setIsBtnDisabled(false);
       if (type) {
         const { balance, totalIncome, totalExpense, totalTransactions } =
           paymentData;
@@ -754,10 +752,10 @@ const TransactionList = ({
       <div className="pagination-container flex justify-center items-center my-6">
         <button
           onClick={() => handlePageChange(pageNumber - 1)}
-          disabled={pageNumber === 0 || isBtnDisabled}
+          disabled={pageNumber === 0 || isLoading}
           className={clsx(
             "px-3 py-1 mr-2 rounded-md",
-            isBtnDisabled || pageNumber === 0
+            isLoading || pageNumber === 0
               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
               : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
@@ -767,10 +765,10 @@ const TransactionList = ({
         <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
         <button
           onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isBtnDisabled || !hasMore || !records.length}
+          disabled={isLoading || !hasMore || !records.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            isBtnDisabled || !hasMore || !records.length
+            isLoading || !hasMore || !records.length
               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
               : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}

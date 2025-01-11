@@ -16,7 +16,6 @@ const InvoiceList = () => {
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isBtnDisabled, setIsBtnDisabled] = useState(true);
 
 
   const { data, isLoading } = useQuery({
@@ -32,7 +31,6 @@ const InvoiceList = () => {
     if (data) {
       setInvoices(data.invoices)
       setHasMore(data.hasMore)
-      setIsBtnDisabled(false)
     }
   }, [data])
 
@@ -206,10 +204,10 @@ const InvoiceList = () => {
       <div className="pagination-container flex justify-center items-center my-6">
         <button
           onClick={() => handlePageChange(pageNumber - 1)}
-          disabled={pageNumber === 0 || isBtnDisabled}
+          disabled={pageNumber === 0 || isLoading}
           className={clsx(
             "px-3 py-1 mr-2 rounded-md",
-            isBtnDisabled || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            isLoading || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Back
@@ -217,10 +215,10 @@ const InvoiceList = () => {
         <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
         <button
           onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isBtnDisabled || !hasMore || !invoices.length}
+          disabled={isLoading || !hasMore || !invoices.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            (isBtnDisabled || !hasMore || !invoices.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
+            (isLoading || !hasMore || !invoices.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
         >
           Next
