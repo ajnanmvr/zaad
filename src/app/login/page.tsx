@@ -15,7 +15,7 @@ const SignIn: React.FC = () => {
       router.refresh()
     } catch (error: any) {
       console.log("Login Failed", error);
-      toast.error(error.response.data.error)
+      toast.error(error.response.data.error || "Login Failed");
     }
   }
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {

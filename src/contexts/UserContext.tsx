@@ -8,17 +8,13 @@ export const UserContext = createContext<{ user: TUser | null }>({ user: null })
 export const useUserContext = () => useContext(UserContext);
 
 const UserProvider = ({ children }: { children: React.ReactNode }) => {
-    const { data: user, isError } = useQuery({
+    const { data: user } = useQuery({
         queryKey: ["user"], queryFn: async () => {
-            const response = await axios.get("/api/users/auth/me");
-            return response.data.user
+            const { data } = await axios.get("/api/users/auth/me");
+            return data.user;
         }
-    })
-    if (isError) {
-        (async () => {
-            await axios.get("/api/users/auth/logout");
-        })();
-    }
+    });
+
     return (
         <UserContext.Provider value={{ user }}>
             {children}

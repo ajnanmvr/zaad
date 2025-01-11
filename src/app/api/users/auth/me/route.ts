@@ -10,10 +10,13 @@ export async function GET(request: NextRequest) {
       "username role"
     );
     if (!user) {
-      throw new Error("No user found");
+      return Response.json({ message: "No user found" }, { status: 404 });
     }
     return Response.json({ message: "found current user", user });
   } catch (error) {
-    throw new Error("No user found");
+    return Response.json(
+      { message: "An error occurred", error },
+      { status: 500 }
+    );
   }
 }

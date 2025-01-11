@@ -4,6 +4,7 @@ import Image from "next/image";
 import axios from "axios";
 import { useRouter } from 'next/navigation'
 import { useUserContext } from "@/contexts/UserContext";
+import toast from "react-hot-toast";
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -14,9 +15,10 @@ const DropdownUser = () => {
   const handleLogout = async () => {
     try {
       await axios.get("/api/users/auth/logout")
-      router.push('/login')
+      router.refresh()
     } catch (error) {
-      console.log({ message: "can't log out", error });
+      console.log({ message: "logout failed", error });
+      toast.error("logout failed");
     }
   }
 
