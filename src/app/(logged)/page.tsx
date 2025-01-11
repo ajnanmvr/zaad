@@ -242,7 +242,7 @@ export default function Home() {
               </h4>
 
               <div>
-                {employees?.map((employee, key) => (
+                {employees?.slice(0, 5).map((employee, key) => (
                   <Link
                     href="/"
                     className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
