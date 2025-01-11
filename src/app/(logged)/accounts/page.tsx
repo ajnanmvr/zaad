@@ -293,8 +293,7 @@ export default function AccountsDashboard() {
             />
             <CardDataStats
               title="Credit Profit"
-              total={`${((accountsData?.profit ?? 0) - (profitsData?.profit ?? 0)).toFixed(2)}
-                } AED`}
+              total={`${((accountsData?.profit ?? 0) - (profitsData?.profit ?? 0)).toFixed(2)} AED`}
             />
             <CardDataStats
               title="Profit This Month"
