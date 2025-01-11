@@ -5,6 +5,7 @@ import ReactQueryProvider from "@/providers/ReactQueryProvider";
 import { Toaster } from "react-hot-toast";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -14,6 +15,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <title>ZAAD BUSINESS DOCUMENTS SERVICES | ADMIN DASHBOARD</title>
       <body>
         <div className="dark:bg-boxdark-2 dark:text-bodydark">
           <ReactQueryProvider>

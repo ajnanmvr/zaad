@@ -39,9 +39,11 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
         left: 0,
         opacity: 0.1,
       },
-
       toolbar: {
         show: false,
+      },
+      zoom: {
+        enabled: false,
       },
     },
     responsive: [
@@ -66,7 +68,6 @@ const ChartOne: React.FC<ChartOneProps> = ({ months, profit, expense }) => {
       width: [2, 2],
       curve: "straight",
     },
-
     grid: {
       xaxis: {
         lines: {
