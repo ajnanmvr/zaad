@@ -1,12 +1,16 @@
 import connect from "@/db/connect";
+import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
+
 const DUBAI_TIME_ZONE = "Asia/Dubai";
 
 export async function GET(request: NextRequest) {
   try {
     await connect();
+    await isPartner(request);
+
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;
@@ -103,6 +107,9 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    return Response.json({ error }, { status: 401 });
+    return Response.json(
+      { error: "An unexpected error occurred", details: error },
+      { status: 500 }
+    );
   }
 }

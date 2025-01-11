@@ -1,21 +1,25 @@
 import Records from "@/models/records";
 import connect from "@/db/connect";
+import { isPartner } from "@/helpers/isAuthenticated";
+import { NextRequest } from "next/server";
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await isPartner(request);
   const { id } = params;
   await Records.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await isPartner(request);
   try {
     const { id } = params;
     const data = await Records.findById(id);
@@ -26,10 +30,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await isPartner(request);
   const { id } = params;
   try {
     const reqBody = await request.json();

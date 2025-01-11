@@ -20,7 +20,6 @@ const DropdownUser = () => {
     }
   }
 
-  // close on click outside
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
       if (!dropdown.current) return;

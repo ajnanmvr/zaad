@@ -3,15 +3,16 @@ import { HttpStatusCode } from 'axios';
 import Records from "@/models/records";
 import { toZonedTime, format } from "date-fns-tz";
 import { NextRequest } from "next/server";
+import { isPartner } from "@/helpers/isAuthenticated";
 
 export const dynamic = "force-dynamic";
 
 const DUBAI_TIME_ZONE = 'Asia/Dubai';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     await connect();
-
+    await isPartner(request);
     const reqBody = await request.json();
     const data = await Records.create(reqBody);
     return Response.json(
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-
+    await isPartner(request);
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const method = searchParams.get("m");

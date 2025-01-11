@@ -1,10 +1,13 @@
 import connect from "@/db/connect";
+import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
+import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     await connect();
+    await isPartner(request);
     const { amount, createdBy, to, from } = await request.json();
     let { suffix, number } = await Records.findOne({
       published: true,

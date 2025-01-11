@@ -1,4 +1,5 @@
 import connect from "@/db/connect";
+import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { format,toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
@@ -11,7 +12,7 @@ export async function GET(
 ) {
   try {
     await connect();
-
+    await isPartner(request);
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;

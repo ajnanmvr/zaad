@@ -1,9 +1,12 @@
 import connect from "@/db/connect";
+import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
+import { NextRequest } from "next/server";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     await connect();
+    await isPartner(request);
     const reqBody = await request.json();
     await Records.create(reqBody);
     let { amount, number, type, method, ...rest } = reqBody;
