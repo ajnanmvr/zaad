@@ -1,12 +1,9 @@
 import Link from "next/link";
 import DarkModeSwitcher from "./DarkModeSwitcher";
-import DropdownMessage from "./DropdownMessage";
-import DropdownNotification from "./DropdownNotification";
 import DropdownUser from "./DropdownUser";
 import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
-import Employee from "@/models/employees";
 
 const Header = (props: {
   sidebarOpen: string | boolean | undefined;
@@ -62,11 +59,11 @@ const Header = (props: {
                 </h3>
 
                 <div className="flex flex-wrap gap-1 my-2">
-                  {searchResults?.employees.map((company, key) => (
-                    <Link href={`/company/${company._id}`}
+                  {searchResults?.employees.map((employee, key) => (
+                    <Link href={`/employee/${employee._id}`}
                       className="rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary cursor-pointer dark:hover:bg-primary hover:border-primary"
                       key={key}>
-                      {company.name}
+                      {employee.name}
                     </Link>
                   ))}
                 </div>

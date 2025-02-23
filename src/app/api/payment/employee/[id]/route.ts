@@ -92,7 +92,10 @@ export async function GET(
       0
     );
     const totalExpense = allRecords.reduce(
-      (acc, record) => acc + (record.type === "expense" ? record.amount : 0),
+      (acc, record) =>
+        acc +
+        (record.type === "expense" ? record.amount : 0) +
+        (record.serviceFee || 0),
       0
     );
     const balance = totalIncome - totalExpense;

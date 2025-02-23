@@ -14,7 +14,10 @@ const DropdownUser = () => {
   const dropdown = useRef<any>(null);
   const handleLogout = async () => {
     try {
+      toast.loading("Logging Out");
       await axios.get("/api/users/auth/logout")
+      toast.dismiss();
+      toast.success("Logged Out Successfully");
       router.refresh()
     } catch (error) {
       console.log({ message: "logout failed", error });

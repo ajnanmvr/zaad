@@ -11,10 +11,13 @@ const SignIn: React.FC = () => {
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     try {
+      toast.loading("Logging in...")
       await axios.post("/api/users/auth/login", user)
+      toast.dismiss()
+      toast.success("Logged in successfully")
       router.refresh()
     } catch (error: any) {
-      console.log("Login Failed", error);
+      toast.loading("Logging in...")
       toast.error(error.response.data.error || "Login Failed");
     }
   }
