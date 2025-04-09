@@ -4,7 +4,7 @@ import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 
-export async function POST(request:NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     await connect();
     const reqBody = await request.json();
@@ -24,7 +24,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
     const contentPerSection = 10;
-    const invoice = await Invoice.find({ published: true })
+
+    // Extract the single search parameter
+    const search = searchParams.get("search");
+
+    // Build the query object
+    const query: any = { published: true };
+    if (search) {
+      const formattedDate = formatDate(new Date(search));
+      query.$or = [
+      { client: { $regex: search, $options: "i" } },
+      { purpose: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const invoice = await Invoice.find(query)
       .populate("createdBy")
       .skip(+pageNumber * contentPerSection)
       .limit(contentPerSection + 1)
@@ -32,8 +46,8 @@ export async function GET(request: NextRequest) {
 
     if (!invoice || invoice.length === 0) {
       return Response.json(
-        { message: "No invoice found", count: 0, hasMore: false, records: [] },
-        { status: 200 }
+      { message: "No invoice found", count: 0, hasMore: false, records: [] },
+      { status: 200 }
       );
     }
 
@@ -41,24 +55,24 @@ export async function GET(request: NextRequest) {
     const transformedData = invoice
       .slice(0, contentPerSection)
       .map((invoice) => {
-        return {
-          id: invoice._id,
-          client: invoice.client,
-          purpose: invoice.purpose,
-          invoiceNo: invoice.suffix + invoice.invoiceNo,
-          amount: invoice.items.reduce(
-            (acc: number, item: TInvoiceItemsData) =>
-              acc + item.rate * item.quantity,
-            0
-          ),
-          date: formatDate(invoice.date),
-        };
+      return {
+        id: invoice._id,
+        client: invoice.client,
+        purpose: invoice.purpose,
+        invoiceNo: invoice.suffix + invoice.invoiceNo,
+        amount: invoice.items.reduce(
+        (acc: number, item: TInvoiceItemsData) =>
+          acc + item.rate * item.quantity,
+        0
+        ),
+        date: formatDate(invoice.date),
+      };
       });
     return Response.json(
       { hasMore, invoices: transformedData },
       { status: 200 }
     );
-  } catch (error) {
+    } catch (error) {
     return Response.json({ error }, { status: 401 });
+    }
   }
-}

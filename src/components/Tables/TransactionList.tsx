@@ -56,7 +56,7 @@ const TransactionList = ({
   const query = generateQuery(filter)
 
   const { data: paymentData, isLoading } = useQuery({
-    queryKey: ["payment", pageNumber, type, id],
+    queryKey: ["payment", pageNumber, type, id, filter],
     queryFn: async () => {
       const res = await axios.get(`/api/payment${type ? ("/" + (type === "self" ? type : (type + "/" + id))) : ""}?page=${pageNumber + query}`)
       return res.data;

@@ -6,7 +6,7 @@ import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 const InvoiceList = () => {
@@ -15,17 +15,17 @@ const InvoiceList = () => {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
 
 
   const { data, isLoading } = useQuery({
-    queryKey: ['invoices', pageNumber], queryFn: async () => {
-      const { data } = await axios.get(`/api/invoice?page=${pageNumber}`)
-
+    queryKey: ['invoices', pageNumber, searchQuery], queryFn: async () => {
+      const { data } = await axios.get(`/api/invoice?page=${pageNumber}&search=${searchQuery}`)
       return data
-    }
+    }, placeholderData: keepPreviousData,
+
   })
-  console.log(data);
 
   useEffect(() => {
     if (data) {
@@ -38,8 +38,6 @@ const InvoiceList = () => {
   const handlePageChange = (page: number) => {
     setPageNumber(page);
   };
-
-
 
   const handleDelete = (id: string) => {
     setSelectedRecordId(id);
@@ -72,6 +70,15 @@ const InvoiceList = () => {
     setIsConfirmationOpen(false);
   }
 
+  const handleSearch = (e: any) => {
+    const value = e.target.value;
+    clearTimeout((window as any).searchDebounceTimeout);
+    (window as any).searchDebounceTimeout = setTimeout(() => {
+      setSearchQuery(value);
+      setPageNumber(0)
+    }, 1000);
+  }
+
   return (
     <>
       <div className="rounded-sm border  border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
@@ -82,23 +89,37 @@ const InvoiceList = () => {
           onCancel={cancelAction}
         />
         <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Invoice List</p>
-          <div className="gap-1 flex">
-
+          <div className="gap-1 flex items-center">
+            <input
+              type="text"
+              name="search"
+              onChange={handleSearch}
+              placeholder="Search client or purpose"
+              className="rounded border py-1 font-normal md:w-80  border-stroke bg-transparent px-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+            />
+            {searchQuery && <button
+              onClick={() => {
+                setSearchQuery("");
+                setPageNumber(0);
+                (document.querySelector('input[name="search"]') as HTMLInputElement).value = "";
+              }}
+              className="inline-flex bg-red text-sm -ml-14 items-center justify-center rounded-md bg-gray-300 px-1 h-min text-center font-medium text-white mr-5 hover:bg-gray-400"
+            >
+              Clear
+            </button>}
             <Link
-
               href={"invoice/new"}
               className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
               New Invoice
             </Link>
-
           </div>
         </h4>
         <div className="flex flex-col capitalize">
           <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
 
-            <div className="p-2.5 xl:p-5">
+            <div className="p-2.5 xl:p-5</Link>">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 Invoice No
               </h5>
