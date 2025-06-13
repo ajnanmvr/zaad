@@ -512,7 +512,7 @@ const TransactionList = ({
               Self Deposit
             </div>
             <Link
-              href={"/accounts/transactions/income"}
+              href={"/accounts/income"}
               className="inline-flex items-center justify-center rounded-md bg-meta-3 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             >
               <svg
@@ -525,7 +525,7 @@ const TransactionList = ({
               Income
             </Link>
             <Link
-              href={"/accounts/transactions/expense"}
+              href={"/accounts/expense"}
               className="inline-flex items-center justify-center rounded-md bg-red px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
             >
               <svg
