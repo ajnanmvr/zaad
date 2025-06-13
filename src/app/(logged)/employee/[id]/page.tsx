@@ -24,6 +24,7 @@ const SingleEmployee = () => {
   });
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
+  const { user } = useUserContext();
 
   const fetchData = async () => {
     try {
@@ -260,9 +261,9 @@ const SingleEmployee = () => {
                         }`}
                     >
 
-                      <Link href={`/accounts/transactions/employee/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
+                      {user?.role === "partner" && (<Link href={`/accounts/transactions/employee/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
                         Records
-                      </Link>
+                      </Link>)}
 
                       <Link href={`/employee/${id}/edit`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
                         Edit

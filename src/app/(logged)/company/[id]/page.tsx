@@ -7,6 +7,8 @@ import { TCompanyData } from "@/types/types";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
+import { useUserContext } from "@/contexts/UserContext";
+
 const SingleCompany = () => {
   const router = useRouter()
   const [company, setCompany] = useState<TCompanyData | null>(null)
@@ -21,6 +23,8 @@ const SingleCompany = () => {
   });
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
+  const { user } = useUserContext();
+
 
   const fetchData = async () => {
     try {
@@ -171,7 +175,7 @@ const SingleCompany = () => {
                       Expiry Date <span className="text-meta-1">*</span>
                     </label>
                     <input
-                    title="Expiry Date"
+                      title="Expiry Date"
                       type="date"
                       name="expiryDate"
                       value={editData.expiryDate}
@@ -248,9 +252,10 @@ const SingleCompany = () => {
                       className={`absolute right-0 mt-4 py-3 flex w-40 flex-col rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark ${dropdownOpen === true ? "block" : "hidden"
                         }`}
                     >
-                      <Link href={`/accounts/transactions/company/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
-                        Records
-                      </Link>
+                      {user?.role === "partner" && (<>
+                        <Link href={`/accounts/transactions/company/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
+                          Records
+                        </Link></>)}
                       <Link href={`/employee/view/${id}`} className="px-6 py-2 text-sm font-medium duration-300 ease-in-out hover:text-primary hover:bg-primary hover:bg-opacity-10 lg:text-base">
                         Employees
                       </Link>
