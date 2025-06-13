@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicPath = path === "/login";
-  const isPartnerPath = path.includes("accounts");
+  const isPartnerPath = path.includes("transactions");
 
   const token = request.cookies.get("auth")?.value || "";
   const partner = request.cookies.get("partner")?.value || "";

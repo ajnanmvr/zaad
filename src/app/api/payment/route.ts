@@ -1,18 +1,18 @@
 import connect from "@/db/connect";
-import { HttpStatusCode } from 'axios';  
+import { HttpStatusCode } from "axios";
 import Records from "@/models/records";
 import { toZonedTime, format } from "date-fns-tz";
 import { NextRequest } from "next/server";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { isPartner, isAuthenticated } from "@/helpers/isAuthenticated";
 
 export const dynamic = "force-dynamic";
 
-const DUBAI_TIME_ZONE = 'Asia/Dubai';
+const DUBAI_TIME_ZONE = "Asia/Dubai";
 
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await isPartner(request);
+    await isAuthenticated(request);
     const reqBody = await request.json();
     const data = await Records.create(reqBody);
     return Response.json(
@@ -87,8 +87,10 @@ export async function GET(request: NextRequest) {
           remarks: record.remarks,
           number: record.number,
           suffix: record.suffix,
-          edited:record.edited,
-          date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
+          edited: record.edited,
+          date: format(createdAtInDubai, "MMM-dd hh:mma", {
+            timeZone: DUBAI_TIME_ZONE,
+          }),
         };
       });
 
