@@ -1,5 +1,5 @@
 import connect from "@/db/connect";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { NextRequest } from "next/server";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isPartner(request);
+    await isAuthenticated(request);
     let { suffix, number } = await Records.findOne({
       published: true,
     })
