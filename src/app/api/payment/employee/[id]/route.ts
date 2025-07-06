@@ -68,7 +68,7 @@ export async function GET(
           invoiceNo: record.invoiceNo,
           amount: record.amount?.toFixed(2),
           serviceFee: record.serviceFee?.toFixed(2),
-          creator: record.createdBy.username,
+          creator: record?.createdBy?.username,
           status: record.status,
           number: record.number,
           suffix: record.suffix,

@@ -1,7 +1,7 @@
 import connect from "@/db/connect";
 import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
-import { format,toZonedTime } from "date-fns-tz";
+import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
 
 const DUBAI_TIME_ZONE = 'Asia/Dubai';
@@ -68,7 +68,7 @@ export async function GET(
           invoiceNo: record.invoiceNo,
           amount: record.amount?.toFixed(2),
           serviceFee: record.serviceFee?.toFixed(2),
-          creator: record.createdBy.username,
+          creator: record?.createdBy?.username,
           status: record.status,
           number: record.number,
           suffix: record.suffix,
