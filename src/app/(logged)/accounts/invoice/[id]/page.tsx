@@ -75,6 +75,7 @@ function SingleInvoice() {
               <table className="w-full text-left mt-2 mb-8 text-sm">
                 <thead className="border-y mb-10">
                   <tr>
+                    <th className="text-center">S.No</th>
                     <th>Description</th>
                     <th className="text-center">Rate</th>
                     <th className="text-center">Quantity</th>
@@ -84,6 +85,7 @@ function SingleInvoice() {
                 <tbody>
                   {invoice?.items?.map((item, index) => (
                     <tr key={index}>
+                      <td className="text-center">{index + 1}</td>
                       <td>
                         <p className="font-semibold text-sm">{item.title}</p>
                         <p className="text-xs">{item.desc}</p>
@@ -148,6 +150,7 @@ function SingleInvoice() {
                 <table className="w-full text-left mt-3 text-sm">
                   <thead className="border-y">
                     <tr>
+                      <th className="text-center">S.No</th>
                       <th>Description</th>
                       <th className="text-center">Rate</th>
                       <th className="text-center">Quantity</th>
@@ -157,6 +160,7 @@ function SingleInvoice() {
                   <tbody>
                     {invoice?.items?.map((item, index) => (
                       <tr key={index}>
+                        <td className="text-center">{index + 1}</td>
                         <td>
                           <p className="font-semibold text-sm">{item.title}</p>
                           <p className="text-xs">{item.desc}</p>
