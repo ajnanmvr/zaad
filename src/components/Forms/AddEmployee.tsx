@@ -19,11 +19,12 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const [employeeData, setEmployeeData] = useState<any>({
         name: "", company: "", documents: []
     });
+
     useEffect(() => {
         if (company) {
-            setEmployeeData({ ...employeeData, company })
+            setEmployeeData((prev: any) => ({ ...prev, company }))
         }
-    }, [company,employeeData])
+    }, [company])
 
     const { data } = useQuery<any>({
         queryKey: [`${edit}`], queryFn: async () => {
@@ -34,10 +35,10 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     });
 
     useEffect(() => {
-        if (edit) {
+        if (edit && data) {
             setisEditMode(true)
             setEmployeeData(data)
-        } else {
+        } else if (!edit) {
             setisEditMode(false)
         }
     }, [edit, data])
