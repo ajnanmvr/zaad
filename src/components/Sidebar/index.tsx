@@ -204,6 +204,40 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   Employees
                 </Link>
               </li>
+              {/* <!-- Menu Item employees --> */}
+
+              {/* <!-- Menu Item Users --> */}
+              {user?.role === "partner" && (
+                <li>
+                  <Link
+                    href="/users"
+                    className={`group relative flex items-center gap-2.5 rounded-sm px-4 py-2 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-graydark dark:hover:bg-meta-4 ${pathname.includes("users") &&
+                      "bg-graydark dark:bg-meta-4"
+                      }`}
+                  >
+                    <svg
+                      className="fill-current"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18 18"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M13.5 8.25C14.7426 8.25 15.75 7.24264 15.75 6C15.75 4.75736 14.7426 3.75 13.5 3.75C12.2574 3.75 11.25 4.75736 11.25 6C11.25 7.24264 12.2574 8.25 13.5 8.25ZM13.5 9.75C11.4289 9.75 9.75 11.4289 9.75 13.5V15C9.75 15.4142 10.0858 15.75 10.5 15.75H16.5C16.9142 15.75 17.25 15.4142 17.25 15V13.5C17.25 11.4289 15.5711 9.75 13.5 9.75Z"
+                        fill=""
+                      />
+                      <path
+                        d="M4.5 8.25C5.74264 8.25 6.75 7.24264 6.75 6C6.75 4.75736 5.74264 3.75 4.5 3.75C3.25736 3.75 2.25 4.75736 2.25 6C2.25 7.24264 3.25736 8.25 4.5 8.25ZM4.5 9.75C2.42893 9.75 0.75 11.4289 0.75 13.5V15C0.75 15.4142 1.08579 15.75 1.5 15.75H7.5C7.91421 15.75 8.25 15.4142 8.25 15V13.5C8.25 11.4289 6.57107 9.75 4.5 9.75Z"
+                        fill=""
+                      />
+                    </svg>
+                    Users
+                  </Link>
+                </li>
+              )}
+              {/* <!-- Menu Item Users --> */}
+
               {/* <!-- Menu Item Profile --> */}
 
               {/* <!-- Menu Item company --> */}
