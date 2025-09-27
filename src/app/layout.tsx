@@ -19,7 +19,7 @@ export default function RootLayout({
       <body>
         <div className="dark:bg-boxdark-2 dark:text-bodydark">
           <ReactQueryProvider>
-              {children}
+            {children}
             <ReactQueryDevtools initialIsOpen={false} />
             <Toaster />
           </ReactQueryProvider>

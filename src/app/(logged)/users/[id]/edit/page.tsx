@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import AddUser from "@/components/Forms/AddUser";
+import UserHistory from "@/components/UserHistory";
 
 interface UserData {
     username: string;
@@ -85,11 +86,16 @@ const EditUserPage = () => {
     return (
         <DefaultLayout>
             <Breadcrumb pageName="Edit User" />
-            <div className="flex flex-col gap-10">
-                <AddUser
-                    editUserId={userId}
-                    initialData={userData}
-                />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div>
+                    <AddUser
+                        editUserId={userId}
+                        initialData={userData}
+                    />
+                </div>
+                <div>
+                    <UserHistory userId={userId} />
+                </div>
             </div>
         </DefaultLayout>
     );

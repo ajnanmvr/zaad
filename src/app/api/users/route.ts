@@ -2,6 +2,8 @@ import connect from "@/db/connect";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { isPartner } from "@/helpers/isAuthenticated";
+import getUserFromCookie from "@/helpers/getUserFromCookie";
+import { logUserActivity } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 
 // GET - List all users (partners only)
@@ -99,6 +101,20 @@ export async function POST(request: NextRequest) {
         });
 
         const savedUser = await newUser.save();
+
+        // Log activity
+        const currentUserId = await getUserFromCookie(request);
+        await logUserActivity({
+            targetUserId: savedUser._id.toString(),
+            performedById: currentUserId,
+            action: "create",
+            newValues: {
+                username: savedUser.username,
+                role: savedUser.role,
+                fullname: savedUser.fullname
+            },
+            request
+        });
 
         // Return user without password
         const userResponse = {

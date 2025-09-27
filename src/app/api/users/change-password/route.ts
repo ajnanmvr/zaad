@@ -3,6 +3,7 @@ import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
+import { logUserActivity } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 
 export async function PUT(request: NextRequest) {
@@ -67,6 +68,15 @@ export async function PUT(request: NextRequest) {
         // Update password
         await User.findByIdAndUpdate(userId, {
             password: hashedNewPassword
+        });
+
+        // Log activity
+        await logUserActivity({
+            targetUserId: userId,
+            performedById: userId, // User changed their own password
+            action: "password_change",
+            details: { reason: "Self password change" },
+            request
         });
 
         return Response.json(

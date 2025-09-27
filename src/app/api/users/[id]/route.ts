@@ -3,6 +3,7 @@ import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { isPartner } from "@/helpers/isAuthenticated";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
+import { logUserActivity } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 
 // GET - Get single user by ID (partners only)
@@ -67,6 +68,14 @@ export async function PUT(
             );
         }
 
+        // Prevent partners from changing passwords of other partners
+        if (password && existingUser.role === "partner" && id !== currentUserId) {
+            return Response.json(
+                { error: "Partners cannot change passwords of other partners" },
+                { status: 403 }
+            );
+        }
+
         // Check if new username already exists (if username is being changed)
         if (username && username !== existingUser.username) {
             const usernameExists = await User.findOne({
@@ -82,11 +91,28 @@ export async function PUT(
             }
         }
 
+        // Store previous values for activity logging
+        const previousValues: any = {};
+        if (username && username !== existingUser.username) previousValues.username = existingUser.username;
+        if (fullname !== undefined && fullname !== existingUser.fullname) previousValues.fullname = existingUser.fullname;
+        if (role && role !== existingUser.role) previousValues.role = existingUser.role;
+        if (password) previousValues.passwordChanged = true;
+
         // Prepare update data
         const updateData: any = {};
-        if (username) updateData.username = username;
-        if (fullname !== undefined) updateData.fullname = fullname;
-        if (role) updateData.role = role;
+        const newValues: any = {};
+        if (username) {
+            updateData.username = username;
+            newValues.username = username;
+        }
+        if (fullname !== undefined) {
+            updateData.fullname = fullname;
+            newValues.fullname = fullname;
+        }
+        if (role) {
+            updateData.role = role;
+            newValues.role = role;
+        }
 
         // Handle password update if provided
         if (password) {
@@ -98,6 +124,7 @@ export async function PUT(
             }
             const salt = await bcryptjs.genSalt(10);
             updateData.password = await bcryptjs.hash(password, salt);
+            newValues.passwordChanged = true;
         }
 
         // Update user
@@ -106,6 +133,19 @@ export async function PUT(
             updateData,
             { new: true }
         ).select("username fullname role createdAt updatedAt");
+
+        // Log activity
+        if (Object.keys(previousValues).length > 0) {
+            const action = password ? "password_change" : (role && role !== existingUser.role) ? "role_change" : "update";
+            await logUserActivity({
+                targetUserId: id,
+                performedById: currentUserId,
+                action,
+                previousValues,
+                newValues,
+                request
+            });
+        }
 
         return Response.json({
             message: "User updated successfully",
@@ -152,6 +192,17 @@ export async function DELETE(
 
         // Soft delete user
         await User.findByIdAndUpdate(id, { published: false });
+
+        // Log activity
+        await logUserActivity({
+            targetUserId: id,
+            performedById: currentUserId,
+            action: "delete",
+            details: { reason: "User soft deleted" },
+            previousValues: { published: true },
+            newValues: { published: false },
+            request
+        });
 
         return Response.json({
             message: "User deleted successfully"
