@@ -77,7 +77,7 @@ const TransactionList = ({
         setCards([balance, totalIncome, totalExpense, totalTransactions])
       }
     }
-  }, [paymentData]);
+  }, [paymentData, type]);
 
 
   const handlePageChange = (page: number) => {

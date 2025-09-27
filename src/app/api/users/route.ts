@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
         const pageNumber = parseInt(searchParams.get("page") || "0");
         const limit = parseInt(searchParams.get("limit") || "10");
         const search = searchParams.get("search") || "";
+        const showDeleted = searchParams.get("deleted") === "true";
 
-        // Build search query
-        const query: any = { published: true };
+        // Build search query - show active or deleted users
+        const query: any = { published: !showDeleted };
         if (search) {
             query.$or = [
                 { username: { $regex: search, $options: "i" } },
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
         // Get users with pagination
         const users = await User.find(query)
-            .select("username fullname role createdAt updatedAt")
+            .select("username fullname role createdAt updatedAt deletedAt")
             .sort({ createdAt: -1 })
             .skip(pageNumber * limit)
             .limit(limit);
@@ -43,7 +44,8 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit),
                 totalUsers: total,
                 hasMore: (pageNumber + 1) * limit < total
-            }
+            },
+            showingDeleted: showDeleted
         }, { status: 200 });
 
     } catch (error) {

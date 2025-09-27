@@ -1,9 +1,10 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { useUserContext } from "@/contexts/UserContext";
 
 interface AddUserProps {
     editUserId?: string;
@@ -16,8 +17,10 @@ interface AddUserProps {
 
 const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     const router = useRouter();
+    const { user: currentUser } = useUserContext();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [targetUserData, setTargetUserData] = useState(initialData);
     const [formData, setFormData] = useState({
         username: initialData?.username || "",
         fullname: initialData?.fullname || "",
@@ -27,6 +30,25 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     });
 
     const isEditMode = Boolean(editUserId);
+    const isEditingOtherPartner = isEditMode &&
+        targetUserData?.role === "partner" &&
+        currentUser?.role === "partner" &&
+        editUserId !== currentUser?._id;
+
+    // Fetch target user data if not provided (for edit mode)
+    useEffect(() => {
+        if (isEditMode && !targetUserData && editUserId) {
+            const fetchUserData = async () => {
+                try {
+                    const { data } = await axios.get(`/api/users/${editUserId}`);
+                    setTargetUserData(data.user);
+                } catch (error) {
+                    console.error("Failed to fetch user data:", error);
+                }
+            };
+            fetchUserData();
+        }
+    }, [isEditMode, targetUserData, editUserId]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -39,6 +61,18 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     const validateForm = () => {
         if (!formData.username.trim()) {
             toast.error("Username is required");
+            return false;
+        }
+
+        // Check if trying to change password of another partner
+        if (isEditingOtherPartner && formData.password) {
+            toast.error("Partners cannot change passwords of other partners");
+            return false;
+        }
+
+        // Check if trying to downgrade another partner to employee
+        if (isEditingOtherPartner && formData.role === "employee") {
+            toast.error("Partners cannot downgrade other partners to employee role");
             return false;
         }
 
@@ -66,6 +100,41 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         e.preventDefault();
 
         if (!validateForm()) return;
+
+        // Additional confirmation for sensitive partner operations
+        const isCreatingPartner = !isEditMode && formData.role === "partner";
+        const isChangingToPartner = isEditMode && targetUserData?.role !== "partner" && formData.role === "partner";
+        const isEditingPartner = isEditingOtherPartner;
+
+        if (isCreatingPartner) {
+            const confirmPartnerCreation = confirm(
+                `⚠️ CREATING NEW PARTNER ⚠️\n\nYou are about to create a new PARTNER account: "${formData.username}"\n\nPartners have full administrative privileges including:\n- Managing all users\n- Accessing sensitive data\n- System configuration\n\nAre you sure you want to create this partner account?`
+            );
+            if (!confirmPartnerCreation) {
+                setIsLoading(false);
+                return;
+            }
+        }
+
+        if (isChangingToPartner) {
+            const confirmPromotion = confirm(
+                `⚠️ PROMOTING TO PARTNER ⚠️\n\nYou are about to promote "${formData.username}" from ${targetUserData?.role} to PARTNER.\n\nThis will grant them full administrative privileges.\n\nAre you sure you want to proceed?`
+            );
+            if (!confirmPromotion) {
+                setIsLoading(false);
+                return;
+            }
+        }
+
+        if (isEditingPartner) {
+            const confirmPartnerEdit = confirm(
+                `⚠️ EDITING PARTNER ACCOUNT ⚠️\n\nYou are about to modify another PARTNER account: "${targetUserData?.username}"\n\nThis is a sensitive operation. Are you sure you want to proceed?`
+            );
+            if (!confirmPartnerEdit) {
+                setIsLoading(false);
+                return;
+            }
+        }
 
         setIsLoading(true);
 
@@ -152,6 +221,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                 <div className="mb-4.5">
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                         Role <span className="text-meta-1">*</span>
+                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(cannot downgrade other partners)</span>}
                     </label>
                     <select
                         name="role"
@@ -161,7 +231,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                         disabled={isLoading}
                         required
                     >
-                        <option value="employee">Employee</option>
+                        <option value="employee" disabled={isEditingOtherPartner}>Employee</option>
                         <option value="partner">Partner</option>
                     </select>
                 </div>
@@ -170,7 +240,8 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                 <div className="mb-4.5">
                     <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                         Password {!isEditMode && <span className="text-meta-1">*</span>}
-                        {isEditMode && <span className="text-xs text-gray-500 ml-2">(leave empty to keep current)</span>}
+                        {isEditMode && !isEditingOtherPartner && <span className="text-xs text-gray-500 ml-2">(leave empty to keep current)</span>}
+                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(partners cannot change other partners&apos; passwords)</span>}
                     </label>
                     <div className="relative">
                         <input
@@ -178,9 +249,15 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            placeholder={isEditMode ? "Enter new password (optional)" : "Enter password (min. 6 characters)"}
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                            disabled={isLoading}
+                            placeholder={
+                                isEditingOtherPartner
+                                    ? "Password editing disabled"
+                                    : isEditMode
+                                        ? "Enter new password (optional)"
+                                        : "Enter password (min. 6 characters)"
+                            }
+                            className={`w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${isEditingOtherPartner ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+                            disabled={isLoading || isEditingOtherPartner}
                             required={!isEditMode}
                             minLength={6}
                         />
@@ -188,6 +265,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                             type="button"
                             onClick={togglePasswordVisibility}
                             className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            disabled={isEditingOtherPartner}
                         >
                             {showPassword ? (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +282,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                 </div>
 
                 {/* Confirm Password */}
-                {(!isEditMode || formData.password) && (
+                {(!isEditMode || (formData.password && !isEditingOtherPartner)) && (
                     <div className="mb-6">
                         <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                             Confirm Password <span className="text-meta-1">*</span>

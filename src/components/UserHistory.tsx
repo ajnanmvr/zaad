@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/utils/dateUtils";
 
 interface UserActivity {
@@ -80,6 +80,14 @@ const getActionIcon = (action: string) => {
                     </svg>
                 </div>
             );
+        case "reactivate":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
+                    <svg className="h-4 w-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            );
         default:
             return (
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-2 dark:bg-meta-4">
@@ -98,6 +106,7 @@ const getActionTitle = (action: string) => {
         case "delete": return "User Deleted";
         case "password_change": return "Password Changed";
         case "role_change": return "Role Changed";
+        case "reactivate": return "User Reactivated";
         default: return "Activity";
     }
 };
@@ -123,6 +132,8 @@ const getActionDescription = (activity: UserActivity) => {
             return "User password was changed";
         case "role_change":
             return `Role changed from "${previousValues.role}" to "${newValues.role}"`;
+        case "reactivate":
+            return "User was restored from deleted state";
         default:
             return "Activity performed";
     }
@@ -140,7 +151,7 @@ export default function UserHistory({ userId, className = "" }: UserHistoryProps
     });
     const [loadingMore, setLoadingMore] = useState(false);
 
-    const fetchActivities = async (page: number = 0, append: boolean = false) => {
+    const fetchActivities = useCallback(async (page: number = 0, append: boolean = false) => {
         try {
             if (!append) setLoading(true);
             else setLoadingMore(true);
@@ -167,7 +178,7 @@ export default function UserHistory({ userId, className = "" }: UserHistoryProps
             setLoading(false);
             setLoadingMore(false);
         }
-    };
+    }, [userId]);
 
     const loadMore = () => {
         if (pagination.hasMore && !loadingMore) {
@@ -177,7 +188,7 @@ export default function UserHistory({ userId, className = "" }: UserHistoryProps
 
     useEffect(() => {
         fetchActivities();
-    }, [userId]);
+    }, [fetchActivities]);
 
     if (loading) {
         return (

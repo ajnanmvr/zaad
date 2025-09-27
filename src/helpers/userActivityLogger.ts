@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 export interface LogUserActivityOptions {
     targetUserId: string;
     performedById: string;
-    action: "create" | "update" | "delete" | "password_change" | "role_change";
+    action: "create" | "update" | "delete" | "password_change" | "role_change" | "reactivate";
     details?: Record<string, any>;
     previousValues?: Record<string, any>;
     newValues?: Record<string, any>;

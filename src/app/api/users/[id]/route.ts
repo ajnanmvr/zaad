@@ -17,8 +17,9 @@ export async function GET(
 
         const { id } = params;
 
-        const user = await User.findOne({ _id: id, published: true })
-            .select("username fullname role createdAt updatedAt");
+        // Allow viewing both published and unpublished (deleted) users
+        const user = await User.findById(id)
+            .select("username fullname role createdAt updatedAt published deletedAt");
 
         if (!user) {
             return Response.json(
@@ -65,6 +66,14 @@ export async function PUT(
             return Response.json(
                 { error: "You cannot change your own role from partner to employee" },
                 { status: 400 }
+            );
+        }
+
+        // Prevent partners from demoting other partners to employee
+        if (role === "employee" && existingUser.role === "partner" && id !== currentUserId) {
+            return Response.json(
+                { error: "Partners cannot downgrade other partners to employee role" },
+                { status: 403 }
             );
         }
 
@@ -191,7 +200,10 @@ export async function DELETE(
         }
 
         // Soft delete user
-        await User.findByIdAndUpdate(id, { published: false });
+        await User.findByIdAndUpdate(id, {
+            published: false,
+            deletedAt: new Date()
+        });
 
         // Log activity
         await logUserActivity({
