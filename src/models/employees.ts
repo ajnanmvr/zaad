@@ -1,4 +1,8 @@
 import mongoose, { Schema } from "mongoose";
+
+// Import Company model to ensure it's available for population
+import "./companies";
+
 const EmployeeSchema = new Schema(
   {
     name: {
@@ -43,10 +47,11 @@ const EmployeeSchema = new Schema(
   { timestamps: true }
 );
 
-EmployeeSchema.pre("find", function (next) {
-  this.populate("company");
-  next();
-});
+// Remove the problematic pre-hook and handle population explicitly in routes
+// EmployeeSchema.pre("find", function (next) {
+//   this.populate("company");
+//   next();
+// });
 
 const Employee =
   mongoose.models.employees || mongoose.model("employees", EmployeeSchema);

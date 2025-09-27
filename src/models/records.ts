@@ -1,4 +1,10 @@
 import mongoose, { Schema } from "mongoose";
+
+// Import referenced models to ensure they're available
+import "./companies";
+import "./employees";
+import "./users";
+
 const RecordSchema = new Schema(
   {
     suffix: String,

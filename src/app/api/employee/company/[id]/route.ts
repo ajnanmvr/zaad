@@ -9,36 +9,46 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await isAuthenticated(request);
+  try {
+    await connect();
+    await isAuthenticated(request);
 
-  const employees: TEmployeeData[] = await Employee.find({
-    published: true,
-    company: { _id: params.id },
-  }).select("name company documents");
+    const employees: TEmployeeData[] = await Employee.find({
+      published: true,
+      company: params.id,
+    })
+    .select("name company documents")
+    .populate("company");
 
-  const data: TEmployeeList[] = [];
+    const data: TEmployeeList[] = [];
 
-  employees.forEach((employee) => {
-    const { expiryDate, docsCount } = processDocuments(employee.documents);
-    const status = calculateStatus(expiryDate);
-    data.push({
-      id: employee._id,
-      name: employee.name,
-      company: employee.company,
-      expiryDate,
-      docs: docsCount,
-      status,
+    employees.forEach((employee) => {
+      const { expiryDate, docsCount } = processDocuments(employee.documents);
+      const status = calculateStatus(expiryDate);
+      data.push({
+        id: employee._id,
+        name: employee.name,
+        company: employee.company,
+        expiryDate,
+        docs: docsCount,
+        status,
+      });
     });
-  });
 
-  data.sort((a, b) =>
-    a.expiryDate === "---"
-      ? 1
-      : b.expiryDate === "---"
-        ? -1
-        : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
-  );
+    data.sort((a, b) =>
+      a.expiryDate === "---"
+        ? 1
+        : b.expiryDate === "---"
+          ? -1
+          : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
+    );
 
-  return Response.json({ count: employees.length, data }, { status: 200 });
+    return Response.json({ count: employees.length, data }, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching employees by company:", error);
+    return Response.json(
+      { error: "Error fetching employees" },
+      { status: 500 }
+    );
+  }
 }
