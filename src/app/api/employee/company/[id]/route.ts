@@ -17,8 +17,8 @@ export async function GET(
       published: true,
       company: params.id,
     })
-    .select("name company documents")
-    .populate("company");
+      .select("name company documents")
+      .populate("company");
 
     const data: TEmployeeList[] = [];
 

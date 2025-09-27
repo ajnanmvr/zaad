@@ -27,12 +27,12 @@ export async function GET(request: NextRequest) {
   try {
     await connect();
     await isAuthenticated(request);
-    
+
     const employees: TEmployeeData[] = await Employee.find({
       published: true,
     })
-    .select("name company documents")
-    .populate("company");
+      .select("name company documents")
+      .populate("company");
 
     const data: TEmployeeList[] = [];
 
