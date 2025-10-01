@@ -4,7 +4,7 @@ import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
 export async function DELETE(
-  request:NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
@@ -14,7 +14,7 @@ export async function DELETE(
 }
 
 export async function PUT(
-  request:NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
@@ -71,25 +71,25 @@ export async function GET(
     const data =
       editmode === null
         ? {
-            invoiceNo: suffix + invoiceNo,
-            creator: createdBy.username,
-            amount: items.reduce(
-              (acc: number, item: TInvoiceItemsData) =>
-                acc + item.rate * item.quantity,
-              0
-            ),
-            date: formatDate(date),
-            validTo: formatDate(validTo),
-            ...commonData,
-          }
+          invoiceNo: suffix + invoiceNo,
+          creator: createdBy?.username || "Unknown",
+          amount: items.reduce(
+            (acc: number, item: TInvoiceItemsData) =>
+              acc + item.rate * item.quantity,
+            0
+          ),
+          date: formatDate(date),
+          validTo: formatDate(validTo),
+          ...commonData,
+        }
         : {
-            suffix,
-            invoiceNo,
-            createdBy: createdBy._id,
-            date: date || new Date(),
-            validTo,
-            ...commonData,
-          };
+          suffix,
+          invoiceNo,
+          createdBy: createdBy?._id || null,
+          date: date || new Date(),
+          validTo,
+          ...commonData,
+        };
 
     return Response.json(data, { status: 200 });
   } catch (error) {
