@@ -13,17 +13,12 @@ export async function GET(
   try {
     await connect();
     await isPartner(request);
-    const searchParams = request.nextUrl.searchParams;
-    const pageNumber = searchParams.get("page") || 0;
-    const contentPerSection = 10;
 
     const records = await Records.find({
       published: true,
       company: { _id: params.id },
     })
       .populate(["createdBy", "company", "employee"])
-      .skip(+pageNumber * contentPerSection)
-      .limit(contentPerSection + 1)
       .sort({ createdAt: -1 });
 
     if (!records || records.length === 0) {
@@ -31,7 +26,6 @@ export async function GET(
         {
           message: "No records found",
           count: 0,
-          hasMore: false,
           records: [],
           balance: 0,
           totalIncome: 0,
@@ -42,9 +36,7 @@ export async function GET(
       );
     }
 
-    const hasMore = records.length > contentPerSection;
     const transformedData = records
-      .slice(0, contentPerSection)
       .map((record) => {
         const client = () => {
           const { company, employee, self } = record;
@@ -102,7 +94,6 @@ export async function GET(
     return Response.json(
       {
         count: transformedData.length,
-        hasMore,
         records: transformedData,
         balance,
         totalIncome,

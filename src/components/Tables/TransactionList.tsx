@@ -50,6 +50,7 @@ const TransactionList = ({
   const [filter, setFilter] = useState({ ...baseData });
   const [hasMore, setHasMore] = useState(true);
   const [records, setRecords] = useState<TRecordList[]>([]);
+  const [recordsWithBalance, setRecordsWithBalance] = useState<(TRecordList & { runningBalance?: number })[]>([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
 
 
@@ -71,10 +72,35 @@ const TransactionList = ({
     if (paymentData) {
       setRecords(paymentData.records);
       setHasMore(paymentData.hasMore);
-      if (type) {
-        const { balance, totalIncome, totalExpense, totalTransactions } =
-          paymentData;
-        setCards([balance, totalIncome, totalExpense, totalTransactions])
+
+      // Calculate running balance if type exists (showing individual account transactions)
+      if (type && paymentData.records?.length > 0) {
+        const { balance, totalIncome, totalExpense, totalTransactions } = paymentData;
+        setCards([balance, totalIncome, totalExpense, totalTransactions]);
+
+        // Calculate running balance from top to bottom (latest to oldest)
+        const recordsWithRunningBalance = [...paymentData.records];
+        let runningBalance = balance; // Start with the current balance for the latest transaction
+
+        // Work forwards through the records (latest first)
+        for (let i = 0; i < recordsWithRunningBalance.length; i++) {
+          const record = recordsWithRunningBalance[i];
+          recordsWithRunningBalance[i] = { ...record, runningBalance };
+
+          // Adjust running balance for the next iteration (going to older transactions)
+          const amount = parseFloat(record.amount) || 0;
+          const serviceFee = parseFloat(record.serviceFee) || 0;
+
+          if (record.type === "income" && record.method !== "liability") {
+            runningBalance -= amount; // Subtract income to get balance before this transaction
+          } else if (record.type === "expense") {
+            runningBalance += amount + serviceFee; // Add back expense and service fee to get balance before this transaction
+          }
+        }
+
+        setRecordsWithBalance(recordsWithRunningBalance);
+      } else {
+        setRecordsWithBalance(paymentData.records || []);
       }
     }
   }, [paymentData, type]);
@@ -142,7 +168,7 @@ const TransactionList = ({
       {type && (
         <>
           <Breadcrumb
-            pageName={`${records[0]?.client?.name || type}'s transactions`}
+            pageName={`${recordsWithBalance[0]?.client?.name || type}'s transactions`}
           />
           <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
             <CardDataStats loading={isLoading} title="Total Transactions" total={`${cards[3]}`} />
@@ -541,7 +567,7 @@ const TransactionList = ({
         </h4>
 
         <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-slate-200 dark:bg-meta-4 sm:grid-cols-8">
+          <div className={`grid grid-cols-3 rounded-sm bg-slate-200 dark:bg-meta-4 ${type ? 'sm:grid-cols-9' : 'sm:grid-cols-8'}`}>
             <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 ID
@@ -579,6 +605,14 @@ const TransactionList = ({
               </h5>
             </div>
 
+            {type && (
+              <div className="p-2.5 text-center xl:p-5">
+                <h5 className="text-sm font-medium uppercase xsm:text-base">
+                  Balance
+                </h5>
+              </div>
+            )}
+
             <div className="hidden p-2.5 text-center sm:block xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 Actions
@@ -589,9 +623,9 @@ const TransactionList = ({
             {isLoading ? (
               <SkeletonList />
             ) : (
-              records?.map((record, key) => (
+              recordsWithBalance?.map((record, key) => (
                 <div
-                  className={`grid grid-cols-3 sm:grid-cols-8 ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${key === records.length - 1
+                  className={`grid grid-cols-3 ${type ? 'sm:grid-cols-9' : 'sm:grid-cols-8'} ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${key === recordsWithBalance.length - 1
                     ? ""
                     : "border-b border-stroke dark:border-strokedark"
                     }`}
@@ -666,6 +700,17 @@ const TransactionList = ({
                   <div className="flex items-center text-center justify-center p-2.5 xl:p-5">
                     <p> {record.date}</p>
                   </div>
+
+                  {type && (
+                    <div className="flex items-center text-center justify-center p-2.5 xl:p-5">
+                      <p className={clsx(
+                        (record.runningBalance || 0) >= 0 ? "text-meta-3" : "text-red"
+                      )}>
+                        {record.runningBalance?.toFixed(2)}
+                        <span className="text-xs"> AED</span>
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex justify-center items-center">
                     {!type && !id && (
@@ -765,10 +810,10 @@ const TransactionList = ({
         <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
         <button
           onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isLoading || !hasMore || !records.length}
+          disabled={isLoading || !hasMore || !recordsWithBalance.length}
           className={clsx(
             "px-3 py-1 ml-2 rounded-md",
-            isLoading || !hasMore || !records.length
+            isLoading || !hasMore || !recordsWithBalance.length
               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
               : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
           )}
