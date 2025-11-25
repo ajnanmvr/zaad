@@ -111,8 +111,8 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         setRecordData(data);
         setSelectedMethod(data.method);
         setSelectedStatus(data.status)
-        if(data.type === "expense"){
-          setClientFee(data.amount+data.serviceFee)
+        if (data.type === "expense") {
+          setClientFee(data.amount + data.serviceFee)
         }
       }
     } catch (error) {
@@ -492,7 +492,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       <span
                         className={`text-xs border ${balance >= 0 ? "text-meta-3" : "text-red"} rounded-md bg-opacity-10 px-2 py-0.5 ml-2`}
                       >
-                        Balance : {balance}
+                        Balance : {balance?.toFixed(2)}
                       </span>
                     </label>
                     <input
