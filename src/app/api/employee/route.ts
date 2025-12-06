@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { TEmployeeData, TEmployeeList } from "@/types/types";
 import Employee from "@/models/employees";
 import calculateStatus from "@/utils/calculateStatus";

@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
 import Company from "@/models/companies";
 import { TCompanyData } from "@/types/types";
@@ -10,8 +10,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-await connect();
-await isAuthenticated(request);
+  await connect();
+  await isAuthenticated(request);
 
   const { id } = params;
   const reqBody = await request.json();
@@ -26,8 +26,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-await connect();
-await isAuthenticated(request);
+  await connect();
+  await isAuthenticated(request);
 
   const { id } = params;
   await Company.findByIdAndUpdate(id, { published: false });
@@ -39,8 +39,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-await connect();
-await isAuthenticated(request);
+    await connect();
+    await isAuthenticated(request);
 
     const company: TCompanyData | null = await Company.findById(params.id);
 

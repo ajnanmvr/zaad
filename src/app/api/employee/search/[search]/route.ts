@@ -1,11 +1,11 @@
 // Import necessary modules and models
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
 
 export async function GET(
-  request:NextRequest,
+  request: NextRequest,
   { params }: { params: { search: string } }
 ) {
   try {

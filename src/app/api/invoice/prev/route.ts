@@ -1,9 +1,9 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import Invoice from "@/models/invoice";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
-export async function GET(request:NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     await connect();
     let { suffix, invoiceNo, title } = await Invoice.findOne({

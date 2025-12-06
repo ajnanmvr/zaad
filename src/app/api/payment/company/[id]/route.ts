@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { format, toZonedTime } from "date-fns-tz";

@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import Employee from "@/models/employees";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
@@ -8,12 +8,12 @@ export async function PUT(
   { params }: { params: { id: string; doc: string } }
 ) {
   try {
-  await connect();
-  await isAuthenticated(request);
+    await connect();
+    await isAuthenticated(request);
 
-  const { id, doc } = params;
-  const { name, issueDate, expiryDate, attachment } = await request.json();
-  const Data = await Employee.findById(id);
+    const { id, doc } = params;
+    const { name, issueDate, expiryDate, attachment } = await request.json();
+    const Data = await Employee.findById(id);
 
     const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
@@ -40,11 +40,11 @@ export async function DELETE(
   { params }: { params: { id: string; doc: string } }
 ) {
   try {
-  await connect();
-  await isAuthenticated(request);
+    await connect();
+    await isAuthenticated(request);
 
-  const { id, doc } = params;
-  const Data = await Employee.findById(id);
+    const { id, doc } = params;
+    const Data = await Employee.findById(id);
 
     const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {

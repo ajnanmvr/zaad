@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
 import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
@@ -34,7 +34,7 @@ export async function DELETE(
 }
 
 export async function GET(
-  request:NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

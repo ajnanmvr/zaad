@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import Company from "@/models/companies";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
@@ -7,7 +7,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
-  
+
   try {
     await connect();
     await isAuthenticated(request);
@@ -17,7 +17,7 @@ export async function PUT(
 
 
 
-    const { data, documentIndex } = await fetchDocuments(id, doc,Data);
+    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
       return Response.json({ message: "Company not found" });
     }
@@ -44,14 +44,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
-  
+
   try {
     await connect();
     await isAuthenticated(request);
     const { id, doc } = params;
     const Data = await Company.findById(id);
 
-    const { data, documentIndex } = await fetchDocuments(id, doc,Data);
+    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
       return Response.json({ message: "Company not found" });
     }

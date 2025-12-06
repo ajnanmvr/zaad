@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { TRecordData } from "@/types/records";
@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 
 
 export async function GET(
-  request:NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -34,7 +34,7 @@ export async function GET(
     });
 
     const balance = incomeTotal - expenseTotal;
-    return new Response(JSON.stringify({balance}), { status: 200 });
+    return new Response(JSON.stringify({ balance }), { status: 200 });
   } catch (error) {
     return new Response(
       JSON.stringify({ message: "Error fetching employee data", error }),

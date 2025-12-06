@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";

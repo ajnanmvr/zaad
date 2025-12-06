@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import Employee from "@/models/employees";
 import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";

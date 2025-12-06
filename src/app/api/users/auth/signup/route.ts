@@ -1,9 +1,9 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { type TUser } from "@/types/types";
 import { NextRequest } from "next/server";
-export async function POST(request:NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     await connect();
 

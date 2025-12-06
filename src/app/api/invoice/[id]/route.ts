@@ -1,5 +1,5 @@
 import Invoice from "@/models/invoice";
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";

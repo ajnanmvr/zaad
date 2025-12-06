@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
+
   const path = request.nextUrl.pathname;
   const isPublicPath = path === "/login";
   const isPartnerPath = path.includes("transactions");

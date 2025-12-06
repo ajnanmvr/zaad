@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Records from "@/models/records";
@@ -14,12 +14,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-  await connect();
-  await isAuthenticated(request);
+    await connect();
+    await isAuthenticated(request);
 
 
-  const searchParams = request.nextUrl.searchParams;
-  const filter = filterData(searchParams,false);
+    const searchParams = request.nextUrl.searchParams;
+    const filter = filterData(searchParams, false);
     const [companies, employees, allRecords]: [
       TCompanyData[],
       TEmployeeData[],

@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import calculateLast12Months from "@/helpers/calculateLast12Months";
 import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
 import calculateLast7Days from "@/helpers/calculateLast7Days";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   try {
     await connect();
     await isAuthenticated(request);
-    
+
     const filter = filterData(searchParams, true);
     const allRecords: TRecordDataWithCreatedAt[] = await Records.find(filter);
     const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(

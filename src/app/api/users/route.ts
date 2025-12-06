@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { isPartner } from "@/helpers/isAuthenticated";

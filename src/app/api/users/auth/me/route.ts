@@ -1,5 +1,5 @@
 import getUserFromCookie from "@/helpers/getUserFromCookie";
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import User from "@/models/users";
 import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {

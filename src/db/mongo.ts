@@ -3,10 +3,8 @@ import mongoose from 'mongoose';
 const MONGO_URI = process.env.MONGO_URI;
 const cached: { connection?: typeof mongoose; promise?: Promise<typeof mongoose> } = {};
 
-// Function to ensure models are properly loaded
 const ensureModelsLoaded = () => {
     try {
-        // Import models to ensure they're compiled
         require('../models/companies');
         require('../models/employees');
         require('../models/records');

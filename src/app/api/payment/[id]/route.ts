@@ -1,5 +1,5 @@
 import Records from "@/models/records";
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
 import { NextRequest } from "next/server";
 

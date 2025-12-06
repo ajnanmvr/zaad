@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { HttpStatusCode } from "axios";
 import Records from "@/models/records";
 import { toZonedTime, format } from "date-fns-tz";

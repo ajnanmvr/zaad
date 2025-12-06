@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import Records from "@/models/records";
 import { TRecordData } from "@/types/records";
@@ -10,8 +10,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-await connect();
-await isAuthenticated(request);
+    await connect();
+    await isAuthenticated(request);
     const companyRecords: TRecordData[] = await Records.find({
       published: true,
       company: params.id,

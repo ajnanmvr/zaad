@@ -1,4 +1,4 @@
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
 import { getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";

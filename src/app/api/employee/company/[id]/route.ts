@@ -4,7 +4,7 @@ import processDocuments from "@/helpers/processDocuments";
 import calculateStatus from "@/utils/calculateStatus";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
-import connect from "@/db/connect";
+import connect from "@/db/mongo";
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
