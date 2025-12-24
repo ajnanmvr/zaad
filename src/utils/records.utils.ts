@@ -1,4 +1,3 @@
-
 import { toZonedTime, format } from "date-fns-tz";
 
 const DUBAI_TIME_ZONE = "Asia/Dubai";
