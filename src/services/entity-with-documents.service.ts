@@ -1,14 +1,8 @@
-/**
- * Entity with Documents Service Base
- * Provides common document handling for entities like Company and Employee
- */
-
-import calculateStatus from "@/utils/calculateStatus";
 import processDocuments from "@/helpers/processDocuments";
-import { TDocuments } from "@/types/types";
+import calculateStatus from "@/utils/calculateStatus";
 import {
-  formatDocuments,
   findDocumentIndex,
+  formatDocuments,
   updateDocumentFields,
 } from "@/utils/document.utils";
 

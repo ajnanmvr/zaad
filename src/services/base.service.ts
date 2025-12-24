@@ -1,8 +1,3 @@
-/**
- * Base Service Class
- * Provides common CRUD operations and utility methods for all services
- */
-
 export class BaseService<T> {
   protected repository: any;
 

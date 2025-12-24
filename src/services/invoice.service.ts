@@ -1,7 +1,7 @@
 import { InvoiceRepository } from "@/repositories/invoice.repository";
-import { calculateInvoiceAmount } from "@/utils/invoice.utils";
 import formatDate from "@/utils/formatDate";
-import { buildQuery, sliceCursorData } from "./pagination.utils";
+import { calculateInvoiceAmount } from "@/utils/invoice.utils";
+import { buildQuery, sliceCursorData } from "@/utils/pagination.utils";
 
 const PAGE_SIZE = 10;
 

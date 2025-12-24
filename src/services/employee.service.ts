@@ -1,5 +1,5 @@
 import { EmployeeRepository } from "@/repositories/employee.repository";
-import { TEmployeeData, TEmployeeList } from "@/types/types";
+import { TEmployeeData } from "@/types/types";
 import {
   EntityWithDocumentsService,
   processSummaryList,
