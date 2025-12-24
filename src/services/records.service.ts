@@ -1,56 +1,41 @@
 import { RecordsRepository } from "@/repositories/records.repository";
 import { TRecordData } from "@/types/records";
-import { toZonedTime, format } from "date-fns-tz";
-import { filterData } from "@/utils/filterData";
+import {
+  transformRecord,
+  calculateBalance,
+  calculateRecordTotals,
+  emptyRecordsSummary,
+} from "@/utils/records.utils";
+import { sliceCursorData } from "@/utils/pagination.utils";
 
-export const RecordsService = {
+class RecordsServiceClass {
   async getCompanyBalance(companyId: string) {
-    const companyRecords: TRecordData[] = await RecordsRepository.findPublishedByCompany(companyId);
-
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-
-    companyRecords.forEach((record) => {
-      if (record.type === "income") {
-        incomeTotal += record.amount;
-      } else if (record.type === "expense") {
-        expenseTotal += record.amount + (record.serviceFee ?? 0);
-      }
-    });
-
-    const balance = incomeTotal - expenseTotal;
+    const records: TRecordData[] =
+      await RecordsRepository.findPublishedByCompany(companyId);
+    const balance = calculateBalance(records as any[]);
     return { balance };
-  },
+  }
 
   async getEmployeeBalance(employeeId: string) {
-    const employeeRecords: TRecordData[] = await RecordsRepository.findPublishedByCompany(""); // placeholder not used
-    // Fetch directly for employee
     const records: any[] = await RecordsRepository.findWithFiltersPaginated(
       { published: true, employee: employeeId },
       0,
       Number.MAX_SAFE_INTEGER
     );
-
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-
-    records.forEach((record: any) => {
-      if (record.type === "income") {
-        incomeTotal += record.amount;
-      } else if (record.type === "expense") {
-        expenseTotal += record.amount + (record.serviceFee ?? 0);
-      }
-    });
-
-    const balance = incomeTotal - expenseTotal;
+    const balance = calculateBalance(records);
     return { balance };
-  },
+  }
 
   async createRecord(data: any) {
     return RecordsRepository.create(data);
-  },
+  }
 
-  async listRecords(method: string | null, type: string | null, pageNumber: number, pageSize = 25) {
+  async listRecords(
+    method: string | null,
+    type: string | null,
+    pageNumber: number,
+    pageSize = 25
+  ) {
     const filters: any = { published: true };
     if (method) filters.method = method;
     if (type) filters.type = type;
@@ -61,120 +46,38 @@ export const RecordsService = {
       pageSize + 1
     );
 
-    const hasMore = records.length > pageSize;
-    const DUBAI_TIME_ZONE = "Asia/Dubai";
-
-    const transformedData = records.slice(0, pageSize).map((record: any) => {
-      const client = () => {
-        const { company, employee, self } = record;
-        return company
-          ? { name: company.name, id: company._id, type: "company" }
-          : employee
-          ? { name: employee.name, id: employee._id, type: "employee" }
-          : self
-          ? { name: self, type: "self" }
-          : null;
-      };
-
-      const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-
-      return {
-        id: record._id,
-        type: record.type,
-        client: client(),
-        method: record.method,
-        particular: record.particular,
-        invoiceNo: record.invoiceNo,
-        amount: record.amount?.toFixed(2),
-        serviceFee: record.serviceFee?.toFixed(2),
-        creator: record?.createdBy?.username,
-        status: record.status,
-        remarks: record.remarks,
-        number: record.number,
-        suffix: record.suffix,
-        edited: record.edited,
-        date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
-      };
-    });
+    const { data, hasMore } = sliceCursorData(records, pageSize);
+    const transformedData = data.map(transformRecord);
 
     return { count: transformedData.length, hasMore, records: transformedData };
-  },
+  }
 
   async getRecord(id: string) {
     return RecordsRepository.findById(id);
-  },
+  }
 
   async updateRecord(id: string, data: any) {
     return RecordsRepository.updateById(id, { ...data, edited: true });
-  },
+  }
 
   async deleteRecord(id: string) {
     return RecordsRepository.softDelete(id);
-  },
+  }
 
   async getCompanyRecordsSummary(companyId: string) {
     const records = await RecordsRepository.findWithFiltersPaginated(
       { published: true, company: { _id: companyId } },
       0,
-      Number.MAX_SAFE_INTEGER // fetch all for transformation
+      Number.MAX_SAFE_INTEGER
     );
 
     if (!records || records.length === 0) {
-      return {
-        message: "No records found",
-        count: 0,
-        records: [],
-        balance: 0,
-        totalIncome: 0,
-        totalExpense: 0,
-        totalTransactions: 0,
-      };
+      return emptyRecordsSummary();
     }
 
-    const DUBAI_TIME_ZONE = "Asia/Dubai";
-
-    const transformedData = records.map((record: any) => {
-      const client = () => {
-        const { company, employee, self } = record;
-        return company
-          ? { name: company.name, id: company._id, type: "company" }
-          : employee
-          ? { name: employee.name, id: employee._id, type: "employee" }
-          : self
-          ? { name: self, type: "self" }
-          : null;
-      };
-
-      const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-
-      return {
-        id: record._id,
-        type: record.type,
-        client: client(),
-        method: record.method,
-        particular: record.particular,
-        invoiceNo: record.invoiceNo,
-        amount: record.amount?.toFixed(2),
-        serviceFee: record.serviceFee?.toFixed(2),
-        creator: record?.createdBy?.username,
-        status: record.status,
-        number: record.number,
-        suffix: record.suffix,
-        date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
-      };
-    });
-
-    const allRecords = await RecordsRepository.findPublishedByCompany(companyId);
-    const totalIncome = allRecords.reduce(
-      (acc, record: any) => acc + (record.type === "income" && record.method !== "liability" ? record.amount : 0),
-      0
-    );
-    const totalExpense = allRecords.reduce(
-      (acc, record: any) => acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
-      0
-    );
-    const balance = totalIncome - totalExpense;
-    const totalTransactions = allRecords.length;
+    const transformedData = records.map(transformRecord);
+    const { totalIncome, totalExpense, balance } =
+      calculateRecordTotals(records);
 
     return {
       count: transformedData.length,
@@ -182,9 +85,9 @@ export const RecordsService = {
       balance,
       totalIncome,
       totalExpense,
-      totalTransactions,
+      totalTransactions: records.length,
     };
-  },
+  }
 
   async getEmployeeRecordsSummary(employeeId: string) {
     const records = await RecordsRepository.findWithFiltersPaginated(
@@ -194,65 +97,22 @@ export const RecordsService = {
     );
 
     if (!records || records.length === 0) {
-      return {
-        message: "No records found",
-        count: 0,
-        records: [],
-        balance: 0,
-        totalIncome: 0,
-        totalExpense: 0,
-        totalTransactions: 0,
-      };
+      return emptyRecordsSummary();
     }
 
-    const DUBAI_TIME_ZONE = "Asia/Dubai";
-    const transformedData = records.map((record: any) => {
-      const client = () => {
-        const { company, employee, self } = record;
-        return company
-          ? { name: company.name, id: company._id, type: "company" }
-          : employee
-          ? { name: employee.name, id: employee._id, type: "employee" }
-          : self
-          ? { name: self, type: "self" }
-          : null;
-      };
-      const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-      return {
-        id: record._id,
-        type: record.type,
-        client: client(),
-        method: record.method,
-        particular: record.particular,
-        invoiceNo: record.invoiceNo,
-        amount: record.amount?.toFixed(2),
-        serviceFee: record.serviceFee?.toFixed(2),
-        creator: record?.createdBy?.username,
-        status: record.status,
-        number: record.number,
-        suffix: record.suffix,
-        date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
-      };
-    });
+    const transformedData = records.map(transformRecord);
+    const { totalIncome, totalExpense, balance } =
+      calculateRecordTotals(records);
 
-    const allRecords = await RecordsRepository.findWithFiltersPaginated(
-      { published: true, employee: { _id: employeeId } },
-      0,
-      Number.MAX_SAFE_INTEGER
-    );
-    const totalIncome = (allRecords as any).reduce(
-      (acc: number, record: any) => acc + (record.type === "income" && record.method !== "liability" ? record.amount : 0),
-      0
-    );
-    const totalExpense = (allRecords as any).reduce(
-      (acc: number, record: any) => acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
-      0
-    );
-    const balance = totalIncome - totalExpense;
-    const totalTransactions = (allRecords as any).length;
-
-    return { count: transformedData.length, records: transformedData, balance, totalIncome, totalExpense, totalTransactions };
-  },
+    return {
+      count: transformedData.length,
+      records: transformedData,
+      balance,
+      totalIncome,
+      totalExpense,
+      totalTransactions: records.length,
+    };
+  }
 
   async getSelfRecordsSummary(selfName: string, pageNumber: number, pageSize = 10) {
     const records = await RecordsRepository.findWithFiltersPaginated(
@@ -262,67 +122,32 @@ export const RecordsService = {
     );
 
     if (!records || records.length === 0) {
-      return {
-        message: "No records found",
-        count: 0,
-        hasMore: false,
-        records: [],
-        balance: 0,
-        totalIncome: 0,
-        totalExpense: 0,
-        totalTransactions: 0,
-      };
+      return { ...emptyRecordsSummary(false), hasMore: false };
     }
 
-    const hasMore = records.length > pageSize;
-    const DUBAI_TIME_ZONE = "Asia/Dubai";
-    const transformedData = records.slice(0, pageSize).map((record: any) => {
-      const client = () => {
-        const { company, employee, self } = record;
-        return company
-          ? { name: company.name, id: company._id, type: "company" }
-          : employee
-          ? { name: employee.name, id: employee._id, type: "employee" }
-          : self
-          ? { name: self, type: "self" }
-          : null;
-      };
-      const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-      return {
-        id: record._id,
-        type: record.type,
-        client: client(),
-        method: record.method,
-        particular: record.particular,
-        invoiceNo: record.invoiceNo,
-        amount: record.amount?.toFixed(2),
-        serviceFee: record.serviceFee?.toFixed(2),
-        creator: record?.createdBy?.username,
-        status: record.status,
-        number: record.number,
-        suffix: record.suffix,
-        date: format(createdAtInDubai, "MMM-dd hh:mma", { timeZone: DUBAI_TIME_ZONE }),
-      };
-    });
+    const { data, hasMore } = sliceCursorData(records, pageSize);
+    const transformedData = data.map(transformRecord);
 
-    const allSelfRecords = await RecordsRepository.findWithFiltersPaginated(
+    // Fetch all records for totals
+    const allRecords = await RecordsRepository.findWithFiltersPaginated(
       { published: true, self: selfName },
       0,
       Number.MAX_SAFE_INTEGER
     );
-    const totalIncome = (allSelfRecords as any).reduce(
-      (acc: number, record: any) => acc + (record.type === "income" ? record.amount : 0),
-      0
-    );
-    const totalExpense = (allSelfRecords as any).reduce(
-      (acc: number, record: any) => acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
-      0
-    );
-    const balance = totalIncome - totalExpense;
-    const totalTransactions = (allSelfRecords as any).length;
 
-    return { count: transformedData.length, hasMore, records: transformedData, balance, totalIncome, totalExpense, totalTransactions };
-  },
+    const { totalIncome, totalExpense, balance } =
+      calculateRecordTotals(allRecords);
+
+    return {
+      count: transformedData.length,
+      hasMore,
+      records: transformedData,
+      balance,
+      totalIncome,
+      totalExpense,
+      totalTransactions: allRecords.length,
+    };
+  }
 
   async createInstantProfit(reqBody: any) {
     await RecordsRepository.create(reqBody);
@@ -332,15 +157,27 @@ export const RecordsService = {
     type = "expense";
     method = "service fee";
     number = +number + 1;
-    await RecordsRepository.create({ serviceFee, amount, type, method, number, ...rest });
-  },
+    await RecordsRepository.create({
+      serviceFee,
+      amount,
+      type,
+      method,
+      number,
+      ...rest,
+    });
+  }
 
   async getPrevSuffixNumber() {
     const last = await RecordsRepository.findLastSuffixAndNumber();
     return { suffix: (last as any)?.suffix, number: (last as any)?.number || 0 };
-  },
+  }
 
-  async swapAccounts(amount: number, createdBy: string, to: string, from: string) {
+  async swapAccounts(
+    amount: number,
+    createdBy: string,
+    to: string,
+    from: string
+  ) {
     const last = await RecordsRepository.findLastSuffixAndNumber();
     const newSuffix = (last as any)?.suffix || "";
     const newNumber = (last as any)?.number || 0;
@@ -356,6 +193,7 @@ export const RecordsService = {
       status: "Self Deposit",
       method: from,
     });
+
     await RecordsRepository.create({
       createdBy,
       type: "income",
@@ -367,24 +205,40 @@ export const RecordsService = {
       status: "Self Deposit",
       method: to,
     });
-  },
+  }
 
   async getLiabilitiesSummary() {
     const records = await RecordsRepository.findWithFiltersPaginated(
-      { published: true, $or: [{ method: "liability" }, { status: "liability" }] },
+      {
+        published: true,
+        $or: [{ method: "liability" }, { status: "liability" }],
+      },
       0,
       Number.MAX_SAFE_INTEGER
     );
 
     if (!records || records.length === 0) {
-      return { message: "No records found", count: 0, records: [], amount: 0 };
+      return {
+        message: "No records found",
+        count: 0,
+        records: [],
+        amount: 0,
+      };
     }
 
-    interface Client { name: string; id: string; type: "company" | "employee"; }
-    const grouped: Record<string, { client: Client; income: number; expense: number }> = {};
+    interface ClientData {
+      client: { name: string; id: string; type: "company" | "employee" };
+      income: number;
+      expense: number;
+    }
+    const grouped: Record<string, ClientData> = {};
 
     (records as any).forEach((record: any) => {
-      const client: Client | null = (() => {
+      const client: {
+        name: string;
+        id: string;
+        type: "company" | "employee";
+      } | null = (() => {
         const { company, employee } = record;
         return company
           ? { name: company.name, id: company._id, type: "company" }
@@ -394,9 +248,12 @@ export const RecordsService = {
       })();
 
       if (client) {
-        if (!grouped[client.id]) grouped[client.id] = { client, income: 0, expense: 0 };
+        if (!grouped[client.id]) {
+          grouped[client.id] = { client, income: 0, expense: 0 };
+        }
         if (record.type === "income") grouped[client.id].income += record.amount;
-        else if (record.type === "expense") grouped[client.id].expense += record.amount;
+        else if (record.type === "expense")
+          grouped[client.id].expense += record.amount;
       }
     });
 
@@ -406,11 +263,20 @@ export const RecordsService = {
     }));
 
     const amount = transformedData.reduce((acc, d) => acc + d.netAmount, 0);
-    return { message: "Records retrieved successfully", count: (records as any).length, records: transformedData, amount };
-  },
+    return {
+      message: "Records retrieved successfully",
+      count: (records as any).length,
+      records: transformedData,
+      amount,
+    };
+  }
 
   async getAccountsSummary(filter: any, searchParamsEmpty: boolean) {
-    const allRecords: any[] = await RecordsRepository.findWithFiltersPaginated(filter, 0, Number.MAX_SAFE_INTEGER);
+    const allRecords: any[] = await RecordsRepository.findWithFiltersPaginated(
+      filter,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
     const expenseRecords = allRecords.filter((r) => r.type === "expense");
     const incomeRecords = allRecords.filter((r) => r.type === "income");
 
@@ -429,21 +295,39 @@ export const RecordsService = {
 
     incomeRecords.forEach((record) => {
       switch (record.method) {
-        case "bank": BankIncome += record.amount || 0; break;
-        case "cash": CashIncome += record.amount || 0; break;
-        case "tasdeed": TasdeedIncome += record.amount || 0; break;
-        case "swiper": SwiperIncome += record.amount || 0; break;
-        default: break;
+        case "bank":
+          BankIncome += record.amount || 0;
+          break;
+        case "cash":
+          CashIncome += record.amount || 0;
+          break;
+        case "tasdeed":
+          TasdeedIncome += record.amount || 0;
+          break;
+        case "swiper":
+          SwiperIncome += record.amount || 0;
+          break;
+        default:
+          break;
       }
     });
 
     expenseRecords.forEach((record) => {
       switch (record.method) {
-        case "bank": BankExpense += record.amount || 0; break;
-        case "cash": CashExpense += record.amount || 0; break;
-        case "tasdeed": TasdeedExpense += record.amount || 0; break;
-        case "swiper": SwiperExpense += record.amount || 0; break;
-        default: break;
+        case "bank":
+          BankExpense += record.amount || 0;
+          break;
+        case "cash":
+          CashExpense += record.amount || 0;
+          break;
+        case "tasdeed":
+          TasdeedExpense += record.amount || 0;
+          break;
+        case "swiper":
+          SwiperExpense += record.amount || 0;
+          break;
+        default:
+          break;
       }
       if ((record?.serviceFee || 0) > 0) {
         profit += record.serviceFee || 0;
@@ -451,7 +335,10 @@ export const RecordsService = {
     });
 
     const zaadExpenseTotal = parseFloat(
-      expenseRecords.filter((r) => r?.self === "zaad").reduce((t, r) => t + (r.amount || 0), 0).toFixed(2)
+      expenseRecords
+        .filter((r) => r?.self === "zaad")
+        .reduce((t, r) => t + (r.amount || 0), 0)
+        .toFixed(2)
     );
     const netProfit = parseFloat((profit - zaadExpenseTotal).toFixed(2));
 
@@ -467,19 +354,32 @@ export const RecordsService = {
       daysOfWeekInitials.push(dayInitial);
     }
 
-    const { default: calculateLast12Months } = await import("@/helpers/calculateLast12Months");
-    const { default: calculateLast12MonthsTotals } = await import("@/helpers/calculateLast12MonthsTotals");
-    const { default: calculateLast7Days } = await import("@/helpers/calculateLast7Days");
+    const { default: calculateLast12Months } = await import(
+      "@/helpers/calculateLast12Months"
+    );
+    const { default: calculateLast12MonthsTotals } = await import(
+      "@/helpers/calculateLast12MonthsTotals"
+    );
+    const { default: calculateLast7Days } = await import(
+      "@/helpers/calculateLast7Days"
+    );
 
-    const [expensesLast7DaysTotal, profitLast7DaysTotal] = calculateLast7Days(expenseRecords as any, last7DaysDates);
+    const [expensesLast7DaysTotal, profitLast7DaysTotal] = calculateLast7Days(
+      expenseRecords as any,
+      last7DaysDates
+    );
     const last12Months = calculateLast12Months(currentDate, currentYear);
-    const [last12MonthsExpenses, last12MonthsProfit] = await calculateLast12MonthsTotals(expenseRecords as any, last12Months);
+    const [last12MonthsExpenses, last12MonthsProfit] =
+      await calculateLast12MonthsTotals(expenseRecords as any, last12Months);
 
     const monthNames = last12Months.map(({ name }) => name);
-    const totalIncomeAmount = BankIncome + CashIncome + TasdeedIncome + SwiperIncome;
-    const totalExpenseAmount = BankExpense + CashExpense + TasdeedExpense + SwiperExpense;
+    const totalIncomeAmount =
+      BankIncome + CashIncome + TasdeedIncome + SwiperIncome;
+    const totalExpenseAmount =
+      BankExpense + CashExpense + TasdeedExpense + SwiperExpense;
     const totalBalance = totalIncomeAmount - totalExpenseAmount;
-    const bankBalance = BankIncome - BankExpense + (SwiperIncome - SwiperExpense);
+    const bankBalance =
+      BankIncome - BankExpense + (SwiperIncome - SwiperExpense);
     const cashBalance = CashIncome - CashExpense;
     const tasdeedBalance = TasdeedIncome - TasdeedExpense;
 
@@ -511,5 +411,7 @@ export const RecordsService = {
       zaadExpenseTotal,
       netProfit,
     };
-  },
-};
+  }
+}
+
+export const RecordsService = new RecordsServiceClass();

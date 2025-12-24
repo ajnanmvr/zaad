@@ -1,59 +1,31 @@
 import { EmployeeRepository } from "@/repositories/employee.repository";
-import calculateStatus from "@/utils/calculateStatus";
-import processDocuments from "@/helpers/processDocuments";
-import { TEmployeeData, TEmployeeList, TDocuments } from "@/types/types";
+import { TEmployeeData, TEmployeeList } from "@/types/types";
+import {
+  EntityWithDocumentsService,
+  processSummaryList,
+} from "./entity-with-documents.service";
 
-export const EmployeeService = {
+class EmployeeServiceClass extends EntityWithDocumentsService {
+  constructor() {
+    super(EmployeeRepository);
+  }
+
   async createEmployee(data: any) {
-    return EmployeeRepository.create(data);
-  },
+    return this.create(data);
+  }
 
   async listEmployeesSummaries() {
     const employees: TEmployeeData[] = (await EmployeeRepository.findPublishedWithCompany()) as any;
-    const data: TEmployeeList[] = [];
-
-    employees.forEach((employee: any) => {
-      const { expiryDate, docsCount } = processDocuments(employee.documents);
-      const status = calculateStatus(expiryDate);
-      data.push({
-        id: employee._id,
-        name: employee.name,
-        company: employee.company,
-        expiryDate,
-        docs: docsCount,
-        status,
-      });
-    });
-
-    data.sort((a, b) =>
-      a.expiryDate === "---"
-        ? 1
-        : b.expiryDate === "---"
-        ? -1
-        : new Date(a.expiryDate as string).getTime() - new Date(b.expiryDate as string).getTime()
-    );
-
-    return { count: employees.length, data };
-  },
+    return processSummaryList(employees, (employee) => ({
+      company: employee.company,
+    }));
+  }
 
   async getEmployeeDetails(id: string) {
     const employee = (await EmployeeRepository.findByIdWithCompany(id)) as unknown as TEmployeeData | null;
     if (!employee) return null;
 
-    const modifiedDocuments = employee.documents.map((document: TDocuments) => ({
-      _id: (document as any)._id,
-      name: document.name,
-      issueDate: document.issueDate,
-      expiryDate: document.expiryDate,
-      status: calculateStatus(document.expiryDate!),
-    }));
-
-    modifiedDocuments.sort(
-      (a, b) => new Date(a.expiryDate as string).getTime() - new Date(b.expiryDate as string).getTime()
-    );
-
-    return {
-      id: (employee as any)._id,
+    return this.formatEntityDetails(employee, {
       name: employee.name,
       company: employee.company,
       emiratesId: employee.emiratesId,
@@ -64,82 +36,43 @@ export const EmployeeService = {
       designation: employee.designation,
       remarks: employee.remarks,
       password: employee.password,
-      documents: modifiedDocuments,
-    };
-  },
+    });
+  }
 
   async updateEmployee(id: string, data: any) {
-    return EmployeeRepository.updateById(id, data);
-  },
+    return this.updateEntity(id, data);
+  }
 
   async deleteEmployee(id: string) {
-    return EmployeeRepository.softDelete(id);
-  },
+    return this.deleteEntity(id);
+  }
 
   async addEmployeeDocument(id: string, document: any) {
-    const employee = (await EmployeeRepository.findByIdWithCompany(id)) as any;
-    if (!employee) return null;
-    employee.documents.push(document);
-    await employee.save();
-    return employee;
-  },
+    return this.addDocument(id, document, "findByIdWithCompany");
+  }
 
   async updateEmployeeDocument(id: string, docId: string, fields: any) {
     const employee = (await EmployeeRepository.findByIdWithCompany(id)) as any;
     if (!employee) return { employee: null, documentIndex: null };
 
-    const documentIndex = employee.documents.findIndex((d: any) => d._id.toString() === docId);
-    if (documentIndex === -1) return { employee, documentIndex: null };
-
-    const doc = employee.documents[documentIndex];
-    const { name, issueDate, expiryDate, attachment } = fields;
-    if (name !== undefined) doc.name = name;
-    if (issueDate !== undefined) doc.issueDate = issueDate;
-    if (expiryDate !== undefined) doc.expiryDate = expiryDate;
-    if (attachment !== undefined) doc.attachment = attachment;
-
-    await employee.save();
-    return { employee, documentIndex };
-  },
+    const result = await super.updateDocument(id, docId, fields, "findByIdWithCompany");
+    return { employee, documentIndex: result.documentIndex };
+  }
 
   async deleteEmployeeDocument(id: string, docId: string) {
     const employee = (await EmployeeRepository.findByIdWithCompany(id)) as any;
     if (!employee) return { employee: null, documentIndex: null };
 
-    const documentIndex = employee.documents.findIndex((d: any) => d._id.toString() === docId);
-    if (documentIndex === -1) return { employee, documentIndex: null };
-
-    employee.documents.splice(documentIndex, 1);
-    await employee.save();
-
-    return { employee, documentIndex };
-  },
+    const result = await super.deleteDocument(id, docId, "findByIdWithCompany");
+    return { employee, documentIndex: result.documentIndex };
+  }
 
   async listEmployeesByCompany(companyId: string) {
-    const employees: any[] = await EmployeeRepository.findPublishedByCompany(companyId) as any;
-    const data: TEmployeeList[] = [];
+    const employees: any[] = (await EmployeeRepository.findPublishedByCompany(companyId)) as any;
+    return processSummaryList(employees, (employee) => ({
+      company: employee.company,
+    }));
+  }
+}
 
-    employees.forEach((employee) => {
-      const { expiryDate, docsCount } = processDocuments(employee.documents);
-      const status = calculateStatus(expiryDate);
-      data.push({
-        id: employee._id,
-        name: employee.name,
-        company: employee.company,
-        expiryDate,
-        docs: docsCount,
-        status,
-      });
-    });
-
-    data.sort((a, b) =>
-      a.expiryDate === "---"
-        ? 1
-        : b.expiryDate === "---"
-        ? -1
-        : new Date(a.expiryDate as string).getTime() - new Date(b.expiryDate as string).getTime()
-    );
-
-    return { count: employees.length, data };
-  },
-};
+export const EmployeeService = new EmployeeServiceClass();
