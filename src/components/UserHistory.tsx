@@ -112,17 +112,17 @@ const getActionTitle = (action: string) => {
 };
 
 const getActionDescription = (activity: UserActivity) => {
-    const { action, previousValues, newValues } = activity;
+    const { action, previousValues = {}, newValues = {} } = activity;
 
     switch (action) {
         case "create":
-            return `User created with role: ${newValues.role || "employee"}`;
+            return `User created with role: ${newValues?.role || "employee"}`;
         case "update":
             const changes = [];
-            if (previousValues.username && newValues.username) {
+            if (previousValues?.username && newValues?.username) {
                 changes.push(`username from "${previousValues.username}" to "${newValues.username}"`);
             }
-            if (previousValues.fullname !== undefined && newValues.fullname !== undefined) {
+            if (previousValues?.fullname !== undefined && newValues?.fullname !== undefined) {
                 changes.push(`full name from "${previousValues.fullname || 'N/A'}" to "${newValues.fullname || 'N/A'}"`);
             }
             return changes.length > 0 ? `Changed ${changes.join(", ")}` : "User information updated";
@@ -131,7 +131,7 @@ const getActionDescription = (activity: UserActivity) => {
         case "password_change":
             return "User password was changed";
         case "role_change":
-            return `Role changed from "${previousValues.role}" to "${newValues.role}"`;
+            return `Role changed from "${previousValues?.role || 'N/A'}" to "${newValues?.role || 'N/A'}"`;
         case "reactivate":
             return "User was restored from deleted state";
         default:
