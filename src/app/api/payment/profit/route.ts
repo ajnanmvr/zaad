@@ -1,21 +1,14 @@
 import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
-import Records from "@/models/records";
 import { NextRequest } from "next/server";
+import { RecordsService } from "@/services/records.service";
 
 export async function POST(request: NextRequest) {
   try {
     await connect();
     await isPartner(request);
     const reqBody = await request.json();
-    await Records.create(reqBody);
-    let { amount, number, type, method, ...rest } = reqBody;
-    const serviceFee = amount;
-    amount = 0;
-    type = "expense";
-    method = "service fee";
-    number = +number + 1;
-    await Records.create({ serviceFee, amount, type, method, number, ...rest });
+    await RecordsService.createInstantProfit(reqBody);
 
     return Response.json(
       { message: "Created new payment instant profit record" },

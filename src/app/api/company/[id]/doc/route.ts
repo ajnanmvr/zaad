@@ -1,8 +1,7 @@
 import connect from "@/db/mongo";
-import Company from "@/models/companies";
-import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { CompanyService } from "@/services/company.service";
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
@@ -10,16 +9,12 @@ export async function POST(
   try {
     await connect();
     await isAuthenticated(request);
-    const { id, doc } = params;
+    const { id } = params;
     const reqBody = await request.json();
-    const Data = await Company.findById(id);
-
-    const { data } = await fetchDocuments(id, doc, Data);
+    const data = await CompanyService.addCompanyDocument(id, reqBody);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Company not found" }, { status: 404 });
     }
-    data.documents.push(reqBody);
-    await data.save();
     return Response.json({ message: "Document added successfully", data });
   } catch (err) {
     console.error(err);

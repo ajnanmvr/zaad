@@ -1,8 +1,7 @@
 import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
-import Records from "@/models/records";
-import { TRecordData } from "@/types/records";
 import { NextRequest } from "next/server";
+import { RecordsService } from "@/services/records.service";
 
 
 export async function GET(
@@ -12,27 +11,7 @@ export async function GET(
   try {
     await connect();
     await isAuthenticated(request);
-    const companyRecords: TRecordData[] = await Records.find({
-      published: true,
-      company: params.id,
-    }).exec();
-
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-    let serviceFee = 0;
-
-    companyRecords.forEach((record) => {
-      if (record.type === "income") {
-        incomeTotal += record.amount;
-      } else if (record.type === "expense") {
-        expenseTotal += record.amount + (record.serviceFee ?? 0);
-        if (record.serviceFee) {
-          serviceFee += record.serviceFee;
-        }
-      }
-    });
-
-    const balance = incomeTotal - expenseTotal;
+    const { balance } = await RecordsService.getCompanyBalance(params.id);
     return new Response(JSON.stringify({ balance }), { status: 200 });
   } catch (error) {
     return new Response(

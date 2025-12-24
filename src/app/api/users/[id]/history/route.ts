@@ -1,7 +1,7 @@
 import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
-import { getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
+import { UserActivityService } from "@/services/userActivity.service";
 
 // GET - Get user activity history (partners only)
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
         const page = parseInt(searchParams.get("page") || "0");
         const limit = parseInt(searchParams.get("limit") || "10");
 
-        const result = await getUserActivityHistory(id, page, limit);
+        const result = await UserActivityService.getHistory(id, page, limit);
 
         return Response.json(result, { status: 200 });
 
