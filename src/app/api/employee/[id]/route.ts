@@ -1,9 +1,7 @@
 import connect from "@/db/mongo";
-import calculateStatus from "@/utils/calculateStatus";
-import Employee from "@/models/employees";
-import { TEmployeeData } from "@/types/types";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { EmployeeService } from "@/services/employee.service";
 
 export async function PUT(
   request: NextRequest,
@@ -14,7 +12,7 @@ export async function PUT(
 
   const { id } = params;
   const reqBody = await request.json();
-  await Employee.findByIdAndUpdate(id, reqBody);
+  await EmployeeService.updateEmployee(id, reqBody);
   return Response.json(
     { message: "data updated successfully" },
     { status: 201 }
@@ -29,7 +27,7 @@ export async function DELETE(
   await isAuthenticated(request);
 
   const { id } = params;
-  await Employee.findByIdAndUpdate(id, { published: false });
+  await EmployeeService.deleteEmployee(id);
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
@@ -40,44 +38,11 @@ export async function GET(
   try {
     await connect();
     await isAuthenticated(request);
-
-    const employee = (await Employee.findById(params.id).populate(
-      "company"
-    )) as TEmployeeData;
-
-    if (!employee) {
+    const data = await EmployeeService.getEmployeeDetails(params.id);
+    if (!data) {
       return Response.json({ message: "employee not found" }, { status: 404 });
     }
-
-    const modifiedDocuments = employee.documents.map((document) => ({
-      _id: document._id,
-      name: document.name,
-      issueDate: document.issueDate,
-      expiryDate: document.expiryDate,
-      status: calculateStatus(document.expiryDate),
-    }));
-
-    modifiedDocuments.sort(
-      (a, b) =>
-        new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
-    );
-
-    const responseData = {
-      id: employee._id,
-      name: employee.name,
-      company: employee.company,
-      emiratesId: employee.emiratesId,
-      nationality: employee.nationality,
-      phone1: employee.phone1,
-      phone2: employee.phone2,
-      email: employee.email,
-      designation: employee.designation,
-      remarks: employee.remarks,
-      password: employee.password,
-      documents: modifiedDocuments,
-    };
-
-    return Response.json({ data: responseData }, { status: 200 });
+    return Response.json({ data }, { status: 200 });
   } catch (error) {
     return Response.json(
       { message: "Error fetching employee data", error },

@@ -1,8 +1,8 @@
 // Import necessary modules and models
 import connect from "@/db/mongo";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
-import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
+import { EmployeeRepository } from "@/repositories/employee.repository";
 
 export async function GET(
   request: NextRequest,
@@ -12,10 +12,7 @@ export async function GET(
     await connect();
     await isAuthenticated(request);
 
-    const companies = await Employee.find({
-      name: { $regex: params.search, $options: "i" },
-      published: true,
-    }).select("name");
+    const companies = await EmployeeRepository.searchByName(params.search);
 
     return Response.json(companies, { status: 200 });
   } catch (error) {

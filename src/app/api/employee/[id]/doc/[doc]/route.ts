@@ -1,8 +1,7 @@
 import connect from "@/db/mongo";
-import Employee from "@/models/employees";
-import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { EmployeeService } from "@/services/employee.service";
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
@@ -12,23 +11,15 @@ export async function PUT(
     await isAuthenticated(request);
 
     const { id, doc } = params;
-    const { name, issueDate, expiryDate, attachment } = await request.json();
-    const Data = await Employee.findById(id);
-
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
-    if (!data) {
-      return Response.json({ message: "Employee not found" });
+    const updateFields = await request.json();
+    const { employee, documentIndex } = await EmployeeService.updateEmployeeDocument(id, doc, updateFields);
+    if (!employee) {
+      return Response.json({ message: "Employee not found" }, { status: 404 });
     }
     if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
-    if (name) data.documents[documentIndex].name = name;
-    if (issueDate) data.documents[documentIndex].issueDate = issueDate;
-    if (expiryDate) data.documents[documentIndex].expiryDate = expiryDate;
-    if (attachment) data.documents[documentIndex].attachment = attachment;
-
-    await data.save();
-    return Response.json({ message: "Document updated successfully", data });
+    return Response.json({ message: "Document updated successfully", data: employee });
   } catch (err) {
     console.error(err);
     return Response.json({ message: "Server Error" }, { status: 500 });
@@ -44,21 +35,13 @@ export async function DELETE(
     await isAuthenticated(request);
 
     const { id, doc } = params;
-    const Data = await Employee.findById(id);
-
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
-    if (!data) {
-      return Response.json({ message: "Employee not found" });
+    const { employee, documentIndex } = await EmployeeService.deleteEmployeeDocument(id, doc);
+    if (!employee) {
+      return Response.json({ message: "Employee not found" }, { status: 404 });
     }
-
     if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
-
-    data.documents.splice(documentIndex, 1);
-
-    await data.save();
-
     return Response.json({ message: "Document deleted successfully" });
   } catch (err) {
     console.error(err);

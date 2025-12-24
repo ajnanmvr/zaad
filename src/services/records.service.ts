@@ -22,6 +22,30 @@ export const RecordsService = {
     return { balance };
   },
 
+  async getEmployeeBalance(employeeId: string) {
+    const employeeRecords: TRecordData[] = await RecordsRepository.findPublishedByCompany(""); // placeholder not used
+    // Fetch directly for employee
+    const records: any[] = await RecordsRepository.findWithFiltersPaginated(
+      { published: true, employee: employeeId },
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+
+    records.forEach((record: any) => {
+      if (record.type === "income") {
+        incomeTotal += record.amount;
+      } else if (record.type === "expense") {
+        expenseTotal += record.amount + (record.serviceFee ?? 0);
+      }
+    });
+
+    const balance = incomeTotal - expenseTotal;
+    return { balance };
+  },
+
   async createRecord(data: any) {
     return RecordsRepository.create(data);
   },
