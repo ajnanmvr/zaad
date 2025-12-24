@@ -2,8 +2,6 @@
 
 import "server-only";
 
-import connect from "@/db/mongo";
-import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { CompanyService } from "@/services/company.service";
 import { CompanyRepository } from "@/repositories/company.repository";
@@ -11,21 +9,10 @@ import { EmployeeService } from "@/services/employee.service";
 import { EmployeeRepository } from "@/repositories/employee.repository";
 import { RecordsService } from "@/services/records.service";
 import { serializeObjectIds } from "@/utils/serialization";
+import { requireAuth } from "@/actions/_auth";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET; // kept if other code needs it
 
-async function requireAuth() {
-  const token = cookies().get("auth")?.value;
-  if (!token || !JWT_SECRET) throw new Error("Not authenticated");
-  
-  await connect();
-  jwt.verify(token, JWT_SECRET);
-  return true;
-}
-
-// ============================================
-// COMPANY ACTIONS
-// ============================================
 
 export async function createCompanyAction(payload: any) {
   await requireAuth();

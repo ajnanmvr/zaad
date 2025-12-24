@@ -3,12 +3,12 @@
 import "server-only";
 
 import connect from "@/db/mongo";
-import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { AuthService } from "@/services/auth.service";
 import { UserService } from "@/services/user.service";
 import { UserRepository } from "@/repositories/user.repository";
 import { UserActivityService } from "@/services/userActivity.service";
+import { requireAuth, requirePartner, getOptionalAuth } from "@/actions/_auth";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -19,51 +19,31 @@ interface AuthenticatedUser {
   role: string;
 }
 
-async function getAuthToken() {
-  const token = cookies().get("auth")?.value;
-  if (!token) throw new Error("Not authenticated");
-  if (!JWT_SECRET) throw new Error("Missing JWT secret");
-  return token;
-}
-
+// Local convenience wrappers that delegate to shared auth helper
 async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
-  await connect();
-  const token = await getAuthToken();
-  if (!JWT_SECRET) throw new Error("Missing JWT secret");
-  
-  const decoded = jwt.verify(token, JWT_SECRET) as unknown as {
-    id: string;
-    username: string;
-    role: string;
-  };
-
-  const user = await UserRepository.findOne({
-    _id: decoded.id,
-    published: true,
-  });
-
+  const claims = await requireAuth();
+  // Hydrate fullname if needed
+  const user = await UserRepository.findOne({ _id: claims.id, published: true });
   if (!user) throw new Error("Not authenticated");
-
   return {
-    id: (user as any)._id.toString(),
-    username: (user as any).username,
+    id: claims.id,
+    username: claims.username,
     fullname: (user as any).fullname || "",
-    role: (user as any).role,
+    role: claims.role,
   };
 }
 
 async function getOptionalUser(): Promise<AuthenticatedUser | null> {
-  try {
-    return await getAuthenticatedUser();
-  } catch {
-    return null;
-  }
-}
-
-async function requirePartner(): Promise<AuthenticatedUser> {
-  const user = await getAuthenticatedUser();
-  if (user.role !== "partner") throw new Error("User is not a partner");
-  return user;
+  const claims = await getOptionalAuth();
+  if (!claims) return null;
+  const user = await UserRepository.findOne({ _id: claims.id, published: true });
+  if (!user) return null;
+  return {
+    id: claims.id,
+    username: claims.username,
+    fullname: (user as any).fullname || "",
+    role: claims.role,
+  };
 }
 
 export async function loginAction(payload: {
