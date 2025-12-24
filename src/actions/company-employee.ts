@@ -10,6 +10,7 @@ import { CompanyRepository } from "@/repositories/company.repository";
 import { EmployeeService } from "@/services/employee.service";
 import { EmployeeRepository } from "@/repositories/employee.repository";
 import { RecordsService } from "@/services/records.service";
+import { serializeObjectIds } from "@/utils/serialization";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -57,7 +58,8 @@ export async function deleteCompanyAction(id: string) {
 
 export async function searchCompaniesAction(search: string) {
   await requireAuth();
-  return CompanyRepository.searchByName(search);
+  const results = await CompanyRepository.searchByName(search);
+  return results.map((r: any) => serializeObjectIds(r));
 }
 
 export async function getCompanyBalanceAction(id: string) {
@@ -135,7 +137,8 @@ export async function deleteEmployeeAction(id: string) {
 
 export async function searchEmployeesAction(search: string) {
   await requireAuth();
-  return EmployeeRepository.searchByName(search);
+  const results = await EmployeeRepository.searchByName(search);
+  return results.map((r: any) => serializeObjectIds(r));
 }
 
 export async function getEmployeeBalanceAction(id: string) {

@@ -46,7 +46,7 @@ export const processSummaryItem = (
     expiryDate,
     docs: docsCount,
     status,
-    ...additionalFields,
+    ...serializeObjectIds(additionalFields),
   };
 };
 
