@@ -1,7 +1,3 @@
-/**
- * Records Service Utilities
- * Shared logic for record transformation and calculations
- */
 
 import { toZonedTime, format } from "date-fns-tz";
 
@@ -12,7 +8,7 @@ const DUBAI_TIME_ZONE = "Asia/Dubai";
  */
 export interface Client {
   name: string;
-  id: string;
+  id?: string;
   type: "company" | "employee" | "self";
 }
 
