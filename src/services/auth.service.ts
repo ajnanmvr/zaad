@@ -7,6 +7,7 @@ import {
   comparePassword,
   validatePassword,
 } from "@/utils/password.utils";
+import connect from "@/db/mongo";
 
 class AuthServiceClass {
   async signup(data: {
@@ -15,6 +16,7 @@ class AuthServiceClass {
     role?: string;
     fullname?: string;
   }) {
+    await connect();
     const { username, password, role, fullname } = data;
 
     // Validate inputs
@@ -52,6 +54,7 @@ class AuthServiceClass {
   }
 
   async login(username: string, password: string) {
+    await connect();
     // Validate inputs
     if (!username || !password) {
       throw new Error("Username and password are required");
@@ -86,6 +89,7 @@ class AuthServiceClass {
   }
 
   async getCurrentUser(request: NextRequest) {
+    await connect();
     const userId = await getUserFromCookie(request);
     if (!userId) return null;
 

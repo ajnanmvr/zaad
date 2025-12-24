@@ -10,11 +10,12 @@ export const InvoiceRepository = {
       .populate("createdBy")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
   },
 
   findById(id: string) {
-    return Invoice.findById(id).populate("createdBy");
+    return Invoice.findById(id).populate("createdBy").lean();
   },
 
   updateById(id: string, data: any) {
@@ -28,6 +29,7 @@ export const InvoiceRepository = {
   findLastInvoice() {
     return Invoice.findOne({ published: true })
       .sort({ createdAt: -1 })
-      .select("invoiceNo suffix title");
+      .select("invoiceNo suffix title")
+      .lean();
   },
 };

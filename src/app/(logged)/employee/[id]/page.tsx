@@ -1,7 +1,6 @@
 
 "use client"
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TEmployeeData } from "@/types/types";
@@ -9,6 +8,7 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
+import { getEmployeeAction, deleteEmployeeAction, deleteEmployeeDocumentAction, updateEmployeeDocumentAction } from "@/actions/company-employee";
 const SingleEmployee = () => {
   const router = useRouter()
   const [employee, setEmployee] = useState<TEmployeeData | null>(null);
@@ -28,8 +28,8 @@ const SingleEmployee = () => {
 
   const fetchData = async () => {
     try {
-      const data = await axios.get(`/api/employee/${id}`)
-      setEmployee(data.data.data)
+      const data = await getEmployeeAction(id)
+      setEmployee(data as any)
       setIsLoading(false)
     } catch (error) {
       console.log(error);
@@ -57,18 +57,17 @@ const SingleEmployee = () => {
 
   const confirmDelete = async () => {
     console.log("Deleting Document with ID:", selectedDocumentId);
-    const data = await axios.delete(`/api/employee/${id}/doc/${selectedDocumentId}`);
+    await deleteEmployeeDocumentAction(id, selectedDocumentId!);
     fetchData();
     setIsConfirmationOpen(false);
   };
   const confirmDeleteCompany = async () => {
-    await axios.delete(`/api/employee/${id}`);
+    await deleteEmployeeAction(id);
     router.push("/employee")
   };
   const saveEdits = async () => {
     console.log("Updating Document with ID:", selectedDocumentId);
-    const data = await axios.put(`/api/employee/${id}/doc/${selectedDocumentId}`, editData);
-    console.log(data);
+    await updateEmployeeDocumentAction(id, selectedDocumentId!, editData);
     setIsEditDocsOpen(false);
     fetchData();
   };

@@ -1,7 +1,7 @@
 "use client"
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { getLiabilitiesSummaryAction } from "@/actions/payment";
 import clsx from "clsx";
 import Link from "next/link";
 
@@ -21,8 +21,8 @@ const TransactionList = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ["liability"], queryFn: async () => {
-      const response = await axios.get(`/api/payment/liability`);
-      return response.data;
+      const response = await getLiabilitiesSummaryAction();
+      return response;
     }
   })
 

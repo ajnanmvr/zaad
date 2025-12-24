@@ -1,24 +1,23 @@
 "use client";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { loginAction } from "@/actions/users";
 const SignIn: React.FC = () => {
   const [user, setUser] = useState({ username: "", password: "" })
   const router = useRouter()
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     try {
-      toast.loading("Logging in...")
-      await axios.post("/api/users/auth/login", user)
-      toast.dismiss()
+      const toastId = toast.loading("Logging in...")
+      await loginAction(user)
+      toast.dismiss(toastId)
       toast.success("Logged in successfully")
       router.refresh()
     } catch (error: any) {
-      toast.loading("Logging in...")
-      toast.error(error.response.data.error || "Login Failed");
+      toast.error(error?.message || "Login Failed");
     }
   }
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {

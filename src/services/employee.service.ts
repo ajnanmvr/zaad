@@ -4,6 +4,8 @@ import {
   EntityWithDocumentsService,
   processSummaryList,
 } from "./entity-with-documents.service";
+import { serializeObjectIds } from "@/utils/serialization";
+import connect from "@/db/mongo";
 
 class EmployeeServiceClass extends EntityWithDocumentsService {
   constructor() {
@@ -15,6 +17,7 @@ class EmployeeServiceClass extends EntityWithDocumentsService {
   }
 
   async listEmployeesSummaries() {
+    await connect();
     const employees: TEmployeeData[] = (await EmployeeRepository.findPublishedWithCompany()) as any;
     return processSummaryList(employees, (employee) => ({
       company: employee.company,
@@ -22,6 +25,7 @@ class EmployeeServiceClass extends EntityWithDocumentsService {
   }
 
   async getEmployeeDetails(id: string) {
+    await connect();
     const employee = (await EmployeeRepository.findByIdWithCompany(id)) as unknown as TEmployeeData | null;
     if (!employee) return null;
 
@@ -48,29 +52,24 @@ class EmployeeServiceClass extends EntityWithDocumentsService {
   }
 
   async addEmployeeDocument(id: string, document: any) {
-    return this.addDocument(id, document, "findByIdWithCompany");
+    return this.addDocument(id, document, "findByIdWithCompanyForUpdate");
   }
 
   async updateEmployeeDocument(id: string, docId: string, fields: any) {
-    const employee = (await EmployeeRepository.findByIdWithCompany(id)) as any;
-    if (!employee) return { employee: null, documentIndex: null };
-
-    const result = await super.updateDocument(id, docId, fields, "findByIdWithCompany");
-    return { employee, documentIndex: result.documentIndex };
+    const result = await super.updateDocument(id, docId, fields, "findByIdWithCompanyForUpdate");
+    return { employee: result.entity, documentIndex: result.documentIndex };
   }
 
   async deleteEmployeeDocument(id: string, docId: string) {
-    const employee = (await EmployeeRepository.findByIdWithCompany(id)) as any;
-    if (!employee) return { employee: null, documentIndex: null };
-
-    const result = await super.deleteDocument(id, docId, "findByIdWithCompany");
-    return { employee, documentIndex: result.documentIndex };
+    const result = await super.deleteDocument(id, docId, "findByIdWithCompanyForUpdate");
+    return { employee: result.entity, documentIndex: result.documentIndex };
   }
 
   async listEmployeesByCompany(companyId: string) {
+    await connect();
     const employees: any[] = (await EmployeeRepository.findPublishedByCompany(companyId)) as any;
     return processSummaryList(employees, (employee) => ({
-      company: employee.company,
+      company: employee.company ? serializeObjectIds(employee.company) : undefined,
     }));
   }
 }

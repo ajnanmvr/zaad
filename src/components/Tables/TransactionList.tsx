@@ -59,8 +59,17 @@ const TransactionList = ({
   const { data: paymentData, isLoading } = useQuery({
     queryKey: ["payment", pageNumber, type, id, filter],
     queryFn: async () => {
-      const res = await axios.get(`/api/payment${type ? ("/" + (type === "self" ? type : (type + "/" + id))) : ""}?page=${pageNumber + query}`)
-      return res.data;
+      let result;
+      if (type === "self") {
+        result = await getSelfRecordsSummaryAction(pageNumber);
+      } else if (type === "company") {
+        result = await getCompanyRecordsSummaryAction(id!);
+      } else if (type === "employee") {
+        result = await getEmployeeRecordsSummaryAction(id!);
+      } else {
+        result = await listRecordsAction(methodQuery, typeQuery, pageNumber);
+      }
+      return result;
     },
     placeholderData: keepPreviousData,
 
@@ -124,7 +133,7 @@ const TransactionList = ({
   };
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
-      return axios.delete(`/api/payment/${id}`);
+      return deleteRecordAction(id);
     },
     onMutate: () => {
       toast.loading("Deleting payment record...");

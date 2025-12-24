@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/utils/dateUtils";
+import { getUserHistoryAction } from "@/actions/users";
 
 interface UserActivity {
     _id: string;
@@ -156,13 +157,11 @@ export default function UserHistory({ userId, className = "" }: UserHistoryProps
             if (!append) setLoading(true);
             else setLoadingMore(true);
 
-            const response = await fetch(`/api/users/${userId}/history?page=${page}&limit=10`);
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch activity history");
-            }
-
-            const data: ActivityHistoryResponse = await response.json();
+            const data: ActivityHistoryResponse = await getUserHistoryAction({
+                userId,
+                page,
+                limit: 10,
+            }) as any;
 
             if (append) {
                 setActivities(prev => [...prev, ...data.activities]);

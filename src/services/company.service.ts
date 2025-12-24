@@ -4,6 +4,7 @@ import {
   EntityWithDocumentsService,
   processSummaryList,
 } from "./entity-with-documents.service";
+import connect from "@/db/mongo";
 
 class CompanyServiceClass extends EntityWithDocumentsService {
   constructor() {
@@ -15,12 +16,14 @@ class CompanyServiceClass extends EntityWithDocumentsService {
   }
 
   async listCompanySummaries() {
-    const companies: TCompanyData[] = await CompanyRepository.findPublishedWithDocs();
+    await connect();
+    const companies = await CompanyRepository.findPublishedWithDocs() as any as TCompanyData[];
     return processSummaryList(companies);
   }
 
   async getCompanyDetails(id: string) {
-    const company: TCompanyData | null = await CompanyRepository.findById(id);
+    await connect();
+    const company = await CompanyRepository.findById(id) as any as TCompanyData | null;
     if (!company) return null;
 
     return this.formatEntityDetails(company, {
@@ -51,19 +54,13 @@ class CompanyServiceClass extends EntityWithDocumentsService {
   }
 
   async updateCompanyDocument(id: string, docId: string, fields: any) {
-    const company = await CompanyRepository.findById(id);
-    if (!company) return { company: null, documentIndex: null };
-
     const result = await super.updateDocument(id, docId, fields);
-    return { company, documentIndex: result.documentIndex };
+    return { company: result.entity, documentIndex: result.documentIndex };
   }
 
   async deleteCompanyDocument(id: string, docId: string) {
-    const company = await CompanyRepository.findById(id);
-    if (!company) return { company: null, documentIndex: null };
-
     const result = await super.deleteDocument(id, docId);
-    return { company, documentIndex: result.documentIndex };
+    return { company: result.entity, documentIndex: result.documentIndex };
   }
 }
 

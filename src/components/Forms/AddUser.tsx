@@ -1,10 +1,14 @@
 "use client"
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
+import {
+    createUserAction,
+    getUserAction,
+    updateUserAction,
+} from "@/actions/users";
 
 interface AddUserProps {
     editUserId?: string;
@@ -40,8 +44,8 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         if (isEditMode && !targetUserData && editUserId) {
             const fetchUserData = async () => {
                 try {
-                    const { data } = await axios.get(`/api/users/${editUserId}`);
-                    setTargetUserData(data.user);
+                    const data = await getUserAction(editUserId);
+                    setTargetUserData(data as any);
                 } catch (error) {
                     console.error("Failed to fetch user data:", error);
                 }
@@ -151,17 +155,17 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
             }
 
             if (isEditMode) {
-                await axios.put(`/api/users/${editUserId}`, submitData);
+                await updateUserAction(editUserId, submitData);
                 toast.success("User updated successfully");
             } else {
-                await axios.post("/api/users", submitData);
+                await createUserAction(submitData);
                 toast.success("User created successfully");
             }
 
             router.push("/users");
 
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to save user";
+            const errorMessage = error?.message || "Failed to save user";
             toast.error(errorMessage);
         } finally {
             setIsLoading(false);

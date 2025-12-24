@@ -2,10 +2,10 @@ import { TEmployeeList } from "@/types/types"
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
-import axios from "axios";
 import SkeletonList from "../common/SkeletonList";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { deleteEmployeeAction } from "@/actions/company-employee";
 function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null | undefined, isLoading?: boolean }) {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -13,7 +13,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
 
 
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => axios.delete(`/api/employee/${id}`),
+        mutationFn: (id: string) => deleteEmployeeAction(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["employees"] });
             toast.success("employee deleted successfully");

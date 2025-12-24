@@ -37,7 +37,7 @@ const SelfDepositModal = ({ isOpen, cancel }: {
                 break;
         }
         try {
-            await axios.post("/api/payment/swap", data);
+            await swapAccountsAction(data);
             cancel()
             setData(initData)
         } catch (error) {

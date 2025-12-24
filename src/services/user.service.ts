@@ -12,6 +12,8 @@ import {
   buildPaginationMeta,
   sliceCursorData,
 } from "@/utils/pagination.utils";
+import { serializeObjectIds } from "@/utils/serialization";
+import connect from "@/db/mongo";
 
 class UserServiceClass {
   async listUsers(
@@ -20,6 +22,7 @@ class UserServiceClass {
     limit: number,
     showDeleted: boolean
   ) {
+    await connect();
     const query = buildQuery(!showDeleted, search, [
       "username",
       "fullname",
@@ -29,7 +32,7 @@ class UserServiceClass {
     const users = await UserRepository.findPaginated(query, page, limit);
 
     return {
-      users,
+      users: users.map((u: any) => serializeObjectIds(u)),
       pagination: buildPaginationMeta(page, limit, total),
       showingDeleted: showDeleted,
     };
@@ -43,8 +46,9 @@ class UserServiceClass {
       fullname?: string;
     },
     performedById: string,
-    request: NextRequest
+    request?: NextRequest
   ) {
+    await connect();
     const { username, password, role, fullname } = data;
 
     // Validate inputs
@@ -98,6 +102,7 @@ class UserServiceClass {
   }
 
   async getUser(id: string) {
+    await connect();
     return UserRepository.findById(id);
   }
 
@@ -110,8 +115,9 @@ class UserServiceClass {
       password?: string;
     },
     currentUserId: string,
-    request: NextRequest
+    request?: NextRequest
   ) {
+    await connect();
     const existingUser = await UserRepository.findOne({
       _id: id,
       published: true,
@@ -217,8 +223,9 @@ class UserServiceClass {
   async deleteUser(
     id: string,
     currentUserId: string,
-    request: NextRequest
+    request?: NextRequest
   ) {
+    await connect();
     if (id === currentUserId) {
       throw new Error("You cannot delete your own account");
     }
@@ -243,8 +250,9 @@ class UserServiceClass {
     userId: string,
     currentPassword: string,
     newPassword: string,
-    request: NextRequest
+    request?: NextRequest
   ) {
+    await connect();
     // Validate inputs
     if (!currentPassword || !newPassword) {
       throw new Error("Current password and new password are required");
@@ -296,7 +304,7 @@ class UserServiceClass {
   async reactivateUser(
     id: string,
     currentUserId: string,
-    request: NextRequest
+    request?: NextRequest
   ) {
     const user = await UserRepository.findOne({
       _id: id,

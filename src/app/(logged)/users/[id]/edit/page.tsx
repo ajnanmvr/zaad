@@ -2,12 +2,12 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
-import axios from "axios";
 import toast from "react-hot-toast";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import AddUser from "@/components/Forms/AddUser";
 import UserHistory from "@/components/UserHistory";
+import { getUserAction } from "@/actions/users";
 
 interface UserData {
     username: string;
@@ -34,10 +34,10 @@ const EditUserPage = () => {
         // Fetch user data
         const fetchUser = async () => {
             try {
-                const { data } = await axios.get(`/api/users/${userId}`);
-                setUserData(data.user);
+                const data = await getUserAction(userId);
+                setUserData(data as any);
             } catch (error: any) {
-                const errorMessage = error.response?.data?.error || "Failed to fetch user";
+                const errorMessage = error?.message || "Failed to fetch user";
                 toast.error(errorMessage);
                 router.push("/users");
             } finally {

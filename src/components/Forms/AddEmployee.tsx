@@ -1,7 +1,6 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TBaseData } from "@/types/types";
@@ -9,6 +8,7 @@ import { debounce } from "lodash";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { createEmployeeAction, getEmployeeAction, updateEmployeeAction, searchCompaniesAction } from "@/actions/company-employee";
 
 const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
     const router = useRouter()
@@ -28,8 +28,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
 
     const { data } = useQuery<any>({
         queryKey: [`${edit}`], queryFn: async () => {
-            const { data } = await axios.get(`/api/employee/${edit}`);
-            return (data.data);
+            return await getEmployeeAction(edit as string);
         },
         enabled: edit !== ""
     });
@@ -48,9 +47,9 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         {
             mutationFn: async (employeeData) => {
                 if (isEditMode) {
-                    await axios.put(`/api/employee/${edit}`, employeeData);
+                    await updateEmployeeAction(edit as string, employeeData);
                 } else {
-                    await axios.post("/api/employee", employeeData);
+                    await createEmployeeAction(employeeData);
                 }
             },
             onMutate: () => {
@@ -81,8 +80,8 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
 
     const fetchsearchSuggestions = async (inputValue: string, inputName: string) => {
         try {
-            const response = await axios.get<TBaseData[]>(`/api/${inputName}/search/${inputValue}`);
-            setSearchSuggestions(response.data);
+            const response = await searchCompaniesAction(inputValue);
+            setSearchSuggestions(response);
         } catch (error) {
             console.error("Error fetching company suggestions:", error);
         }

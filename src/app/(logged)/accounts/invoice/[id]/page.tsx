@@ -14,7 +14,7 @@ function SingleInvoice() {
 
   const fetchData = async () => {
     try {
-      const { data } = await axios.get(`/api/invoice/${id}`)
+      const data = await getInvoiceAction(id)
       setInvoice(data)
       setIsLoading(false)
     } catch (error) {

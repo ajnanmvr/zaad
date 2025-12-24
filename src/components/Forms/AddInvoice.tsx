@@ -1,11 +1,11 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
+import { getInvoiceAction, getNextInvoiceNoAction, createInvoiceAction, updateInvoiceAction } from "@/actions/invoice";
 
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
@@ -21,11 +21,11 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const fetchData = async () => {
         try {
             if (edit) {
-                const { data } = await axios.get(`/api/invoice/${edit}?editmode`);
+                const data = await getInvoiceAction(edit as string, true);
                 setInvoiceData(data);
                 setisEditMode(true)
             } else {
-                const { data } = await axios.get(`/api/invoice/prev`);
+                const data = await getNextInvoiceNoAction();
                 setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data.invoiceNo + 1, suffix: data?.suffix })
             }
         } catch (error) {
@@ -39,11 +39,11 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         e.preventDefault()
         try {
             if (isEditMode) {
-                await axios.put(`/api/invoice/${edit}`, invoiceData);
+                await updateInvoiceAction(edit as string, invoiceData);
                 router.push(`/accounts/invoice/${edit}`);
             }
             else {
-                await axios.post("/api/invoice", invoiceData);
+                await createInvoiceAction(invoiceData);
                 router.push(`/accounts/invoice`);
             }
         } catch (error) {

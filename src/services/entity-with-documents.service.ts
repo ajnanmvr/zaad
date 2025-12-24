@@ -5,6 +5,8 @@ import {
   formatDocuments,
   updateDocumentFields,
 } from "@/utils/document.utils";
+import { serializeObjectIds } from "@/utils/serialization";
+import connect from "@/db/mongo";
 
 export interface SummaryListItem {
   id: string;
@@ -39,7 +41,7 @@ export const processSummaryItem = (
   const status = calculateStatus(expiryDate);
 
   return {
-    id: entity._id,
+    id: entity._id?.toString() || entity._id,
     name: entity.name,
     expiryDate,
     docs: docsCount,
@@ -78,6 +80,7 @@ export abstract class EntityWithDocumentsService {
    * Create entity
    */
   async create(data: any) {
+    await connect();
     return this.repository.create(data);
   }
 
@@ -85,6 +88,7 @@ export abstract class EntityWithDocumentsService {
    * Get entity by ID
    */
   async getById(id: string) {
+    await connect();
     return this.repository.findById(id);
   }
 
@@ -92,6 +96,7 @@ export abstract class EntityWithDocumentsService {
    * Update entity
    */
   async updateEntity(id: string, data: any) {
+    await connect();
     return this.repository.updateById(id, data);
   }
 
@@ -99,18 +104,20 @@ export abstract class EntityWithDocumentsService {
    * Delete entity
    */
   async deleteEntity(id: string) {
+    await connect();
     return this.repository.softDelete(id);
   }
 
   /**
    * Add document to entity
    */
-  async addDocument(id: string, document: any, fetchMethod: string = "findById") {
+  async addDocument(id: string, document: any, fetchMethod: string = "findByIdForUpdate") {
+    await connect();
     const entity = await this.repository[fetchMethod](id);
     if (!entity) return null;
     entity.documents.push(document);
     await entity.save();
-    return entity;
+    return this.serializeEntity(entity.toObject());
   }
 
   /**
@@ -120,34 +127,36 @@ export abstract class EntityWithDocumentsService {
     id: string,
     docId: string,
     fields: any,
-    fetchMethod: string = "findById"
+    fetchMethod: string = "findByIdForUpdate"
   ) {
+    await connect();
     const entity = await this.repository[fetchMethod](id);
-    if (!entity) return { documentIndex: null };
+    if (!entity) return { entity: null, documentIndex: null };
 
     const documentIndex = findDocumentIndex(entity.documents, docId);
-    if (documentIndex === -1) return { documentIndex: null };
+    if (documentIndex === -1) return { entity: null, documentIndex: null };
 
     updateDocumentFields(entity.documents[documentIndex], fields);
     await entity.save();
 
-    return { documentIndex };
+    return { entity: this.serializeEntity(entity.toObject()), documentIndex };
   }
 
   /**
    * Delete document from entity
    */
-  async deleteDocument(id: string, docId: string, fetchMethod: string = "findById") {
+  async deleteDocument(id: string, docId: string, fetchMethod: string = "findByIdForUpdate") {
+    await connect();
     const entity = await this.repository[fetchMethod](id);
-    if (!entity) return { documentIndex: null };
+    if (!entity) return { entity: null, documentIndex: null };
 
     const documentIndex = findDocumentIndex(entity.documents, docId);
-    if (documentIndex === -1) return { documentIndex: null };
+    if (documentIndex === -1) return { entity: null, documentIndex: null };
 
     entity.documents.splice(documentIndex, 1);
     await entity.save();
 
-    return { documentIndex };
+    return { entity: this.serializeEntity(entity.toObject()), documentIndex };
   }
 
   /**
@@ -155,11 +164,24 @@ export abstract class EntityWithDocumentsService {
    */
   protected formatEntityDetails(entity: any, fieldsMap: Record<string, any>) {
     const modifiedDocuments = formatDocuments(entity.documents);
+    
+    // Serialize all values in fieldsMap to convert ObjectIds to strings
+    const serializedFields: Record<string, any> = {};
+    for (const [key, value] of Object.entries(fieldsMap)) {
+      serializedFields[key] = serializeObjectIds(value);
+    }
 
     return {
-      id: entity._id,
-      ...fieldsMap,
+      id: entity._id?.toString?.() || entity._id,
+      ...serializedFields,
       documents: modifiedDocuments,
     };
+  }
+
+  /**
+   * Serialize entire entity to convert all ObjectIds to strings
+   */
+  private serializeEntity(entity: any): any {
+    return serializeObjectIds(entity);
   }
 }

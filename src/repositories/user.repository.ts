@@ -10,11 +10,12 @@ export const UserRepository = {
       .select("username fullname role createdAt updatedAt deletedAt")
       .sort({ createdAt: -1 })
       .skip(page * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
   },
 
   findById(id: string) {
-    return User.findById(id).select("username fullname role createdAt updatedAt published deletedAt");
+    return User.findById(id).select("username fullname role createdAt updatedAt published deletedAt").lean();
   },
 
   findOne(query: any) {
@@ -27,7 +28,7 @@ export const UserRepository = {
   },
 
   updateById(id: string, data: any) {
-    return User.findByIdAndUpdate(id, data, { new: true }).select("username fullname role createdAt updatedAt");
+    return User.findByIdAndUpdate(id, data, { new: true }).select("username fullname role createdAt updatedAt").lean();
   },
 
   softDelete(id: string) {

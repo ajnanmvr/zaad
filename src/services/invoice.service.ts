@@ -2,15 +2,19 @@ import { InvoiceRepository } from "@/repositories/invoice.repository";
 import formatDate from "@/utils/formatDate";
 import { calculateInvoiceAmount } from "@/utils/invoice.utils";
 import { buildQuery, sliceCursorData } from "@/utils/pagination.utils";
+import { serializeObjectIds } from "@/utils/serialization";
+import connect from "@/db/mongo";
 
 const PAGE_SIZE = 10;
 
 class InvoiceServiceClass {
   async createInvoice(data: any) {
+    await connect();
     return InvoiceRepository.create(data);
   }
 
   async listInvoices(search: string | null, page: number) {
+    await connect();
     const query = buildQuery(true, search, ["client", "purpose"]);
 
     const invoices = await InvoiceRepository.findPaginated(
@@ -24,8 +28,8 @@ class InvoiceServiceClass {
     return {
       hasMore,
       invoices: data.map((invoice) => ({
-        id: invoice._id,
-        client: invoice.client,
+        id: invoice._id?.toString() || invoice._id,
+        client: serializeObjectIds(invoice.client),
         purpose: invoice.purpose,
         invoiceNo: invoice.suffix + invoice.invoiceNo,
         amount: calculateInvoiceAmount(invoice.items),
@@ -35,6 +39,7 @@ class InvoiceServiceClass {
   }
 
   async getInvoiceById(id: string, editMode: boolean) {
+    await connect();
     const invoice = await InvoiceRepository.findById(id);
     if (!invoice) throw new Error("Invoice not found");
 
@@ -66,7 +71,7 @@ class InvoiceServiceClass {
     return {
       suffix: invoice.suffix,
       invoiceNo: invoice.invoiceNo,
-      createdBy: invoice.createdBy?._id ?? null,
+      createdBy: invoice.createdBy?._id?.toString() || invoice.createdBy?._id || null,
       date: invoice.date,
       validTo: invoice.validTo,
       ...common,
@@ -74,14 +79,17 @@ class InvoiceServiceClass {
   }
 
   async updateInvoice(id: string, data: any) {
+    await connect();
     return InvoiceRepository.updateById(id, data);
   }
 
   async deleteInvoice(id: string) {
+    await connect();
     return InvoiceRepository.softDelete(id);
   }
 
   async getNextInvoiceNo() {
+    await connect();
     const last = await InvoiceRepository.findLastInvoice();
     if (!last) return { invoiceNo: 1, suffix: "", title: "" };
 

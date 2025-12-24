@@ -1,10 +1,6 @@
-/**
- * Document Handling Utilities
- * Shared logic for managing documents in services
- */
-
 import calculateStatus from "@/utils/calculateStatus";
 import { TDocuments } from "@/types/types";
+import { serializeObjectIds } from "@/utils/serialization";
 
 export interface ProcessedDocument extends TDocuments {
   status: string;
@@ -15,14 +11,18 @@ export interface ProcessedDocument extends TDocuments {
  */
 export const formatDocuments = (documents: TDocuments[]): ProcessedDocument[] => {
   return documents
-    .map((doc: any) => ({
-      _id: doc._id,
-      name: doc.name,
-      issueDate: doc.issueDate,
-      expiryDate: doc.expiryDate,
-      attachment: doc.attachment,
-      status: calculateStatus(doc.expiryDate),
-    }))
+    .map((doc: any) => {
+      // Serialize the entire document to handle ObjectIds
+      const serialized = serializeObjectIds(doc);
+      return {
+        _id: serialized._id,
+        name: serialized.name,
+        issueDate: serialized.issueDate,
+        expiryDate: serialized.expiryDate,
+        attachment: serialized.attachment,
+        status: calculateStatus(serialized.expiryDate),
+      };
+    })
     .sort(
       (a, b) =>
         new Date((a.expiryDate as string) || "").getTime() -

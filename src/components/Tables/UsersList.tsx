@@ -1,11 +1,15 @@
 "use client"
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { formatDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
+import {
+    deleteUserAction,
+    listUsersAction,
+    reactivateUserAction,
+} from "@/actions/users";
 
 interface User {
     _id: string;
@@ -56,11 +60,16 @@ const UsersList = () => {
                 params.append("deleted", "true");
             }
 
-            const { data } = await axios.get(`/api/users?${params}`);
-            setUsers(data.users);
-            setPagination(data.pagination);
+            const data = await listUsersAction({
+                search,
+                page,
+                limit: 10,
+                showDeleted: deleted,
+            });
+            setUsers(data.users as any);
+            setPagination(data.pagination as any);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to fetch users";
+            const errorMessage = error?.message || "Failed to fetch users";
             toast.error(errorMessage);
         } finally {
             setIsLoading(false);
@@ -109,11 +118,11 @@ const UsersList = () => {
         }
 
         try {
-            await axios.delete(`/api/users/${userId}`);
+            await deleteUserAction(userId);
             toast.success("User deleted successfully");
             fetchUsers(currentPage, searchTerm, showDeleted);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to delete user";
+            const errorMessage = error?.message || "Failed to delete user";
             toast.error(errorMessage);
         }
     };
@@ -132,11 +141,11 @@ const UsersList = () => {
         }
 
         try {
-            await axios.put(`/api/users/${userId}/reactivate`);
+            await reactivateUserAction(userId);
             toast.success("User reactivated successfully");
             fetchUsers(currentPage, searchTerm, showDeleted);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to reactivate user";
+            const errorMessage = error?.message || "Failed to reactivate user";
             toast.error(errorMessage);
         }
     };

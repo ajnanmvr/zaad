@@ -7,9 +7,11 @@ import {
   emptyRecordsSummary,
 } from "@/utils/records.utils";
 import { sliceCursorData } from "@/utils/pagination.utils";
+import connect from "@/db/mongo";
 
 class RecordsServiceClass {
   async getCompanyBalance(companyId: string) {
+    await connect();
     const records: TRecordData[] =
       await RecordsRepository.findPublishedByCompany(companyId);
     const balance = calculateBalance(records as any[]);
@@ -17,6 +19,7 @@ class RecordsServiceClass {
   }
 
   async getEmployeeBalance(employeeId: string) {
+    await connect();
     const records: any[] = await RecordsRepository.findWithFiltersPaginated(
       { published: true, employee: employeeId },
       0,
@@ -27,6 +30,7 @@ class RecordsServiceClass {
   }
 
   async createRecord(data: any) {
+    await connect();
     return RecordsRepository.create(data);
   }
 
@@ -36,6 +40,7 @@ class RecordsServiceClass {
     pageNumber: number,
     pageSize = 25
   ) {
+    await connect();
     const filters: any = { published: true };
     if (method) filters.method = method;
     if (type) filters.type = type;
@@ -53,18 +58,22 @@ class RecordsServiceClass {
   }
 
   async getRecord(id: string) {
+    await connect();
     return RecordsRepository.findById(id);
   }
 
   async updateRecord(id: string, data: any) {
+    await connect();
     return RecordsRepository.updateById(id, { ...data, edited: true });
   }
 
   async deleteRecord(id: string) {
+    await connect();
     return RecordsRepository.softDelete(id);
   }
 
   async getCompanyRecordsSummary(companyId: string) {
+    await connect();
     const records = await RecordsRepository.findWithFiltersPaginated(
       { published: true, company: { _id: companyId } },
       0,
@@ -90,6 +99,7 @@ class RecordsServiceClass {
   }
 
   async getEmployeeRecordsSummary(employeeId: string) {
+    await connect();
     const records = await RecordsRepository.findWithFiltersPaginated(
       { published: true, employee: { _id: employeeId } },
       0,
@@ -150,6 +160,7 @@ class RecordsServiceClass {
   }
 
   async createInstantProfit(reqBody: any) {
+    await connect();
     await RecordsRepository.create(reqBody);
     let { amount, number, type, method, ...rest } = reqBody;
     const serviceFee = amount;
@@ -168,6 +179,7 @@ class RecordsServiceClass {
   }
 
   async getPrevSuffixNumber() {
+    await connect();
     const last = await RecordsRepository.findLastSuffixAndNumber();
     return { suffix: (last as any)?.suffix, number: (last as any)?.number || 0 };
   }
@@ -178,6 +190,7 @@ class RecordsServiceClass {
     to: string,
     from: string
   ) {
+    await connect();
     const last = await RecordsRepository.findLastSuffixAndNumber();
     const newSuffix = (last as any)?.suffix || "";
     const newNumber = (last as any)?.number || 0;

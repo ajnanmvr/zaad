@@ -1,5 +1,4 @@
 "use client"
-import axios from "axios";
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
@@ -7,8 +6,8 @@ import { TCompanyList } from "@/types/types";
 import SkeletonList from "../common/SkeletonList";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchCompanies } from "@/libs/queries";
-import { is } from "date-fns/locale";
 import toast from "react-hot-toast";
+import { deleteCompanyAction } from "@/actions/company-employee";
 
 function CompanyList({ sort }: { sort?: string }) {
 
@@ -20,7 +19,7 @@ function CompanyList({ sort }: { sort?: string }) {
 
     const deleteMutation = useMutation({
         mutationFn: (id: string) => {
-            return axios.delete(`/api/company/${id}`);
+            return deleteCompanyAction(id);
         },
         onMutate: () => {
             toast.loading("Deleting company...");

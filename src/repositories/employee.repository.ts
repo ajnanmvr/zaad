@@ -8,10 +8,19 @@ export const EmployeeRepository = {
   findPublishedWithCompany() {
     return Employee.find({ published: true })
       .select("name company documents")
-      .populate("company");
+      .populate("company")
+      .lean();
   },
 
   findByIdWithCompany(id: string) {
+    return Employee.findById(id).populate("company").lean();
+  },
+
+  findByIdForUpdate(id: string) {
+    return Employee.findById(id);
+  },
+
+  findByIdWithCompanyForUpdate(id: string) {
     return Employee.findById(id).populate("company");
   },
 
@@ -26,7 +35,8 @@ export const EmployeeRepository = {
   findPublishedByCompany(companyId: string) {
     return Employee.find({ published: true, company: companyId })
       .select("name company documents")
-      .populate("company");
+      .populate("company")
+      .lean();
   },
 
   searchByName(keyword: string | null) {
@@ -34,6 +44,6 @@ export const EmployeeRepository = {
     if (keyword) {
       query.name = { $regex: keyword, $options: "i" };
     }
-    return Employee.find(query).select("name");
+    return Employee.find(query).select("name").lean();
   },
 };

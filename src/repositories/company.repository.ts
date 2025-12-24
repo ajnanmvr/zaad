@@ -6,10 +6,14 @@ export const CompanyRepository = {
   },
 
   findPublishedWithDocs() {
-    return Company.find({ published: true }).select("name documents");
+    return Company.find({ published: true }).select("name documents").lean();
   },
 
   findById(id: string) {
+    return Company.findById(id).lean();
+  },
+
+  findByIdForUpdate(id: string) {
     return Company.findById(id);
   },
 
@@ -26,6 +30,6 @@ export const CompanyRepository = {
     if (keyword) {
       query.name = { $regex: keyword, $options: "i" };
     }
-    return Company.find(query).select("name");
+    return Company.find(query).select("name").lean();
   },
 };

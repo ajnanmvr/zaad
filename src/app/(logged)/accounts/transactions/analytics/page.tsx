@@ -4,7 +4,7 @@ import ChartOne from "@/components/Charts/ChartOne";
 import ChartTwo from "@/components/Charts/ChartTwo";
 import CardDataStats from "@/components/CardDataStats";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
+import { getAccountsSummaryAction, getProfitsSummaryAction } from "@/actions/payment";
 import { useState } from "react";
 import Link from "next/link";
 import ReactToPrint from "react-to-print";
@@ -38,13 +38,13 @@ export default function AccountsDashboard() {
 
   const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
     queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/payment/accounts' + generateQuery(filter))
+      const data = await getAccountsSummaryAction(new URLSearchParams(generateQuery(filter).slice(1)));
       return data
     }
   })
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
     queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/payment/profits' + generateQuery(filter))
+      const data = await getProfitsSummaryAction(new URLSearchParams(generateQuery(filter).slice(1)));
       return data
     }
   })

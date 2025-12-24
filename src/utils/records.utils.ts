@@ -1,4 +1,5 @@
 import { toZonedTime, format } from "date-fns-tz";
+import { serializeObjectIds } from "@/utils/serialization";
 
 const DUBAI_TIME_ZONE = "Asia/Dubai";
 
@@ -19,7 +20,7 @@ export const transformRecord = (record: any): any => {
   const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
 
   return {
-    id: record._id,
+    id: record._id?.toString() || record._id,
     type: record.type,
     client,
     method: record.method,
@@ -44,10 +45,10 @@ export const transformRecord = (record: any): any => {
 export const extractClient = (record: any): Client | null => {
   const { company, employee, self } = record;
   if (company) {
-    return { name: company.name, id: company._id, type: "company" };
+    return { name: company.name, id: company._id?.toString() || company._id, type: "company" };
   }
   if (employee) {
-    return { name: employee.name, id: employee._id, type: "employee" };
+    return { name: employee.name, id: employee._id?.toString() || employee._id, type: "employee" };
   }
   if (self) {
     return { name: self, type: "self" };

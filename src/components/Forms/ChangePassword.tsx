@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
+import { changePasswordAction } from "@/actions/users";
 
 const ChangePassword = () => {
     const [formData, setFormData] = useState({
@@ -63,7 +63,7 @@ const ChangePassword = () => {
         setIsLoading(true);
 
         try {
-            await axios.put("/api/users/change-password", {
+            await changePasswordAction({
                 currentPassword: formData.currentPassword,
                 newPassword: formData.newPassword
             });
@@ -78,7 +78,7 @@ const ChangePassword = () => {
             });
 
         } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to change password";
+            const errorMessage = error?.message || "Failed to change password";
             toast.error(errorMessage);
         } finally {
             setIsLoading(false);

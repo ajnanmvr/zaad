@@ -1,11 +1,11 @@
-import axios from "axios";
+import { listEmployeesAction, listCompaniesAction } from "@/actions/company-employee";
 
 export const fetchEmployees = async () => {
-  const { data } = await axios.get("/api/employee");
-  return data.data;
+  const result = await listEmployeesAction();
+  return result.data;
 };
 
 export const fetchCompanies = async () => {
-  const { data } = await axios.get("/api/company");
-  return data.data;
+  const result = await listCompaniesAction();
+  return result.data;
 };

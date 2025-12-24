@@ -21,8 +21,7 @@ const InvoiceList = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', pageNumber, searchQuery], queryFn: async () => {
-      const { data } = await axios.get(`/api/invoice?page=${pageNumber}&search=${searchQuery}`)
-      return data
+      return await listInvoicesAction(searchQuery, pageNumber);
     }, placeholderData: keepPreviousData,
 
   })
@@ -46,7 +45,7 @@ const InvoiceList = () => {
 
 
   const { mutate } = useMutation({
-    mutationFn: async (id: string | null) => await axios.delete(`/api/invoice/${id}`),
+    mutationFn: async (id: string | null) => await deleteInvoiceAction(id!),
     onMutate: () => toast.loading("Deleting invoice..."),
     onSuccess: () => {
       toast.dismiss()

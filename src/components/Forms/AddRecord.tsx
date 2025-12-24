@@ -1,5 +1,4 @@
 "use client";
-import axios from "axios";
 import clsx from "clsx";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
@@ -10,6 +9,8 @@ import { capitalize, debounce } from "lodash";
 import { useUserContext } from "@/contexts/UserContext";
 import { TRecordData } from "@/types/records";
 import { useParams } from "next/navigation";
+import { searchCompaniesAction, searchEmployeesAction, getCompanyBalanceAction, getEmployeeBalanceAction } from "@/actions/company-employee";
+import { getPrevSuffixNumberAction, getRecordAction, createRecordAction, updateRecordAction, createInstantProfitAction } from "@/actions/payment";
 
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
@@ -65,10 +66,10 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     try {
       if (inputValue.length > 0) {
         setClientType(inputName);
-        const response = await axios.get<TBaseData[]>(
-          `/api/${inputName}/search/${inputValue}`
-        );
-        setSearchSuggestions(response.data);
+        const response = inputName === "company" 
+          ? await searchCompaniesAction(inputValue)
+          : await searchEmployeesAction(inputValue);
+        setSearchSuggestions(response);
       }
     } catch (error) {
       console.error("Error fetching company suggestions:", error);
@@ -87,10 +88,10 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   const fetchBalance = async (Id?: string) => {
     try {
-      const response = await axios.get<{ balance: number }>(
-        `/api/${clientType}/balance/${Id}`
-      );
-      setBalance(response.data.balance);
+      const response = clientType === "company"
+        ? await getCompanyBalanceAction(Id)
+        : await getEmployeeBalanceAction(Id);
+      setBalance(response.balance);
     } catch (error) {
       console.error("Error fetching balance:", error);
     }
@@ -98,21 +99,19 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const fetchPrev = async (Id?: string) => {
     try {
       if (!edit) {
-        const { data } = await axios.get<{ number: number; suffix: string }>(
-          "/api/payment/prev"
-        );
+        const data = await getPrevSuffixNumberAction();
         setRecordData({
           ...recordData,
           number: +data?.number + 1,
           suffix: data?.suffix,
         });
       } else {
-        const { data } = await axios.get(`/api/payment/${id}`);
-        setRecordData(data);
-        setSelectedMethod(data.method);
-        setSelectedStatus(data.status)
-        if (data.type === "expense") {
-          setClientFee(data.amount + data.serviceFee)
+        const data = await getRecordAction(id as string);
+        setRecordData(data as any);
+        setSelectedMethod((data as any).method);
+        setSelectedStatus((data as any).status)
+        if ((data as any).type === "expense") {
+          setClientFee((data as any).amount + (data as any).serviceFee)
         }
       }
     } catch (error) {
@@ -165,12 +164,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     try {
       if (!edit) {
         if (recordData?.status === "Profit") {
-          await axios.post("/api/payment/profit", recordData);
+          await createInstantProfitAction(recordData);
         } else {
-          await axios.post("/api/payment", recordData);
+          await createRecordAction(recordData);
         }
       } else {
-        await axios.put(`/api/payment/${id}`, recordData);
+        await updateRecordAction(id as string, recordData);
       }
       router.push("/accounts/transactions");
     } catch (error) {

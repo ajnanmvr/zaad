@@ -19,8 +19,8 @@ const Header = (props: {
     if (searchQuery.trim() !== '') {
       try {
         console.log(encodeURIComponent(searchQuery));
-        const response = await axios.get(`/api/search?search=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(response.data); // Assuming API returns an array of search results
+        const response = await searchAction(searchQuery);
+        setSearchResults(response); // Assuming API returns an array of search results
         setIsSearchResults(true)
       } catch (error) {
         console.error('Error fetching search results:', error);

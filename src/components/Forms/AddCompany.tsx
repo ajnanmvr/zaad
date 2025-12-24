@@ -1,12 +1,12 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { createCompanyAction, getCompanyAction, updateCompanyAction } from "@/actions/company-employee";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
@@ -20,8 +20,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const { data } = useQuery<any>({
         queryKey: [`${edit}`], queryFn: async () => {
-            const { data } = await axios.get(`/api/company/${edit}`);
-            return (data.data);
+            return await getCompanyAction(edit as string);
         },
         enabled: edit !== ""
     });
@@ -46,9 +45,9 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         {
             mutationFn: async (companyData) => {
                 if (isEditMode) {
-                    await axios.put(`/api/company/${edit}`, companyData);
+                    await updateCompanyAction(edit as string, companyData);
                 } else {
-                    await axios.post("/api/company", companyData);
+                    await createCompanyAction(companyData);
                 }
             },
             onMutate: () => {
