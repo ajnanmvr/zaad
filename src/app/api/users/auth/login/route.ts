@@ -1,47 +1,32 @@
 import connect from "@/db/mongo";
-import User from "@/models/users";
-import bcryptjs from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { NextRequest, NextResponse } from "next/server";
+import { AuthService } from "@/services/auth.service";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    const reqBody = await request.json();
-    const { username, password } = reqBody;
-    const existingUser = await User.findOne({ username, published: true });
-    if (!existingUser) {
-      return Response.json({ error: "user isn't available" }, { status: 400 });
-    }
-    const validPassword = await bcryptjs.compare(
-      password,
-      existingUser.password
-    );
-    if (!validPassword) {
-      return Response.json({ message: "Invalid Password" }, { status: 400 });
-    }
-    const tokenData = {
-      id: existingUser._id,
-      username: existingUser.username,
-      role: existingUser.role,
-    };
-    const token = await jwt.sign(tokenData, process.env.JWT_SECRET!, {
-      expiresIn: "30d",
-    });
-    const response = NextResponse.json({
-      message: "Login successfull",
-      success: true,
-    });
-    response.cookies.set("auth", token, {
-      httpOnly: true,
-      secure: true,
-    });
-    if (existingUser.role === "partner") {
-      response.cookies.set("partner", "true", {
+    const { username, password } = await request.json();
+    try {
+      const { token, isPartner } = await AuthService.login(username, password);
+      const response = NextResponse.json({
+        message: "Login successfull",
+        success: true,
+      });
+      response.cookies.set("auth", token, {
         httpOnly: true,
         secure: true,
       });
+      if (isPartner) {
+        response.cookies.set("partner", "true", {
+          httpOnly: true,
+          secure: true,
+        });
+      }
+      return response;
+    } catch (err: any) {
+      const msg = err?.message || "Login failed";
+      const status = msg.includes("Invalid") || msg.includes("available") ? 400 : 500;
+      return Response.json({ message: msg }, { status });
     }
-    return response;
   } catch (error) {
     return Response.json(
       { message: "error while logging in", error },

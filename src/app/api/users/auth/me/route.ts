@@ -1,14 +1,10 @@
-import getUserFromCookie from "@/helpers/getUserFromCookie";
 import connect from "@/db/mongo";
-import User from "@/models/users";
 import { NextRequest } from "next/server";
+import { AuthService } from "@/services/auth.service";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    const userId = await getUserFromCookie(request);
-    const user = await User.findOne({ _id: userId, published: true }).select(
-      "username role"
-    );
+    const user = await AuthService.getCurrentUser(request);
     if (!user) {
       return Response.json({ message: "No user found" }, { status: 404 });
     }
