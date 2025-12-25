@@ -38,20 +38,18 @@ export default function AccountsDashboard() {
 
   const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
     queryKey: ["accounts", filter.m, filter.y], queryFn: async () => {
-      const params = {
-        m: filter.m || undefined,
-        y: filter.y || undefined,
-      };
+      const params: Record<string, any> = {};
+      if (filter.m) params.m = filter.m;
+      if (filter.y) params.y = filter.y;
       const data = await getAccountsSummaryAction(params);
       return data;
     }
   })
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
     queryKey: ["profits", filter.m, filter.y], queryFn: async () => {
-      const params = {
-        m: filter.m || undefined,
-        y: filter.y || undefined,
-      };
+      const params: Record<string, any> = {};
+      if (filter.m) params.m = filter.m;
+      if (filter.y) params.y = filter.y;
       const data = await getProfitsSummaryAction(params);
       return data;
     }

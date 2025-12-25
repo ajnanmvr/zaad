@@ -7,17 +7,19 @@ export function normalizeSearchParams(searchParams: unknown): URLSearchParams {
   // Handle string form like "m=5&y=2025"
   if (typeof searchParams === "string") return new URLSearchParams(searchParams);
 
-  // Handle URLSearchParams-like objects passed from client (has get/toString)
-  if (searchParams && typeof searchParams === "object") {
-    const maybe = searchParams as { toString?: () => string };
-    if (typeof maybe.toString === "function") {
-      const str = maybe.toString();
-      return new URLSearchParams(str);
+  // Handle plain object of key-values (must come before checking toString)
+  if (searchParams && typeof searchParams === "object" && !Array.isArray(searchParams)) {
+    // Check if it has URLSearchParams-specific methods (get, has, etc)
+    const asURLSP = searchParams as any;
+    if (typeof asURLSP.get === "function" && typeof asURLSP.has === "function") {
+      // It's already a URLSearchParams-like object
+      return asURLSP as URLSearchParams;
     }
-    // Fallback: plain object of key-values
+
+    // It's a plain object, convert to URLSearchParams
     const usp = new URLSearchParams();
     for (const [key, value] of Object.entries(searchParams as Record<string, unknown>)) {
-      if (value === undefined || value === null) continue;
+      if (value === undefined || value === null || value === "") continue;
       if (Array.isArray(value)) {
         for (const v of value) usp.append(key, String(v));
       } else {

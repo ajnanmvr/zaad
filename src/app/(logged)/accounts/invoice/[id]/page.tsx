@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
 import ReactToPrint from "react-to-print"
 import { formatAmountInWords } from "@/utils/numberToWords"
+import { getInvoiceAction } from "@/actions/invoice"
 
 function SingleInvoice() {
   const [invoice, setInvoice] = useState<TInvoiceData>()

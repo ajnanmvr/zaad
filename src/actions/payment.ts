@@ -80,14 +80,20 @@ export async function getLiabilitiesSummaryAction() {
 export async function getAccountsSummaryAction(searchParams: unknown) {
   await requireAuth();
   const params = normalizeSearchParams(searchParams);
+  console.log("[getAccountsSummaryAction] Raw input:", searchParams);
+  console.log("[getAccountsSummaryAction] Normalized params:", params.toString());
   const filter = filterData(params, true);
+  console.log("[getAccountsSummaryAction] Applied filter:", filter);
   return RecordsService.getAccountsSummary(filter, params.toString() === "");
 }
 
 export async function getProfitsSummaryAction(searchParams: unknown) {
   await requireAuth();
   const params = normalizeSearchParams(searchParams);
+  console.log("[getProfitsSummaryAction] Raw input:", searchParams);
+  console.log("[getProfitsSummaryAction] Normalized params:", params.toString());
   const filter = filterData(params, false);
+  console.log("[getProfitsSummaryAction] Applied filter:", filter);
   
   const [companies, employees, allRecords]: [
     TCompanyData[],

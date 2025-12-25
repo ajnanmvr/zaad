@@ -43,8 +43,13 @@ class InvoiceServiceClass {
     const invoice = await InvoiceRepository.findById(id);
     if (!invoice) throw new Error("Invoice not found");
 
+    const serializedItems = invoice.items?.map((item: any) => ({
+      ...item,
+      _id: item._id?.toString() || item._id,
+    })) || [];
+
     const common = {
-      items: invoice.items,
+      items: serializedItems,
       remarks: invoice.remarks,
       advance: invoice.advance,
       purpose: invoice.purpose,
