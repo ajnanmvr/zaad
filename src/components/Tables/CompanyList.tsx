@@ -1,18 +1,17 @@
 "use client"
-import Link from "next/link"
-import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useState } from "react";
-import { TCompanyList } from "@/types/types";
-import SkeletonList from "../common/SkeletonList";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchCompanies } from "@/libs/queries";
-import toast from "react-hot-toast";
 import { deleteCompanyAction } from "@/actions/company-employee";
+import { fetchCompanies } from "@/libs/queries";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import SkeletonList from "../common/SkeletonList";
+import ConfirmationModal from "../Modals/ConfirmationModal";
 
 function CompanyList({ sort }: { sort?: string }) {
 
     const queryClient = useQueryClient();
-    const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery<TCompanyList[] | null>({ queryKey: ["companies"], queryFn: fetchCompanies });
+    const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery({ queryKey: ["companies"], queryFn: fetchCompanies });
 
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
