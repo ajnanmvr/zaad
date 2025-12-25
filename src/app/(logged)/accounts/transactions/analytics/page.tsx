@@ -37,7 +37,7 @@ export default function AccountsDashboard() {
   };
 
   const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
-    queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
+    queryKey: ["accounts", filter.m, filter.y], queryFn: async () => {
       const params = {
         m: filter.m || undefined,
         y: filter.y || undefined,
@@ -47,7 +47,7 @@ export default function AccountsDashboard() {
     }
   })
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
-    queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
+    queryKey: ["profits", filter.m, filter.y], queryFn: async () => {
       const params = {
         m: filter.m || undefined,
         y: filter.y || undefined,

@@ -134,6 +134,12 @@ export async function getProfitsSummaryAction(searchParams: unknown) {
     under0balanceCompanies,
     over0balanceEmployees,
     under0balanceEmployees,
+    totalProfitAllCompanies,
+    totalToGiveCompanies,
+    totalToGetCompanies,
+    totalProfitAllEmployees,
+    totalToGiveEmployees,
+    totalToGetEmployees,
   };
 }
 

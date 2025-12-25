@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { listInvoicesAction, deleteInvoiceAction } from "@/actions/invoice";
 
 const InvoiceList = () => {
   const queryClient = useQueryClient()
@@ -28,12 +29,12 @@ const InvoiceList = () => {
 
   useEffect(() => {
     if (data) {
-      setInvoices(data.invoices)
+      setInvoices(data.invoices as TInvoiceList[])
       setHasMore(data.hasMore)
     }
   }, [data])
 
-
+  
   const handlePageChange = (page: number) => {
     setPageNumber(page);
   };
@@ -118,7 +119,7 @@ const InvoiceList = () => {
         <div className="flex flex-col capitalize">
           <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
 
-            <div className="p-2.5 xl:p-5</Link>">
+            <div className="p-2.5 xl:p-5">
               <h5 className="text-sm font-medium uppercase xsm:text-base">
                 Invoice No
               </h5>
