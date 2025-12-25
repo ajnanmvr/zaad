@@ -38,7 +38,7 @@ export default function processEmployees(
 
     if (balance > 0) {
       over0balanceEmployees.push({
-        id: employee._id,
+        id: employeeId,
         name: employee.name,
         balance,
         serviceFee,
@@ -47,7 +47,7 @@ export default function processEmployees(
       totalToGiveEmployees += balance;
     } else if (balance < 0) {
       under0balanceEmployees.push({
-        id: employee._id,
+        id: employeeId,
         name: employee.name,
         balance,
         serviceFee,

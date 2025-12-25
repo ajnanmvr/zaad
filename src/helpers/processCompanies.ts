@@ -41,7 +41,7 @@ export default function processCompanies(
         }
       });
       over0balanceCompanies.push({
-        id: company._id,
+        id: companyId,
         name: company.name,
         balance,
         serviceFee,
@@ -50,7 +50,7 @@ export default function processCompanies(
       totalToGiveCompanies += balance;
     } else if (balance < 0) {
       under0balanceCompanies.push({
-        id: company._id,
+        id: companyId,
         name: company.name,
         balance,
       });

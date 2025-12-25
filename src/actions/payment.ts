@@ -4,7 +4,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { RecordsService } from "@/services/records.service";
-import { filterData } from "@/utils/filterData";
+import { filterData, normalizeSearchParams } from "@/utils/filterData";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Records from "@/models/records";
@@ -78,15 +78,17 @@ export async function getLiabilitiesSummaryAction() {
   return RecordsService.getLiabilitiesSummary();
 }
 
-export async function getAccountsSummaryAction(searchParams: URLSearchParams) {
+export async function getAccountsSummaryAction(searchParams: unknown) {
   await requireAuth();
-  const filter = filterData(searchParams, true);
-  return RecordsService.getAccountsSummary(filter, searchParams.toString() === "");
+  const params = normalizeSearchParams(searchParams);
+  const filter = filterData(params, true);
+  return RecordsService.getAccountsSummary(filter, params.toString() === "");
 }
 
-export async function getProfitsSummaryAction(searchParams: URLSearchParams) {
+export async function getProfitsSummaryAction(searchParams: unknown) {
   await requireAuth();
-  const filter = filterData(searchParams, false);
+  const params = normalizeSearchParams(searchParams);
+  const filter = filterData(params, false);
   
   const [companies, employees, allRecords]: [
     TCompanyData[],

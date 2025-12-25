@@ -38,14 +38,22 @@ export default function AccountsDashboard() {
 
   const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
     queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
-      const data = await getAccountsSummaryAction(new URLSearchParams(generateQuery(filter).slice(1)));
-      return data
+      const params = {
+        m: filter.m || undefined,
+        y: filter.y || undefined,
+      };
+      const data = await getAccountsSummaryAction(params);
+      return data;
     }
   })
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
     queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
-      const data = await getProfitsSummaryAction(new URLSearchParams(generateQuery(filter).slice(1)));
-      return data
+      const params = {
+        m: filter.m || undefined,
+        y: filter.y || undefined,
+      };
+      const data = await getProfitsSummaryAction(params);
+      return data;
     }
   })
 

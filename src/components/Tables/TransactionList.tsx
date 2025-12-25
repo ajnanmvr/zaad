@@ -1,6 +1,12 @@
 "use client";
 import { TRecordList } from "@/types/records";
-import axios from "axios";
+import {
+  listRecordsAction,
+  getSelfRecordsSummaryAction,
+  getCompanyRecordsSummaryAction,
+  getEmployeeRecordsSummaryAction,
+  deleteRecordAction,
+} from "@/actions/payment";
 import clsx from "clsx";
 import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
@@ -55,6 +61,8 @@ const TransactionList = ({
 
 
   const query = generateQuery(filter)
+  const methodQuery = filter.m || null;
+  const typeQuery = filter.t || null;
 
   const { data: paymentData, isLoading } = useQuery({
     queryKey: ["payment", pageNumber, type, id, filter],
@@ -75,7 +83,7 @@ const TransactionList = ({
 
   })
 
-  console.log(paymentData);
+  // console.log(paymentData);
 
   useEffect(() => {
     if (paymentData) {

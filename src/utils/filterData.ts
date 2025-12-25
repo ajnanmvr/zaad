@@ -1,12 +1,42 @@
-import { URLSearchParams } from "url";
+export function normalizeSearchParams(searchParams: unknown): URLSearchParams {
+  // If it's already a URLSearchParams (browser or Node global), return as-is
+  if (typeof globalThis.URLSearchParams !== "undefined" && searchParams instanceof globalThis.URLSearchParams) {
+    return searchParams as URLSearchParams;
+  }
 
-export function filterData(searchParams: URLSearchParams, considerStart: boolean): any {
+  // Handle string form like "m=5&y=2025"
+  if (typeof searchParams === "string") return new URLSearchParams(searchParams);
+
+  // Handle URLSearchParams-like objects passed from client (has get/toString)
+  if (searchParams && typeof searchParams === "object") {
+    const maybe = searchParams as { toString?: () => string };
+    if (typeof maybe.toString === "function") {
+      const str = maybe.toString();
+      return new URLSearchParams(str);
+    }
+    // Fallback: plain object of key-values
+    const usp = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams as Record<string, unknown>)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        for (const v of value) usp.append(key, String(v));
+      } else {
+        usp.set(key, String(value));
+      }
+    }
+    return usp;
+  }
+  return new URLSearchParams();
+}
+
+export function filterData(searchParams: unknown, considerStart: boolean): any {
+  const params = normalizeSearchParams(searchParams);
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1; // Months are zero-based, so add 1
   const currentYear = currentDate.getFullYear();
 
-  const monthParam = searchParams.get("m");
-  const yearParam = searchParams.get("y");
+  const monthParam = params.get("m");
+  const yearParam = params.get("y");
 
   let filter: any = {
     published: true,
