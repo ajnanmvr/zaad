@@ -4,6 +4,7 @@ import "@/css/style.css";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
 import { Toaster } from "react-hot-toast";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ToastProvider } from "@/components/ui/Toast";
 
 
 export default function RootLayout({
@@ -19,9 +20,11 @@ export default function RootLayout({
       <body>
         <div className="dark:bg-boxdark-2 dark:text-bodydark">
           <ReactQueryProvider>
-            {children}
-            <ReactQueryDevtools initialIsOpen={false} />
-            <Toaster />
+            <ToastProvider>
+              {children}
+              <ReactQueryDevtools initialIsOpen={false} />
+              <Toaster />
+            </ToastProvider>
           </ReactQueryProvider>
         </div>
       </body>

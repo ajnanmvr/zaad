@@ -1,6 +1,7 @@
 export type TUser = {
-    username: string;
     _id: string;
-    fullname: string;
-    role: string
-}
+    username: string;
+    fullname?: string;
+    email?: string;
+    role: string;
+};

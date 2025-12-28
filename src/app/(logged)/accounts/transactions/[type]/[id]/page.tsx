@@ -1,13 +1,15 @@
-"use client"
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
+"use client";
+
 import TransactionList from "@/components/Tables/TransactionList";
 import { useParams } from "next/navigation";
+
 const TablesPage = () => {
-  const { type, id } = useParams()
+  const { type, id } = useParams();
+
   return (
-    <DefaultLayout>
+    <div className="p-4 md:p-6">
       <TransactionList type={type} id={id} />
-    </DefaultLayout>
+    </div>
   );
 };
 

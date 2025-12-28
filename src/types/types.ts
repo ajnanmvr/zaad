@@ -1,8 +1,10 @@
 export type TUser = {
-  id: string;
+  _id?: string;
+  id?: string;
   username: string;
   password?: string;
   fullname?: string;
+  email?: string;
   role?: "partner" | "employee";
 };
 export type TPasswordData = {
@@ -41,10 +43,13 @@ export type TDocuments = {
 
 export type TCompanyList = {
   id?: string;
+  _id?: string;
   name: string;
   expiryDate: string | null;
   docs: number;
-  status?: "expired" | "renewal" | "valid" | "unknown";
+  status?: string;
+  balance?: string;
+  tradeLicense?: string;
 };
 
 export type TBaseData = {

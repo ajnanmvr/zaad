@@ -1,33 +1,36 @@
-"use client"
-import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import { useEffect, useState } from "react";
-import { TEmployeeList } from "@/types/types";
-import EmployeeList from "@/components/Tables/EmployeeList";
-import { useParams } from "next/navigation";
+"use client";
+
 import { listEmployeesByCompanyAction } from "@/actions/company-employee";
+import EmployeeList from "@/components/Tables/EmployeeList";
+import { TEmployeeList } from "@/types/types";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+
 const TablesPage = () => {
-  const params = useParams()
-  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
-  const fetchData = async () => {
-    try {
-      const result = await listEmployeesByCompanyAction(params.company as string)
-      setEmployees(result.data)
-    } catch (error) {
-      console.log(error);
-    }
-  }
+  const params = useParams();
+  const [employees, setEmployees] = useState<TEmployeeList[] | null>(null);
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    const fetchData = async () => {
+      try {
+        const result = await listEmployeesByCompanyAction(params.company as string);
+        setEmployees(result.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchData();
+  }, [params.company]);
+
   return (
-    <DefaultLayout>
-      <Breadcrumb pageName={"Company Employees"} />
-      <div className="flex flex-col gap-10">
-        <EmployeeList employees={employees} />
+    <div className="space-y-6 p-4 md:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-black dark:text-white">Company Employees</h1>
+        <p className="text-gray-600 dark:text-gray-400">Employees associated with this company.</p>
       </div>
-    </DefaultLayout>
+      <EmployeeList employees={employees} />
+    </div>
   );
 };
 

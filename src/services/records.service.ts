@@ -13,7 +13,7 @@ class RecordsServiceClass {
   async getCompanyBalance(companyId: string) {
     await connect();
     const records: TRecordData[] =
-      await RecordsRepository.findPublishedByCompany(companyId);
+      (await RecordsRepository.findPublishedByCompany(companyId)) as any[];
     const balance = calculateBalance(records as any[]);
     return { balance };
   }

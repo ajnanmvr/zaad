@@ -13,7 +13,8 @@ const useColorMode = () => {
       : bodyClass.remove(className);
   }, [colorMode]);
 
-  return [colorMode, setColorMode];
+  // Cast the tuple explicitly so consumers get the right callable type for the setter
+  return [colorMode as string, setColorMode as typeof setColorMode] as const;
 };
 
 export default useColorMode;

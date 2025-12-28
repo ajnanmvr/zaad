@@ -1,16 +1,7 @@
-import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import CompanyList from "@/components/Tables/CompanyList";
-const TablesPage = () => {
+import ModernCompanyList from "@/components/Tables/ModernCompanyList";
 
-  return (
-    <DefaultLayout>
-      <Breadcrumb pageName="Companies" />
-      <div className="flex flex-col gap-10">
-        <CompanyList />
-      </div>
-    </DefaultLayout>
-  );
+const TablesPage = () => {
+  return <ModernCompanyList />;
 };
 
 export default TablesPage;

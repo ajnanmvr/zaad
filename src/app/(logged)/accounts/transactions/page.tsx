@@ -1,12 +1,7 @@
-import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import TransactionList from "@/components/Tables/TransactionList";
+import ModernTransactionList from "@/components/Tables/ModernTransactionList";
+
 const TablesPage = () => {
-  return (
-    <DefaultLayout>
-      <TransactionList />
-    </DefaultLayout>
-  );
+  return <ModernTransactionList />;
 };
 
 export default TablesPage;

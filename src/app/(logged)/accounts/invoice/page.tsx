@@ -1,12 +1,5 @@
-import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import InvoiceList from "@/components/Tables/InvoiceList";
+import ModernInvoiceList from "@/components/Tables/ModernInvoiceList";
 
 export default function Invoice() {
-  return (
-    <DefaultLayout>
-      <Breadcrumb pageName="Invoices" />
-      <InvoiceList />
-    </DefaultLayout>
-  )
+  return <ModernInvoiceList />;
 }

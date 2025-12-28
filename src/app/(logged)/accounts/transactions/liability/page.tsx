@@ -1,5 +1,4 @@
-"use client"
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
+﻿"use client"
 import { useQuery } from "@tanstack/react-query";
 import { getLiabilitiesSummaryAction } from "@/actions/payment";
 import clsx from "clsx";
@@ -30,9 +29,7 @@ const TransactionList = () => {
   const records: TransformedData[] = data?.records ?? [];
 
 
-  return (
-    <DefaultLayout>
-      {isLoading ?
+  return ({isLoading ?
         <div className="flex justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
         </div>
@@ -71,9 +68,7 @@ const TransactionList = () => {
               </Link>
             ))}
           </div>
-        </div>}
-    </DefaultLayout>
-  );
+        </div>});
 };
 
 export default TransactionList;

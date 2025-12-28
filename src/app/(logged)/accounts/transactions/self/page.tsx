@@ -1,11 +1,6 @@
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import TransactionList from "@/components/Tables/TransactionList";
+﻿import TransactionList from "@/components/Tables/TransactionList";
 const TablesPage = () => {
-  return (
-    <DefaultLayout>
-      <TransactionList type="self" />
-    </DefaultLayout>
-  );
+  return (<TransactionList type="self" />);
 };
 
 export default TablesPage;

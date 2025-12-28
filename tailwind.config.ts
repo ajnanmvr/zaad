@@ -30,8 +30,8 @@ const config: Config = {
         bodydark: "#AEB7C0",
         bodydark1: "#DEE4EE",
         bodydark2: "#8A99AF",
-        primary: "#6A8E4E",
-        secondary: "#80CAEE",
+        primary: "#10b981", // Modern emerald green
+        secondary: "#6ee7b7", // Light emerald
         stroke: "#E2E8F0",
         gray: "#EFF4FB",
         graydark: "#333A48",
@@ -39,7 +39,7 @@ const config: Config = {
         "gray-3": "#FAFAFA",
         whiten: "#F1F5F9",
         whiter: "#F5F7FD",
-        boxdark: "#161e28",
+        boxdark: "#0f1419",
         "boxdark-2": "#1A222C",
         strokedark: "#1f2734",
         "form-strokedark": "#3d4d60",
@@ -48,15 +48,29 @@ const config: Config = {
         "meta-2": "#EFF2F7",
         "meta-3": "#10B981",
         "meta-4": "#313D4A",
-        "meta-5": "#259AE6",
+        "meta-5": "#06b6d4", // cyan
         "meta-6": "#FFBA00",
         "meta-7": "#FF6766",
         "meta-8": "#F0950C",
         "meta-9": "#E5E7EB",
         "meta-10": "#0FADCF",
-        success: "#219653",
-        danger: "#D34053",
-        warning: "#FFA70B",
+        success: "#10b981",
+        danger: "#ef4444",
+        warning: "#f59e0b",
+        info: "#3b82f6",
+        // Modern emerald palette
+        emerald: {
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          300: '#6ee7b7',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
+        },
       },
       fontSize: {
         "title-xxl": ["44px", "55px"],
@@ -266,6 +280,22 @@ const config: Config = {
         5: "0px 1px 5px rgba(0, 0, 0, 0.2)",
       },
       keyframes: {
+        "slide-in": {
+          "0%": { transform: "translateY(-10px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
         linspin: {
           "100%": { transform: "rotate(360deg)" },
         },
@@ -311,6 +341,10 @@ const config: Config = {
         },
       },
       animation: {
+        "slide-in": "slide-in 0.2s ease-out",
+        "fade-in": "fade-in 0.3s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
+        "slide-up": "slide-up 0.3s ease-out",
         linspin: "linspin 1568.2353ms linear infinite",
         easespin: "easespin 5332ms cubic-bezier(0.4, 0, 0.2, 1) infinite both",
         "left-spin":
