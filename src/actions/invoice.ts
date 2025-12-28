@@ -4,6 +4,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { InvoiceService } from "@/services/invoice.service";
+import { getSecureUser } from "@/helpers/getSecureUser";
 import { requireAuth } from "@/actions/_auth";
 
 const JWT_SECRET = process.env.JWT_SECRET; // kept for potential cookie scenarios
@@ -13,8 +14,13 @@ const JWT_SECRET = process.env.JWT_SECRET; // kept for potential cookie scenario
 // ============================================
 
 export async function createInvoiceAction(payload: any) {
-  await requireAuth();
-  return InvoiceService.createInvoice(payload);
+  const user = await getSecureUser();
+  // Remove any frontend-provided user data and use server-side authenticated user
+  const { createdBy: _ignored, ...safePayload } = payload;
+  return InvoiceService.createInvoice({
+    ...safePayload,
+    createdBy: user.id,
+  });
 }
 
 export async function listInvoicesAction(search: string | null, page: number) {
@@ -28,8 +34,13 @@ export async function getInvoiceAction(id: string, editMode: boolean = false) {
 }
 
 export async function updateInvoiceAction(id: string, payload: any) {
-  await requireAuth();
-  await InvoiceService.updateInvoice(id, payload);
+  const user = await getSecureUser();
+  // Remove any frontend-provided user data and use server-side authenticated user
+  const { editedBy: _ignored, ...safePayload } = payload;
+  await InvoiceService.updateInvoice(id, {
+    ...safePayload,
+    editedBy: user.id,
+  });
   return { success: true };
 }
 

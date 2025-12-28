@@ -9,14 +9,14 @@ const AddUserPage = () => {
     const router = useRouter();
 
     useEffect(() => {
-        // Redirect if user is not a partner
-        if (user && user.role !== "partner") {
+        // Redirect if user is not a partner or admin
+        if (user && user.role !== "partner" && user.role !== "admin") {
             router.push("/");
         }
     }, [user, router]);
 
-    // Show loading or redirect for non-partners
-    if (!user || user.role !== "partner") {
+    // Show loading or redirect for non-partners/non-admins
+    if (!user || (user.role !== "partner" && user.role !== "admin")) {
         return (<div className="flex justify-center items-center min-h-64">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
                 </div>);

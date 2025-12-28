@@ -52,7 +52,7 @@ export async function loginAction(payload: {
 }) {
   await connect();
   const { username, password } = payload;
-  const { token, isPartner } = await AuthService.login(username, password);
+  const { token, role, isPartner } = await AuthService.login(username, password);
 
   const cookieStore = cookies();
   const maxAge = 60 * 60 * 24 * 30; // 30 days
@@ -76,13 +76,22 @@ export async function loginAction(payload: {
     cookieStore.delete("partner");
   }
 
-  return { success: true };
+  return { success: true, role, isPartner };
 }
 
 export async function logoutAction() {
   const cookieStore = cookies();
-  cookieStore.delete("auth");
-  cookieStore.delete("partner");
+  // Explicitly clear cookies with the same attributes used on set
+  const clearOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0,
+  };
+
+  cookieStore.set("auth", "", clearOptions);
+  cookieStore.set("partner", "", clearOptions);
   return { success: true };
 }
 

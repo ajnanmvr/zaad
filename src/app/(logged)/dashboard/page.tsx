@@ -22,7 +22,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 
-const baseData = { y: "", m: "" };
+const getCurrentMonthData = () => {
+  const now = new Date();
+  return {
+    m: "current",
+    y: now.getFullYear().toString(),
+  };
+};
+
+const baseData = getCurrentMonthData();
 
 export default function ModernDashboard() {
   const [isFilterOpen, setFilterOpen] = useState(false);
@@ -37,6 +45,8 @@ export default function ModernDashboard() {
       if (filter.y) params.y = filter.y;
       return await getAccountsSummaryAction(params);
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
@@ -47,6 +57,8 @@ export default function ModernDashboard() {
       if (filter.y) params.y = filter.y;
       return await getProfitsSummaryAction(params);
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   const isLoading = accountsLoading || profitsLoading;
@@ -69,8 +81,21 @@ export default function ModernDashboard() {
   };
 
   const getFilterLabel = () => {
-    if (filter.m && filter.y) return `${filter.m} / ${filter.y}`;
-    if (filter.m) return filter.m;
+    if (filter.m === "current") {
+      const now = new Date();
+      const monthName = now.toLocaleString('default', { month: 'long' });
+      return monthName;
+    }
+    if (filter.m && filter.y) {
+      const monthNum = parseInt(filter.m);
+      const monthName = new Date(parseInt(filter.y), monthNum - 1).toLocaleString('default', { month: 'long' });
+      return `${monthName} / ${filter.y}`;
+    }
+    if (filter.m) {
+      const monthNum = parseInt(filter.m);
+      const monthName = new Date(new Date().getFullYear(), monthNum - 1).toLocaleString('default', { month: 'long' });
+      return monthName;
+    }
     if (filter.y) return filter.y;
     return "All Time";
   };
@@ -213,19 +238,26 @@ export default function ModernDashboard() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {profitsData.over0balanceCompanies.slice(0, 5).map((company) => (
-                  <Link
+                  <div
                     key={company.id}
-                    href={`/company/${company.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <span className="font-medium text-sm capitalize group-hover:text-emerald-600 transition-colors">
+                    <span className="font-medium text-sm capitalize">
                       {company.name}
                     </span>
                     <span className="text-sm font-semibold text-red">
                       {company.balance.toFixed(2)} AED
                     </span>
-                  </Link>
+                  </div>
                 ))}
+                {profitsData.over0balanceCompanies.length > 5 && (
+                  <Link
+                    href={`/dashboard/liabilities?type=company-debit`}
+                    className="mt-4 w-full py-2 px-4 text-center text-sm font-semibold text-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    View All ({profitsData.over0balanceCompanies.length})
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}
@@ -244,19 +276,102 @@ export default function ModernDashboard() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {profitsData.under0balanceCompanies.slice(0, 5).map((company) => (
-                  <Link
+                  <div
                     key={company.id}
-                    href={`/company/${company.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <span className="font-medium text-sm capitalize group-hover:text-emerald-600 transition-colors">
+                    <span className="font-medium text-sm capitalize">
                       {company.name}
                     </span>
                     <span className="text-sm font-semibold text-emerald-600">
                       {(company.balance * -1).toFixed(2)} AED
                     </span>
-                  </Link>
+                  </div>
                 ))}
+                {profitsData.under0balanceCompanies.length > 5 && (
+                  <Link
+                    href={`/dashboard/liabilities?type=company-credit`}
+                    className="mt-4 w-full py-2 px-4 text-center text-sm font-semibold text-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    View All ({profitsData.under0balanceCompanies.length})
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Individual Debit */}
+          {profitsData?.over0balanceEmployees && profitsData.over0balanceEmployees.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Individual Debit List
+                  <Badge variant="danger" className="ml-auto">
+                    {profitsData.over0balanceEmployees.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {profitsData.over0balanceEmployees.slice(0, 5).map((employee) => (
+                  <div
+                    key={employee.id}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <span className="font-medium text-sm capitalize">
+                      {employee.name}
+                    </span>
+                    <span className="text-sm font-semibold text-red">
+                      {employee.balance.toFixed(2)} AED
+                    </span>
+                  </div>
+                ))}
+                {profitsData.over0balanceEmployees.length > 5 && (
+                  <Link
+                    href={`/dashboard/liabilities?type=employee-debit`}
+                    className="mt-4 w-full py-2 px-4 text-center text-sm font-semibold text-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    View All ({profitsData.over0balanceEmployees.length})
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Individual Credit */}
+          {profitsData?.under0balanceEmployees && profitsData.under0balanceEmployees.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Individual Credit List
+                  <Badge variant="success" className="ml-auto">
+                    {profitsData.under0balanceEmployees.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {profitsData.under0balanceEmployees.slice(0, 5).map((employee) => (
+                  <div
+                    key={employee.id}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <span className="font-medium text-sm capitalize">
+                      {employee.name}
+                    </span>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      {(employee.balance * -1).toFixed(2)} AED
+                    </span>
+                  </div>
+                ))}
+                {profitsData.under0balanceEmployees.length > 5 && (
+                  <Link
+                    href={`/dashboard/liabilities?type=employee-credit`}
+                    className="mt-4 w-full py-2 px-4 text-center text-sm font-semibold text-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    View All ({profitsData.under0balanceEmployees.length})
+                  </Link>
+                )}
               </CardContent>
             </Card>
           )}

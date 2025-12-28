@@ -11,6 +11,7 @@ import { RecordsService } from "@/services/records.service";
 import { TRecordData } from "@/types/records";
 import { TCompanyData, TEmployeeData } from "@/types/types";
 import { filterData, normalizeSearchParams } from "@/utils/filterData";
+import { getSecureUser, getSecurePartnerUser } from "@/helpers/getSecureUser";
 
 import { requireAuth, requirePartner } from "@/actions/_auth";
 const JWT_SECRET = process.env.JWT_SECRET; // kept for cookie usage if needed
@@ -20,8 +21,13 @@ const JWT_SECRET = process.env.JWT_SECRET; // kept for cookie usage if needed
 // ============================================
 
 export async function createRecordAction(payload: any) {
-  await requireAuth();
-  return RecordsService.createRecord(payload);
+  const user = await getSecureUser();
+  // Remove any frontend-provided user data and use server-side authenticated user
+  const { createdBy: _ignored, ...safePayload } = payload;
+  return RecordsService.createRecord({
+    ...safePayload,
+    createdBy: user.id,
+  });
 }
 
 export async function listRecordsAction(
@@ -39,8 +45,13 @@ export async function getRecordAction(id: string) {
 }
 
 export async function updateRecordAction(id: string, payload: any) {
-  await requirePartner();
-  return RecordsService.updateRecord(id, payload);
+  const user = await getSecurePartnerUser();
+  // Remove any frontend-provided user data and use server-side authenticated user
+  const { editedBy: _ignored, ...safePayload } = payload;
+  return RecordsService.updateRecord(id, {
+    ...safePayload,
+    editedBy: user.id,
+  });
 }
 
 export async function deleteRecordAction(id: string) {
@@ -55,20 +66,25 @@ export async function getPrevSuffixNumberAction() {
 }
 
 export async function createInstantProfitAction(payload: any) {
-  await requirePartner();
-  await RecordsService.createInstantProfit(payload);
+  const user = await getSecurePartnerUser();
+  // Remove any frontend-provided user data and use server-side authenticated user
+  const { createdBy: _ignored, ...safePayload } = payload;
+  await RecordsService.createInstantProfit({
+    ...safePayload,
+    createdBy: user.id,
+  });
   return { success: true };
 }
 
 export async function swapAccountsAction(payload: {
   amount: number;
-  createdBy: string;
+  createdBy?: string; // Ignored - will use server-side user
   to: string;
   from: string;
 }) {
-  await requirePartner();
-  const { amount, createdBy, to, from } = payload;
-  await RecordsService.swapAccounts(amount, createdBy, to, from);
+  const user = await getSecurePartnerUser();
+  const { amount, to, from } = payload;
+  await RecordsService.swapAccounts(amount, user.id, to, from);
   return { success: true };
 }
 

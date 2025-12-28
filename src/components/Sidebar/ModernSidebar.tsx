@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X,
   Menu,
+  Plus,
 } from "lucide-react";
 import { useUserContext } from "@/contexts/UserContext";
 import { cn } from "@/utils/cn";
@@ -73,10 +74,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
       href: "/employee",
       icon: <Users className="h-5 w-5" />,
     },
-    ...(user?.role === "admin"
+    ...(user?.role === "partner" || user?.role === "admin"
       ? [
           {
-            title: "Users",
+            title: "Portal Users",
             href: "/users",
             icon: <Users className="h-5 w-5" />,
           },
@@ -257,7 +258,41 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-stroke dark:border-strokedark p-4">
+        <div className="border-t border-stroke dark:border-strokedark p-4 space-y-4">
+          {/* Quick Actions */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 px-2">
+              Quick Actions
+            </p>
+            <Link
+              href="/company/register"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:bg-emerald-900/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Company</span>
+            </Link>
+            <Link
+              href="/employee/register"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:bg-emerald-900/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Individual</span>
+            </Link>
+            {(user?.role === "partner" || user?.role === "admin") && (
+              <Link
+                href="/users/add"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:bg-emerald-900/20 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Portal User</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Help */}
           <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4">
             <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100 mb-1">
               Need Help?

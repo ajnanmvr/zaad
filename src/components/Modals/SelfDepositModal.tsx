@@ -1,4 +1,5 @@
 import { useUserContext } from '@/contexts/UserContext';
+import { swapAccountsAction } from '@/actions/payment';
 import axios from 'axios';
 import React, { useState } from 'react';
 
@@ -6,7 +7,6 @@ type TData = {
     from: string,
     to: string;
     amount: string,
-    createdBy?: string
 }
 
 const SelfDepositModal = ({ isOpen, cancel }: {
@@ -18,7 +18,6 @@ const SelfDepositModal = ({ isOpen, cancel }: {
         from: "cash",
         to: "bank",
         amount: "",
-        createdBy: user?._id,
     }
     const [data, setData] = useState<TData>({
         ...initData,

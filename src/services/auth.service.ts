@@ -84,8 +84,9 @@ class AuthServiceClass {
       { expiresIn: "30d" }
     );
 
-    const isPartner = (user as any).role === "partner";
-    return { token, isPartner };
+    const role = (user as any).role as string;
+    const isPartner = role === "partner";
+    return { token, role, isPartner };
   }
 
   async getCurrentUser(request: NextRequest) {

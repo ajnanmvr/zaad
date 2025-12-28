@@ -25,7 +25,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const [balance, setBalance] = useState(0);
   const [clientType, setClientType] = useState("");
   const [recordData, setRecordData] = useState<TRecordData>({
-    createdBy: user?._id,
     type,
     amount: 0,
     invoiceNo: "",

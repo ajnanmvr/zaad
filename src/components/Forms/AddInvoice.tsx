@@ -13,7 +13,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const [isEditMode, setisEditMode] = useState(false);
     const [invoiceData, setInvoiceData] = useState<any>({
-        createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
         invoiceNo: 1
     });

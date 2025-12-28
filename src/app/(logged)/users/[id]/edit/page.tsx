@@ -24,8 +24,8 @@ const EditUserPage = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Redirect if user is not a partner
-        if (user && user.role !== "partner") {
+        // Redirect if user is not a partner or admin
+        if (user && user.role !== "partner" && user.role !== "admin") {
             router.push("/");
             return;
         }
@@ -44,13 +44,13 @@ const EditUserPage = () => {
             }
         };
 
-        if (user && user.role === "partner" && userId) {
+        if (user && (user.role === "partner" || user.role === "admin") && userId) {
             fetchUser();
         }
     }, [user, router, userId]);
 
-    // Show loading or redirect for non-partners
-    if (!user || user.role !== "partner") {
+    // Show loading or redirect for non-partners/non-admins
+    if (!user || (user.role !== "partner" && user.role !== "admin")) {
         return (
             <div className="flex min-h-[60vh] items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-600 border-t-transparent"></div>

@@ -8,6 +8,9 @@ import {
 } from "@/utils/records.utils";
 import { sliceCursorData } from "@/utils/pagination.utils";
 import connect from "@/db/mongo";
+import calculateLast12Months from "@/helpers/calculateLast12Months";
+import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
+import calculateLast7Days from "@/helpers/calculateLast7Days";
 
 class RecordsServiceClass {
   async getCompanyBalance(companyId: string) {
@@ -125,6 +128,7 @@ class RecordsServiceClass {
   }
 
   async getSelfRecordsSummary(selfName: string, pageNumber: number, pageSize = 10) {
+    await connect();
     const records = await RecordsRepository.findWithFiltersPaginated(
       { published: true, self: selfName },
       pageNumber * pageSize,
@@ -221,6 +225,7 @@ class RecordsServiceClass {
   }
 
   async getLiabilitiesSummary() {
+    await connect();
     const records = await RecordsRepository.findWithFiltersPaginated(
       {
         published: true,
@@ -285,17 +290,54 @@ class RecordsServiceClass {
   }
 
   async getAccountsSummary(filter: any, searchParamsEmpty: boolean) {
+    await connect();
+    
+    // Single database query instead of multiple
     const allRecords: any[] = await RecordsRepository.findWithFiltersPaginated(
       filter,
       0,
       Number.MAX_SAFE_INTEGER
     );
-    const expenseRecords = allRecords.filter((r) => r.type === "expense");
-    const incomeRecords = allRecords.filter((r) => r.type === "income");
 
-    const expenseCount = expenseRecords.length;
-    const incomeCount = incomeRecords.length;
+    if (!allRecords || allRecords.length === 0) {
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const last12Months = calculateLast12Months(currentDate, currentYear);
+      const monthNames = last12Months.map(({ name }) => name);
 
+      return {
+        expenseCount: 0,
+        incomeCount: 0,
+        totalIncomeAmount: 0,
+        totalExpenseAmount: 0,
+        totalBalance: 0,
+        bankBalance: 0,
+        cashBalance: 0,
+        tasdeedBalance: 0,
+        BankIncome: 0,
+        CashIncome: 0,
+        TasdeedIncome: 0,
+        SwiperIncome: 0,
+        BankExpense: 0,
+        CashExpense: 0,
+        TasdeedExpense: 0,
+        SwiperExpense: 0,
+        daysOfWeekInitials: ["S", "M", "T", "W", "T", "F", "S"],
+        expensesLast7DaysTotal: Array(7).fill(0),
+        profitLast7DaysTotal: Array(7).fill(0),
+        last12Months,
+        monthNames,
+        last12MonthsExpenses: Array(12).fill(0),
+        last12MonthsProfit: Array(12).fill(0),
+        profit: 0,
+        zaadExpenseTotal: 0,
+        netProfit: 0,
+      };
+    }
+
+    // Single pass through records for all calculations
+    const expenseRecords: any[] = [];
+    const incomeRecords: any[] = [];
     let BankExpense = 0,
       CashExpense = 0,
       TasdeedExpense = 0,
@@ -306,47 +348,51 @@ class RecordsServiceClass {
       SwiperIncome = 0,
       profit = 0;
 
-    incomeRecords.forEach((record) => {
-      switch (record.method) {
-        case "bank":
-          BankIncome += record.amount || 0;
-          break;
-        case "cash":
-          CashIncome += record.amount || 0;
-          break;
-        case "tasdeed":
-          TasdeedIncome += record.amount || 0;
-          break;
-        case "swiper":
-          SwiperIncome += record.amount || 0;
-          break;
-        default:
-          break;
+    allRecords.forEach((record) => {
+      if (record.type === "expense") {
+        expenseRecords.push(record);
+        const amount = record.amount || 0;
+        switch (record.method) {
+          case "bank":
+            BankExpense += amount;
+            break;
+          case "cash":
+            CashExpense += amount;
+            break;
+          case "tasdeed":
+            TasdeedExpense += amount;
+            break;
+          case "swiper":
+            SwiperExpense += amount;
+            break;
+        }
+        if ((record?.serviceFee || 0) > 0) {
+          profit += record.serviceFee || 0;
+        }
+      } else if (record.type === "income") {
+        incomeRecords.push(record);
+        const amount = record.amount || 0;
+        switch (record.method) {
+          case "bank":
+            BankIncome += amount;
+            break;
+          case "cash":
+            CashIncome += amount;
+            break;
+          case "tasdeed":
+            TasdeedIncome += amount;
+            break;
+          case "swiper":
+            SwiperIncome += amount;
+            break;
+        }
       }
     });
 
-    expenseRecords.forEach((record) => {
-      switch (record.method) {
-        case "bank":
-          BankExpense += record.amount || 0;
-          break;
-        case "cash":
-          CashExpense += record.amount || 0;
-          break;
-        case "tasdeed":
-          TasdeedExpense += record.amount || 0;
-          break;
-        case "swiper":
-          SwiperExpense += record.amount || 0;
-          break;
-        default:
-          break;
-      }
-      if ((record?.serviceFee || 0) > 0) {
-        profit += record.serviceFee || 0;
-      }
-    });
+    const expenseCount = expenseRecords.length;
+    const incomeCount = incomeRecords.length;
 
+    // Calculate totals
     const zaadExpenseTotal = parseFloat(
       expenseRecords
         .filter((r) => r?.self === "zaad")
@@ -355,10 +401,12 @@ class RecordsServiceClass {
     );
     const netProfit = parseFloat((profit - zaadExpenseTotal).toFixed(2));
 
+    // Prepare date helpers
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const last7DaysDates: Date[] = [];
     const daysOfWeekInitials: string[] = [];
+    
     for (let i = 6; i >= 0; i--) {
       const date = new Date(currentDate);
       date.setDate(currentDate.getDate() - i);
@@ -367,16 +415,7 @@ class RecordsServiceClass {
       daysOfWeekInitials.push(dayInitial);
     }
 
-    const { default: calculateLast12Months } = await import(
-      "@/helpers/calculateLast12Months"
-    );
-    const { default: calculateLast12MonthsTotals } = await import(
-      "@/helpers/calculateLast12MonthsTotals"
-    );
-    const { default: calculateLast7Days } = await import(
-      "@/helpers/calculateLast7Days"
-    );
-
+    // Calculate time-based aggregations
     const [expensesLast7DaysTotal, profitLast7DaysTotal] = calculateLast7Days(
       expenseRecords as any,
       last7DaysDates
