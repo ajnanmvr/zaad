@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zaad-v2-0</title>
+    <!-- Initialize theme early to prevent FOUC -->
+    <script>
+      // Apply theme before any content is rendered
+      (function() {
+        const storedTheme = localStorage.getItem("zaad-theme-storage");
+        const root = document.documentElement;
+        
+        let theme = "system";
+        
+        if (storedTheme) {
+          try {
+            const parsed = JSON.parse(storedTheme);
+            theme = parsed.state?.theme || "system";
+          } catch {
+            theme = "system";
+          }
+        }
+
+        // Apply the theme
+        root.classList.remove("light", "dark");
+        
+        if (theme === "system") {
+          const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          root.classList.add(systemTheme);
+        } else {
+          root.classList.add(theme);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

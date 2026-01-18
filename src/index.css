@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* Configure dark mode to use class selector instead of prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Classic emerald palette (kept as requested) */
+  --color-brand-50: #effef5;
+  --color-brand-100: #d9fce7;
+  --color-brand-200: #bbf7d2;
+  --color-brand-300: #86efac;
+  --color-brand-400: #4ade80;
+  --color-brand-500: #22c55e;
+  --color-brand-600: #16a34a;
+  --color-brand-700: #0f8a3e;
+  --color-brand-800: #0c6f32;
+  --color-brand-900: #064e3b;
+  --color-brand-950: #022c22;
+}
+
+@layer base {
+  * {
+    @apply border-slate-200 dark:border-slate-800;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800 font-sans antialiased;
+    background-color: #f0f9f4 !important;
+    /* Warmer light-mode with mint-emerald tones for better focus */
+    background-image:
+      radial-gradient(at 10% 15%, rgba(34, 197, 94, 0.15) 0px, transparent 45%),
+      radial-gradient(at 90% 10%, rgba(16, 185, 129, 0.12) 0px, transparent 40%),
+      radial-gradient(at 15% 85%, rgba(34, 197, 94, 0.10) 0px, transparent 45%),
+      radial-gradient(at 85% 80%, rgba(5, 150, 105, 0.08) 0px, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-50;
+    /* Deep emerald-toned dark mode, no blues */
+    background-color: #0a0f0d !important;
+    background-image:
+      radial-gradient(at 12% 18%, rgba(16, 185, 129, 0.18) 0px, transparent 50%),
+      radial-gradient(at 88% 12%, rgba(5, 150, 105, 0.15) 0px, transparent 48%),
+      radial-gradient(at 18% 85%, rgba(6, 78, 59, 0.20) 0px, transparent 52%),
+      radial-gradient(at 82% 82%, rgba(34, 197, 94, 0.16) 0px, transparent 50%);
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-lg shadow-sm;
+    background: linear-gradient(135deg, rgba(34,197,94,0.10), rgba(16,185,129,0.08));
+    border: 1px solid rgba(34,197,94,0.15);
+    box-shadow: 0 10px 30px rgba(5,150,105,0.06);
+    @apply dark:bg-slate-950/70 dark:border-emerald-900/40;
+  }
+
+  .card-premium {
+    @apply bg-white rounded-xl transition-all duration-300 dark:bg-slate-900;
+    border: 1px solid rgba(34,197,94,0.15);
+    background-image:
+      linear-gradient(180deg, rgba(34,197,94,0.05), rgba(255,255,255,0)),
+      radial-gradient(120% 120% at 20% 20%, rgba(16,185,129,0.08), transparent 50%),
+      radial-gradient(140% 140% at 80% 10%, rgba(5,150,105,0.06), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.92));
+    box-shadow: 0 8px 26px rgba(5, 150, 105, 0.10), 0 6px 18px rgba(0,0,0,0.04);
+    @apply dark:border-emerald-900/50 dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)];
+  }
+
+  .dark .card-premium {
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45);
+  }
+
+  .card-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(5, 150, 105, 0.14), 0 10px 24px rgba(0,0,0,0.06);
+  }
+
+  .dark .card-premium:hover {
+    box-shadow: 0 16px 34px -6px rgba(0, 0, 0, 0.55);
+  }
+
+  .input-modern {
+    @apply rounded-lg border-slate-200 bg-white/70 px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 focus-visible:border-brand-500 placeholder:text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:placeholder:text-slate-500;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Accent pill for tags/labels */
+  .pill-accent {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full text-brand-700 bg-brand-50 border border-brand-100;
+    box-shadow: 0 6px 16px rgba(34,197,94,0.12);
+  }
+
+  .dark .pill-accent {
+    @apply text-emerald-200 bg-emerald-900/30 border-emerald-800;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+  }
+
+  /* Soft surface utility for sections */
+  .surface-soft {
+    @apply rounded-xl border border-white/60 bg-white/85 shadow-sm;
+    box-shadow: 0 6px 18px rgba(15, 118, 110, 0.08);
+  }
+
+  .dark .surface-soft {
+    @apply border-slate-800/60 bg-slate-900/80;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+  }
+}
