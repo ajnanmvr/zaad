@@ -1,15 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { zaadExpenseSchema } from "@/lib/schemas";
-import { useStore } from "@/store";
-import { ArrowLeft, Save } from "lucide-react";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useStore } from "@/store";
+import { expenseSchema } from "@/lib/schemas";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Save } from "lucide-react";
 
-type ZaadExpenseFormValues = z.infer<typeof zaadExpenseSchema>;
+type ZaadExpenseFormValues = z.infer<typeof expenseSchema>;
 
 export default function ZaadExpenseForm() {
     const { id } = useParams();
@@ -22,7 +23,8 @@ export default function ZaadExpenseForm() {
         handleSubmit,
         setValue,
         formState: { errors },
-    } = useForm<ZaadExpenseFormValues>({      // eslint-disable-next-line @typescript-eslint/no-explicit-any        resolver: zodResolver(zaadExpenseSchema) as any,
+    } = useForm<ZaadExpenseFormValues>({
+        resolver: zodResolver(expenseSchema) as any,
         defaultValues: {
             title: "",
             amount: 0,

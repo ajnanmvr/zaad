@@ -2,14 +2,15 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createUserSchema, type CreateUserInput } from "@/lib/schemas";
+import * as z from "zod";
 import { useStore } from "@/store";
+import { userSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 
-type UserFormValues = CreateUserInput;
+type UserFormValues = z.infer<typeof userSchema>;
 
 export default function UserForm() {
     const { id } = useParams();
@@ -23,11 +24,11 @@ export default function UserForm() {
         setValue,
         formState: { errors },
     } = useForm<UserFormValues>({
-        resolver: zodResolver(createUserSchema) as any,
+        resolver: zodResolver(userSchema),
         defaultValues: {
             name: "",
             email: "",
-            password: "",
+            role: "employee",
             status: "active",
         },
     });
@@ -38,8 +39,8 @@ export default function UserForm() {
             if (user) {
                 setValue("name", user.name);
                 setValue("email", user.email);
-                setValue("password", "");
-                setValue("status", user.status || "active");
+                setValue("role", user.role);
+                setValue("status", user.status);
             }
         }
     }, [id, isEditing, users, setValue]);
@@ -73,7 +74,7 @@ export default function UserForm() {
                     <CardTitle>User Profile</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Full Name *</label>
@@ -96,14 +97,15 @@ export default function UserForm() {
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                                <input
-                                    type="password"
-                                    {...register("password")}
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Role</label>
+                                <select
+                                    {...register("role")}
                                     className="flex h-10 w-full rounded-lg border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:bg-slate-900/50 dark:border-slate-800 dark:text-slate-100"
-                                    placeholder="Enter password"
-                                />
-                                {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+                                >
+                                    <option value="employee">Employee</option>
+                                    <option value="partner">Partner</option>
+                                    <option value="admin">Admin</option>
+                                </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</label>

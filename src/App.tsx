@@ -1,16 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import AppShell from "@/components/AppShell";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { QueryProvider } from "@/lib/query-provider";
-
-// Auth Pages
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import Unauthorized from "@/pages/Unauthorized";
-import Profile from "@/pages/Profile";
-import Settings from "@/pages/Settings";
-
-// App Pages
 import Dashboard from "@/pages/Dashboard";
 import CompanyList from "@/pages/companies/List";
 import CompanyForm from "@/pages/companies/Form";
@@ -43,99 +32,70 @@ import TaskDetail from "@/pages/tasks/Detail";
 import UserDetail from "@/pages/users/Detail";
 import LiabilityDetail from "@/pages/liabilities/Detail";
 import ZaadExpenseDetail from "@/pages/zaad-expenses/Detail";
+import { Button } from "@/components/ui/button";
+
+// Placeholders for other routes
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="flex flex-col items-center justify-center h-full space-y-4">
+    <h2 className="text-2xl font-bold text-gray-700">{title}</h2>
+    <p className="text-gray-500">This module is under construction.</p>
+    <Button variant="outline">Go Back</Button>
+  </div>
+);
 
 function App() {
   return (
-    <QueryProvider>
+    <AppShell>
       <Routes>
-        {/* Auth Routes - No Layout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/financials" element={<FinancialDashboard />} />
+        <Route path="/companies" element={<CompanyList />} />
+        <Route path="/companies/new" element={<CompanyForm />} />
+        <Route path="/companies/:id" element={<CompanyDetail />} />
+        <Route path="/companies/:id/edit" element={<CompanyForm />} />
+        <Route path="/individuals" element={<IndividualList />} />
+        <Route path="/individuals/new" element={<IndividualForm />} />
+        <Route path="/individuals/:id" element={<IndividualDetail />} />
+        <Route path="/individuals/:id/edit" element={<IndividualForm />} />
+        <Route path="/records" element={<RecordList />} />
+        <Route path="/records/new" element={<RecordForm />} />
+        <Route path="/records/:id" element={<RecordDetail />} />
+        <Route path="/records/:id/edit" element={<RecordForm />} />
+        <Route path="/invoices" element={<InvoiceList />} />
+        <Route path="/invoices/new" element={<InvoiceForm />} />
+        <Route path="/invoices/:id" element={<InvoiceDetail />} />
+        <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+        <Route path="/liabilities" element={<LiabilityList />} />
+        <Route path="/liabilities/new" element={<LiabilityForm />} />
+        <Route path="/liabilities/:id" element={<LiabilityDetail />} />
+        <Route path="/liabilities/:id/edit" element={<LiabilityForm />} />
 
-        {/* App Routes - With Layout */}
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <AppShell>
-                <Routes>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/" element={<Navigate to="/dashboard" />} />
-                  
-                  {/* Companies */}
-                  <Route path="/companies" element={<CompanyList />} />
-                  <Route path="/companies/new" element={<CompanyForm />} />
-                  <Route path="/companies/:id" element={<CompanyDetail />} />
-                  <Route path="/companies/:id/edit" element={<CompanyForm />} />
+        <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
+        <Route path="/documents/expiring" element={<ExpiringDocuments />} />
+        <Route path="/documents/new" element={<DocumentForm />} />
 
-                  {/* Individuals */}
-                  <Route path="/individuals" element={<IndividualList />} />
-                  <Route path="/individuals/new" element={<IndividualForm />} />
-                  <Route path="/individuals/:id" element={<IndividualDetail />} />
-                  <Route path="/individuals/:id/edit" element={<IndividualForm />} />
+        <Route path="/zaad-expenses" element={<ZaadExpensesList />} />
+        <Route path="/zaad-expenses/new" element={<ZaadExpenseForm />} />
+        <Route path="/zaad-expenses/:id" element={<ZaadExpenseDetail />} />
+        <Route path="/zaad-expenses/:id/edit" element={<ZaadExpenseForm />} />
 
-                  {/* Records */}
-                  <Route path="/records" element={<RecordList />} />
-                  <Route path="/records/new" element={<RecordForm />} />
-                  <Route path="/records/:id" element={<RecordDetail />} />
-                  <Route path="/records/:id/edit" element={<RecordForm />} />
+        <Route path="/tasks" element={<TaskList />} />
+        <Route path="/tasks/new" element={<TaskForm />} />
+        <Route path="/tasks/:id" element={<TaskDetail />} />
+        <Route path="/tasks/:id/edit" element={<TaskForm />} />
 
-                  {/* Invoices */}
-                  <Route path="/invoices" element={<InvoiceList />} />
-                  <Route path="/invoices/new" element={<InvoiceForm />} />
-                  <Route path="/invoices/:id" element={<InvoiceDetail />} />
-                  <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+        <Route path="/employees" element={<EmployeeList />} />
+        <Route path="/employees/new" element={<EmployeeForm />} />
+        <Route path="/employees/:id" element={<EmployeeDetail />} />
+        <Route path="/employees/:id/edit" element={<EmployeeForm />} />
 
-                  {/* Liabilities */}
-                  <Route path="/liabilities" element={<LiabilityList />} />
-                  <Route path="/liabilities/new" element={<LiabilityForm />} />
-                  <Route path="/liabilities/:id" element={<LiabilityDetail />} />
-                  <Route path="/liabilities/:id/edit" element={<LiabilityForm />} />
-
-                  {/* Documents */}
-                  <Route path="/documents/expiring" element={<ExpiringDocuments />} />
-                  <Route path="/documents/new" element={<DocumentForm />} />
-
-                  {/* Zaad Expenses */}
-                  <Route path="/zaad-expenses" element={<ZaadExpensesList />} />
-                  <Route path="/zaad-expenses/new" element={<ZaadExpenseForm />} />
-                  <Route path="/zaad-expenses/:id" element={<ZaadExpenseDetail />} />
-                  <Route path="/zaad-expenses/:id/edit" element={<ZaadExpenseForm />} />
-
-                  {/* Tasks */}
-                  <Route path="/tasks" element={<TaskList />} />
-                  <Route path="/tasks/new" element={<TaskForm />} />
-                  <Route path="/tasks/:id" element={<TaskDetail />} />
-                  <Route path="/tasks/:id/edit" element={<TaskForm />} />
-
-                  {/* Employees */}
-                  <Route path="/employees" element={<EmployeeList />} />
-                  <Route path="/employees/new" element={<EmployeeForm />} />
-                  <Route path="/employees/:id" element={<EmployeeDetail />} />
-                  <Route path="/employees/:id/edit" element={<EmployeeForm />} />
-
-                  {/* Users */}
-                  <Route path="/users" element={<UserList />} />
-                  <Route path="/users/new" element={<UserForm />} />
-                  <Route path="/users/:id" element={<UserDetail />} />
-                  <Route path="/users/:id/edit" element={<UserForm />} />
-
-                  {/* Other */}
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/financials" element={<FinancialDashboard />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-
-                  {/* 404 */}
-                  <Route path="*" element={<Navigate to="/dashboard" />} />
-                </Routes>
-              </AppShell>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/users" element={<UserList />} />
+        <Route path="/users/new" element={<UserForm />} />
+        <Route path="/users/:id" element={<UserDetail />} />
+        <Route path="/users/:id/edit" element={<UserForm />} />
       </Routes>
-    </QueryProvider>
+    </AppShell>
   );
 }
 

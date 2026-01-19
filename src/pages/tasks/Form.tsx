@@ -1,15 +1,17 @@
+import { useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useStore } from "@/store";
+import { taskSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type CreateTaskInput } from "@/lib/schemas";
-import { useStore } from "@/store";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { useNavigate, useParams } from "react-router-dom";
 
-type TaskFormValues = CreateTaskInput;
+type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function TaskForm() {
     const { id } = useParams();
@@ -22,7 +24,8 @@ export default function TaskForm() {
         handleSubmit,
         setValue,
         formState: { errors },
-    } = useForm<TaskFormValues>({      // eslint-disable-next-line @typescript-eslint/no-explicit-any        resolver: zodResolver(createTaskSchema) as any,
+    } = useForm<TaskFormValues>({
+        resolver: zodResolver(taskSchema),
         defaultValues: {
             title: "",
             description: "",
@@ -84,8 +87,7 @@ export default function TaskForm() {
                 )}
             </div>
 
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <form onSubmit={handleSubmit(onSubmit as any)}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Task Details</CardTitle>
@@ -105,7 +107,7 @@ export default function TaskForm() {
                             <textarea
                                 id="description"
                                 {...register("description")}
-                                className="flex min-h-20 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
 

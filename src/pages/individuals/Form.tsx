@@ -2,14 +2,15 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createIndividualSchema, type CreateIndividualInput } from "@/lib/schemas";
+import * as z from "zod";
 import { useStore } from "@/store";
+import { individualSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
-type IndividualFormValues = CreateIndividualInput;
+type IndividualFormValues = z.infer<typeof individualSchema>;
 
 export default function IndividualForm() {
     const { id } = useParams();
@@ -23,7 +24,7 @@ export default function IndividualForm() {
         setValue,
         formState: { errors },
     } = useForm<IndividualFormValues>({
-        resolver: zodResolver(createIndividualSchema),
+        resolver: zodResolver(individualSchema),
         defaultValues: {
             name: "",
             nationality: "",
@@ -129,7 +130,7 @@ export default function IndividualForm() {
                             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Remarks</label>
                             <textarea
                                 {...register("remarks")}
-                                className="flex min-h-20 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
 
