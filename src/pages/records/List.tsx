@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SortableTable } from "@/components/ui/sortable-table";
@@ -13,7 +12,11 @@ import { Pagination } from "@/components/ui/pagination";
 const ITEMS_PER_PAGE = 10;
 
 export default function RecordList() {
-    const { records, deleteRecord, companies, employees, individuals } = useStore();
+    const records: any[] = [];
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
+    const deleteRecord = (id: string) => console.log('Delete record:', id);
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -168,7 +171,12 @@ export default function RecordList() {
                 <select
                     className="h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                     value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as any)}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "all" || value === "income" || value === "expense") {
+                            setTypeFilter(value);
+                        }
+                    }}
                 >
                     <option value="all">All Types</option>
                     <option value="income">Income</option>

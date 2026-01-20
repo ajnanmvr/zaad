@@ -1,21 +1,27 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { expenseSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 
-type ZaadExpenseFormValues = z.infer<typeof expenseSchema>;
+type ZaadExpenseFormValues = {
+    title: string;
+    amount: number;
+    category: string;
+    date: string;
+    description: string;
+    paymentMethod: string;
+    status: string;
+};
 
 export default function ZaadExpenseForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { zaadExpenses, addZaadExpense, updateZaadExpense } = useStore();
+    const zaadExpenses: any[] = [];
+    const addZaadExpense = (expense: any) => console.log('Add expense:', expense);
+    const updateZaadExpense = (id: string, expense: any) => console.log('Update expense:', id, expense);
     const isEditing = Boolean(id);
 
     const {
@@ -24,7 +30,6 @@ export default function ZaadExpenseForm() {
         setValue,
         formState: { errors },
     } = useForm<ZaadExpenseFormValues>({
-        resolver: zodResolver(expenseSchema) as any,
         defaultValues: {
             title: "",
             amount: 0,

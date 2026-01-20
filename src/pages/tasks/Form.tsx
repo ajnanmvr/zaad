@@ -1,22 +1,29 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { taskSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
-type TaskFormValues = z.infer<typeof taskSchema>;
+type TaskFormValues = {
+    title: string;
+    description: string;
+    assignedTo: string;
+    status: string;
+    priority: string;
+    dueDate: string;
+};
 
 export default function TaskForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { tasks, addTask, updateTask, deleteTask, users } = useStore();
+    const tasks: any[] = [];
+    const users: any[] = [];
+    const addTask = (task: any) => console.log('Add task:', task);
+    const updateTask = (id: string, task: any) => console.log('Update task:', id, task);
+    const deleteTask = (id: string) => console.log('Delete task:', id);
     const isEdit = !!id;
 
     const {
@@ -25,7 +32,6 @@ export default function TaskForm() {
         setValue,
         formState: { errors },
     } = useForm<TaskFormValues>({
-        resolver: zodResolver(taskSchema),
         defaultValues: {
             title: "",
             description: "",

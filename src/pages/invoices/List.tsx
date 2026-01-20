@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,10 @@ import type { IInvoice, ICompany, IEmployee } from "@/types";
 const ITEMS_PER_PAGE = 15;
 
 export default function InvoiceList() {
-    const { invoices, companies, employees, deleteInvoice } = useStore();
+    const invoices: any[] = [];
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const deleteInvoice = (id: string) => console.log('Delete invoice:', id);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [search, setSearch] = useState("");

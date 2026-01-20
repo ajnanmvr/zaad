@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SortableTable } from "@/components/ui/sortable-table";
@@ -14,7 +13,10 @@ import { Pagination } from "@/components/ui/pagination";
 const ITEMS_PER_PAGE = 10;
 
 export default function LiabilityList() {
-    const { liabilities, companies, individuals, deleteLiability } = useStore();
+    const liabilities: any[] = [];
+    const companies: any[] = [];
+    const individuals: any[] = [];
+    const deleteLiability = (id: string) => console.log('Delete liability:', id);
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [deleteItem, setDeleteItem] = useState<ILiability | null>(null);

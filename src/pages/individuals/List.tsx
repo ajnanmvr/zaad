@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import type { IIndividual } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,12 +13,13 @@ const ITEMS_PER_PAGE = 10;
 
 export default function IndividualList() {
     const navigate = useNavigate();
-    const { individuals, deleteIndividual } = useStore();
+    const individuals: any[] = [];
+    const deleteIndividual = (id: string) => console.log('Delete individual:', id);
     const [search, setSearch] = useState("");
     const [deleteItem, setDeleteItem] = useState<IIndividual | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const filteredIndividuals = individuals.filter(i =>
+    const filteredIndividuals = individuals.filter((i: any) =>
         i.name.toLowerCase().includes(search.toLowerCase()) ||
         i.email?.toLowerCase().includes(search.toLowerCase()) ||
         i.phone?.toLowerCase().includes(search.toLowerCase())

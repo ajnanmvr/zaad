@@ -1,22 +1,28 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { companySchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
-type CompanyFormValues = z.infer<typeof companySchema>;
+type CompanyFormValues = {
+    name: string;
+    licenseNo: string;
+    companyType: string;
+    emirates: string;
+    phone1: string;
+    phone2?: string;
+};
 
 export default function CompanyForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { companies, addCompany, updateCompany, deleteCompany } = useStore();
+    const companies: any[] = [];
+    const addCompany = (company: any) => console.log('Add company:', company);
+    const updateCompany = (id: string, company: any) => console.log('Update company:', id, company);
+    const deleteCompany = (id: string) => console.log('Delete company:', id);
     const isEdit = !!id;
 
     const {
@@ -25,7 +31,6 @@ export default function CompanyForm() {
         setValue,
         formState: { errors },
     } = useForm<CompanyFormValues>({
-        resolver: zodResolver(companySchema),
         defaultValues: {
             name: "",
             licenseNo: "",

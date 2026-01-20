@@ -1,7 +1,6 @@
 
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useStore } from "@/store";
 import { Building2, Users, CheckSquare, UserCircle, ArrowRight, TrendingUp, TrendingDown, Clock, AlertOctagon, LayoutDashboard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { IDocument, ITask } from "@/types";
@@ -10,7 +9,11 @@ import { MyTasks } from "@/components/MyTasks";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-    const { companies, employees, individuals, documents, tasks } = useStore();
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
+    const documents: any[] = [];
+    const tasks: any[] = [];
     const navigate = useNavigate();
     const today = new Date();
     const thirtyDaysFromNow = addDays(today, 30);

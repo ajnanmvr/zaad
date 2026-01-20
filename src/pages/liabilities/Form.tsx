@@ -1,26 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { liabilitySchema } from "@/lib/schemas";
 import type { ILiability, ICompany, IIndividual } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 
-type LiabilityFormValues = z.infer<typeof liabilitySchema>;
+type LiabilityFormValues = {
+    type: string;
+    amount: number;
+    paidAmount: number;
+    description: string;
+    status: string;
+};
 
 export default function LiabilityForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { liabilities, addLiability, updateLiability, companies, individuals } = useStore();
+    const liabilities: any[] = [];
+    const companies: any[] = [];
+    const individuals: any[] = [];
+    const addLiability = (liability: any) => console.log('Add liability:', liability);
+    const updateLiability = (id: string, liability: any) => console.log('Update liability:', id, liability);
     const isEditing = Boolean(id);
+    const existingLiability = liabilities.find((l: ILiability) => l._id === id);
 
     // Local state for entity selection toggle
-    const [entityType, setEntityType] = useState<"company" | "individual">("company");
+    const [entityType, setEntityType] = useState<"company" | "individual">(
+        existingLiability?.individual ? "individual" : "company"
+    );
 
     const {
         register,
@@ -28,7 +37,6 @@ export default function LiabilityForm() {
         setValue,
         formState: { errors },
     } = useForm<LiabilityFormValues>({
-        resolver: zodResolver(liabilitySchema) as any,
         defaultValues: {
             type: "payable",
             amount: 0,
@@ -42,28 +50,23 @@ export default function LiabilityForm() {
     });
 
     useEffect(() => {
-        if (isEditing && id) {
-            const liability = liabilities.find((l: ILiability) => l._id === id);
-            if (liability) {
-                setValue("type", liability.type);
-                setValue("amount", liability.amount);
-                setValue("paidAmount", liability.paidAmount || 0);
-                setValue("description", liability.description || "");
-                setValue("status", liability.status);
-                setValue("dueDate", liability.dueDate ? new Date(liability.dueDate).toISOString().split('T')[0] : "");
+        if (isEditing && id && existingLiability) {
+            setValue("type", existingLiability.type);
+            setValue("amount", existingLiability.amount);
+            setValue("paidAmount", existingLiability.paidAmount || 0);
+            setValue("description", existingLiability.description || "");
+            setValue("status", existingLiability.status);
+            setValue("dueDate", existingLiability.dueDate ? new Date(existingLiability.dueDate).toISOString().split('T')[0] : "");
 
-                if (liability.individual) {
-                    setEntityType("individual");
-                    setValue("individual", liability.individual);
-                    setValue("company", undefined);
-                } else if (liability.company) {
-                    setEntityType("company");
-                    setValue("company", liability.company);
-                    setValue("individual", undefined);
-                }
+            if (existingLiability.individual) {
+                setValue("individual", existingLiability.individual);
+                setValue("company", undefined);
+            } else if (existingLiability.company) {
+                setValue("company", existingLiability.company);
+                setValue("individual", undefined);
             }
         }
-    }, [id, isEditing, liabilities, setValue]);
+    }, [existingLiability, id, isEditing, setValue]);
 
     const onSubmit = (data: LiabilityFormValues) => {
         // Ensure data consistency

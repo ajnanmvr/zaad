@@ -1,23 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { invoiceSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 
-type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+type InvoiceFormValues = {
+    invoiceNo: number;
+    company: string;
+    date: string;
+    items: Array<{ title: string; desc: string; rate: number; quantity: number }>;
+};
 
 export default function InvoiceForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { invoices, companies, addInvoice, updateInvoice } = useStore();
+    const invoices: any[] = [];
+    const companies: any[] = [];
+    const addInvoice = (invoice: any) => console.log('Add invoice:', invoice);
+    const updateInvoice = (id: string, invoice: any) => console.log('Update invoice:', id, invoice);
     const isEdit = !!id;
+    const invoiceNoRef = useRef(Math.floor(Math.random() * 10000));
 
     const {
         register,
@@ -27,9 +32,8 @@ export default function InvoiceForm() {
         watch,
         formState: { errors },
     } = useForm<InvoiceFormValues>({
-        resolver: zodResolver(invoiceSchema) as any,
         defaultValues: {
-            invoiceNo: Math.floor(Math.random() * 10000), // temp
+            invoiceNo: invoiceNoRef.current,
             company: "",
             date: new Date().toISOString().split('T')[0],
             items: [{ title: "", desc: "", rate: 0, quantity: 1 }],

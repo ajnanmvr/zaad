@@ -1,23 +1,28 @@
 import { useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { recordSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, TrendingUp, TrendingDown } from "lucide-react";
 
-type RecordFormValues = z.infer<typeof recordSchema>;
+type RecordFormValues = {
+    type: "income" | "expense";
+    amount: number;
+    particular: string;
+    method: string;
+    status: string;
+    date: string;
+};
 
 export default function RecordForm() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { records, addRecord, updateRecord } = useStore();
+    const records: any[] = [];
+    const addRecord = (record: any) => console.log('Add record:', record);
+    const updateRecord = (id: string, record: any) => console.log('Update record:', id, record);
     const initialType = (searchParams.get("type") as "income" | "expense") || "income";
     const isEdit = !!id;
 
@@ -28,7 +33,6 @@ export default function RecordForm() {
         watch,
         formState: { errors },
     } = useForm<RecordFormValues>({
-        resolver: zodResolver(recordSchema) as any,
         defaultValues: {
             type: initialType,
             amount: 0,

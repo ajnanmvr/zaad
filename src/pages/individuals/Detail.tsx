@@ -1,15 +1,17 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
+import DocumentManagement from "@/components/DocumentManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { IIndividual, ILiability, IDocument } from "@/types";
-import { ArrowLeft, Edit, User, Phone, Mail, FileText, Globe, DollarSign, Receipt } from "lucide-react";
-import DocumentManagement from "@/components/DocumentManagement";
+import type { IDocument, IIndividual } from "@/types";
+import { ArrowLeft, DollarSign, Edit, FileText, Globe, Mail, Phone, Receipt, User } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function IndividualDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { individuals, liabilities, documents } = useStore();
+    const individuals: any[] = [];
+    const liabilities: any[] = [];
+    const documents: any[] = [];
+    const invoices: any[] = [];
 
     const individual = individuals.find((i: IIndividual) => i._id === id);
 
@@ -22,8 +24,8 @@ export default function IndividualDetail() {
         );
     }
 
-    const individualLiabilities = liabilities.filter((l: ILiability) => l.individual === id);
-    const individualInvoices = useStore().invoices.filter(inv => inv.individual === id);
+    const individualLiabilities = liabilities.filter((l: any) => l.individual === id);
+    const individualInvoices = invoices.filter((inv: any) => inv.individual === id);
 
     const handleRenewDoc = (docId: string) => {
         alert(`Renewal initiated for document ${docId}. In a real app, this would open a renewal form.`);
@@ -113,7 +115,7 @@ export default function IndividualDetail() {
                                 {individualLiabilities.length === 0 ? (
                                     <p className="text-sm text-gray-500 dark:text-gray-400">No liabilities found.</p>
                                 ) : (
-                                    individualLiabilities.map(l => (
+                                    individualLiabilities.map((l: any) => (
                                         <div key={l._id} className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2 last:border-0 last:pb-0">
                                             <div>
                                                 <p className="text-sm font-medium dark:text-gray-200">{l.description}</p>

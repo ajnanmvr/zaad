@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +14,14 @@ const ITEMS_PER_PAGE = 10;
 
 export default function EmployeeList() {
     const navigate = useNavigate();
-    const { employees, companies, deleteEmployee } = useStore();
+    const employees: any[] = [];
+    const companies: any[] = [];
+    const deleteEmployee = (id: string) => console.log('Delete employee:', id);
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [deleteItem, setDeleteItem] = useState<IEmployee | null>(null);
 
-    const filteredEmployees = employees.filter(e =>
+    const filteredEmployees = employees.filter((e: any) =>
         e.name.toLowerCase().includes(search.toLowerCase()) ||
         e.email?.toLowerCase().includes(search.toLowerCase()) ||
         e.designation?.toLowerCase().includes(search.toLowerCase())

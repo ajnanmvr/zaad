@@ -1,6 +1,11 @@
 import { Routes, Route } from "react-router-dom";
 import AppShell from "@/components/AppShell";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import PublicRoute from "@/components/PublicRoute";
+import AuthInitializer from "@/components/AuthInitializer";
 import Dashboard from "@/pages/Dashboard";
+import Login from "@/pages/auth/Login";
+import ChangePassword from "@/pages/auth/ChangePassword";
 import CompanyList from "@/pages/companies/List";
 import CompanyForm from "@/pages/companies/Form";
 import CompanyDetail from "@/pages/companies/Detail";
@@ -23,15 +28,20 @@ import ZaadExpenseForm from "@/pages/zaad-expenses/Form";
 import UserForm from "@/pages/users/Form";
 import ZaadExpensesList from "@/pages/zaad-expenses/List";
 import UserList from "@/pages/users/List";
+import UserDetail from "@/pages/users/Detail";
+import UserRoles from "@/pages/users/Roles";
 import IndividualList from "@/pages/individuals/List";
 import IndividualForm from "@/pages/individuals/Form";
 import IndividualDetail from "@/pages/individuals/Detail";
 import InvoiceDetail from "@/pages/invoices/Detail";
 import RecordDetail from "@/pages/records/Detail";
 import TaskDetail from "@/pages/tasks/Detail";
-import UserDetail from "@/pages/users/Detail";
 import LiabilityDetail from "@/pages/liabilities/Detail";
 import ZaadExpenseDetail from "@/pages/zaad-expenses/Detail";
+import RoleList from "@/pages/roles/List";
+import RoleForm from "@/pages/roles/Form";
+import PermissionList from "@/pages/permissions/List";
+import PermissionForm from "@/pages/permissions/Form";
 import { Button } from "@/components/ui/button";
 
 // Placeholders for other routes
@@ -45,58 +55,90 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 function App() {
   return (
-    <AppShell>
+    <AuthInitializer>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/financials" element={<FinancialDashboard />} />
-        <Route path="/companies" element={<CompanyList />} />
-        <Route path="/companies/new" element={<CompanyForm />} />
-        <Route path="/companies/:id" element={<CompanyDetail />} />
-        <Route path="/companies/:id/edit" element={<CompanyForm />} />
-        <Route path="/individuals" element={<IndividualList />} />
-        <Route path="/individuals/new" element={<IndividualForm />} />
-        <Route path="/individuals/:id" element={<IndividualDetail />} />
-        <Route path="/individuals/:id/edit" element={<IndividualForm />} />
-        <Route path="/records" element={<RecordList />} />
-        <Route path="/records/new" element={<RecordForm />} />
-        <Route path="/records/:id" element={<RecordDetail />} />
-        <Route path="/records/:id/edit" element={<RecordForm />} />
-        <Route path="/invoices" element={<InvoiceList />} />
-        <Route path="/invoices/new" element={<InvoiceForm />} />
-        <Route path="/invoices/:id" element={<InvoiceDetail />} />
-        <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
-        <Route path="/liabilities" element={<LiabilityList />} />
-        <Route path="/liabilities/new" element={<LiabilityForm />} />
-        <Route path="/liabilities/:id" element={<LiabilityDetail />} />
-        <Route path="/liabilities/:id/edit" element={<LiabilityForm />} />
+        {/* Public Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
 
-        <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
-        <Route path="/documents/expiring" element={<ExpiringDocuments />} />
-        <Route path="/documents/new" element={<DocumentForm />} />
+        {/* Protected Routes */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/change-password" element={<ChangePassword />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/financials" element={<FinancialDashboard />} />
+                  <Route path="/companies" element={<CompanyList />} />
+                  <Route path="/companies/new" element={<CompanyForm />} />
+                  <Route path="/companies/:id" element={<CompanyDetail />} />
+                  <Route path="/companies/:id/edit" element={<CompanyForm />} />
+                  <Route path="/individuals" element={<IndividualList />} />
+                  <Route path="/individuals/new" element={<IndividualForm />} />
+                  <Route path="/individuals/:id" element={<IndividualDetail />} />
+                  <Route path="/individuals/:id/edit" element={<IndividualForm />} />
+                  <Route path="/records" element={<RecordList />} />
+                  <Route path="/records/new" element={<RecordForm />} />
+                  <Route path="/records/:id" element={<RecordDetail />} />
+                  <Route path="/records/:id/edit" element={<RecordForm />} />
+                  <Route path="/invoices" element={<InvoiceList />} />
+                  <Route path="/invoices/new" element={<InvoiceForm />} />
+                  <Route path="/invoices/:id" element={<InvoiceDetail />} />
+                  <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+                  <Route path="/liabilities" element={<LiabilityList />} />
+                  <Route path="/liabilities/new" element={<LiabilityForm />} />
+                  <Route path="/liabilities/:id" element={<LiabilityDetail />} />
+                  <Route path="/liabilities/:id/edit" element={<LiabilityForm />} />
 
-        <Route path="/zaad-expenses" element={<ZaadExpensesList />} />
-        <Route path="/zaad-expenses/new" element={<ZaadExpenseForm />} />
-        <Route path="/zaad-expenses/:id" element={<ZaadExpenseDetail />} />
-        <Route path="/zaad-expenses/:id/edit" element={<ZaadExpenseForm />} />
+                  <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
+                  <Route path="/documents/expiring" element={<ExpiringDocuments />} />
+                  <Route path="/documents/new" element={<DocumentForm />} />
 
-        <Route path="/tasks" element={<TaskList />} />
-        <Route path="/tasks/new" element={<TaskForm />} />
-        <Route path="/tasks/:id" element={<TaskDetail />} />
-        <Route path="/tasks/:id/edit" element={<TaskForm />} />
+                  <Route path="/zaad-expenses" element={<ZaadExpensesList />} />
+                  <Route path="/zaad-expenses/new" element={<ZaadExpenseForm />} />
+                  <Route path="/zaad-expenses/:id" element={<ZaadExpenseDetail />} />
+                  <Route path="/zaad-expenses/:id/edit" element={<ZaadExpenseForm />} />
 
-        <Route path="/employees" element={<EmployeeList />} />
-        <Route path="/employees/new" element={<EmployeeForm />} />
-        <Route path="/employees/:id" element={<EmployeeDetail />} />
-        <Route path="/employees/:id/edit" element={<EmployeeForm />} />
+                  <Route path="/tasks" element={<TaskList />} />
+                  <Route path="/tasks/new" element={<TaskForm />} />
+                  <Route path="/tasks/:id" element={<TaskDetail />} />
+                  <Route path="/tasks/:id/edit" element={<TaskForm />} />
 
-        <Route path="/users" element={<UserList />} />
-        <Route path="/users/new" element={<UserForm />} />
-        <Route path="/users/:id" element={<UserDetail />} />
-        <Route path="/users/:id/edit" element={<UserForm />} />
+                  <Route path="/employees" element={<EmployeeList />} />
+                  <Route path="/employees/new" element={<EmployeeForm />} />
+                  <Route path="/employees/:id" element={<EmployeeDetail />} />
+                  <Route path="/employees/:id/edit" element={<EmployeeForm />} />
+
+                  <Route path="/users" element={<UserList />} />
+                  <Route path="/users/new" element={<UserForm />} />
+                  <Route path="/users/:id" element={<UserDetail />} />
+                  <Route path="/users/:id/edit" element={<UserForm />} />
+                  <Route path="/users/:id/roles" element={<UserRoles />} />
+
+                  <Route path="/roles" element={<RoleList />} />
+                  <Route path="/roles/new" element={<RoleForm />} />
+                  <Route path="/roles/:id/edit" element={<RoleForm />} />
+
+                  <Route path="/permissions" element={<PermissionList />} />
+                  <Route path="/permissions/new" element={<PermissionForm />} />
+                </Routes>
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-    </AppShell>
+    </AuthInitializer>
   );
 }
 
 export default App;
+

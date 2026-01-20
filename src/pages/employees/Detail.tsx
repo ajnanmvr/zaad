@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { IEmployee, ICompany, IDocument, IRecord } from "@/types";
@@ -10,7 +9,11 @@ import { useState } from "react";
 export default function EmployeeDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { employees, companies, documents, records } = useStore();
+    const employees: any[] = [];
+    const companies: any[] = [];
+    const documents: any[] = [];
+    const records: any[] = [];
+    const invoices: any[] = [];
     const [dismissedDocs, setDismissedDocs] = useState<Set<string>>(new Set());
 
     const employee = employees.find((e: IEmployee) => e._id === id);
@@ -24,10 +27,10 @@ export default function EmployeeDetail() {
         );
     }
 
-    const companyName = companies.find((c: ICompany) => c._id === employee.company)?.name || "Unknown Company";
-    const employeeDocs = documents.filter((d: IDocument) => d.employee === id && !dismissedDocs.has(d._id));
-    const employeeRecords = records.filter((r: IRecord) => r.employee === id);
-    const employeeInvoices = useStore().invoices.filter(inv => inv.company === employee.company);
+    const companyName = companies.find((c: any) => c._id === employee.company)?.name || "Unknown Company";
+    const employeeDocs = documents.filter((d: any) => d.employee === id && !dismissedDocs.has(d._id));
+    const employeeRecords = records.filter((r: any) => r.employee === id);
+    const employeeInvoices = invoices.filter((inv: any) => inv.company === employee.company);
 
     const handleRenewDoc = (docId: string) => {
         alert(`Renewal initiated for document ${docId}. In a real app, this would open a renewal form.`);
@@ -132,7 +135,7 @@ export default function EmployeeDetail() {
                                 {employeeDocs.length === 0 ? (
                                     <div className="text-sm text-gray-500 dark:text-gray-400">No documents linked</div>
                                 ) : (
-                                    employeeDocs.map(doc => (
+                                    employeeDocs.map((doc: any) => (
                                         <div key={doc._id} className="flex justify-between items-center text-sm border-b border-gray-100 dark:border-gray-700 last:border-0 pb-2 last:pb-0">
                                             <span className="dark:text-gray-300">{doc.name}</span>
                                             <span className={`text-xs px-1.5 py-0.5 rounded ${new Date(doc.expiryDate!) < new Date() ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'}`}>
@@ -165,7 +168,7 @@ export default function EmployeeDetail() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
-                            {employeeRecords.slice(0, 8).map(rec => (
+                            {employeeRecords.slice(0, 8).map((rec: any) => (
                                 <div key={rec._id} className="flex justify-between items-center text-sm border-b border-gray-100 dark:border-gray-700 last:border-0 pb-2 last:pb-0">
                                     <div>
                                         <p className="font-medium dark:text-gray-200">{rec.particular}</p>

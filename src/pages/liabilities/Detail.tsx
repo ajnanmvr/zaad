@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Edit } from "lucide-react";
@@ -8,7 +7,9 @@ import type { ILiability, ICompany, IIndividual } from "@/types";
 export default function LiabilityDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { liabilities, companies, individuals } = useStore();
+    const liabilities: any[] = [];
+    const companies: any[] = [];
+    const individuals: any[] = [];
 
     const liability = liabilities.find((l: ILiability) => l._id === id);
     // Find related entity name

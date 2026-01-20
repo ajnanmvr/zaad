@@ -1,15 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStore } from "@/store";
 import { TrendingUp, TrendingDown, Filter, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "react-router-dom";
 import { useState } from "react";
+import type { ComponentType } from "react";
 import type { IRecord, ICompany, IEmployee, IIndividual } from "@/types";
 
 const ITEMS_PER_PAGE = 15;
 
 export default function FinancialDashboard() {
-    const { records, companies, employees, individuals } = useStore();
+    const records: any[] = [];
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
     const [searchParams] = useSearchParams();
     const [currentPage, setCurrentPage] = useState(1);
     const [filterMode, setFilterMode] = useState<"all" | "company" | "employees">("all");
@@ -318,7 +321,17 @@ export default function FinancialDashboard() {
     );
 }
 
-function StatCard({ title, value, sub, icon: Icon, iconColor, bg, textColor }: any) {
+type StatCardProps = {
+    title: string;
+    value: string | number;
+    sub: string;
+    icon: ComponentType<{ className?: string }>;
+    iconColor?: string;
+    bg?: string;
+    textColor?: string;
+};
+
+function StatCard({ title, value, sub, icon: Icon, iconColor, bg, textColor }: StatCardProps) {
     return (
         <Card className={`border-slate-200 dark:border-slate-800 shadow-sm ${bg}`}>
             <CardContent className="p-6">

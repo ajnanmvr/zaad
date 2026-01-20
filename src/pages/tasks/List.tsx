@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, User, Eye, Edit, Trash2, CheckSquare } from "lucide-react";
 import type { ITask } from "@/types";
@@ -18,7 +17,8 @@ const Badge = ({ children, className }: BadgeProps) => (
 );
 
 export default function TaskList() {
-    const { tasks, deleteTask } = useStore();
+    const tasks: any[] = [];
+    const deleteTask = (id: string) => console.log('Delete task:', id);
     const navigate = useNavigate();
     const [deleteItem, setDeleteItem] = useState<ITask | null>(null);
 

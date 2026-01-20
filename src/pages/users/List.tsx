@@ -1,218 +1,200 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
+import { userService } from "@/services/user.service";
+import { User } from "@/lib/validations/user";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Shield, UserCog, User, Eye, Edit, Trash2 } from "lucide-react";
-import type { IUser } from "@/types";
-import { Card, CardContent } from "@/components/ui/card";
-import { SortableTable } from "@/components/ui/sortable-table";
-import type { ColumnDef } from "@/components/ui/sortable-table";
+import { Plus, Eye, Edit, Trash2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog";
-import { Pagination } from "@/components/ui/pagination";
-
-const ITEMS_PER_PAGE = 10;
 
 export default function UserList() {
-    const { users, deleteUser } = useStore();
-    const navigate = useNavigate();
-    const [deleteItem, setDeleteItem] = useState<IUser | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
 
-    const partners = users.filter((u: IUser) => u.role === 'partner').length;
-    const employees = users.filter((u: IUser) => u.role === 'employee').length;
+  useEffect(() => {
+    loadUsers();
+  }, [page]);
 
-    const totalPages = Math.ceil(users.length / ITEMS_PER_PAGE);
-    const paginatedUsers = users.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await userService.listUsers({
+        page,
+        limit,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      });
+      setUsers(response.data);
+      setTotal(response.pagination.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+  const handleDelete = async () => {
+    if (!deleteId) return;
 
-    const columns: ColumnDef<IUser>[] = [
-        { key: "name", header: "Name", sortable: true, className: "font-medium" },
-        { key: "email", header: "Username / Email", sortable: true },
-        {
-            key: "role",
-            header: "Role",
-            sortable: true,
-            render: (u: IUser) => (
-                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${u.role === 'partner' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                    {u.role === 'partner' ? <Shield className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                    {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                </span>
-            )
-        },
-        {
-            key: "status",
-            header: "Status",
-            sortable: true,
-            render: (u: IUser) => <span className={`text-xs font-bold uppercase ${u.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-slate-400'}`}>{u.status}</span>
-        },
-        {
-            key: 'actions',
-            header: 'Actions',
-            render: (u: IUser) => (
-                <div className="flex items-center justify-end gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/users/${u._id}`);
-                        }}
-                        title="View details"
-                    >
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/users/${u._id}/edit`);
-                        }}
-                        title="Edit user"
-                    >
-                        <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteItem(u);
-                        }}
-                        title="Delete user"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-            )
-        }
-    ];
+    try {
+      setIsDeleting(true);
+      await userService.deleteUser(deleteId);
+      setUsers(users.filter((user) => user.id !== deleteId));
+      setDeleteId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
+  const totalPages = Math.ceil(total / limit);
+
+  if (loading) {
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-3">
-                        <Shield className="h-8 w-8 text-brand-600 dark:text-brand-400" />
-                        User Management
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400">Manage user accounts and access control (RBAC)</p>
-                </div>
-                <Button onClick={() => navigate("/users/new")}>
-                    <Plus className="mr-2 h-4 w-4" /> Add User
-                </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="border-slate-200 dark:border-slate-800">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300">
-                            <Users className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-slate-500">Total Users</p>
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{users.length}</h3>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-900">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600">
-                            <Shield className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Partners</p>
-                            <h3 className="text-2xl font-bold text-purple-700 dark:text-purple-300">{partners}</h3>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-900">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
-                            <User className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Employees</p>
-                            <h3 className="text-2xl font-bold text-blue-700 dark:text-blue-300">{employees}</h3>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-3">
-                {/* User Table */}
-                <div className="lg:col-span-2">
-                    <div className="rounded-md border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800">
-                        <SortableTable data={paginatedUsers} columns={columns} />
-                    </div>
-                    {totalPages > 1 && (
-                        <div className="mt-4">
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                                itemsPerPage={ITEMS_PER_PAGE}
-                                totalItems={users.length}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* RBAC Info */}
-                <div className="space-y-6">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Role-Based Access Control (RBAC)</h3>
-
-                    <Card className="border-l-4 border-l-purple-500 border-slate-200 dark:border-slate-800">
-                        <CardContent className="p-4 space-y-2">
-                            <div className="flex items-center gap-2 font-bold text-purple-700 dark:text-purple-400">
-                                <Shield className="w-4 h-4" /> Partner Role
-                            </div>
-                            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
-                                <li>Full access to all modules</li>
-                                <li>Can manage users and permissions</li>
-                                <li>View financial reports and analytics</li>
-                                <li>Edit and delete all records</li>
-                                <li>Configure system settings</li>
-                            </ul>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800">
-                        <CardContent className="p-4 space-y-2">
-                            <div className="flex items-center gap-2 font-bold text-blue-700 dark:text-blue-400">
-                                <UserCog className="w-4 h-4" /> Employee Role
-                            </div>
-                            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
-                                <li>Create and edit records</li>
-                                <li>Generate invoices and quotations</li>
-                                <li>Manage tasks assigned to them</li>
-                                <li>View company and employee data</li>
-                                <li>Limited financial access</li>
-                            </ul>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-
-            <DeleteConfirmationDialog
-                open={!!deleteItem}
-                title="Delete User"
-                itemName={deleteItem?.name}
-                description={`Are you sure you want to delete user "${deleteItem?.name}"? This action cannot be undone.`}
-                onConfirm={() => {
-                    if (deleteItem) {
-                        deleteUser(deleteItem._id);
-                        setDeleteItem(null);
-                    }
-                }}
-                onCancel={() => setDeleteItem(null)}
-            />
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Loading users...</p>
+      </div>
     );
+  }
+
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Users</h1>
+        <Button onClick={() => navigate("/users/new")}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add User
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="grid gap-4">
+        {users.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gray-500">No users found</p>
+          </Card>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Username
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                      {user.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {user.username}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {user.email}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          user.status === "active"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400"
+                        }`}
+                      >
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => navigate(`/users/${user.id}`)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => navigate(`/users/${user.id}/edit`)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setDeleteId(user.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          <Button
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </Button>
+          <div className="flex items-center px-4">
+            Page {page} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      <DeleteConfirmationDialog
+        open={!!deleteId}
+        onCancel={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This action cannot be undone."
+        isLoading={isDeleting}
+      />
+    </div>
+  );
 }

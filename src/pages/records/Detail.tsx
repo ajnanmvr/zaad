@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { IRecord, ICompany, IEmployee, IIndividual } from "@/types";
@@ -8,7 +7,10 @@ import { ArrowLeft, Edit, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 export default function RecordDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { records, companies, employees, individuals } = useStore();
+    const records: any[] = [];
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
 
     const record = records.find((r: IRecord) => r._id === id);
     

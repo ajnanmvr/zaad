@@ -1,21 +1,27 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { individualSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
-type IndividualFormValues = z.infer<typeof individualSchema>;
+type IndividualFormValues = {
+    name: string;
+    nationality: string;
+    passportNo: string;
+    phone: string;
+    email: string;
+    remarks?: string;
+};
 
 export default function IndividualForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { individuals, addIndividual, updateIndividual, deleteIndividual } = useStore();
+    const individuals: any[] = [];
+    const addIndividual = (individual: any) => console.log('Add individual:', individual);
+    const updateIndividual = (id: string, individual: any) => console.log('Update individual:', id, individual);
+    const deleteIndividual = (id: string) => console.log('Delete individual:', id);
     const isEdit = !!id;
 
     const {
@@ -24,7 +30,6 @@ export default function IndividualForm() {
         setValue,
         formState: { errors },
     } = useForm<IndividualFormValues>({
-        resolver: zodResolver(individualSchema),
         defaultValues: {
             name: "",
             nationality: "",

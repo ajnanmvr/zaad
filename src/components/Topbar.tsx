@@ -1,16 +1,34 @@
-import { Bell, Search, User, Moon, Sun, Laptop } from "lucide-react";
+import { Bell, Search, User, Moon, Sun, Laptop, LogOut, KeyRound } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useThemeStore } from "@/store";
+import { useAuthStore } from "@/store/authStore";
+import { authService } from "@/services/auth.service";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 export default function Topbar() {
     const { theme, setTheme } = useThemeStore();
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await authService.logout();
+            navigate('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+            // Clear auth anyway
+            useAuthStore.getState().clearAuth();
+            navigate('/login');
+        }
+    };
 
     return (
         <header className="h-16 bg-white/80 dark:bg-emerald-950/50 backdrop-blur-md border-b border-emerald-100/80 dark:border-emerald-900/60 sticky top-0 z-20 px-6 flex items-center justify-between transition-colors duration-300">
@@ -59,12 +77,37 @@ export default function Topbar() {
                 <div className="h-8 w-px bg-emerald-200 dark:bg-emerald-800 mx-1"></div>
                 <div className="flex items-center gap-3 pl-1">
                     <div className="text-right hidden sm:block">
-                        <div className="text-sm font-semibold text-slate-700 dark:text-emerald-200">Admin User</div>
-                        <div className="text-xs text-slate-500 dark:text-emerald-400">Manage</div>
+                        <div className="text-sm font-semibold text-slate-700 dark:text-emerald-200">
+                            {user?.name || 'User'}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-emerald-400">
+                            {user?.email || ''}
+                        </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 overflow-hidden hover:ring-2 hover:ring-brand-500/20 transition-all">
-                        <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 overflow-hidden hover:ring-2 hover:ring-brand-500/20 transition-all">
+                                <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-emerald-950 w-48">
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/change-password')}
+                                className="dark:hover:bg-emerald-900/30"
+                            >
+                                <KeyRound className="mr-2 h-4 w-4" /> 
+                                <span>Change Password</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-emerald-200 dark:bg-emerald-800" />
+                            <DropdownMenuItem 
+                                onClick={handleLogout}
+                                className="text-red-600 dark:text-red-400 dark:hover:bg-emerald-900/30"
+                            >
+                                <LogOut className="mr-2 h-4 w-4" /> 
+                                <span>Logout</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </header>

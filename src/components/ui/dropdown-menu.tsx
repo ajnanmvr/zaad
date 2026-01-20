@@ -30,7 +30,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
             className
         )}
         {...props}
-    />
+    >
+        {children}
+    </DropdownMenuPrimitive.SubTrigger>
 ))
 DropdownMenuSubTrigger.displayName =
     DropdownMenuPrimitive.SubTrigger.displayName

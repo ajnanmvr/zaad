@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { IInvoice, ICompany } from "@/types";
@@ -8,7 +7,8 @@ import { ArrowLeft, Printer, Edit } from "lucide-react";
 export default function InvoiceDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { invoices, companies } = useStore();
+    const invoices: any[] = [];
+    const companies: any[] = [];
 
     const invoice = invoices.find((i: IInvoice) => i._id === id);
     const company = companies.find((c: ICompany) => c._id === invoice?.company);

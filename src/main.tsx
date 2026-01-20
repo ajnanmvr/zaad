@@ -35,7 +35,7 @@ import { useThemeStore } from './store'
   }
 })();
 
-function Root() {
+export function Root() {
   const initTheme = useThemeStore((state) => state.initTheme);
 
   useEffect(() => {

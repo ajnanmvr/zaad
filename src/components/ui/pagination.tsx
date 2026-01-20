@@ -107,7 +107,8 @@ export function Pagination({
   );
 }
 
-export function usePagination(items: any[], itemsPerPage = 10) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function usePagination<T>(items: T[], itemsPerPage = 10) {
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const totalPages = Math.ceil(items.length / itemsPerPage);
@@ -118,7 +119,6 @@ export function usePagination(items: any[], itemsPerPage = 10) {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      // Scroll to top
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };

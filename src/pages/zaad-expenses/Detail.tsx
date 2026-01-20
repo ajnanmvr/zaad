@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Edit } from "lucide-react";
@@ -9,7 +8,7 @@ import type { IZaadExpense } from "@/types";
 export default function ZaadExpenseDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { zaadExpenses } = useStore();
+    const zaadExpenses: any[] = [];
 
     const expense = zaadExpenses.find((e: IZaadExpense) => e._id === id);
 

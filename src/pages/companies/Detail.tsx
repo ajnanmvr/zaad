@@ -1,16 +1,19 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
+import DocumentManagement from "@/components/DocumentManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ICompany, IEmployee, IDocument, IRecord } from "@/types";
-import { ArrowLeft, Building2, Edit, FileText, Phone, Mail, MapPin, Users, AlertCircle, Clock, DollarSign, Receipt } from "lucide-react";
-import DocumentManagement from "@/components/DocumentManagement";
+import type { ICompany } from "@/types";
+import { AlertCircle, ArrowLeft, Building2, Clock, DollarSign, Edit, FileText, Mail, MapPin, Phone, Receipt, Users } from "lucide-react";
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function CompanyDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { companies, employees, documents, records } = useStore();
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const documents: any[] = [];
+    const records: any[] = [];
+    const invoices: any[] = [];
     const [dismissedDocs, setDismissedDocs] = useState<Set<string>>(new Set());
 
     const company = companies.find((c: ICompany) => c._id === id);
@@ -24,14 +27,14 @@ export default function CompanyDetail() {
         );
     }
 
-    const companyEmployees = employees.filter((e: IEmployee) => e.company === id);
-    const companyDocs = documents.filter((d: IDocument) => d.company === id && !dismissedDocs.has(d._id));
-    const companyRecords = records.filter((r: IRecord) => r.company === id);
-    const companyInvoices = useStore().invoices.filter(inv => inv.company === id);
+    const companyEmployees = employees.filter((e: any) => e.company === id);
+    const companyDocs = documents.filter((d: any) => d.company === id && !dismissedDocs.has(d._id));
+    const companyRecords = records.filter((r: any) => r.company === id);
+    const companyInvoices = invoices.filter((inv: any) => inv.company === id);
     
     // Employee documents - only show expired and expiring (not valid)
-    const employeeDocsExpiredOrExpiring = documents.filter((d: IDocument) => {
-        const emp = companyEmployees.find(e => e._id === d.employee);
+    const employeeDocsExpiredOrExpiring = documents.filter((d: any) => {
+        const emp = companyEmployees.find((e: any) => e._id === d.employee);
         if (!emp || !d.expiryDate) return false;
         if (dismissedDocs.has(d._id)) return false;
         
@@ -43,11 +46,11 @@ export default function CompanyDetail() {
         return expiryDate < thirtyDaysFromNow;
     });
 
-    const employeeDocsExpired = employeeDocsExpiredOrExpiring.filter((d: IDocument) => {
+    const employeeDocsExpired = employeeDocsExpiredOrExpiring.filter((d: any) => {
         return new Date(d.expiryDate!) < new Date();
     });
 
-    const employeeDocsSoon = employeeDocsExpiredOrExpiring.filter((d: IDocument) => {
+    const employeeDocsSoon = employeeDocsExpiredOrExpiring.filter((d: any) => {
         const expiryDate = new Date(d.expiryDate!);
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);

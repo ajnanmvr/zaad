@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, AlertTriangle, CheckCircle, Clock, Building2, User, UserCircle } from "lucide-react";
@@ -10,7 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function ExpiringDocuments() {
-    const { documents, companies, employees, individuals } = useStore();
+    const documents: any[] = [];
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<'all' | 'week' | 'month' | 'later'>('all');

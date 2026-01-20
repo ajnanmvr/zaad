@@ -1,78 +1,51 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
-import { employeeSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
-type EmployeeFormValues = z.infer<typeof employeeSchema>;
+interface EmployeeFormData {
+    name: string;
+    company: string;
+    isActive: boolean;
+    emiratesId: string;
+    nationality: string;
+    phone1: string;
+    phone2: string;
+    email: string;
+    designation: string;
+    remarks: string;
+}
 
 export default function EmployeeForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { employees, companies, addEmployee, updateEmployee, deleteEmployee } = useStore();
     const isEdit = !!id;
-
-    const {
-        register,
-        handleSubmit,
-        setValue,
-        formState: { errors },
-    } = useForm<EmployeeFormValues>({
-        resolver: zodResolver(employeeSchema) as any,
-        defaultValues: {
-            name: "",
-            company: "",
-            isActive: true,
-            emiratesId: "",
-            nationality: "",
-            phone1: "",
-            phone2: "",
-            email: "",
-            designation: "",
-            remarks: "",
-        },
+    const [formData, setFormData] = useState<EmployeeFormData>({
+        name: "",
+        company: "",
+        isActive: true,
+        emiratesId: "",
+        nationality: "",
+        phone1: "",
+        phone2: "",
+        email: "",
+        designation: "",
+        remarks: "",
     });
 
-    useEffect(() => {
-        if (isEdit && id) {
-            const employee = employees.find((e) => e._id === id);
-            if (employee) {
-                setValue("name", employee.name);
-                setValue("company", employee.company || "");
-                setValue("isActive", employee.isActive);
-                setValue("emiratesId", employee.emiratesId || "");
-                setValue("nationality", employee.nationality || "");
-                setValue("phone1", employee.phone1 || "");
-                setValue("phone2", employee.phone2 || "");
-                setValue("email", employee.email || "");
-                setValue("designation", employee.designation || "");
-                setValue("remarks", employee.remarks || "");
-            } else {
-                navigate("/employees");
-            }
-        }
-    }, [id, isEdit, employees, navigate, setValue]);
-
-    const onSubmit = (data: EmployeeFormValues) => {
-        if (isEdit && id) {
-            updateEmployee(id, data);
-        } else {
-            addEmployee({ ...data, published: true });
-        }
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log("Form data:", formData);
         navigate("/employees");
     };
 
     const handleDelete = () => {
         if (isEdit && id) {
             if (confirm("Are you sure you want to delete this employee?")) {
-                deleteEmployee(id);
+                console.log("Delete employee:", id);
                 navigate("/employees");
             }
         }
@@ -94,7 +67,7 @@ export default function EmployeeForm() {
                 )}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={onSubmit}>
                 <Card>
                     <CardHeader>
                         <CardTitle>Employee Details</CardTitle>
@@ -103,41 +76,45 @@ export default function EmployeeForm() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Full Name *</Label>
-                                <Input id="name" {...register("name")} />
-                                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+                                <Input 
+                                    id="name" 
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="company">Company</Label>
-                                <select
-                                    id="company"
-                                    {...register("company")}
-                                    className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
-                                >
-                                    <option value="">Select Company</option>
-                                    {companies.map(c => (
-                                        <option key={c._id} value={c._id}>{c.name}</option>
-                                    ))}
-                                </select>
+                                <Input 
+                                    id="company" 
+                                    value={formData.company}
+                                    onChange={(e) => setFormData({...formData, company: e.target.value})}
+                                />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="designation">Designation</Label>
-                                <Input id="designation" {...register("designation")} />
+                                <Input 
+                                    id="designation" 
+                                    value={formData.designation}
+                                    onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nationality">Nationality</Label>
-                                <Input id="nationality" {...register("nationality")} />
+                                <Input 
+                                    id="nationality" 
+                                    value={formData.nationality}
+                                    onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="isActive">Status</Label>
                                 <select
                                     id="isActive"
-                                    {...register("isActive", {
-                                        setValueAs: (value: string) => value === "true",
-                                    })}
-                                    defaultValue={isEdit ? undefined : "true"}
+                                    value={formData.isActive ? "true" : "false"}
+                                    onChange={(e) => setFormData({...formData, isActive: e.target.value === "true"})}
                                     className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                                 >
                                     <option value="true">Active</option>
@@ -167,7 +144,7 @@ export default function EmployeeForm() {
                             <textarea
                                 id="remarks"
                                 {...register("remarks")}
-                                className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-20 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
 

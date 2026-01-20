@@ -15,7 +15,6 @@ export function CalendarMonth({
     year,
     month,
     events,
-    documents: _documents,
     tasks,
     onSelectDate,
     onMonthChange

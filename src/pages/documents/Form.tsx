@@ -1,112 +1,41 @@
+import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
-import { useEffect } from "react";
 
-const documentSchema = z.object({
-    name: z.string().min(1, "Document Name is required"),
-    expiryDate: z.string().optional(),
-    remarks: z.string().optional(),
-    type: z.string().min(1, "Document Type is required"), // e.g., 'visa', 'license'
-    ownerType: z.enum(["company", "employee", "individual"] as const),
-    ownerId: z.string().min(1, "Owner is required"),
-});
-
-type DocumentFormValues = z.infer<typeof documentSchema>;
+type DocumentFormValues = {
+    name: string;
+    expiryDate?: string;
+    remarks?: string;
+    type: string;
+    ownerType: "company" | "employee" | "individual";
+    ownerId: string;
+};
 
 export default function DocumentForm() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { documents, addDocument, updateDocument, companies, employees, individuals } = useStore();
-
+    const documentNumberRef = useRef(`DOC-${Math.floor(Math.random() * 10000)}`);
     const isEditing = Boolean(id);
-    const existingDoc = documents.find((d) => d._id === id);
-
-    const form = useForm<DocumentFormValues>({
-        resolver: zodResolver(documentSchema),
-        defaultValues: {
-            name: "",
-            expiryDate: "",
-            remarks: "",
-            type: "general",
-            ownerType: "company",
-            ownerId: "",
-        },
+    const [formData, setFormData] = useState<DocumentFormValues>({
+        name: "",
+        expiryDate: "",
+        remarks: "",
+        type: "general",
+        ownerType: "company",
+        ownerId: "",
     });
+    const companies: any[] = [];
+    const employees: any[] = [];
+    const individuals: any[] = [];
 
-    // Populate form if editing
-    useEffect(() => {
-        if (isEditing && existingDoc) {
-            let ownerType: "company" | "employee" | "individual" = "company";
-            let ownerId = "";
-
-            if (existingDoc.company) {
-                ownerType = "company";
-                ownerId = existingDoc.company;
-            } else if (existingDoc.employee) {
-                ownerType = "employee";
-                ownerId = existingDoc.employee;
-            } else if (existingDoc.individual) {
-                ownerType = "individual";
-                ownerId = existingDoc.individual;
-            }
-
-            form.reset({
-                name: existingDoc.name,
-                expiryDate: existingDoc.expiryDate,
-                remarks: existingDoc.remarks,
-                type: existingDoc.type,
-                ownerType,
-                ownerId,
-            });
-        }
-    }, [isEditing, existingDoc, form]);
-
-    const ownerType = useWatch({ control: form.control, name: "ownerType" });
-
-    const onSubmit = (data: DocumentFormValues) => {
-        // Prepare data matching IDocument
-        const docData = {
-            name: data.name,
-            expiryDate: data.expiryDate,
-            remarks: data.remarks,
-            type: data.type,
-            company: data.ownerType === "company" ? data.ownerId : undefined,
-            employee: data.ownerType === "employee" ? data.ownerId : undefined,
-            individual: data.ownerType === "individual" ? data.ownerId : undefined,
-            issueDate: new Date().toISOString(),
-            status: 'valid' as const,
-            documentNumber: 'DOC-' + Math.floor(Math.random() * 10000),
-            published: true,
-        };
-
-        if (isEditing && id) {
-            updateDocument(id, docData);
-        } else {
-            addDocument(docData);
-        }
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log("Form data:", formData, documentNumberRef.current);
         navigate(-1);
     };
 
@@ -128,120 +57,86 @@ export default function DocumentForm() {
                     <CardTitle>Document Details</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <form onSubmit={onSubmit} className="space-y-6">
 
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Document Name *</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g. Trade License, Visa" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="ownerType"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Owner Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select type" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="company">Company</SelectItem>
-                                                    <SelectItem value="employee">Employee</SelectItem>
-                                                    <SelectItem value="individual">Individual</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="ownerId"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Select Owner *</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select entity" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {ownerType === "company" && companies.map((c) => (
-                                                        <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
-                                                    ))}
-                                                    {ownerType === "employee" && employees.map((e) => (
-                                                        <SelectItem key={e._id} value={e._id}>{e.name}</SelectItem>
-                                                    ))}
-                                                    {ownerType === "individual" && individuals.map((i) => (
-                                                        <SelectItem key={i._id} value={i._id}>{i.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Document Name *</Label>
+                                <Input 
+                                    id="name"
+                                    placeholder="e.g. Trade License, Visa" 
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="type"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Document Type</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g. general" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="space-y-2">
+                                    <Label htmlFor="ownerType">Owner Type</Label>
+                                    <select
+                                        id="ownerType"
+                                        value={formData.ownerType}
+                                        onChange={(e) => setFormData({...formData, ownerType: e.target.value as any, ownerId: ""})}
+                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                                    >
+                                        <option value="company">Company</option>
+                                        <option value="employee">Employee</option>
+                                        <option value="individual">Individual</option>
+                                    </select>
+                                </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="expiryDate"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Expiry Date</FormLabel>
-                                            <FormControl>
-                                                <Input type="date" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="space-y-2">
+                                    <Label htmlFor="ownerId">Select Owner *</Label>
+                                    <select
+                                        id="ownerId"
+                                        value={formData.ownerId}
+                                        onChange={(e) => setFormData({...formData, ownerId: e.target.value})}
+                                        className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                                    >
+                                        <option value="">Select entity</option>
+                                        {formData.ownerType === "company" && companies.map((c: any) => (
+                                            <option key={c._id} value={c._id}>{c.name}</option>
+                                        ))}
+                                        {formData.ownerType === "employee" && employees.map((e: any) => (
+                                            <option key={e._id} value={e._id}>{e.name}</option>
+                                        ))}
+                                        {formData.ownerType === "individual" && individuals.map((i: any) => (
+                                            <option key={i._id} value={i._id}>{i.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
-                            <FormField
-                                control={form.control}
-                                name="remarks"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Remarks</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Any additional notes..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="type">Document Type</Label>
+                                    <Input 
+                                        id="type"
+                                        placeholder="e.g. general" 
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="expiryDate">Expiry Date</Label>
+                                    <Input 
+                                        id="expiryDate"
+                                        type="date" 
+                                        value={formData.expiryDate}
+                                        onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="remarks">Remarks</Label>
+                                <Textarea 
+                                    id="remarks"
+                                    placeholder="Any additional notes..." 
+                                    value={formData.remarks}
+                                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                                />
+                            </div>
 
                             <div className="flex justify-end gap-2">
                                 <Button type="button" variant="outline" onClick={() => navigate(-1)}>
@@ -252,7 +147,6 @@ export default function DocumentForm() {
                                 </Button>
                             </div>
                         </form>
-                    </Form>
                 </CardContent>
             </Card>
         </div>

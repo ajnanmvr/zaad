@@ -1,21 +1,21 @@
 import { useState, useMemo } from 'react';
-import { useStore } from "@/store";
 import { CalendarMonth } from "@/components/CalendarMonth";
 import { isBefore, parseISO, addDays } from "date-fns";
 import type { ICalendarEvents, IDayCounts, ICalendarDocument, ICalendarTask } from "@/types";
 import { AlertCircle, Calendar as CalendarIcon, Clock } from "lucide-react";
 
 export default function CalendarPage() {
-    const { documents, tasks } = useStore();
+    const documents: any[] = [];
+    const tasks: any[] = [];
     const [currentDate, setCurrentDate] = useState(new Date());
-    const today = new Date();
+    const today = useMemo(() => new Date(), []);
 
     // Stats for Top Bar
-    const expiredCount = documents.filter((d) =>
+    const expiredCount = documents.filter((d: any) =>
         d.expiryDate && isBefore(parseISO(d.expiryDate), today)
     ).length;
 
-    const expiringSoonCount = documents.filter((d) =>
+    const expiringSoonCount = documents.filter((d: any) =>
         d.expiryDate &&
         isBefore(parseISO(d.expiryDate), addDays(today, 30)) &&
         !isBefore(parseISO(d.expiryDate), today)

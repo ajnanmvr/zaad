@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Edit, Calendar, CheckCircle2 } from "lucide-react";
@@ -9,7 +8,7 @@ import type { ITask } from "@/types";
 export default function TaskDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { tasks } = useStore();
+    const tasks: any[] = [];
 
     const task = tasks.find((t: ITask) => t._id === id);
 

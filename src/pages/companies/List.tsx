@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SortableTable } from "@/components/ui/sortable-table";
@@ -13,13 +12,14 @@ import type { ICompany } from "@/types";
 const ITEMS_PER_PAGE = 10;
 
 export default function CompanyList() {
-    const { companies, deleteCompany } = useStore();
+    const companies: any[] = [];
+    const deleteCompany = (id: string) => console.log('Delete company:', id);
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [deleteItem, setDeleteItem] = useState<ICompany | null>(null);
 
-    const filteredCompanies = companies.filter((company) =>
+    const filteredCompanies = companies.filter((company: any) =>
         company.name.toLowerCase().includes(search.toLowerCase()) ||
         company.licenseNo?.toLowerCase().includes(search.toLowerCase())
     );
