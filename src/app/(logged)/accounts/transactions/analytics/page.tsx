@@ -3,7 +3,7 @@ import React, { useRef } from "react";
 import ChartOne from "@/components/Charts/ChartOne";
 import ChartTwo from "@/components/Charts/ChartTwo";
 import CardDataStats from "@/components/CardDataStats";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
+
 import axios from "axios";
 import { useState } from "react";
 import Link from "next/link";
@@ -11,9 +11,13 @@ import ReactToPrint from "react-to-print";
 import ReportPage from "@/components/ReportPage";
 import { TAccountsData, TProfitsData } from "@/types/dashboard";
 import { useQuery } from "@tanstack/react-query";
+import { FiFilter, FiPrinter, FiX, FiChevronDown, FiTrendingUp, FiTrendingDown, FiDollarSign, FiCreditCard, FiBriefcase, FiUsers } from "react-icons/fi";
+import clsx from "clsx";
+
 const baseData = {
   y: "", m: ""
 }
+
 export default function AccountsDashboard() {
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [isPrint, setIsPrint] = useState(false);
@@ -42,13 +46,13 @@ export default function AccountsDashboard() {
       return data
     }
   })
+  
   const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
     queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
       const { data } = await axios.get('/api/payment/profits' + generateQuery(filter))
       return data
     }
   })
-
 
   const handleFilter = () => {
     setFilter(filterDummy)
@@ -69,439 +73,345 @@ export default function AccountsDashboard() {
     setFilterOpen(false)
   }
 
+  const getFilterDisplay = () => {
+    if (filter.m && filter.y) return `${filter.m} / ${filter.y}`;
+    if (filter.m || filter.y) return filter.m + filter.y;
+    return "All Time";
+  }
+
   return (
-    <DefaultLayout>
+    <>
       {accountsLoading && profitsLoading ? (
-        <div className="flex justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+        <div className="flex justify-center items-center h-64">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-emerald-600 border-t-transparent"></div>
         </div>
-      ) : isPrint ?
-        <>
-          <button onClick={() => setIsPrint(false)} className="items-center justify-center rounded-md border-red px-4 py-3 mb-3 hover:bg-red hover:bg-opacity-10 text-center font-medium text-red w-full transition-colors duration-300 cursor-pointer border">
-            Cancel
-          </button>
-          <ReactToPrint trigger={() =>
-            <p className="items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium border-primary  text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90">
-              Download / Print
-            </p>
-          } content={() => componentRef.current} />
-          <div className="relative" ref={componentRef}>
-            <img src="/images/invoice.jpg" alt="Invoice Bg" />
-            <div className="absolute top-0 text-[#000000] mt-[35%] uppercase px-20">
-              <h1 className="text-center text-2xl font-bold">{filter.m && filter.y ? filter.m + " / " + filter.y : filter.m || filter.y ? filter.m + filter.y : "All Time"} Report</h1>
-              <ReportPage accountsData={accountsData} profitsData={profitsData} />
+      ) : isPrint ? (
+          <>
+            <button onClick={() => setIsPrint(false)} className="items-center justify-center rounded-md border-red px-4 py-3 mb-3 hover:bg-red hover:bg-opacity-10 text-center font-medium text-red w-full transition-colors duration-300 cursor-pointer border">
+              Cancel
+            </button>
+            <ReactToPrint trigger={() =>
+              <p className="items-center justify-center rounded-t-md bg-emerald-600 px-4 py-3 text-center font-medium border-emerald-600 text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90">
+                Download / Print
+              </p>
+            } content={() => componentRef.current} />
+            <div className="relative" ref={componentRef}>
+              <img src="/images/invoice.jpg" alt="Invoice Bg" />
+              <div className="absolute top-0 text-[#000000] mt-[35%] uppercase px-20">
+                <h1 className="text-center text-2xl font-bold">{getFilterDisplay()} Report</h1>
+                <ReportPage accountsData={accountsData} profitsData={profitsData} />
+              </div>
             </div>
-          </div>
-        </>
-        :
-        <>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-title-md2 capitalize font-semibold text-black dark:text-white">
-              Accounts Report</h2>
+          </>
+      ) : (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <button type="button" onClick={() => setIsPrint(true)} className=" text-primary mr-5 hover:text-meta-10">
-                Export Report
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white capitalize">
+                Accounts Report
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Detailed financial overview and analytics</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                type="button" 
+                onClick={() => setIsPrint(true)} 
+                className="group flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-medium text-slate-700 transition-all hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <FiPrinter className="text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200" />
+                <span>Export Report</span>
               </button>
-              <button onClick={() => setFilterOpen(true)} className=" inline-flex gap-3 border-primary border font-semibold text-white bg-primary transition-colors duration-300 rounded hover:bg-opacity-90 p-3 capitalize">
-
-                {filter.m && filter.y ? filter.m + " / " + filter.y : filter.m || filter.y ? filter.m + filter.y : "All Time"}
-
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 12L5 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M19 20L19 18" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M5 20L5 16" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M19 12L19 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M12 7L12 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M12 20L12 12" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="5" cy="14" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="9" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="19" cy="15" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+              <button 
+                onClick={() => setFilterOpen(true)} 
+                className="flex items-center justify-between gap-3 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 capitalize min-w-[200px]"
+              >
+                <span className="flex items-center gap-2"><FiFilter /> {getFilterDisplay()}</span>
+                <FiChevronDown />
               </button>
             </div>
           </div>
 
-          {isFilterOpen && <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-999">
-            <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
-              <p className='text-center font-bold text-xl my-2 text-primary'>Filter Accounts Data</p>
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Month</label>
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
+          {/* Filter Modal Overlay */}
+          {isFilterOpen && (
+            <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+              <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 relative">
+                <button onClick={handleCancelFilter} className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                  <FiX className="text-xl" />
+                </button>
+                
+                <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <FiFilter className="text-emerald-500" />
+                  Filter Accounts Data
+                </h3>
 
+                <div className="mb-6 flex flex-col gap-6 sm:flex-row">
+                  <div className="w-full sm:w-1/2">
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Month</label>
                     <select
-                      title="Select Month"
                       value={filterDummy.m}
                       name="from"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, m: e.target.value })
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-
+                      onChange={(e) => setFilterDummy({ ...filterDummy, m: e.target.value })}
+                      className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     >
-                      <option value="" className="text-body dark:text-bodydark">
-                        None
-                      </option>
-                      <option value="current" className="text-body dark:text-bodydark">
-                        This Month
-                      </option>
-                      <option value="1" className="text-body dark:text-bodydark">
-                        Jan
-                      </option>
-                      <option value="2" className="text-body dark:text-bodydark">
-                        Feb                      </option>
-                      <option value="3" className="text-body dark:text-bodydark">
-                        Mar                      </option>
-                      <option value="4" className="text-body dark:text-bodydark">
-                        Apr                      </option>
-                      <option value="5" className="text-body dark:text-bodydark">
-                        May                      </option>
-                      <option value="6" className="text-body dark:text-bodydark">
-                        Jun                      </option>
-                      <option value="7" className="text-body dark:text-bodydark">
-                        Jul                      </option>
-                      <option value="8" className="text-body dark:text-bodydark">
-                        Aug                      </option>
-                      <option value="9" className="text-body dark:text-bodydark">
-                        Sep                      </option>
-                      <option value="10" className="text-body dark:text-bodydark">
-                        Oct                      </option>
-                      <option value="11" className="text-body dark:text-bodydark">
-                        Nov                      </option>
-                      <option value="12" className="text-body dark:text-bodydark">
-                        Dec                      </option>
+                      <option value="">None</option>
+                      <option value="current">This Month</option>
+                      <option value="1">Jan</option>
+                      <option value="2">Feb</option>
+                      <option value="3">Mar</option>
+                      <option value="4">Apr</option>
+                      <option value="5">May</option>
+                      <option value="6">Jun</option>
+                      <option value="7">Jul</option>
+                      <option value="8">Aug</option>
+                      <option value="9">Sep</option>
+                      <option value="10">Oct</option>
+                      <option value="11">Nov</option>
+                      <option value="12">Dec</option>
                     </select>
-
-                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                      <svg className="fill-current"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.8">
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                          ></path>
-                        </g>
-                      </svg>
-                    </span>
-
                   </div>
-                </div>
 
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Year</label>
-
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
-                    <input type="text"
-                      placeholder="Enter Year"
+                  <div className="w-full sm:w-1/2">
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Year</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. 2024"
                       value={filterDummy.y}
                       name="y"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, y: e.target.value })
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
+                      onChange={(e) => setFilterDummy({ ...filterDummy, y: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
-
                   </div>
                 </div>
 
-              </div>
-
-              <div className="flex justify-between">
-                <div className="inline-flex items-center gap-2">
-                  <button type="button" onClick={handleCurrentFilter} className="text-primary hover:text-meta-10">
-                    This Month
-                  </button>  | <button type="button" onClick={handleAllFilter} className=" text-primary hover:text-meta-10">
-                    All Time
-                  </button>
-                </div>
-                <div>
-                  <button type="button" onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
-                    Cancel
-                  </button>
-                  <button type="button" onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
-                    Apply
-                  </button>
+                <div className="flex items-center justify-between mt-8">
+                  <div className="flex gap-4 text-sm font-medium">
+                    <button type="button" onClick={handleCurrentFilter} className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">
+                      This Month
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <button type="button" onClick={handleAllFilter} className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400">
+                      All Time
+                    </button>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={handleCancelFilter} className="rounded-xl bg-slate-100 px-6 py-2.5 font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                      Cancel
+                    </button>
+                    <button onClick={handleFilter} className="rounded-xl bg-emerald-600 px-6 py-2.5 font-medium text-white transition hover:bg-emerald-700 shadow-sm shadow-emerald-600/30">
+                      Apply Filter
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>}
+          )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-
-            <CardDataStats
-              title="Total Transactions"
-              total={`${(accountsData?.expenseCount ?? 0) + (accountsData?.incomeCount ?? 0)}`}
-            />
-            <CardDataStats
-              title="Net Profit"
-              total={`${(accountsData?.netProfit ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Total Credit"
-              total={`${((profitsData?.totalToGet ?? 0) * -1).toFixed(2)} AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Total Debit"
-              total={`${(profitsData?.totalToGive ?? 0).toFixed(2)} AED`}
-              color="red"
-            />
+          {/* Key Metrics Row 1 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Total Transactions" total={`${(accountsData?.expenseCount ?? 0) + (accountsData?.incomeCount ?? 0)}`}>
+              <FiBriefcase className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Net Profit" total={`${(accountsData?.netProfit ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Total Credit" total={`${((profitsData?.totalToGet ?? 0) * -1).toFixed(2)} AED`} color="emerald-500">
+              <FiTrendingUp className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Total Debit" total={`${(profitsData?.totalToGive ?? 0).toFixed(2)} AED`} color="rose-500">
+              <FiTrendingDown className="text-xl text-rose-500" />
+            </CardDataStats>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Total Balance"
-              total={`${(accountsData?.totalBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Cash Balance"
-              total={`${(accountsData?.cashBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Balance"
-              total={`${(accountsData?.bankBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Balance"
-              total={`${(accountsData?.tasdeedBalance ?? 0).toFixed(2)} AED`}
-            />
+          {/* Balance Metrics Row 2 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Total Balance" total={`${(accountsData?.totalBalance ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Cash Balance" total={`${(accountsData?.cashBalance ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Bank Balance" total={`${(accountsData?.bankBalance ?? 0).toFixed(2)} AED`}>
+              <FiCreditCard className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Tasdeed Balance" total={`${(accountsData?.tasdeedBalance ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl" />
+            </CardDataStats>
           </div>
 
-          <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-            <ChartOne
-              months={accountsData?.monthNames ?? []}
-              profit={accountsData?.last12MonthsProfit ?? []}
-              expense={accountsData?.last12MonthsExpenses ?? []}
-            />
-            <ChartTwo
-              dates={accountsData?.daysOfWeekInitials ?? []}
-              profit={accountsData?.profitLast7DaysTotal ?? []}
-              expense={accountsData?.expensesLast7DaysTotal ?? []}
-            />
+          {/* Charts Row */}
+          <div className="grid grid-cols-12 gap-4 lg:gap-6">
+            <ChartOne months={accountsData?.monthNames ?? []} profit={accountsData?.last12MonthsProfit ?? []} expense={accountsData?.last12MonthsExpenses ?? []} />
+            <ChartTwo dates={accountsData?.daysOfWeekInitials ?? []} profit={accountsData?.profitLast7DaysTotal ?? []} expense={accountsData?.expensesLast7DaysTotal ?? []} />
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Office Expense"
-              total={`${accountsData?.zaadExpenseTotal.toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Total Profit"
-              total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Profit This Month"
-              total={`${accountsData?.last12MonthsProfit[11].toFixed(2)
-                } AED`}
-            />
-            <CardDataStats
-              title="Today Profit"
-              total={`${accountsData?.profitLast7DaysTotal[6].toFixed(2)
-                } AED`}
-            />
+          {/* Additional Metrics Row 3 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Office Expense" total={`${accountsData?.zaadExpenseTotal.toFixed(2)} AED`}>
+              <FiBriefcase className="text-xl" />
+            </CardDataStats>
+            <CardDataStats title="Total Profit" total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}>
+              <FiTrendingUp className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Profit This Month" total={`${accountsData?.last12MonthsProfit[11].toFixed(2)} AED`}>
+              <FiTrendingUp className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Today Profit" total={`${accountsData?.profitLast7DaysTotal[6].toFixed(2)} AED`}>
+              <FiTrendingUp className="text-xl text-emerald-500" />
+            </CardDataStats>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Cash Income"
-              total={`${(accountsData?.CashIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Income"
-              total={`${(accountsData?.BankIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Income"
-              total={`${(accountsData?.TasdeedIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Swiper Income"
-              total={`${(accountsData?.SwiperIncome ?? 0).toFixed(2)} AED`}
-            />
+          {/* Income By Method Row 4 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Cash Income" total={`${(accountsData?.CashIncome ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Bank Income" total={`${(accountsData?.BankIncome ?? 0).toFixed(2)} AED`}>
+              <FiCreditCard className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Tasdeed Income" total={`${(accountsData?.TasdeedIncome ?? 0).toFixed(2)} AED`}>
+              <FiTrendingUp className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats title="Swiper Income" total={`${(accountsData?.SwiperIncome ?? 0).toFixed(2)} AED`}>
+              <FiCreditCard className="text-xl text-emerald-500" />
+            </CardDataStats>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Cash Expense"
-              total={`${(accountsData?.CashExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Expense"
-              total={`${(accountsData?.BankExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Expense"
-              total={`${(accountsData?.TasdeedExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Swiper Expense"
-              total={`${(accountsData?.SwiperExpense ?? 0).toFixed(2)} AED`}
-            />
+          {/* Expense By Method Row 5 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Cash Expense" total={`${(accountsData?.CashExpense ?? 0).toFixed(2)} AED`}>
+              <FiDollarSign className="text-xl text-rose-500" />
+            </CardDataStats>
+            <CardDataStats title="Bank Expense" total={`${(accountsData?.BankExpense ?? 0).toFixed(2)} AED`}>
+              <FiCreditCard className="text-xl text-rose-500" />
+            </CardDataStats>
+            <CardDataStats title="Tasdeed Expense" total={`${(accountsData?.TasdeedExpense ?? 0).toFixed(2)} AED`}>
+              <FiTrendingDown className="text-xl text-rose-500" />
+            </CardDataStats>
+            <CardDataStats title="Swiper Expense" total={`${(accountsData?.SwiperExpense ?? 0).toFixed(2)} AED`}>
+              <FiCreditCard className="text-xl text-rose-500" />
+            </CardDataStats>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Companies Credit"
-              total={`${((profitsData?.totalToGetCompanies ?? 0) * -1).toFixed(2)}
-                AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Companies Debit"
-              total={`${(profitsData?.totalToGiveCompanies ?? 0).toFixed(2)} AED`}
-              color="red"
-            />
-            <CardDataStats
-              title="Individual Credit"
-              total={`${((profitsData?.totalToGetEmployees ?? 0) * -1).toFixed(2)}
-                AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Individual Debit"
-              total={`${(profitsData?.totalToGiveEmployees ?? 0).toFixed(2)} AED`}
-              color="red"
-            />
+          {/* Entity Credit/Debit Row 6 */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats title="Companies Credit" total={`${((profitsData?.totalToGetCompanies ?? 0) * -1).toFixed(2)} AED`} color="emerald-500" />
+            <CardDataStats title="Companies Debit" total={`${(profitsData?.totalToGiveCompanies ?? 0).toFixed(2)} AED`} color="rose-500" />
+            <CardDataStats title="Individual Credit" total={`${((profitsData?.totalToGetEmployees ?? 0) * -1).toFixed(2)} AED`} color="emerald-500" />
+            <CardDataStats title="Individual Debit" total={`${(profitsData?.totalToGiveEmployees ?? 0).toFixed(2)} AED`} color="rose-500" />
           </div>
 
-          <div className="mt-4 flex flex-col gap-4">
-            {(profitsData?.over0balanceCompanies ?? []).length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Company Debit List
-                </h4>
-
-                <div>
+          {/* Debt Lists Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+            
+            {/* Company Debit List */}
+            {(profitsData?.over0balanceCompanies ?? []).length > 0 && (
+              <div className="rounded-2xl border border-rose-100 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-rose-900/30 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="rounded-lg bg-rose-50 p-2 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><FiBriefcase className="text-xl" /></div>
+                  <h4 className="text-xl font-bold text-slate-800 dark:text-white">Company Debit List</h4>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {profitsData?.over0balanceCompanies.map((data, key) => (
                     <Link
                       href={`/company/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
+                      className="group flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-rose-200 hover:bg-rose-50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-rose-900/50 dark:hover:bg-rose-900/20"
                     >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-red">
-                            {data.balance.toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
+                      <h5 className="font-semibold capitalize text-slate-700 group-hover:text-rose-700 dark:text-slate-300 dark:group-hover:text-rose-400">
+                        {data.name}
+                      </h5>
+                      <span className="font-bold text-rose-600 dark:text-rose-400">
+                        {data.balance.toFixed(2)} <span className="text-xs font-medium">AED</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
-            {profitsData?.under0balanceCompanies?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Company Credit List
-                </h4>
 
-                <div>
+            {/* Company Credit List */}
+            {profitsData?.under0balanceCompanies?.length !== 0 && (
+              <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-emerald-900/30 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                 <div className="mb-6 flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><FiBriefcase className="text-xl" /></div>
+                  <h4 className="text-xl font-bold text-slate-800 dark:text-white">Company Credit List</h4>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {profitsData?.under0balanceCompanies?.map((data, key) => (
                     <Link
                       href={`/company/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
+                      className="group flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20"
                     >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-meta-3">
-                            {(data.balance * -1).toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
+                      <h5 className="font-semibold capitalize text-slate-700 group-hover:text-emerald-700 dark:text-slate-300 dark:group-hover:text-emerald-400">
+                        {data.name}
+                      </h5>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {(data.balance * -1).toFixed(2)} <span className="text-xs font-medium">AED</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
-            {profitsData?.over0balanceEmployees?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Individual Debit List
-                </h4>
 
-                <div>
+            {/* Individual Debit List */}
+            {profitsData?.over0balanceEmployees?.length !== 0 && (
+              <div className="rounded-2xl border border-rose-100 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-rose-900/30 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="rounded-lg bg-rose-50 p-2 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><FiUsers className="text-xl" /></div>
+                  <h4 className="text-xl font-bold text-slate-800 dark:text-white">Individual Debit List</h4>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {(profitsData?.over0balanceEmployees ?? []).map((data, key) => (
                     <Link
                       href={`/employee/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
+                      className="group flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-rose-200 hover:bg-rose-50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-rose-900/50 dark:hover:bg-rose-900/20"
                     >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-red">
-                            {data.balance.toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
+                      <h5 className="font-semibold capitalize text-slate-700 group-hover:text-rose-700 dark:text-slate-300 dark:group-hover:text-rose-400">
+                        {data.name}
+                      </h5>
+                      <span className="font-bold text-rose-600 dark:text-rose-400">
+                        {data.balance.toFixed(2)} <span className="text-xs font-medium">AED</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
-            {profitsData?.under0balanceEmployees?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Individual Credit List
-                </h4>
 
-                <div>
+            {/* Individual Credit List */}
+            {profitsData?.under0balanceEmployees?.length !== 0 && (
+              <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-emerald-900/30 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                 <div className="mb-6 flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><FiUsers className="text-xl" /></div>
+                  <h4 className="text-xl font-bold text-slate-800 dark:text-white">Individual Credit List</h4>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {(profitsData?.under0balanceEmployees ?? []).map((data, key) => (
                     <Link
                       href={`/employee/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
                       key={key}
+                      className="group flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20"
                     >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-meta-3">
-                            {(data.balance * -1).toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
+                      <h5 className="font-semibold capitalize text-slate-700 group-hover:text-emerald-700 dark:text-slate-300 dark:group-hover:text-emerald-400">
+                        {data.name}
+                      </h5>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {(data.balance * -1).toFixed(2)} <span className="text-xs font-medium">AED</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
+            
           </div>
-        </>
-      }
-    </DefaultLayout>
+        </div>
+      )}
+    </>
   )
 }

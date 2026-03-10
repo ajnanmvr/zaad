@@ -1,11 +1,12 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
+import axios from "axios";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
+import clsx from "clsx";
 
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
@@ -15,7 +16,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
-        invoiceNo: 1
+        invoiceNo: 1,
+        quotation: "false",
+        showBalance: "show",
+        items: []
     });
 
     const fetchData = async () => {
@@ -26,7 +30,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 setisEditMode(true)
             } else {
                 const { data } = await axios.get(`/api/invoice/prev`);
-                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data.invoiceNo + 1, suffix: data?.suffix })
+                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data?.invoiceNo + 1, suffix: data?.suffix })
             }
         } catch (error) {
             console.log(error);
@@ -35,6 +39,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     useEffect(() => {
         fetchData()
     }, [])
+
     const handleSubmit = async (e: any) => {
         e.preventDefault()
         try {
@@ -56,416 +61,388 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         setInvoiceData({ ...invoiceData, items: updatedItems });
     };
 
-    let items = {
-        quantity: 1,
-        rate: 0
-    }
-
     const handleAddDocument = (e: any) => {
         e.preventDefault()
+        const newItem = { quantity: 1, rate: 0, title: "", desc: "" };
         if (!invoiceData.items) {
-            setInvoiceData({ ...invoiceData, items: [items] })
+            setInvoiceData({ ...invoiceData, items: [newItem] })
         }
         else {
-            const updateditems = [...invoiceData.items, items];
-            setInvoiceData({ ...invoiceData, items: updateditems });
+            setInvoiceData({ ...invoiceData, items: [...invoiceData.items, newItem] });
         }
     };
-    const handleDocumentChange = (index: number, field: string, value: string | Date) => {
+
+    const handleDocumentChange = (index: number, field: string, value: string | Date | number) => {
         const updateditems = [...invoiceData.items];
-        updateditems[index][field] = value;
+        updateditems[index][field] = field === 'rate' || field === 'quantity' ? Number(value) : value;
         setInvoiceData({ ...invoiceData, items: updateditems });
     };
+
     const handleChange = (e: any) => {
         setInvoiceData({
             ...invoiceData,
             [e.target.name]: e.target.value
         })
     }
-    const breadCrumb = isEditMode ? "Edit Invoice" : "Add Invoice"
-    const confirmBtn = isEditMode ? "Save Edits" : "Save Invoice"
-    console.log(invoiceData);
+
+    const breadCrumb = isEditMode ? "Edit Invoice" : "Create Invoice"
+    
+    // UI Helpers
+    const inputClass = "w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
+    const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
 
     return (
-        <DefaultLayout>
+        <div className="space-y-6">
             <Breadcrumb pageName={`${breadCrumb}`} />
-            <form className="grid grid-cols-1 gap-9 sm:grid-cols-2 relative" action="#">
-                <div className="flex flex-col gap-9">
-                    <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-                        <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-                            <h3 className="font-medium text-black dark:text-white">
-                                Invoice Details
-                            </h3>
-                        </div>
-                        <div className="p-6.5">
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Title <span className="text-meta-1">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    value={invoiceData?.title}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="Enter invoice title"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
+            
+            <form className="relative" onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    
+                    {/* Left Column: Core Invoice Details */}
+                    <div className="xl:col-span-2 space-y-6">
+                        
+                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                    <FiFileText className="text-emerald-500" /> Primary Details
+                                </h3>
                             </div>
-                            <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                                <div className="w-full xl:w-1/2">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Invoice Type <span className="text-meta-1">*</span>
-                                    </label>
+                            
+                            <div className="p-6 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={labelClass}>Invoice Title <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            value={invoiceData?.title || ''}
+                                            onChange={handleChange}
+                                            required
+                                            placeholder="e.g. Professional Services"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Purpose <span className="text-rose-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            name="purpose"
+                                            value={invoiceData?.purpose || ''}
+                                            onChange={handleChange}
+                                            placeholder="e.g. Website Development"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                </div>
 
-                                    <div className="relative z-20 bg-transparent dark:bg-form-input">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={labelClass}>Client Name</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <FiUser />
+                                            </span>
+                                            <input
+                                                type="text"
+                                                name="client"
+                                                onChange={handleChange}
+                                                value={invoiceData?.client || ''}
+                                                placeholder="Enter client name"
+                                                className={clsx(inputClass, "pl-11")}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelClass}>Location</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <FiMapPin />
+                                            </span>
+                                            <input
+                                                type="text"
+                                                name="location"
+                                                value={invoiceData?.location || ''}
+                                                onChange={handleChange}
+                                                placeholder="Enter client location"
+                                                className={clsx(inputClass, "pl-11")}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={labelClass}>TRN Number</label>
+                                        <input
+                                            type="text"
+                                            name="trn"
+                                            value={invoiceData?.trn || ''}
+                                            onChange={handleChange}
+                                            placeholder="Client TRN"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Items Section */}
+                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-800 dark:text-white">
+                                    Line Items
+                                </h3>
+                                <button 
+                                    type="button"
+                                    onClick={handleAddDocument} 
+                                    className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                                >
+                                    <FiPlus /> Add Item
+                                </button>
+                            </div>
+                            
+                            <div className="p-6 space-y-6">
+                                {invoiceData?.items?.length === 0 && (
+                                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                        No items added yet. Click &quot;Add Item&quot; to begin.
+                                    </div>
+                                )}
+                                
+                                {invoiceData?.items?.map((doc: any, index: number) => (
+                                    <div key={index} className="relative rounded-xl border border-slate-200 bg-slate-50/30 p-5 dark:border-slate-700/50 dark:bg-slate-800/30">
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => { e.preventDefault(); handleDeleteDocument(index) }}
+                                            className="absolute right-4 top-4 rounded-lg bg-rose-50 p-2 text-rose-500 transition-colors hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
+                                            title="Remove Item"
+                                        >
+                                            <FiTrash2 />
+                                        </button>
+                                        
+                                        <div className="space-y-4 pr-12">
+                                            <div>
+                                                <label className={labelClass}>Item Title <span className="text-rose-500">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={doc?.title || ''}
+                                                    onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
+                                                    placeholder="Product or service name"
+                                                    className={clsx(inputClass, "bg-white dark:bg-slate-900")}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Description</label>
+                                                <textarea
+                                                    rows={2}
+                                                    placeholder="Detailed description..."
+                                                    value={doc?.desc || ''}
+                                                    onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
+                                                    className={clsx(inputClass, "resize-y bg-white dark:bg-slate-900")}
+                                                ></textarea>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className={labelClass}>Rate (AED)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={doc?.rate !== undefined ? doc.rate : ''}
+                                                        onWheel={(e: any) => e.target.blur()}
+                                                        onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
+                                                        placeholder="0.00"
+                                                        className={clsx(inputClass, "bg-white dark:bg-slate-900")}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className={labelClass}>Quantity</label>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        min="1"
+                                                        value={doc?.quantity !== undefined ? doc.quantity : ''}
+                                                        onWheel={(e: any) => e.target.blur()}
+                                                        onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
+                                                        placeholder="1"
+                                                        className={clsx(inputClass, "bg-white dark:bg-slate-900")}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* Right Column: Settings & Meta */}
+                    <div className="space-y-6">
+                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                                <h3 className="font-bold text-slate-800 dark:text-white">
+                                    Invoice Settings
+                                </h3>
+                            </div>
+                            <div className="p-6 space-y-5">
+                                <div>
+                                    <label className={labelClass}>Invoice Type</label>
+                                    <div className="relative">
                                         <select
-                                        title="Invoice Type"
                                             value={invoiceData.quotation}
                                             name="quotation"
                                             onChange={handleChange}
-                                            className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-
+                                            className={inputClass}
                                         >
-                                            <option value="false" className="text-body dark:text-bodydark">
-                                                Normal
-                                            </option>
-                                            <option value="true" className="text-body dark:text-bodydark">
-                                                Quotation
-                                            </option>
+                                            <option value="false">Standard Invoice</option>
+                                            <option value="true">Quotation</option>
                                         </select>
-
-                                        <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                                            <svg
-                                                className="fill-current"
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                                <g opacity="0.8">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        clipRule="evenodd"
-                                                        d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                                        fill=""
-                                                    ></path>
-                                                </g>
-                                            </svg>
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                            <FiChevronDown />
                                         </span>
                                     </div>
-
                                 </div>
-
-                                <div className="w-full xl:w-1/2">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Balance
-                                    </label>
-
-                                    <div className="relative z-20 bg-transparent dark:bg-form-input">
+                                <div>
+                                    <label className={labelClass}>Balance Display</label>
+                                    <div className="relative">
                                         <select
-                                        title="Balance"
                                             value={invoiceData.showBalance}
                                             name="showBalance"
                                             onChange={handleChange}
-                                            className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-
+                                            className={inputClass}
                                         >
-                                            <option value="show" className="text-body dark:text-bodydark">
-                                                Show
-                                            </option>
-                                            <option value="hide" className="text-body dark:text-bodydark">
-                                                Hide
-                                            </option>
+                                            <option value="show">Show Balance</option>
+                                            <option value="hide">Hide Balance</option>
                                         </select>
-
-                                        <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                                            <svg
-                                                className="fill-current"
-                                                width="24"
-                                                height="24"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                                <g opacity="0.8">
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        clipRule="evenodd"
-                                                        d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                                                        fill=""
-                                                    ></path>
-                                                </g>
-                                            </svg>
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                            <FiChevronDown />
                                         </span>
                                     </div>
                                 </div>
 
-                            </div>
+                                <hr className="border-slate-200 dark:border-slate-800" />
 
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Purpose <span className="text-meta-1">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="purpose"
-                                    value={invoiceData?.purpose}
-                                    onChange={handleChange}
-                                    placeholder="Enter invoice purpose"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
-                            </div>
-
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Client Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="client"
-                                    onChange={handleChange}
-                                    value={invoiceData?.client}
-                                    placeholder="Enter client name"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
-                            </div>
-
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Location
-                                </label>
-                                <input
-                                    type="text"
-                                    name="location"
-                                    value={invoiceData?.location}
-                                    onChange={handleChange}
-                                    placeholder="Enter client location"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
-                            </div>
-
-
-                            <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                                <div className="w-full xl:w-1/2">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Invoice Suffix
-                                    </label>
+                                <div>
+                                    <label className={labelClass}>Invoice Suffix</label>
                                     <input
                                         type="text"
                                         name="suffix"
-                                        value={invoiceData?.suffix}
+                                        value={invoiceData?.suffix || ''}
                                         onChange={handleChange}
-                                        placeholder="Enter a suffix"
-                                        className="w-full uppercase rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        placeholder="e.g. INV-"
+                                        className={clsx(inputClass, "uppercase")}
                                     />
                                 </div>
-
-                                <div className="w-full xl:w-1/2">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Invoice Number</label>
-                                    <input
-                                        type="number"
-                                        name="invoiceNo"
-                                        onWheel={(e: any) => e.target.blur()}
-                                        value={invoiceData?.invoiceNo}
-                                        onChange={handleChange}
-                                        placeholder="Invoice number"
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                    />
+                                <div>
+                                    <label className={labelClass}>Invoice Number</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <FiHash />
+                                        </span>
+                                        <input
+                                            type="number"
+                                            name="invoiceNo"
+                                            onWheel={(e: any) => e.target.blur()}
+                                            value={invoiceData?.invoiceNo || ''}
+                                            onChange={handleChange}
+                                            placeholder="0001"
+                                            className={clsx(inputClass, "pl-11")}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="w-full xl:w-1/2">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Date</label>
-                                    <input
-                                    title="Date"
-                                        type="date"
-                                        name="date"
-                                        value={invoiceData?.date}
-                                        onChange={handleChange}
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                    />
+                                <div>
+                                    <label className={labelClass}>Date Issued</label>
+                                    <div className="relative">
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={invoiceData?.date || ''}
+                                            onChange={handleChange}
+                                            className={inputClass}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                                
+                                {invoiceData.quotation === "false" && (
+                                    <div>
+                                        <label className={labelClass}>Advance Payment</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <FiDollarSign />
+                                            </span>
+                                            <input
+                                                type="number"
+                                                name="advance"
+                                                value={invoiceData?.advance || ''}
+                                                onWheel={(e: any) => e.target.blur()}
+                                                onChange={handleChange}
+                                                placeholder="0.00"
+                                                className={clsx(inputClass, "pl-11")}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
+                                {invoiceData.quotation === "true" && (
+                                    <>
+                                        <div>
+                                            <label className={labelClass}>Valid Until</label>
+                                            <input 
+                                                type="date"
+                                                name="validTo"
+                                                value={invoiceData?.validTo || ''}
+                                                onChange={handleChange}
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Quotation Message</label>
+                                            <textarea
+                                                rows={3}
+                                                name="message"
+                                                placeholder="Message to the client..."
+                                                value={invoiceData?.message || ''}
+                                                onChange={handleChange}
+                                                className={clsx(inputClass, "resize-y")}
+                                            ></textarea>
+                                        </div>
+                                    </>
+                                )}
 
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Advance
-                                </label>
-                                <input
-                                    type="number"
-                                    name="advance"
-                                    value={invoiceData?.advance}
-                                    onWheel={(e: any) => e.target.blur()}
-                                    onChange={handleChange}
-                                    placeholder="Advance payment"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
-                            </div>
-                            <div className="mb-4.5">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    TRN Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="trn"
-                                    value={invoiceData?.trn}
-                                    onChange={handleChange}
-                                    placeholder="TRN Number Here"
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                />
-                            </div>
-
-
-                            {invoiceData.quotation === "true" ? <>
-                                <div className="mb-2.5">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Valid To
-                                    </label>
-                                    <input type="date"
-                                        name="validTo"
-                                        placeholder="Quotation message Here"
-                                        value={invoiceData?.validTo}
-                                        onChange={handleChange}
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                    />
-                                </div>
-                                <div className="mb-2.5">
-                                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                        Quotation Message
-                                    </label>
+                                <div>
+                                    <label className={labelClass}>Remarks / Notes</label>
                                     <textarea
-                                        rows={3}
-                                        name="message"
-                                        placeholder="Quotation message Here"
-                                        value={invoiceData?.message}
+                                        rows={4}
+                                        name="remarks"
+                                        placeholder="Internal notes..."
+                                        value={invoiceData?.remarks || ''}
                                         onChange={handleChange}
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                        className={clsx(inputClass, "resize-y")}
                                     ></textarea>
-                                </div></>
-                                : <></>
-                            }
-                            <div className="mb-6">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Remarks
-                                </label>
-                                <textarea
-                                    rows={6}
-                                    name="remarks"
-                                    placeholder="Remarks Here"
-                                    value={invoiceData?.remarks}
-                                    onChange={handleChange}
-                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                ></textarea>
+                                </div>
                             </div>
-                            <button onClick={handleSubmit} className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                                {confirmBtn}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50 space-y-3">
+                            <button 
+                                type="submit" 
+                                className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                            >
+                                {isEditMode ? "Save Changes" : "Publish Invoice"}
                             </button>
-                            <Link href={"/accounts/invoice"} className="mt-2 flex w-full justify-center rounded p-3 font-medium text-red hover:bg-opacity-10 hover:bg-red transition-colors duration-300 border border-red">
+                            <Link 
+                                href="/accounts/invoice" 
+                                className="flex w-full justify-center rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                            >
                                 Cancel
                             </Link>
                         </div>
                     </div>
 
-
-                </div>
-
-                <div className="flex flex-col gap-9">
-
-                    <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-                        <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-                            <h3 className="font-medium text-black dark:text-white">
-                                Items
-                            </h3>
-                        </div>
-                        <div className="px-6.5 pb-6.5">
-                            {invoiceData?.items?.map((doc: any, index: number) => (
-                                <div key={index} className="border-b border-stroke py-6.5 dark:border-strokedark">
-                                    <div className="mb-4.5">
-                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                            Title <span className="text-meta-1">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="title"
-                                            required
-                                            value={invoiceData.items[index]?.title}
-                                            onChange={(e) => handleDocumentChange(index, 'title', e.target.value)}
-                                            placeholder="Enter title of the item"
-                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                            Description
-                                        </label>
-                                        <textarea
-                                            rows={6}
-                                            name="desc"
-                                            placeholder="Description Here"
-                                            value={invoiceData.items[index]?.desc}
-                                            onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
-                                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                        ></textarea>
-                                    </div>
-                                    <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-
-                                        <div className="w-full xl:w-1/2">
-                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Rate
-                                            </label>
-                                            <input
-                                                type="number"
-                                                onWheel={(e: any) => e.target.blur()}
-                                                name="rate"
-                                                value={invoiceData.items[index]?.rate}
-                                                onChange={(e) => handleDocumentChange(index, 'rate', e.target.value)}
-                                                placeholder="Enter Rate"
-                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                            />
-                                        </div>
-                                        <div className="w-full xl:w-1/2">
-                                            <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                                Quantity
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="quantity"
-                                                onWheel={(e: any) => e.target.blur()}
-                                                value={invoiceData.items[index]?.quantity}
-                                                onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
-                                                placeholder="Enter Quantity"
-                                                required
-                                                className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                                            />
-                                        </div>
-
-                                    </div>
-                                    <button className="flex w-full justify-center rounded items-center  text-red  border border-red hover:bg-red p-3 font-medium  hover:bg-opacity-10 transition-colors duration-300"
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            handleDeleteDocument(index)
-                                        }}>
-                                        <svg className="hover:text-primary" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
-                                            <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
-                                            <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
-                                            <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
-                                        </svg>
-                                        Delete</button>
-                                </div>
-
-                            ))}
-
-                            <button onClick={handleAddDocument} className="flex w-full justify-center rounded border border-green-700 text-meta-3 hover:bg-green-700 p-3 font-medium hover:bg-opacity-10 transition-colors duration-300">
-                                Add Item                </button>
-                        </div>
-                    </div>
                 </div>
             </form>
-        </DefaultLayout>
+        </div>
     );
 };
 

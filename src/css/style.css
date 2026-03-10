@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -13,14 +13,25 @@
 }
 @layer base {
   body {
-    @apply relative z-1 bg-whiten font-satoshi text-base font-normal text-body;
+    @apply relative z-1 bg-whiten font-inter text-base font-normal text-body antialiased selection:bg-primary/30;
   }
 }
 
-@layer components {
-}
-
 @layer utilities {
+  /* Elegant modern scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-bodydark2 dark:bg-strokedark;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-body dark:bg-form-strokedark;
+  }
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

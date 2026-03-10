@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { formatDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
+import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiUserCheck, FiUserX, FiShield, FiUser } from "react-icons/fi";
+import clsx from "clsx";
 
 interface User {
     _id: string;
@@ -74,7 +76,7 @@ const UsersList = () => {
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setSearchTerm(value);
-        setCurrentPage(0); // Reset to first page when searching
+        setCurrentPage(0);
     };
 
     const handleTabChange = (deleted: boolean) => {
@@ -96,7 +98,6 @@ const UsersList = () => {
             return;
         }
 
-        // Additional confirmation for partner operations
         if (isPartnerOperation) {
             if (!confirm(`FINAL CONFIRMATION: Delete partner "${username}"?\n\nType "DELETE" in the next prompt to confirm.`)) {
                 return;
@@ -141,75 +142,85 @@ const UsersList = () => {
         }
     };
 
-    const getRoleBadge = (role: string) => {
-        const baseClasses = "inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium";
-
-        if (role === "partner") {
-            return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200`;
-        } else {
-            return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`;
-        }
-    };
-
     const goToPage = (page: number) => {
         if (page >= 0 && page < pagination.totalPages) {
             setCurrentPage(page);
         }
     };
 
-    if (isLoading && users.length === 0) {
-        return (
-            <div className="flex justify-center items-center min-h-64">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-            </div>
-        );
-    }
-
     return (
-        <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            {/* Header */}
-            <div className="px-4 py-6 md:px-6 xl:px-7.5">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-xl font-semibold text-black dark:text-white">
-                        Users Management
-                    </h4>
+        <div className="space-y-6">
+            
+            {/* Header & Controls */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <FiShield className="text-emerald-500" /> User Directory
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Manage all platform users, their roles, and system access.
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <FiSearch />
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={handleSearch}
+                            className="w-full sm:w-64 rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                    </div>
                     {!showDeleted && (
                         <Link
                             href="/users/add"
-                            className="inline-flex items-center justify-center rounded bg-primary px-4 py-2 text-center font-medium text-white hover:bg-opacity-90"
+                            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30"
                         >
+                            <FiPlus className="text-lg" />
                             Add User
                         </Link>
                     )}
                 </div>
+            </div>
 
+            {/* Main Card */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+                
                 {/* Tabs */}
-                <div className="mt-4 border-b border-stroke dark:border-strokedark">
-                    <nav className="-mb-px flex space-x-8">
+                <div className="border-b border-slate-200 bg-slate-50/50 px-6 pt-4 dark:border-slate-800 dark:bg-slate-800/50">
+                    <nav className="flex space-x-6">
                         <button
                             onClick={() => handleTabChange(false)}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm ${!showDeleted
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                }`}
+                            className={clsx(
+                                "flex items-center gap-2 border-b-2 pb-4 text-sm font-semibold transition-colors",
+                                !showDeleted 
+                                    ? "border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400" 
+                                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
                         >
-                            Active Users
+                            <FiUserCheck className="text-lg" /> Active Users
                             {!showDeleted && pagination.totalUsers > 0 && (
-                                <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs dark:bg-gray-700 dark:text-gray-300">
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                                     {pagination.totalUsers}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => handleTabChange(true)}
-                            className={`py-2 px-1 border-b-2 font-medium text-sm ${showDeleted
-                                ? 'border-red-500 text-red-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                }`}
+                            className={clsx(
+                                "flex items-center gap-2 border-b-2 pb-4 text-sm font-semibold transition-colors",
+                                showDeleted 
+                                    ? "border-rose-500 text-rose-600 dark:border-rose-400 dark:text-rose-400" 
+                                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
                         >
-                            Deleted Users
+                            <FiUserX className="text-lg" /> Deleted
                             {showDeleted && pagination.totalUsers > 0 && (
-                                <span className="ml-2 bg-red-100 text-red-900 py-0.5 px-2.5 rounded-full text-xs dark:bg-red-900 dark:text-red-300">
+                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
                                     {pagination.totalUsers}
                                 </span>
                             )}
@@ -217,172 +228,165 @@ const UsersList = () => {
                     </nav>
                 </div>
 
-                {/* Search */}
-                <div className="mt-4">
-                    <input
-                        type="text"
-                        placeholder={`Search ${showDeleted ? 'deleted' : 'active'} users...`}
-                        value={searchTerm}
-                        onChange={handleSearch}
-                        className="w-full max-w-sm rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                    />
-                </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-                <table className="w-full table-auto">
-                    <thead>
-                        <tr className="bg-gray-2 text-left dark:bg-meta-4">
-                            <th className="px-4 py-4 font-medium text-black dark:text-white xl:pl-11">
-                                Username
-                            </th>
-                            <th className="px-4 py-4 font-medium text-black dark:text-white">
-                                Full Name
-                            </th>
-                            <th className="px-4 py-4 font-medium text-black dark:text-white">
-                                Role
-                            </th>
-                            <th className="px-4 py-4 font-medium text-black dark:text-white">
-                                {showDeleted ? "Deleted On" : "Created"}
-                            </th>
-                            <th className="px-4 py-4 font-medium text-black dark:text-white">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="text-center px-4 py-8 text-gray-500 dark:text-gray-400">
-                                    {searchTerm
-                                        ? `No ${showDeleted ? 'deleted' : 'active'} users found matching your search.`
-                                        : showDeleted
-                                            ? "No deleted users found."
-                                            : "No users found."
-                                    }
-                                </td>
+                {/* Table */}
+                <div className="w-full overflow-x-auto custom-scrollbar">
+                    <table className="w-full whitespace-nowrap text-left text-sm">
+                        <thead>
+                            <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-1/4">User Profile</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-1/4">Full Name</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-[15%]">Role</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-[15%]">{showDeleted ? "Deleted On" : "Date Created"}</th>
+                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right w-[10%]">Actions</th>
                             </tr>
-                        ) : (
-                            users.map((user) => (
-                                <tr key={user._id} className={`border-t border-stroke dark:border-strokedark ${showDeleted ? 'opacity-75 bg-gray-50 dark:bg-gray-800' : ''}`}>
-                                    <td className="px-4 py-4 pl-9 xl:pl-11">
-                                        <div className="flex items-center">
-                                            <p className={`font-medium ${showDeleted ? 'text-gray-600 dark:text-gray-400' : 'text-black dark:text-white'}`}>
-                                                {user.username}
-                                            </p>
-                                            {showDeleted && (
-                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                                    Deleted
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <p className={showDeleted ? 'text-gray-600 dark:text-gray-400' : 'text-black dark:text-white'}>
-                                            {user.fullname || "—"}
-                                        </p>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span className={`${getRoleBadge(user.role)} ${showDeleted ? 'opacity-75' : ''}`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <p className={showDeleted ? 'text-gray-600 dark:text-gray-400' : 'text-black dark:text-white'}>
-                                            {showDeleted
-                                                ? (user.deletedAt ? formatDate(user.deletedAt) : "N/A")
-                                                : formatDate(user.createdAt)
-                                            }
-                                        </p>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <div className="flex items-center space-x-2">
-                                            {showDeleted ? (
-                                                <button
-                                                    onClick={() => handleReactivate(user._id, user.username, user.role)}
-                                                    className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                                                    title="Reactivate user"
-                                                >
-                                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    Reactivate
-                                                </button>
-                                            ) : (
-                                                <>
-                                                    {/* Only show edit link if not editing another partner's password */}
-                                                    <Link
-                                                        href={`/users/${user._id}/edit`}
-                                                        className="hover:text-primary"
-                                                        title="Edit user"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDelete(user._id, user.username, user.role)}
-                                                        className="text-red-600 hover:text-red-800 dark:text-red-400"
-                                                        title="Delete user"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </>
-                                            )}
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                            {isLoading && users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-500 border-t-transparent"></div>
+                                            <p className="font-medium">Loading directory...</p>
                                         </div>
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-stroke dark:border-strokedark">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Showing {currentPage * 10 + 1} to {Math.min((currentPage + 1) * 10, pagination.totalUsers)} of {pagination.totalUsers} {showDeleted ? 'deleted' : 'active'} users
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => goToPage(currentPage - 1)}
-                            disabled={currentPage === 0}
-                            className="px-3 py-1 border border-stroke rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-strokedark dark:hover:bg-boxdark"
-                        >
-                            Previous
-                        </button>
-
-                        {/* Page numbers */}
-                        {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                            const pageNum = Math.max(0, Math.min(pagination.totalPages - 5, currentPage - 2)) + i;
-                            return (
-                                <button
-                                    key={pageNum}
-                                    onClick={() => goToPage(pageNum)}
-                                    className={`px-3 py-1 border rounded ${pageNum === currentPage
-                                        ? "bg-primary text-white border-primary"
-                                        : "border-stroke hover:bg-gray-50 dark:border-strokedark dark:hover:bg-boxdark"
-                                        }`}
-                                >
-                                    {pageNum + 1}
-                                </button>
-                            );
-                        })}
-
-                        <button
-                            onClick={() => goToPage(currentPage + 1)}
-                            disabled={currentPage >= pagination.totalPages - 1}
-                            className="px-3 py-1 border border-stroke rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-strokedark dark:hover:bg-boxdark"
-                        >
-                            Next
-                        </button>
-                    </div>
+                            ) : users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
+                                                <FiUser className="text-3xl text-slate-400" />
+                                            </div>
+                                            <p className="text-base font-medium text-slate-700 dark:text-slate-300">
+                                                {searchTerm ? `No users matching "${searchTerm}"` : `No ${showDeleted ? 'deleted' : 'active'} users found`}
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                users.map((user) => (
+                                    <tr 
+                                        key={user._id} 
+                                        className={clsx(
+                                            "group transition-colors",
+                                            showDeleted ? "bg-slate-50/50 dark:bg-slate-900/30 opacity-80" : "hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
+                                        )}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                    <span className="font-bold uppercase tracking-wider">{user.username.charAt(0)}{user.username.charAt(1)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="block font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">{user.username}</span>
+                                                    {showDeleted && (
+                                                        <span className="mt-0.5 inline-flex items-center rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
+                                                            Archived
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400 truncate">
+                                            {user.fullname || "—"}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={clsx(
+                                                "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold capitalize ring-1 ring-inset",
+                                                user.role === 'partner' 
+                                                    ? "bg-teal-50 text-teal-700 ring-teal-500/20 dark:bg-teal-500/10 dark:text-teal-300" 
+                                                    : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                            )}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                                            {showDeleted 
+                                                ? (user.deletedAt ? formatDate(user.deletedAt) : "N/A") 
+                                                : formatDate(user.createdAt)
+                                            }
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-end gap-2">
+                                                {showDeleted ? (
+                                                    <button
+                                                        onClick={() => handleReactivate(user._id, user.username, user.role)}
+                                                        className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                                                        title="Reactivate User"
+                                                    >
+                                                        <FiRefreshCw className="text-sm" /> Reactivate
+                                                    </button>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <Link
+                                                            href={`/users/${user._id}/edit`}
+                                                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                                                            title="Edit Details"
+                                                        >
+                                                            <FiEdit2 className="text-lg" />
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDelete(user._id, user.username, user.role)}
+                                                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                                                            title="Delete / Archive"
+                                                        >
+                                                            <FiTrash2 className="text-lg" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/30">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                            Showing <span className="font-bold text-slate-900 dark:text-white">{currentPage * 10 + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min((currentPage + 1) * 10, pagination.totalUsers)}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination.totalUsers}</span> users
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => goToPage(currentPage - 1)}
+                                disabled={currentPage === 0}
+                                className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                            >
+                                Prev
+                            </button>
+                            <div className="hidden sm:flex gap-1">
+                                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                                    const pageNum = Math.max(0, Math.min(pagination.totalPages - 5, currentPage - 2)) + i;
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => goToPage(pageNum)}
+                                            className={clsx(
+                                                "min-w-[32px] rounded-xl px-2 py-1.5 text-sm font-semibold shadow-sm transition-colors",
+                                                pageNum === currentPage
+                                                    ? "bg-emerald-600 text-white"
+                                                    : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                                            )}
+                                        >
+                                            {pageNum + 1}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button
+                                onClick={() => goToPage(currentPage + 1)}
+                                disabled={currentPage >= pagination.totalPages - 1}
+                                className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

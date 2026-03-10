@@ -1,4 +1,5 @@
 import UserProvider from "@/contexts/UserContext";
+import DefaultLayout from "@/components/Layouts/DefaultLayout";
 
 export default function RootLayout({
   children,
@@ -9,7 +10,9 @@ export default function RootLayout({
 
   return (
     <UserProvider>
-      {children}
+      <DefaultLayout>
+        {children}
+      </DefaultLayout>
     </UserProvider>
   );
 }

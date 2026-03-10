@@ -16,7 +16,7 @@ type ChartTwoProps = {
 }
 const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   const options: ApexOptions = {
-    colors: [ "#3C50E0","#80CAEE"],
+    colors: ["#10b981", "#f43f5e"],
     chart: {
       fontFamily: "Satoshi, sans-serif",
       type: "bar",
@@ -109,15 +109,15 @@ const ChartTwo: React.FC<ChartTwoProps> = ({ dates, profit, expense }) => {
   handleReset
 
   return (
-    <div className="col-span-12 rounded-sm border border-stroke bg-white p-7.5 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
+    <div className="col-span-12 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8 xl:col-span-4">
       <div className="mb-4 justify-between gap-4 sm:flex">
         <div>
-          <h4 className="text-xl font-semibold text-black dark:text-white">
+          <h4 className="text-xl font-bold text-slate-800 dark:text-white">
             Profit this week
           </h4>
         </div>
         <div>
-          <div className="relative z-20 inline-block">
+          <div className="relative z-20 inline-block text-sm font-medium text-slate-500">
             Current Week
             <span className="absolute right-3 top-1/2 z-10 -translate-y-1/2">
               <svg

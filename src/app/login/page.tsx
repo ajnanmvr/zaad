@@ -5,147 +5,179 @@ import { ChangeEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { FiUser, FiLock, FiArrowRight } from "react-icons/fi";
+
 const SignIn: React.FC = () => {
-  const [user, setUser] = useState({ username: "", password: "" })
-  const router = useRouter()
-  const handleSubmit = async (e: any) => {
-    e.preventDefault()
-    try {
-      toast.loading("Logging in...")
-      await axios.post("/api/users/auth/login", user)
-      toast.dismiss()
-      toast.success("Logged in successfully")
-      router.refresh()
-    } catch (error: any) {
-      toast.loading("Logging in...")
-      toast.error(error.response.data.error || "Login Failed");
-    }
-  }
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setUser({ ...user, [event.target.name]: event.target.value })
-  }
-  return (
-    <div className="flex px-16 items-center justify-center">
+    const [user, setUser] = useState({ username: "", password: "" });
+    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
 
-      <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-        <div className="flex flex-wrap items-center">
-          <div className="hidden w-full xl:block xl:w-1/2">
-            <div className="px-26 py-17.5 text-center">
-              <Link className="mb-5.5 inline-block" href="/">
-                <Image
-                  className="hidden dark:block"
-                  src={"/images/logo/logo.svg"}
-                  alt="Logo"
-                  width={176}
-                  height={32}
-                />
-                <Image
-                  className="dark:hidden"
-                  src={"/images/logo/logo-dark.svg"}
-                  alt="Logo"
-                  width={176}
-                  height={32}
-                />
-              </Link>
+    const handleSubmit = async (e: any) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            toast.loading("Authenticating...", { id: "login" });
+            await axios.post("/api/users/auth/login", user);
+            toast.success("Login successful! Redirecting...", { id: "login" });
+            router.refresh();
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || "Login Failed", { id: "login" });
+            setIsLoading(false);
+        }
+    };
 
-              <p className="2xl:px-20">
-                empowering businesses to enhance productivity & compliance.
-              </p>
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        setUser({ ...user, [event.target.name]: event.target.value });
+    };
+
+    return (
+        <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+            
+            {/* Ambient Background Features */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-500/20 blur-[120px]" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] rounded-full bg-teal-500/20 blur-[120px]" />
             </div>
-          </div>
 
-          <div className="w-full border-stroke dark:border-strokedark xl:w-1/2 xl:border-l-2">
-            <div className="w-full p-4 sm:p-12.5 xl:p-17.5">
-              <span className="mb-1.5 block font-medium">Login to continue</span>
-              <h2 className="mb-9 text-2xl font-bold text-black dark:text-white sm:text-title-xl2">
-                Sign In to Zaad Admin
-              </h2>
+            <div className="w-full max-w-5xl overflow-hidden rounded-[2.5rem] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-2xl ring-1 ring-slate-200/50 dark:ring-slate-800/50 relative z-10 flex flex-col lg:flex-row">
+                
+                {/* Visual Branding Section - Hidden on smaller screens */}
+                <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 relative">
+                    <div className="relative z-10">
+                        <Link href="/">
+                            <Image
+                                className="hidden dark:block"
+                                src={"/images/logo/logo.svg"}
+                                alt="Zaad Logo"
+                                width={180}
+                                height={40}
+                            />
+                            <Image
+                                className="dark:hidden"
+                                src={"/images/logo/logo-dark.svg"}
+                                alt="Zaad Logo"
+                                width={180}
+                                height={40}
+                            />
+                        </Link>
+                    </div>
 
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <label className="mb-2.5 block font-medium text-black dark:text-white">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="username"
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter your username"
-                      className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 text-black outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                    />
+                    <div className="relative z-10 mt-20">
+                        <h1 className="text-4xl font-extrabold text-slate-800 dark:text-white leading-tight">
+                            Elevating<br/>Corporate<br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">Productivity.</span>
+                        </h1>
+                        <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 font-medium max-w-sm">
+                            Zaad Admin empowers your organization with intelligent tools for seamless compliance and operational excellence.
+                        </p>
+                    </div>
 
-                    <span className="absolute right-4 top-4">
-                      <svg
-                        className="fill-current"
-                        width="22"
-                        height="22"
-                        viewBox="0 0 22 22"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.5">
-                          <path
-                            d="M19.2516 3.30005H2.75156C1.58281 3.30005 0.585938 4.26255 0.585938 5.46567V16.6032C0.585938 17.7719 1.54844 18.7688 2.75156 18.7688H19.2516C20.4203 18.7688 21.4172 17.8063 21.4172 16.6032V5.4313C21.4172 4.26255 20.4203 3.30005 19.2516 3.30005ZM19.2516 4.84692C19.2859 4.84692 19.3203 4.84692 19.3547 4.84692L11.0016 10.2094L2.64844 4.84692C2.68281 4.84692 2.71719 4.84692 2.75156 4.84692H19.2516ZM19.2516 17.1532H2.75156C2.40781 17.1532 2.13281 16.8782 2.13281 16.5344V6.35942L10.1766 11.5157C10.4172 11.6875 10.6922 11.7563 10.9672 11.7563C11.2422 11.7563 11.5172 11.6875 11.7578 11.5157L19.8016 6.35942V16.5688C19.8703 16.9125 19.5953 17.1532 19.2516 17.1532Z"
-                            fill=""
-                          />
-                        </g>
-                      </svg>
-                    </span>
-                  </div>
+                    {/* Decorative Elements inside Branding Section */}
+                    <div className="absolute bottom-12 right-12 w-32 h-32 border-[16px] border-emerald-500/10 dark:border-emerald-500/20 rounded-full" />
+                    <div className="absolute top-1/2 right-0 translate-y-[-50%] translate-x-[50%] w-64 h-64 border-[32px] border-teal-500/10 dark:border-teal-500/20 rounded-full" />
                 </div>
 
-                <div className="mb-6">
-                  <label className="mb-2.5 block font-medium text-black dark:text-white">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      name="password"
-                      placeholder="Enter your password"
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-lg border border-stroke bg-transparent py-4 pl-6 pr-10 text-black outline-none focus:border-primary focus-visible:shadow-none dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                    />
+                {/* Login Form Section */}
+                <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-white dark:bg-slate-900">
+                    
+                    <div className="mb-10 lg:hidden">
+                        <Image
+                            className="hidden dark:block h-8 w-auto"
+                            src={"/images/logo/logo.svg"}
+                            alt="Zaad Logo"
+                            width={140}
+                            height={32}
+                        />
+                        <Image
+                            className="dark:hidden h-8 w-auto"
+                            src={"/images/logo/logo-dark.svg"}
+                            alt="Zaad Logo"
+                            width={140}
+                            height={32}
+                        />
+                    </div>
 
-                    <span className="absolute right-4 top-4">
-                      <svg
-                        className="fill-current"
-                        width="22"
-                        height="22"
-                        viewBox="0 0 22 22"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.5">
-                          <path
-                            d="M16.1547 6.80626V5.91251C16.1547 3.16251 14.0922 0.825009 11.4797 0.618759C10.0359 0.481259 8.59219 0.996884 7.52656 1.95938C6.46094 2.92188 5.84219 4.29688 5.84219 5.70626V6.80626C3.84844 7.18438 2.33594 8.93751 2.33594 11.0688V17.2906C2.33594 19.5594 4.19219 21.3813 6.42656 21.3813H15.5016C17.7703 21.3813 19.6266 19.525 19.6266 17.2563V11C19.6609 8.93751 18.1484 7.21876 16.1547 6.80626ZM8.55781 3.09376C9.31406 2.40626 10.3109 2.06251 11.3422 2.16563C13.1641 2.33751 14.6078 3.98751 14.6078 5.91251V6.70313H7.38906V5.67188C7.38906 4.70938 7.80156 3.78126 8.55781 3.09376ZM18.1141 17.2906C18.1141 18.7 16.9453 19.8688 15.5359 19.8688H6.46094C5.05156 19.8688 3.91719 18.7344 3.91719 17.325V11.0688C3.91719 9.52189 5.15469 8.28438 6.70156 8.28438H15.2953C16.8422 8.28438 18.1141 9.52188 18.1141 11V17.2906Z"
-                            fill=""
-                          />
-                          <path
-                            d="M10.9977 11.8594C10.5852 11.8594 10.207 12.2031 10.207 12.65V16.2594C10.207 16.6719 10.5508 17.05 10.9977 17.05C11.4102 17.05 11.7883 16.7063 11.7883 16.2594V12.6156C11.7883 12.2031 11.4102 11.8594 10.9977 11.8594Z"
-                            fill=""
-                          />
-                        </g>
-                      </svg>
-                    </span>
-                  </div>
-                </div>
+                    <div className="mb-10">
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
+                            Welcome Back
+                        </h2>
+                        <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">
+                            Please enter your credentials to securely access your portal.
+                        </p>
+                    </div>
 
-                <div className="mb-5">
-                  <button
-                    className="w-full cursor-pointer rounded-lg border border-primary bg-primary p-4 text-white transition hover:bg-opacity-90"
-                  > Submit </button>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-300">
+                                Username
+                            </label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-600 dark:group-focus-within:text-emerald-400">
+                                    <FiUser className="text-xl" />
+                                </span>
+                                <input
+                                    type="text"
+                                    name="username"
+                                    onChange={handleChange}
+                                    required
+                                    placeholder="Enter your username"
+                                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white dark:focus:border-emerald-500 dark:focus:bg-slate-900"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-300">
+                                Password
+                            </label>
+                            <div className="relative group">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-600 dark:group-focus-within:text-emerald-400">
+                                    <FiLock className="text-xl" />
+                                </span>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    placeholder="Enter your security phrase"
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white dark:focus:border-emerald-500 dark:focus:bg-slate-900"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-4">
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="group w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-4 text-center font-bold text-white shadow-xl shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:shadow-emerald-600/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                        <span>Authenticating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Sign In to Dashboard</span>
+                                        <FiArrowRight className="text-lg transition-transform group-hover:translate-x-1" />
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="mt-12 text-center">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                            Secure enterprise portal &copy; {new Date().getFullYear()} Zaad Admin.
+                        </p>
+                    </div>
+
                 </div>
-              </form>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default SignIn;
