@@ -2,6 +2,7 @@
 import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 
 const ChangePassword = () => {
     const [formData, setFormData] = useState({
@@ -85,22 +86,30 @@ const ChangePassword = () => {
         }
     };
 
+    const inputClasses = "w-full rounded-xl border border-slate-300 bg-white px-5 py-3.5 pr-12 text-slate-900 outline-none transition-all duration-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500";
+    const labelClasses = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+
     return (
-        <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-                <h3 className="font-medium text-black dark:text-white">
-                    Change Password
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Update your password to keep your account secure
-                </p>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
+            <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <FiLock className="text-xl text-rose-500" />
+                    <div>
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg">
+                            Change Password
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Update your password to keep your account secure
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6.5">
+            <form onSubmit={handleSubmit} className="p-6 sm:p-8">
                 {/* Current Password */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Current Password <span className="text-meta-1">*</span>
+                <div className="mb-6">
+                    <label className={labelClasses}>
+                        Current Password <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                         <input
@@ -109,109 +118,77 @@ const ChangePassword = () => {
                             value={formData.currentPassword}
                             onChange={handleChange}
                             placeholder="Enter your current password"
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                            className={inputClasses}
                             disabled={isLoading}
                             required
                         />
                         <button
                             type="button"
                             onClick={() => togglePasswordVisibility('current')}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                         >
-                            {showPasswords.current ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878A3 3 0 1015.12 15.12m-5.242 5.242l-4.242-4.242m0 0a10.05 10.05 0 01-5.986-4.985m0 0L3.707 20.293m0-10.586L20.293 3.707" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
+                            {showPasswords.current ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
                         </button>
                     </div>
                 </div>
+
+                <div className="border-t border-slate-100 dark:border-slate-800/80 my-6"></div>
 
                 {/* New Password */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        New Password <span className="text-meta-1">*</span>
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={showPasswords.new ? "text" : "password"}
-                            name="newPassword"
-                            value={formData.newPassword}
-                            onChange={handleChange}
-                            placeholder="Enter your new password (min. 6 characters)"
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                            disabled={isLoading}
-                            required
-                            minLength={6}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => togglePasswordVisibility('new')}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
-                            {showPasswords.new ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878A3 3 0 1015.12 15.12m-5.242 5.242l-4.242-4.242m0 0a10.05 10.05 0 01-5.986-4.985m0 0L3.707 20.293m0-10.586L20.293 3.707" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
-                        </button>
+                <div className="mb-6 flex flex-col gap-6 sm:flex-row">
+                    <div className="w-full sm:w-1/2">
+                        <label className={labelClasses}>
+                            New Password <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showPasswords.new ? "text" : "password"}
+                                name="newPassword"
+                                value={formData.newPassword}
+                                onChange={handleChange}
+                                placeholder="Min. 6 characters"
+                                className={inputClasses}
+                                disabled={isLoading}
+                                required
+                                minLength={6}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility('new')}
+                                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                            >
+                                {showPasswords.new ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="w-full sm:w-1/2">
+                        <label className={labelClasses}>
+                            Confirm Password <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showPasswords.confirm ? "text" : "password"}
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                placeholder="Repeat new password"
+                                className={inputClasses}
+                                disabled={isLoading}
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility('confirm')}
+                                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                            >
+                                {showPasswords.confirm ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Confirm New Password */}
-                <div className="mb-6">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Confirm New Password <span className="text-meta-1">*</span>
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={showPasswords.confirm ? "text" : "password"}
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Confirm your new password"
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                            disabled={isLoading}
-                            required
-                        />
-                        <button
-                            type="button"
-                            onClick={() => togglePasswordVisibility('confirm')}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
-                            {showPasswords.confirm ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878A3 3 0 1015.12 15.12m-5.242 5.242l-4.242-4.242m0 0a10.05 10.05 0 01-5.986-4.985m0 0L3.707 20.293m0-10.586L20.293 3.707" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex gap-4">
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="flex justify-center rounded bg-primary px-6 py-2 font-medium text-gray hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading ? "Changing..." : "Change Password"}
-                    </button>
-
+                <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-end">
                     <button
                         type="button"
                         onClick={() => setFormData({
@@ -220,9 +197,16 @@ const ChangePassword = () => {
                             confirmPassword: ""
                         })}
                         disabled={isLoading}
-                        className="flex justify-center rounded border border-stroke px-6 py-2 font-medium text-black hover:bg-gray-50 dark:border-strokedark dark:text-white dark:hover:bg-boxdark disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex w-full sm:w-auto mt-2 sm:mt-0 justify-center rounded-xl border border-slate-300 bg-white px-8 py-3.5 font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed md:order-1"
                     >
                         Clear
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="flex w-full sm:w-auto justify-center rounded-xl bg-emerald-600 px-8 py-3.5 font-medium text-white transition hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed md:order-2"
+                    >
+                        {isLoading ? "Updating..." : "Update Password"}
                     </button>
                 </div>
             </form>

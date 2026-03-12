@@ -1,6 +1,6 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
+
 import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import { useQuery } from "@tanstack/react-query";
@@ -11,12 +11,12 @@ const TablesPage = () => {
   if (employeeError) { toast.error("Failed to fetch employees") }
 
   return (
-    <DefaultLayout>
+    <>
       <Breadcrumb pageName="Employees" />
       <div className="flex flex-col gap-10">
         <EmployeeList employees={employees} isLoading={employeeLoading} />
       </div>
-    </DefaultLayout>
+    </>
   );
 };
 

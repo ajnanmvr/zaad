@@ -1,11 +1,10 @@
 "use client"
-import DefaultLayout from "@/components/Layouts/DefaultLayout"
 import { TInvoiceData } from "@/types/invoice"
+import { formatAmountInWords } from "@/utils/numberToWords"
 import axios from "axios"
 import { useParams } from "next/navigation"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import ReactToPrint from "react-to-print"
-import { formatAmountInWords } from "@/utils/numberToWords"
 
 function SingleInvoice() {
   const [invoice, setInvoice] = useState<TInvoiceData>()
@@ -29,7 +28,7 @@ function SingleInvoice() {
   console.log(invoice);
 
   return (
-    <DefaultLayout>
+    <>
       {isLoading ? <div className="flex justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div> : <>
@@ -187,7 +186,7 @@ function SingleInvoice() {
       </>
       }
 
-    </DefaultLayout >
+    </ >
   )
 }
 

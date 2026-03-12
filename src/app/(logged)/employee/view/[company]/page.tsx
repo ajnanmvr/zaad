@@ -1,11 +1,10 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { TEmployeeList } from "@/types/types";
 import EmployeeList from "@/components/Tables/EmployeeList";
+import { TEmployeeList } from "@/types/types";
+import axios from "axios";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 const TablesPage = () => {
   const params = useParams()
   const [employees, setEmployees] = useState<TEmployeeList[] | null>(null)
@@ -22,12 +21,12 @@ const TablesPage = () => {
     fetchData()
   }, [])
   return (
-    <DefaultLayout>
+    <>
       <Breadcrumb pageName={"Company Employees"} />
       <div className="flex flex-col gap-10">
         <EmployeeList employees={employees} />
       </div>
-    </DefaultLayout>
+    </>
   );
 };
 

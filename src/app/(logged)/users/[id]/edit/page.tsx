@@ -4,7 +4,6 @@ import { useRouter, useParams } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
 import axios from "axios";
 import toast from "react-hot-toast";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import AddUser from "@/components/Forms/AddUser";
 import UserHistory from "@/components/UserHistory";
@@ -53,38 +52,38 @@ const EditUserPage = () => {
     // Show loading or redirect for non-partners
     if (!user || user.role !== "partner") {
         return (
-            <DefaultLayout>
+            <>
                 <div className="flex justify-center items-center min-h-64">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
                 </div>
-            </DefaultLayout>
+            </>
         );
     }
 
     if (isLoading) {
         return (
-            <DefaultLayout>
+            <>
                 <Breadcrumb pageName="Edit User" />
                 <div className="flex justify-center items-center min-h-64">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
                 </div>
-            </DefaultLayout>
+            </>
         );
     }
 
     if (!userData) {
         return (
-            <DefaultLayout>
+            <>
                 <Breadcrumb pageName="Edit User" />
                 <div className="text-center py-10">
                     <p className="text-red-600 dark:text-red-400">User not found</p>
                 </div>
-            </DefaultLayout>
+            </>
         );
     }
 
     return (
-        <DefaultLayout>
+        <>
             <Breadcrumb pageName="Edit User" />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div>
@@ -97,7 +96,7 @@ const EditUserPage = () => {
                     <UserHistory userId={userId} />
                 </div>
             </div>
-        </DefaultLayout>
+        </>
     );
 };
 

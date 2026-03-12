@@ -5,6 +5,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
+import { FiEye, FiEyeOff, FiUserPlus, FiUserCheck, FiLock, FiUser, FiHash } from "react-icons/fi";
+import clsx from "clsx";
 
 interface AddUserProps {
     editUserId?: string;
@@ -172,147 +174,188 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         setShowPassword(!showPassword);
     };
 
+    // UI Styles
+    const inputClass = "w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
+    const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+
     return (
-        <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-                <h3 className="font-medium text-black dark:text-white">
-                    {isEditMode ? "Edit User" : "Add New User"}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+            {/* Header */}
+            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    {isEditMode ? <FiUserCheck className="text-emerald-500" /> : <FiUserPlus className="text-emerald-500" />} 
+                    {isEditMode ? "Edit User Account" : "Add New User"}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {isEditMode ? "Update user information" : "Create a new user account"}
-                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6.5">
-                {/* Username */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Username <span className="text-meta-1">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        placeholder="Enter username"
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
-                        required
-                    />
-                </div>
+            <form onSubmit={handleSubmit} className="p-6">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Username */}
+                    <div>
+                        <label className={labelClass}>
+                            Username <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiHash />
+                            </span>
+                            <input
+                                type="text"
+                                name="username"
+                                value={formData.username}
+                                onChange={handleChange}
+                                placeholder="Enter username"
+                                className={clsx(inputClass, "pl-11")}
+                                disabled={isLoading}
+                                required
+                            />
+                        </div>
+                    </div>
 
-                {/* Full Name */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Full Name
-                    </label>
-                    <input
-                        type="text"
-                        name="fullname"
-                        value={formData.fullname}
-                        onChange={handleChange}
-                        placeholder="Enter full name (optional)"
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
-                    />
+                    {/* Full Name */}
+                    <div>
+                        <label className={labelClass}>
+                            Full Name
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiUser />
+                            </span>
+                            <input
+                                type="text"
+                                name="fullname"
+                                value={formData.fullname}
+                                onChange={handleChange}
+                                placeholder="Optional full name"
+                                className={clsx(inputClass, "pl-11")}
+                                disabled={isLoading}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Role */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Role <span className="text-meta-1">*</span>
-                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(cannot downgrade other partners)</span>}
+                <div className="mb-6">
+                    <label className={labelClass}>
+                        Account Role <span className="text-rose-500">*</span>
+                        {isEditingOtherPartner && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot downgrade other partners)</span>}
                     </label>
-                    <select
-                        name="role"
-                        value={formData.role}
-                        onChange={handleChange}
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
-                        required
-                    >
-                        <option value="employee" disabled={isEditingOtherPartner}>Employee</option>
-                        <option value="partner">Partner</option>
-                    </select>
-                </div>
-
-                {/* Password */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Password {!isEditMode && <span className="text-meta-1">*</span>}
-                        {isEditMode && !isEditingOtherPartner && <span className="text-xs text-gray-500 ml-2">(leave empty to keep current)</span>}
-                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(partners cannot change other partners&apos; passwords)</span>}
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder={
-                                isEditingOtherPartner
-                                    ? "Password editing disabled"
-                                    : isEditMode
-                                        ? "Enter new password (optional)"
-                                        : "Enter password (min. 6 characters)"
-                            }
-                            className={`w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${isEditingOtherPartner ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-                            disabled={isLoading || isEditingOtherPartner}
-                            required={!isEditMode}
-                            minLength={6}
-                        />
-                        <button
-                            type="button"
-                            onClick={togglePasswordVisibility}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                            disabled={isEditingOtherPartner}
-                        >
-                            {showPassword ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878A3 3 0 1015.12 15.12m-5.242 5.242l-4.242-4.242m0 0a10.05 10.05 0 01-5.986-4.985m0 0L3.707 20.293m0-10.586L20.293 3.707" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Confirm Password */}
-                {(!isEditMode || (formData.password && !isEditingOtherPartner)) && (
-                    <div className="mb-6">
-                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                            Confirm Password <span className="text-meta-1">*</span>
+                    <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+                        <label className={clsx(
+                                "flex-1 cursor-pointer rounded-lg px-4 py-3 text-center transition-all",
+                                formData.role === 'employee' ? "bg-white shadow-sm ring-1 ring-slate-200 text-emerald-700 font-bold dark:bg-slate-800 dark:ring-slate-700 dark:text-emerald-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                                isEditingOtherPartner && formData.role !== 'employee' && "opacity-50 cursor-not-allowed"
+                            )}>
+                            <input 
+                                type="radio" 
+                                name="role" 
+                                value="employee" 
+                                checked={formData.role === "employee"} 
+                                onChange={handleChange} 
+                                className="sr-only"
+                                disabled={isLoading || isEditingOtherPartner}
+                            />
+                            Standard Employee
                         </label>
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Confirm password"
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                            disabled={isLoading}
-                            required={!isEditMode || Boolean(formData.password)}
-                        />
+                        <label className={clsx(
+                                "flex-1 cursor-pointer rounded-lg px-4 py-3 text-center transition-all",
+                                formData.role === 'partner' ? "bg-white shadow-sm ring-1 ring-slate-200 text-teal-700 font-bold dark:bg-slate-800 dark:ring-slate-700 dark:text-teal-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}>
+                            <input 
+                                type="radio" 
+                                name="role" 
+                                value="partner" 
+                                checked={formData.role === "partner"} 
+                                onChange={handleChange} 
+                                className="sr-only"
+                                disabled={isLoading}
+                            />
+                            Administrator / Partner
+                        </label>
                     </div>
-                )}
+                </div>
+
+                <hr className="my-6 border-slate-200 dark:border-slate-700" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Password */}
+                    <div>
+                        <label className={labelClass}>
+                            Password {!isEditMode && <span className="text-rose-500">*</span>}
+                            {isEditMode && !isEditingOtherPartner && <span className="text-xs text-slate-500 ml-2 font-normal">(Leave blank to keep current)</span>}
+                            {isEditingOtherPartner && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot edit partner password)</span>}
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiLock />
+                            </span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder={
+                                    isEditingOtherPartner
+                                        ? "Disabled"
+                                        : isEditMode
+                                            ? "New password"
+                                            : "Min. 6 characters"
+                                }
+                                className={clsx(inputClass, "pl-11 pr-12")}
+                                disabled={isLoading || isEditingOtherPartner}
+                                required={!isEditMode}
+                                minLength={6}
+                            />
+                            <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                                disabled={isEditingOtherPartner}
+                            >
+                                {showPassword ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    {(!isEditMode || (formData.password && !isEditingOtherPartner)) && (
+                        <div>
+                            <label className={labelClass}>
+                                Confirm Password <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                    <FiLock />
+                                </span>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Confirm password"
+                                    className={clsx(inputClass, "pl-11 pr-12")}
+                                    disabled={isLoading}
+                                    required={!isEditMode || Boolean(formData.password)}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="flex justify-center rounded bg-primary px-6 py-2 font-medium text-gray hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isLoading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update User" : "Create User")}
+                        {isLoading ? (isEditMode ? "Updating User..." : "Creating User...") : (isEditMode ? "Update User Configuration" : "Create User")}
                     </button>
 
                     <Link
                         href="/users"
-                        className="flex justify-center rounded border border-stroke px-6 py-2 font-medium text-black hover:bg-gray-50 dark:border-strokedark dark:text-white dark:hover:bg-boxdark"
+                        className="flex-shrink-0 text-center rounded-xl bg-slate-100 px-8 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     >
                         Cancel
                     </Link>
