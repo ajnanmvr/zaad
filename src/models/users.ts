@@ -37,6 +37,14 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  mfaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  roleVersion: {
+    type: Number,
+    default: 1,
+  },
 }, {
   timestamps: true
 });

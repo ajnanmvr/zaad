@@ -1,6 +1,7 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import ChangePassword from "@/components/Forms/ChangePassword";
+import SessionManager from "@/components/Settings/SessionManager";
 import { useUserContext } from "@/contexts/UserContext";
 import { FiUser, FiShield, FiBriefcase } from "react-icons/fi";
 
@@ -74,6 +75,7 @@ const SettingsPage = () => {
                 <div className="flex flex-col gap-8 xl:col-span-7">
                     {/* Change Password Component */}
                     <ChangePassword />
+                    <SessionManager />
                 </div>
             </div>
         </div>

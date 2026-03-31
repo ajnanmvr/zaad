@@ -6,9 +6,23 @@ import {
   rotateRefreshToken,
 } from "@/services/userAuthService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
+import { checkRateLimit, getRequestRateLimitKey } from "@/utils/rateLimiter";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await checkRateLimit(
+      getRequestRateLimitKey(request, "auth-refresh"),
+      30,
+      60 * 1000
+    );
+
+    if (!rateLimit.allowed) {
+      return Response.json(
+        { error: "Too many refresh requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } }
+      );
+    }
+
     await connect();
     const result = await rotateRefreshToken(request);
     return buildLoginResponse(result.tokens, result.role);

@@ -9,16 +9,15 @@ import UsersList from "@/components/Tables/UsersList";
 const UsersPage = () => {
     const { user } = useUserContext();
     const router = useRouter();
+    const canReadUsers = Array.isArray(user?.permissions) && user.permissions.includes("users.read");
 
     useEffect(() => {
-        // Redirect if user is not a partner
-        if (user && user.role !== "partner") {
+        if (user && !canReadUsers) {
             router.push("/");
         }
-    }, [user, router]);
+    }, [user, canReadUsers, router]);
 
-    // Show loading or redirect for non-partners
-    if (!user || user.role !== "partner") {
+    if (!user || !canReadUsers) {
         return (
             <>
                 <div className="flex justify-center items-center min-h-64">

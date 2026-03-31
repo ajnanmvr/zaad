@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID, createHash } from "crypto";
 import { TUser } from "@/types/types";
 import { ServiceError } from "./serviceError";
+import { getRolePermissions } from "@/auth/permissions";
 
 type TAuthPayload = {
   id: string;
@@ -28,6 +29,16 @@ type TRefreshPayload = {
 type TTokenPair = {
   accessToken: string;
   refreshToken: string;
+};
+
+type TSessionView = {
+  id: string;
+  userAgent: string;
+  ipAddress: string;
+  createdAt: Date;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  isCurrent: boolean;
 };
 
 const ACCESS_TOKEN_TTL = "15m";
@@ -82,7 +93,7 @@ function getRequestMeta(request?: NextRequest) {
 function setAuthCookies(
   response: NextResponse,
   tokens: TTokenPair,
-  role: "partner" | "employee"
+  _role: "partner" | "employee"
 ) {
   const isProduction = process.env.NODE_ENV === "production";
 
@@ -99,23 +110,6 @@ function setAuthCookies(
     sameSite: "lax",
     path: "/",
   });
-
-  if (role === "partner") {
-    response.cookies.set("partner", "true", {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      path: "/",
-    });
-  } else {
-    response.cookies.set("partner", "", {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      path: "/",
-      expires: new Date(0),
-    });
-  }
 }
 
 function clearAuthCookies(response: NextResponse) {
@@ -130,14 +124,6 @@ function clearAuthCookies(response: NextResponse) {
   });
 
   response.cookies.set("refresh", "", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(0),
-  });
-
-  response.cookies.set("partner", "", {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
@@ -193,20 +179,41 @@ async function createSessionAndTokens(
 
 async function revokeRefreshSession(refreshToken?: string) {
   if (!refreshToken) {
-    return;
+    return null;
   }
 
   try {
     const payload = jwt.verify(refreshToken, getJwtSecret()) as TRefreshPayload;
     if (payload.tokenType !== "refresh") {
-      return;
+      return null;
     }
 
     await UserSession.findByIdAndUpdate(payload.sid, {
       revokedAt: new Date(),
     });
+
+    return payload;
   } catch {
     // ignore invalid/expired token on logout paths
+    return null;
+  }
+}
+
+function decodeRefreshPayloadFromRequest(request: NextRequest): TRefreshPayload | null {
+  const refreshToken = request.cookies.get("refresh")?.value;
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, getJwtSecret()) as TRefreshPayload;
+    if (payload.tokenType !== "refresh") {
+      return null;
+    }
+
+    return payload;
+  } catch {
+    return null;
   }
 }
 
@@ -215,6 +222,54 @@ export async function revokeAllSessionsForUser(userId: string) {
     { user: userId, revokedAt: null },
     { revokedAt: new Date() }
   );
+}
+
+export async function listCurrentUserSessions(
+  request: NextRequest
+): Promise<TSessionView[]> {
+  const userId = await getUserFromCookie(request);
+  const currentRefresh = decodeRefreshPayloadFromRequest(request);
+
+  const sessions = await UserSession.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .select("_id userAgent ipAddress createdAt expiresAt revokedAt");
+
+  return sessions.map((session: any) => ({
+    id: session._id.toString(),
+    userAgent: session.userAgent || "",
+    ipAddress: session.ipAddress || "",
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    revokedAt: session.revokedAt || null,
+    isCurrent: currentRefresh?.sid === session._id.toString(),
+  }));
+}
+
+export async function revokeCurrentUserSessionById(
+  request: NextRequest,
+  sessionId: string
+): Promise<{ isCurrentSession: boolean }> {
+  const userId = await getUserFromCookie(request);
+  const currentRefresh = decodeRefreshPayloadFromRequest(request);
+
+  const session = await UserSession.findOne({ _id: sessionId, user: userId });
+  if (!session) {
+    throw new ServiceError("Session not found", 404);
+  }
+
+  await UserSession.findByIdAndUpdate(sessionId, { revokedAt: new Date() });
+
+  await logUserActivity({
+    targetUserId: userId,
+    performedById: userId,
+    action: "session_revoke",
+    details: { sessionId },
+    request,
+  });
+
+  return {
+    isCurrentSession: currentRefresh?.sid === sessionId,
+  };
 }
 
 function buildUnauthorizedResponse(message: string, status: number = 401) {
@@ -263,6 +318,15 @@ export async function rotateRefreshToken(request: NextRequest) {
       { user: session.user, familyId: session.familyId, revokedAt: null },
       { revokedAt: new Date() }
     );
+
+    await logUserActivity({
+      targetUserId: payload.id,
+      performedById: payload.id,
+      action: "auth_denied",
+      details: { reason: "refresh_reuse_detected" },
+      request,
+    });
+
     throw new ServiceError("Refresh token reuse detected", 401);
   }
 
@@ -295,6 +359,14 @@ export async function rotateRefreshToken(request: NextRequest) {
     replacedBySessionId: nextSession?._id || null,
   });
 
+  await logUserActivity({
+    targetUserId: user._id.toString(),
+    performedById: user._id.toString(),
+    action: "token_refresh",
+    details: { previousSessionId: session._id.toString() },
+    request,
+  });
+
   return {
     tokens,
     role: user.role as "partner" | "employee",
@@ -316,6 +388,14 @@ export async function loginUser(
   }
 
   if (existingUser.lockUntil && existingUser.lockUntil.getTime() > Date.now()) {
+    await logUserActivity({
+      targetUserId: existingUser._id.toString(),
+      performedById: existingUser._id.toString(),
+      action: "auth_denied",
+      details: { reason: "account_locked" },
+      request,
+    });
+
     throw new ServiceError("Account temporarily locked. Try again later", 423);
   }
 
@@ -327,6 +407,14 @@ export async function loginUser(
     await User.findByIdAndUpdate(existingUser._id, {
       failedLoginCount: shouldLock ? 0 : nextFailedCount,
       lockUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+    });
+
+    await logUserActivity({
+      targetUserId: existingUser._id.toString(),
+      performedById: existingUser._id.toString(),
+      action: "auth_denied",
+      details: { reason: shouldLock ? "invalid_password_lockout" : "invalid_password" },
+      request,
     });
 
     throw new ServiceError("Invalid Password", 400);
@@ -346,6 +434,13 @@ export async function loginUser(
     request
   );
 
+  await logUserActivity({
+    targetUserId: existingUser._id.toString(),
+    performedById: existingUser._id.toString(),
+    action: "login",
+    request,
+  });
+
   return {
     tokens,
     role: existingUser.role,
@@ -355,14 +450,22 @@ export async function loginUser(
 export async function getCurrentUserFromRequest(request: NextRequest) {
   const userId = await getUserFromCookie(request);
   const user = await User.findOne({ _id: userId, published: true }).select(
-    "username role"
+    "username fullname role"
   );
 
   if (!user) {
     throw new ServiceError("No user found", 404);
   }
 
-  return user;
+  const permissions = getRolePermissions(user.role);
+
+  return {
+    _id: user._id,
+    username: user.username,
+    fullname: user.fullname,
+    role: user.role,
+    permissions,
+  };
 }
 
 export async function signupUser(payload: TUser) {
@@ -394,7 +497,16 @@ export async function signupUser(payload: TUser) {
 
 export async function createLogoutResponse(request?: NextRequest) {
   const refreshToken = request?.cookies.get("refresh")?.value;
-  await revokeRefreshSession(refreshToken);
+  const payload = await revokeRefreshSession(refreshToken);
+
+  if (payload && request) {
+    await logUserActivity({
+      targetUserId: payload.id,
+      performedById: payload.id,
+      action: "logout",
+      request,
+    });
+  }
 
   const response = new NextResponse(
     JSON.stringify({
@@ -415,6 +527,13 @@ export async function createLogoutResponse(request?: NextRequest) {
 export async function createLogoutAllResponse(request: NextRequest) {
   const userId = await getUserFromCookie(request);
   await revokeAllSessionsForUser(userId);
+
+  await logUserActivity({
+    targetUserId: userId,
+    performedById: userId,
+    action: "logout_all",
+    request,
+  });
 
   const response = new NextResponse(
     JSON.stringify({

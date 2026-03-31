@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { FiSearch, FiMenu } from "react-icons/fi";
 import axios from "axios";
+import { useUserContext } from "@/contexts/UserContext";
 
 const Header = (props: {
   sidebarOpen: string | boolean | undefined;
@@ -14,6 +15,8 @@ const Header = (props: {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ companies: [{ name: "", _id: "" }], employees: [{ name: "", _id: "" }] });
   const [isSearchResults, setIsSearchResults] = useState(false);
+  const { user } = useUserContext();
+  const canSearch = Array.isArray(user?.permissions) && user.permissions.includes("entities.read");
 
   const handleSearch = async (e: any) => {
     e.preventDefault();
@@ -105,6 +108,7 @@ const Header = (props: {
         </div>
 
         <div className="hidden sm:block flex-1 max-w-2xl">
+          {canSearch && (
           <form onSubmit={handleSearch}>
             <div className="relative group">
               <button className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary">
@@ -120,6 +124,7 @@ const Header = (props: {
               />
             </div>
           </form>
+          )}
         </div>
 
         <div className="flex items-center gap-3 2xsm:gap-5 ml-auto">

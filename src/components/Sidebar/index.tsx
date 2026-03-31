@@ -28,6 +28,8 @@ interface SidebarProps {
 const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
   const { user } = useUserContext();
+  const can = (permission: string) =>
+    Array.isArray(user?.permissions) && user.permissions.includes(permission);
   const trigger = useRef<any>(null);
   const sidebar = useRef<any>(null);
 
@@ -164,7 +166,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 </Link>
               </li>
               
-              {user?.role === "partner" && (
+              {can("users.read") && (
                 <li>
                   <Link
                     href="/users"
@@ -246,7 +248,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               Finance
             </h3>
             <ul className="mb-6 flex flex-col gap-1.5">
-              {user?.role === "partner" && (
+              {can("payments.read") && (
                 <li>
                   <Link
                     href="/accounts/transactions/analytics"

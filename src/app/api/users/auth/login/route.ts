@@ -2,8 +2,23 @@ import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { buildLoginResponse, loginUser } from "@/services/userAuthService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
+import { checkRateLimit, getRequestRateLimitKey } from "@/utils/rateLimiter";
+
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await checkRateLimit(
+      getRequestRateLimitKey(request, "auth-login"),
+      10,
+      5 * 60 * 1000
+    );
+
+    if (!rateLimit.allowed) {
+      return Response.json(
+        { error: "Too many login attempts. Try again later." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } }
+      );
+    }
+
     await connect();
     const reqBody = await request.json();
     const { username, password } = reqBody;

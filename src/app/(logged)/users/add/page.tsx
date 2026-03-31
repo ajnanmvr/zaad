@@ -9,16 +9,15 @@ import AddUser from "@/components/Forms/AddUser";
 const AddUserPage = () => {
     const { user } = useUserContext();
     const router = useRouter();
+    const canCreateUsers = Array.isArray(user?.permissions) && user.permissions.includes("users.create");
 
     useEffect(() => {
-        // Redirect if user is not a partner
-        if (user && user.role !== "partner") {
+        if (user && !canCreateUsers) {
             router.push("/");
         }
-    }, [user, router]);
+    }, [user, canCreateUsers, router]);
 
-    // Show loading or redirect for non-partners
-    if (!user || user.role !== "partner") {
+    if (!user || !canCreateUsers) {
         return (
             <>
                 <div className="flex justify-center items-center min-h-64">

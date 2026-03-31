@@ -22,10 +22,10 @@ const EditUserPage = () => {
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const canReadUsers = Array.isArray(user?.permissions) && user.permissions.includes("users.read");
 
     useEffect(() => {
-        // Redirect if user is not a partner
-        if (user && user.role !== "partner") {
+        if (user && !canReadUsers) {
             router.push("/");
             return;
         }
@@ -44,13 +44,12 @@ const EditUserPage = () => {
             }
         };
 
-        if (user && user.role === "partner" && userId) {
+        if (user && canReadUsers && userId) {
             fetchUser();
         }
-    }, [user, router, userId]);
+    }, [user, canReadUsers, router, userId]);
 
-    // Show loading or redirect for non-partners
-    if (!user || user.role !== "partner") {
+    if (!user || !canReadUsers) {
         return (
             <>
                 <div className="flex justify-center items-center min-h-64">
