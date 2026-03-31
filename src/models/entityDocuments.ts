@@ -8,6 +8,11 @@ const EntityDocumentSchema = new Schema(
       required: true,
       index: true,
     },
+    documentTemplate: {
+      type: Schema.Types.ObjectId,
+      ref: "documentTemplates",
+      index: true,
+    },
     issueDate: String,
     expiryDate: String,
     notes: String,

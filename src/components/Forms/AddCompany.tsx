@@ -18,62 +18,28 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const [companyData, setCompanyData] = useState<any>({
         name: "", documents: [], password: []
     });
-    const [documentNameOptionsByCategory, setDocumentNameOptionsByCategory] =
-        useState<Record<string, string[]>>({});
-    const [credentialPlatformOptionsByCategory, setCredentialPlatformOptionsByCategory] =
-        useState<Record<string, string[]>>({});
-    const [documentCategoryOptions, setDocumentCategoryOptions] = useState<string[]>([]);
-    const [credentialCategoryOptions, setCredentialCategoryOptions] = useState<string[]>([]);
+    const [documentTemplateOptions, setDocumentTemplateOptions] = useState<
+        Array<{ id: string; name: string }>
+    >([]);
+    const [credentialTemplateOptions, setCredentialTemplateOptions] = useState<
+        Array<{ id: string; platform: string }>
+    >([]);
 
-    const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
-
-    const fetchCategoryOptions = useCallback(async (
-        type: "document" | "credential",
-        category: string,
-    ) => {
-        const trimmed = category.trim();
-        if (!trimmed) return;
-
-        const key = normalizeCategoryKey(trimmed);
-        if (
-            (type === "document" && documentNameOptionsByCategory[key]) ||
-            (type === "credential" && credentialPlatformOptionsByCategory[key])
-        ) {
-            return;
-        }
-
-        try {
-            const { data } = await axios.get("/api/categories/names", {
-                params: { type, category: trimmed },
-            });
-            const options: string[] = Array.isArray(data?.options) ? data.options : [];
-
-            if (type === "document") {
-                setDocumentNameOptionsByCategory((prev) => ({ ...prev, [key]: options }));
-                return;
-            }
-
-            setCredentialPlatformOptionsByCategory((prev) => ({ ...prev, [key]: options }));
-        } catch (error) {
-            console.error("Error fetching category options:", error);
-        }
-    }, [credentialPlatformOptionsByCategory, documentNameOptionsByCategory]);
-
-    const fetchCategoryLists = useCallback(async () => {
+    const fetchTemplateLists = useCallback(async () => {
         try {
             const [documentRes, credentialRes] = await Promise.all([
-                axios.get("/api/categories", { params: { type: "document" } }),
-                axios.get("/api/categories", { params: { type: "credential" } }),
+                axios.get("/api/templates", { params: { type: "document" } }),
+                axios.get("/api/templates", { params: { type: "credential" } }),
             ]);
 
-            setDocumentCategoryOptions(
+            setDocumentTemplateOptions(
                 Array.isArray(documentRes.data?.options) ? documentRes.data.options : []
             );
-            setCredentialCategoryOptions(
+            setCredentialTemplateOptions(
                 Array.isArray(credentialRes.data?.options) ? credentialRes.data.options : []
             );
         } catch (error) {
-            console.error("Error fetching categories:", error);
+            console.error("Error fetching templates:", error);
         }
     }, []);
 
@@ -101,34 +67,8 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     }, [edit, data])
 
     useEffect(() => {
-        void fetchCategoryLists();
-    }, [fetchCategoryLists]);
-
-    useEffect(() => {
-        const documentCategories = Array.from(
-            new Set<string>(
-                (companyData?.documents || [])
-                    .map((doc: any) => doc?.category?.trim())
-                    .filter((category: string | undefined): category is string => Boolean(category))
-            )
-        );
-
-        const credentialCategories = Array.from(
-            new Set<string>(
-                (companyData?.password || [])
-                    .map((item: any) => item?.category?.trim())
-                    .filter((category: string | undefined): category is string => Boolean(category))
-            )
-        );
-
-        documentCategories.forEach((category) => {
-            void fetchCategoryOptions("document", category);
-        });
-
-        credentialCategories.forEach((category) => {
-            void fetchCategoryOptions("credential", category);
-        });
-    }, [companyData?.documents, companyData?.password, fetchCategoryOptions])
+        void fetchTemplateLists();
+    }, [fetchTemplateLists]);
 
     const mutation = useMutation(
         {
@@ -176,13 +116,25 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handlePasswordChange = (index: number, field: string, value: string) => {
         const updatedPasswords = [...companyData.password];
+        if (field === "credentialTemplate") {
+            const selectedTemplate = credentialTemplateOptions.find(
+                (template) => template.id === value,
+            );
+            updatedPasswords[index].platform = selectedTemplate?.platform || "";
+        }
         updatedPasswords[index][field] = value;
         setCompanyData({ ...companyData, password: updatedPasswords });
     };
 
     const handleAddPassword = (e: React.MouseEvent) => {
         e.preventDefault()
-        const password = { category: "", platform: "", username: "", password: "" }
+        const password = {
+            credentialTemplate: "",
+            platform: "",
+            username: "",
+            password: "",
+            notes: "",
+        }
         if (!companyData.password) {
             setCompanyData({ ...companyData, password: [password] })
         } else {
@@ -193,7 +145,13 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handleAddDocument = (e: React.MouseEvent) => {
         e.preventDefault()
-        const documents = { category: "", name: "", issueDate: "", expiryDate: "" }
+        const documents = {
+            documentTemplate: "",
+            name: "",
+            issueDate: "",
+            expiryDate: "",
+            notes: "",
+        }
         if (!companyData.documents) {
             setCompanyData({ ...companyData, documents: [documents] })
         } else {
@@ -204,8 +162,11 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handleDocumentChange = (index: number, field: string, value: string | Date) => {
         const updatedDocuments = [...companyData.documents];
-        if (field === "category") {
-            updatedDocuments[index].name = "";
+        if (field === "documentTemplate") {
+            const selectedTemplate = documentTemplateOptions.find(
+                (template) => template.id === value,
+            );
+            updatedDocuments[index].name = selectedTemplate?.name || "";
         }
         updatedDocuments[index][field] = value;
         setCompanyData({ ...companyData, documents: updatedDocuments });
@@ -434,31 +395,18 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                     </button>
                                     
                                     <div className="mb-4 pr-10">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Category</label>
-                                        <input
-                                            type="text"
-                                            list="company-credential-category-options"
-                                            value={item?.category || ""}
-                                            placeholder="Select or type category"
-                                            onChange={(e) => handlePasswordChange(index, 'category', e.target.value)}
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="mb-4 pr-10">
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Platform</label>
-                                        <input
-                                            type="text"
-                                            list={`company-platform-options-${index}`}
-                                            value={item?.platform || ""}
-                                            placeholder="e.g. MOHRE, Tasheel"
-                                            onChange={(e) => handlePasswordChange(index, 'platform', e.target.value)}
+                                        <select
+                                            title="Select platform"
+                                            value={item?.credentialTemplate || ""}
+                                            onChange={(e) => handlePasswordChange(index, 'credentialTemplate', e.target.value)}
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                        <datalist id={`company-platform-options-${index}`}>
-                                            {(credentialPlatformOptionsByCategory[normalizeCategoryKey(item?.category || "")] || []).map((option) => (
-                                                <option key={option} value={option} />
+                                        >
+                                            <option value="" disabled>Select platform</option>
+                                            {credentialTemplateOptions.map((option) => (
+                                                <option key={option.id} value={option.id}>{option.platform}</option>
                                             ))}
-                                        </datalist>
+                                        </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -481,6 +429,16 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
                                             />
                                         </div>
+                                    </div>
+                                    <div className="mt-4">
+                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Notes</label>
+                                        <textarea
+                                            rows={3}
+                                            value={item?.notes || ""}
+                                            onChange={(e) => handlePasswordChange(index, 'notes', e.target.value)}
+                                            placeholder="Optional notes"
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -528,38 +486,19 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
                                     <div className="mb-4 pr-10">
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                            Category
-                                        </label>
-                                        <input
-                                            type="text"
-                                            list="company-document-category-options"
-                                            value={doc?.category || ""}
-                                            onChange={(e) => handleDocumentChange(index, 'category', e.target.value)}
-                                            placeholder="Select or type category"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="mb-4 pr-10">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                             Document Name <span className="text-rose-500">*</span>
                                         </label>
                                         <select
-                                            title="Select document name"
+                                            title="Select document template"
                                             required
-                                            value={doc?.name || ""}
-                                            onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
+                                            value={doc?.documentTemplate || ""}
+                                            onChange={(e) => handleDocumentChange(index, 'documentTemplate', e.target.value)}
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
                                         >
-                                            <option value="" disabled>
-                                                {doc?.category ? "Select document" : "Select category first"}
-                                            </option>
-                                            {(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).map((option) => (
-                                                <option key={option} value={option}>{option}</option>
+                                            <option value="" disabled>Select document</option>
+                                            {documentTemplateOptions.map((option) => (
+                                                <option key={option.id} value={option.id}>{option.name}</option>
                                             ))}
-                                            {doc?.name &&
-                                                !(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).includes(doc.name) && (
-                                                    <option value={doc.name}>{doc.name}</option>
-                                            )}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -607,16 +546,6 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                 <FiPlus className="text-lg" />
                                 Add Document
                             </button>
-                            <datalist id="company-document-category-options">
-                                {documentCategoryOptions.map((category) => (
-                                    <option key={category} value={category} />
-                                ))}
-                            </datalist>
-                            <datalist id="company-credential-category-options">
-                                {credentialCategoryOptions.map((category) => (
-                                    <option key={category} value={category} />
-                                ))}
-                            </datalist>
                         </div>
                     </div>
                 </div>

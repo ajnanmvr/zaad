@@ -6,9 +6,10 @@ export type TUser = {
   role?: string;
 };
 export type TPasswordData = {
-  category?: string;
+  credentialTemplate?: string;
   platform: string;
   username: string;
+  notes?: string;
   credential?: string;
   password?: string;
 };
@@ -36,7 +37,7 @@ export type TCompanyData = {
 export type TDocuments = {
   _id: string;
   id?: string;
-  category?: string;
+  documentTemplate?: string;
   name?: string;
   status?: string;
   issueDate?: string;
@@ -83,7 +84,7 @@ export type TPaginatedResponse<T> = {
 
 export type TExpiryDocumentItem = {
   id: string;
-  category?: string;
+  documentTemplate?: string;
   name?: string;
   issueDate?: string;
   expiryDate?: string;
@@ -122,4 +123,23 @@ export type TEmployeeData = {
 export type TIndividualData = Omit<TEmployeeData, "company" | "entityType"> & {
   entityType?: "individual";
   company?: undefined;
+};
+
+export type TPhysicalHandover = {
+  id: string;
+  entity: {
+    id: string;
+    name: string;
+  };
+  documentName: string;
+  receivedAt: string | Date;
+  returnedAt?: string | Date;
+  status: "received" | "returned";
+  remarks?: string;
+  receivedBy?: {
+    id: string;
+    fullname: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 };

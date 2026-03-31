@@ -8,6 +8,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiMoreVertical, FiEdit2, FiTrash2, FiFileText, FiUser, FiLock, FiPhone, FiMail } from "react-icons/fi";
 import clsx from "clsx";
+import calculateStatus from "@/utils/calculateStatus";
+import calculateDaysLeft from "@/utils/calculateDaysLeft";
 
 const SingleEmployee = () => {
   const router = useRouter()
@@ -15,14 +17,36 @@ const SingleEmployee = () => {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isEditDocsOpen, setIsEditDocsOpen] = useState(false);
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [isAddCredentialOpen, setIsAddCredentialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [editData, setEditData] = useState({
-    category: "",
+    documentTemplate: "",
     name: "",
     issueDate: "",
     expiryDate: "",
     notes: "",
   });
+  const [addDocumentData, setAddDocumentData] = useState({
+    documentTemplate: "",
+    name: "",
+    issueDate: "",
+    expiryDate: "",
+    notes: "",
+  });
+  const [addCredentialData, setAddCredentialData] = useState({
+    credentialTemplate: "",
+    platform: "",
+    username: "",
+    password: "",
+    notes: "",
+  });
+  const [documentTemplateOptions, setDocumentTemplateOptions] = useState<
+    Array<{ id: string; name?: string; label?: string }>
+  >([]);
+  const [credentialTemplateOptions, setCredentialTemplateOptions] = useState<
+    Array<{ id: string; platform?: string; label?: string }>
+  >([]);
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
   const { user } = useUserContext();
@@ -32,71 +56,63 @@ const SingleEmployee = () => {
       : employee?.password || [];
   }, [employee]);
   const employeeDocuments = useMemo(() => employee?.documents || [], [employee]);
-  const [documentCategoryFilter, setDocumentCategoryFilter] = useState("all");
-  const [credentialCategoryFilter, setCredentialCategoryFilter] = useState("all");
-  const [documentNameOptionsByCategory, setDocumentNameOptionsByCategory] =
-    useState<Record<string, string[]>>({});
+  const [documentNameFilter, setDocumentNameFilter] = useState("all");
+  const [credentialPlatformFilter, setCredentialPlatformFilter] = useState("all");
 
-  const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
-
-  const fetchDocumentNameOptions = useCallback(async (category: string) => {
-    const trimmed = category.trim();
-    if (!trimmed) return;
-
-    const key = normalizeCategoryKey(trimmed);
-    if (documentNameOptionsByCategory[key]) {
-      return;
-    }
-
-    try {
-      const { data } = await axios.get("/api/categories/names", {
-        params: { type: "document", category: trimmed },
-      });
-      const options: string[] = Array.isArray(data?.options) ? data.options : [];
-      setDocumentNameOptionsByCategory((prev) => ({ ...prev, [key]: options }));
-    } catch (error) {
-      console.error("Error fetching document name options:", error);
-    }
-  }, [documentNameOptionsByCategory]);
-
-  const documentCategories = useMemo(() => {
+  const documentNames = useMemo(() => {
     return Array.from(
       new Set(
         employeeDocuments
-          .map((doc) => doc?.category?.trim())
+          .map((doc) => doc?.name?.trim())
           .filter((value): value is string => Boolean(value))
       )
     );
   }, [employeeDocuments]);
 
-  const credentialCategories = useMemo(() => {
+  const credentialPlatforms = useMemo(() => {
     return Array.from(
       new Set(
         employeeCredentials
-          .map((credential) => credential?.category?.trim())
+          .map((credential) => credential?.platform?.trim())
           .filter((value): value is string => Boolean(value))
       )
     );
   }, [employeeCredentials]);
 
   const filteredEmployeeDocuments = useMemo(() => {
-    if (documentCategoryFilter === "all") {
+    if (documentNameFilter === "all") {
       return employeeDocuments;
     }
     return employeeDocuments.filter(
-      (doc) => (doc.category || "uncategorized") === documentCategoryFilter
+      (doc) => (doc.name || "unnamed") === documentNameFilter
     );
-  }, [employeeDocuments, documentCategoryFilter]);
+  }, [employeeDocuments, documentNameFilter]);
 
   const filteredEmployeeCredentials = useMemo(() => {
-    if (credentialCategoryFilter === "all") {
+    if (credentialPlatformFilter === "all") {
       return employeeCredentials;
     }
     return employeeCredentials.filter(
-      (credential) =>
-        (credential.category || "uncategorized") === credentialCategoryFilter
+      (credential) => (credential.platform || "unspecified") === credentialPlatformFilter
     );
-  }, [employeeCredentials, credentialCategoryFilter]);
+  }, [employeeCredentials, credentialPlatformFilter]);
+
+  const fetchTemplateOptions = useCallback(async () => {
+    try {
+      const [documentRes, credentialRes] = await Promise.all([
+        axios.get("/api/templates", { params: { type: "document" } }),
+        axios.get("/api/templates", { params: { type: "credential" } }),
+      ]);
+      setDocumentTemplateOptions(
+        Array.isArray(documentRes.data?.options) ? documentRes.data.options : []
+      );
+      setCredentialTemplateOptions(
+        Array.isArray(credentialRes.data?.options) ? credentialRes.data.options : []
+      );
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+    }
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -116,7 +132,7 @@ const SingleEmployee = () => {
     const selectedDocument = employeeDocuments.find(doc => doc._id === editId);
     if (selectedDocument) {
       setEditData({
-        category: `${selectedDocument.category || ""}`,
+        documentTemplate: `${selectedDocument.documentTemplate || ""}`,
         name: `${selectedDocument.name}`,
         issueDate: `${selectedDocument.issueDate}`,
         expiryDate: `${selectedDocument.expiryDate}`,
@@ -124,7 +140,6 @@ const SingleEmployee = () => {
       });
       setSelectedDocumentId(editId);
       setIsEditDocsOpen(true);
-      void fetchDocumentNameOptions(selectedDocument.category || "");
     } else {
       console.error("Document not found!");
     }
@@ -142,7 +157,12 @@ const SingleEmployee = () => {
   };
   const saveEdits = async () => {
     console.log("Updating Document with ID:", selectedDocumentId);
-    await axios.put(`/api/employee/${id}/doc/${selectedDocumentId}`, editData);
+    await axios.put(`/api/employee/${id}/doc/${selectedDocumentId}`, {
+      documentTemplate: editData.documentTemplate,
+      issueDate: editData.issueDate,
+      expiryDate: editData.expiryDate,
+      notes: editData.notes,
+    });
     setIsEditDocsOpen(false);
     fetchData();
   };
@@ -152,20 +172,115 @@ const SingleEmployee = () => {
     setIsConfirmationOpen(false);
     setIsConfirmationOpenCompany(false);
     setIsEditDocsOpen(false);
+    setIsAddDocumentOpen(false);
+    setIsAddCredentialOpen(false);
   }
-  const handleChange = (e: any) => {
-    if (e.target.name === "category") {
-      void fetchDocumentNameOptions(e.target.value || "");
+
+  const handleAddDocument = () => {
+    setAddDocumentData({
+      documentTemplate: "",
+      name: "",
+      issueDate: "",
+      expiryDate: "",
+      notes: "",
+    });
+    setIsAddDocumentOpen(true);
+  };
+
+  const handleAddCredential = () => {
+    setAddCredentialData({
+      credentialTemplate: "",
+      platform: "",
+      username: "",
+      password: "",
+      notes: "",
+    });
+    setIsAddCredentialOpen(true);
+  };
+
+  const saveNewDocument = async () => {
+    if (!addDocumentData.documentTemplate || !addDocumentData.expiryDate) {
+      console.error("Document Template and Expiry Date are required");
+      return;
+    }
+    try {
+      await axios.post(`/api/employee/${id}/doc`, {
+        documentTemplate: addDocumentData.documentTemplate,
+        issueDate: addDocumentData.issueDate,
+        expiryDate: addDocumentData.expiryDate,
+        notes: addDocumentData.notes,
+      });
+      setIsAddDocumentOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error adding document:", error);
+    }
+  };
+
+  const saveNewCredential = async () => {
+    if (!addCredentialData.credentialTemplate || !addCredentialData.username) {
+      console.error("Platform and Username are required");
+      return;
+    }
+    try {
+      await axios.post(`/api/employee/${id}/credential`, {
+        credentialTemplate: addCredentialData.credentialTemplate,
+        username: addCredentialData.username,
+        password: addCredentialData.password,
+        notes: addCredentialData.notes,
+      });
+      setIsAddCredentialOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error adding credential:", error);
+    }
+  };
+
+  const handleAddDocumentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === "documentTemplate") {
+      const selectedTemplate = documentTemplateOptions.find((option) => option.id === value);
+      setAddDocumentData({
+        ...addDocumentData,
+        documentTemplate: value,
+        name: selectedTemplate?.name || selectedTemplate?.label || "",
+      });
+      return;
+    }
+    setAddDocumentData({
+      ...addDocumentData, [name]: value
+    })
+  };
+
+  const handleAddCredentialChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === "credentialTemplate") {
+      const selectedTemplate = credentialTemplateOptions.find((option) => option.id === value);
+      setAddCredentialData({
+        ...addCredentialData,
+        credentialTemplate: value,
+        platform: selectedTemplate?.platform || selectedTemplate?.label || "",
+      });
+      return;
+    }
+    setAddCredentialData({
+      ...addCredentialData, [name]: value
+    })
+  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === "documentTemplate") {
+      const selectedTemplate = documentTemplateOptions.find((option) => option.id === value);
       setEditData({
         ...editData,
-        category: e.target.value,
-        name: "",
+        documentTemplate: value,
+        name: selectedTemplate?.name || selectedTemplate?.label || "",
       });
       return;
     }
 
     setEditData({
-      ...editData, [e.target.name]: e.target.value
+      ...editData, [name]: value
     })
   }
 
@@ -201,21 +316,8 @@ const SingleEmployee = () => {
 
   useEffect(() => {
     fetchData()
+    void fetchTemplateOptions();
   }, [])
-
-  useEffect(() => {
-    const categories = Array.from(
-      new Set(
-        employeeDocuments
-          .map((doc) => doc?.category?.trim())
-          .filter((value): value is string => Boolean(value))
-      )
-    );
-
-    categories.forEach((category) => {
-      void fetchDocumentNameOptions(category);
-    });
-  }, [employeeDocuments, fetchDocumentNameOptions]);
 
   return (
     <>
@@ -233,6 +335,174 @@ const SingleEmployee = () => {
           onCancel={closeModal}
         />
         
+        {isAddDocumentOpen && (
+          <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+              <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white">Add New Document</h3>
+              <div className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Document Name <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    title="Select document template"
+                    name="documentTemplate"
+                    required
+                    value={addDocumentData.documentTemplate}
+                    onChange={handleAddDocumentChange}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  >
+                    <option value="" disabled>
+                      Select document
+                    </option>
+                    {documentTemplateOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.name || option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-5 sm:flex-row">
+                  <div className="w-full sm:w-1/2">
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      name="issueDate"
+                      value={addDocumentData.issueDate}
+                      onChange={handleAddDocumentChange}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                  <div className="w-full sm:w-1/2">
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Expiry Date <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="expiryDate"
+                      value={addDocumentData.expiryDate}
+                      onChange={handleAddDocumentChange}
+                      required
+                      className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    name="notes"
+                    value={addDocumentData.notes}
+                    onChange={handleAddDocumentChange}
+                    placeholder="Optional notes"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div className="mt-8 flex justify-end gap-3">
+                <button 
+                  onClick={closeModal} 
+                  className="rounded-xl bg-slate-100 px-6 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveNewDocument} 
+                  className="rounded-xl bg-primary px-6 py-2.5 font-medium text-white transition-colors hover:bg-opacity-90 shadow-sm shadow-primary/30"
+                >
+                  Add Document
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isAddCredentialOpen && (
+          <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
+              <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white">Add New Credential</h3>
+              <div className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Platform <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    title="Select credential platform"
+                    name="credentialTemplate"
+                    required
+                    value={addCredentialData.credentialTemplate}
+                    onChange={handleAddCredentialChange}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  >
+                    <option value="" disabled>
+                      Select platform
+                    </option>
+                    {credentialTemplateOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.platform || option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Username <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={addCredentialData.username}
+                    onChange={handleAddCredentialChange}
+                    placeholder="Enter username"
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={addCredentialData.password}
+                    onChange={handleAddCredentialChange}
+                    placeholder="Enter password"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    name="notes"
+                    value={addCredentialData.notes}
+                    onChange={handleAddCredentialChange}
+                    placeholder="Optional notes"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div className="mt-8 flex justify-end gap-3">
+                <button 
+                  onClick={closeModal} 
+                  className="rounded-xl bg-slate-100 px-6 py-2.5 font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveNewCredential} 
+                  className="rounded-xl bg-primary px-6 py-2.5 font-medium text-white transition-colors hover:bg-opacity-90 shadow-sm shadow-primary/30"
+                >
+                  Add Credential
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isEditDocsOpen && (
           <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
             <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
@@ -240,44 +510,26 @@ const SingleEmployee = () => {
               <div className="space-y-5">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Category
-                  </label>
-                  <input
-                    type="text"
-                    name="category"
-                    list="employee-document-category-options"
-                    value={editData.category}
-                    onChange={handleChange}
-                    placeholder="Select or type category"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
-                  />
-                  <datalist id="employee-document-category-options">
-                    {documentCategories.map((category) => (
-                      <option key={category} value={category} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Document Name <span className="text-rose-500">*</span>
                   </label>
                   <select
-                    title="Select document name"
-                    name="name"
+                    title="Select document template"
+                    name="documentTemplate"
                     required
-                    value={editData.name}
+                    value={editData.documentTemplate}
                     onChange={handleChange}
                     className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
                   >
                     <option value="" disabled>
-                      {editData.category ? "Select document" : "Select category first"}
+                      Select document
                     </option>
-                    {(documentNameOptionsByCategory[normalizeCategoryKey(editData.category || "")] || []).map((option) => (
-                      <option key={option} value={option}>{option}</option>
+                    {documentTemplateOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.name || option.label}</option>
                     ))}
                     {editData.name &&
-                      !(documentNameOptionsByCategory[normalizeCategoryKey(editData.category || "")] || []).includes(editData.name) && (
-                        <option value={editData.name}>{editData.name}</option>
+                      editData.documentTemplate &&
+                      !documentTemplateOptions.find((option) => option.id === editData.documentTemplate) && (
+                        <option value={editData.documentTemplate}>{editData.name}</option>
                     )}
                   </select>
                 </div>
@@ -470,38 +722,43 @@ const SingleEmployee = () => {
                 </div>
 
                 {/* Credentials Card */}
-                {employeeCredentials.length > 0 && (
-                  <div className="rounded-xl bg-slate-50 p-6 dark:bg-slate-800/50">
-                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-white">
-                      <FiLock className="text-rose-500" />
-                      Platform Access
-                      </h3>
+                <div className="rounded-xl bg-slate-50 p-6 dark:bg-slate-800/50">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-white">
+                    <FiLock className="text-rose-500" />
+                    Platform Access
+                    </h3>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleAddCredential}
+                        className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-opacity-90"
+                      >
+                        + Add Credential
+                      </button>
                       <select
-                        title="Filter credentials by category"
-                        value={credentialCategoryFilter}
+                        title="Filter credentials by platform"
+                        value={credentialPlatformFilter}
                         onChange={(event) =>
-                          setCredentialCategoryFilter(event.target.value)
+                          setCredentialPlatformFilter(event.target.value)
                         }
                         className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                       >
-                        <option value="all">All categories</option>
-                        <option value="uncategorized">Uncategorized</option>
-                        {credentialCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
+                        <option value="all">All platforms</option>
+                        <option value="unspecified">Unspecified</option>
+                        {credentialPlatforms.map((platform) => (
+                          <option key={platform} value={platform}>
+                            {platform}
                           </option>
                         ))}
                       </select>
                     </div>
+                  </div>
+                  {employeeCredentials.length > 0 ? (
                     <div className="space-y-4">
                       {filteredEmployeeCredentials.map((pass, index) => (
                         <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <h4 className="font-semibold text-slate-800 dark:text-white">{pass.platform}</h4>
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                              {pass.category || "uncategorized"}
-                            </span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-900/50">
@@ -516,30 +773,40 @@ const SingleEmployee = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                      No credentials yet. <button onClick={handleAddCredential} className="text-primary hover:underline">Add one</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Documents Table Component */}
-            {employeeDocuments.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8">
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
-                    <FiFileText className="text-emerald-500" />
-                    Employee Documents
-                  </h3>
+            {/* Documents Table */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
+                  <FiFileText className="text-emerald-500" />
+                  Employee Documents
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddDocument}
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-opacity-90"
+                  >
+                    + Add Document
+                  </button>
                   <select
-                    title="Filter documents by category"
-                    value={documentCategoryFilter}
-                    onChange={(event) => setDocumentCategoryFilter(event.target.value)}
+                    title="Filter documents by name"
+                    value={documentNameFilter}
+                    onChange={(event) => setDocumentNameFilter(event.target.value)}
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   >
-                    <option value="all">All categories</option>
-                    <option value="uncategorized">Uncategorized</option>
-                    {documentCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
+                    <option value="all">All documents</option>
+                    <option value="unnamed">Unnamed</option>
+                    {documentNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
                       </option>
                     ))}
                   </select>
@@ -549,24 +816,24 @@ const SingleEmployee = () => {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                        <th className="min-w-[160px] pb-3 px-4">Category</th>
                         <th className="min-w-[220px] pb-3 pl-4">Document Name</th>
                         <th className="min-w-[150px] pb-3 px-4">Issue Date</th>
                         <th className="min-w-[150px] pb-3 px-4">Expiry Date</th>
+                        <th className="min-w-[100px] pb-3 px-4">Days Left</th>
                         <th className="min-w-[220px] pb-3 px-4">Notes</th>
                         <th className="min-w-[120px] pb-3 px-4">Status</th>
                         <th className="pb-3 px-4 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredEmployeeDocuments.map(({ category, name, status, issueDate, expiryDate, notes, _id }, key) => (
+                      {filteredEmployeeDocuments.map(({ name, status, issueDate, expiryDate, notes, _id }, key) => {
+                        const daysLeft = calculateDaysLeft(expiryDate);
+                        const calculatedStatus = status || calculateStatus(expiryDate || "");
+                        return (
                         <tr 
                           key={key} 
                           className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                         >
-                          <td className="px-4 py-4 text-sm capitalize text-slate-600 dark:text-slate-300">
-                            {category || "uncategorized"}
-                          </td>
                           <td className="py-4 pl-4">
                             <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
                               {name || "Unnamed Document"}
@@ -578,6 +845,22 @@ const SingleEmployee = () => {
                           <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                             {expiryDate || "---"}
                           </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={clsx(
+                                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                                daysLeft === null
+                                  ? "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-400/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/20"
+                                  : daysLeft < 0
+                                    ? "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20"
+                                    : daysLeft <= 30
+                                      ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20"
+                                      : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20"
+                              )}
+                            >
+                              {daysLeft === null ? "---" : daysLeft}
+                            </span>
+                          </td>
                           <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                             {notes || "---"}
                           </td>
@@ -585,13 +868,13 @@ const SingleEmployee = () => {
                             <span
                               className={clsx(
                                 "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
-                                status === "valid" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" : 
-                                status === "expired" ? "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20" : 
-                                status === "renewal" ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20" : 
+                                calculatedStatus === "valid" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" : 
+                                calculatedStatus === "expired" ? "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20" : 
+                                calculatedStatus === "renewal" ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20" : 
                                 "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/20"
                               )}
                             >
-                              {status || "Unknown"}
+                              {calculatedStatus || "Unknown"}
                             </span>
                           </td>
                           <td className="px-4 py-4">
@@ -613,12 +896,16 @@ const SingleEmployee = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  No documents yet. <button onClick={handleAddDocument} className="text-primary hover:underline">Add one</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

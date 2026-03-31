@@ -30,7 +30,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
   const { user } = useUserContext();
   const can = (permission: string) =>
-    Array.isArray(user?.permissions) && user.permissions.includes(permission);
+    Array.isArray(user?.permissions) && (user?.permissions as string[]).includes(permission);
   const trigger = useRef<any>(null);
   const sidebar = useRef<any>(null);
 
@@ -334,6 +334,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 >
                   <FiClock className="text-xl opacity-70 group-hover:opacity-100" />
                   Expiry Documents
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/documents/handover"
+                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
+                    pathname === "/documents/handover" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                  }`}
+                >
+                  <FiFileText className="text-xl opacity-70 group-hover:opacity-100" />
+                  Physical Handover
                 </Link>
               </li>
 

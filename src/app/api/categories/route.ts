@@ -1,8 +1,6 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
-import EntityDocument from "@/models/entityDocuments";
-import EntityCredential from "@/models/entityCredentials";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
 
@@ -24,53 +22,27 @@ export async function GET(request: NextRequest) {
     const type = request.nextUrl.searchParams.get("type");
 
     if (type === "document") {
-      let values = await DocumentTemplate.distinct("category", {
-        published: true,
-        category: { $exists: true, $ne: "" },
+      const values = await DocumentTemplate.distinct("name", {
+        name: { $exists: true, $ne: "" },
       });
-      if (!values.length) {
-        values = await EntityDocument.distinct("category", {
-          category: { $exists: true, $ne: "" },
-        });
-      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 
     if (type === "credential") {
-      let values = await CredentialTemplate.distinct("category", {
-        published: true,
-        category: { $exists: true, $ne: "" },
+      const values = await CredentialTemplate.distinct("platform", {
+        platform: { $exists: true, $ne: "" },
       });
-      if (!values.length) {
-        values = await EntityCredential.distinct("category", {
-          category: { $exists: true, $ne: "" },
-        });
-      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 
-    let [documentValues, credentialValues] = await Promise.all([
-      DocumentTemplate.distinct("category", {
-        published: true,
-        category: { $exists: true, $ne: "" },
+    const [documentValues, credentialValues] = await Promise.all([
+      DocumentTemplate.distinct("name", {
+        name: { $exists: true, $ne: "" },
       }),
-      CredentialTemplate.distinct("category", {
-        published: true,
-        category: { $exists: true, $ne: "" },
+      CredentialTemplate.distinct("platform", {
+        platform: { $exists: true, $ne: "" },
       }),
     ]);
-
-    if (!documentValues.length) {
-      documentValues = await EntityDocument.distinct("category", {
-        category: { $exists: true, $ne: "" },
-      });
-    }
-
-    if (!credentialValues.length) {
-      credentialValues = await EntityCredential.distinct("category", {
-        category: { $exists: true, $ne: "" },
-      });
-    }
 
     return Response.json(
       {

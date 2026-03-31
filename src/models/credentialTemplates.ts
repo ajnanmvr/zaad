@@ -11,7 +11,7 @@ const CredentialTemplateSchema = new Schema(
   { timestamps: true, collection: "credentialTemplates" }
 );
 
-CredentialTemplateSchema.index({ category: 1, platform: 1 }, { unique: true });
+CredentialTemplateSchema.index({ platform: 1 }, { unique: true });
 
 const CredentialTemplate =
   (mongoose.models.credentialTemplates as Model<any>) ||

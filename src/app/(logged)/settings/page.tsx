@@ -1,10 +1,11 @@
 "use client"
+import React from "react";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import ChangePassword from "@/components/Forms/ChangePassword";
 import SessionManager from "@/components/Settings/SessionManager";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
-import { FiUser, FiShield, FiBriefcase } from "react-icons/fi";
+import { FiUser, FiShield, FiBriefcase, FiPackage } from "react-icons/fi";
 
 const SettingsPage = () => {
     const { user } = useUserContext();
@@ -94,6 +95,15 @@ const SettingsPage = () => {
                                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
                                 >
                                     Permission Matrix
+                                </Link>
+                            )}
+                            {Array.isArray(user?.permissions) && user.permissions.includes("entities.write") && (
+                                <Link
+                                    href="/settings/templates"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 flex items-center gap-2"
+                                >
+                                    <FiPackage className="text-base" />
+                                    Manage Templates
                                 </Link>
                             )}
                             {Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read") && (

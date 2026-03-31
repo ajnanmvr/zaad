@@ -11,7 +11,7 @@ const DocumentTemplateSchema = new Schema(
   { timestamps: true, collection: "documentTemplates" }
 );
 
-DocumentTemplateSchema.index({ category: 1, name: 1 }, { unique: true });
+DocumentTemplateSchema.index({ name: 1 }, { unique: true });
 
 const DocumentTemplate =
   (mongoose.models.documentTemplates as Model<any>) ||

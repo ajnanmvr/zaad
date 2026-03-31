@@ -8,6 +8,12 @@ const EntityCredentialSchema = new Schema(
       required: true,
       index: true,
     },
+    credentialTemplate: {
+      type: Schema.Types.ObjectId,
+      ref: "credentialTemplates",
+      index: true,
+    },
+    notes: String,
     username: String,
     secret: String,
   },

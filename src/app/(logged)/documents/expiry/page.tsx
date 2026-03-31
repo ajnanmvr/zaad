@@ -23,26 +23,24 @@ const ExpiryDocumentsPage = () => {
 
   const rows = useMemo(() => data?.data || [], [data]);
   const pagination = data?.pagination;
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [nameFilter, setNameFilter] = useState("all");
 
-  const categories = useMemo(() => {
+  const documentNames = useMemo(() => {
     return Array.from(
       new Set(
         rows
-          .map((item) => item?.category?.trim())
+          .map((item) => item?.name?.trim())
           .filter((value): value is string => Boolean(value))
       )
     );
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    if (categoryFilter === "all") {
+    if (nameFilter === "all") {
       return rows;
     }
-    return rows.filter(
-      (item) => (item.category || "uncategorized") === categoryFilter
-    );
-  }, [rows, categoryFilter]);
+    return rows.filter((item) => (item.name || "unnamed") === nameFilter);
+  }, [rows, nameFilter]);
 
   return (
     <>
@@ -65,16 +63,16 @@ const ExpiryDocumentsPage = () => {
             <>
               <div className="mb-4 flex justify-end">
                 <select
-                  title="Filter expiry documents by category"
-                  value={categoryFilter}
-                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  title="Filter expiry documents by name"
+                  value={nameFilter}
+                  onChange={(event) => setNameFilter(event.target.value)}
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <option value="all">All categories</option>
-                  <option value="uncategorized">Uncategorized</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
+                  <option value="all">All documents</option>
+                  <option value="unnamed">Unnamed</option>
+                  {documentNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
                     </option>
                   ))}
                 </select>
@@ -83,7 +81,6 @@ const ExpiryDocumentsPage = () => {
                 <thead>
                   <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
                     <th className="min-w-[220px] pb-3 pl-4">Entity</th>
-                    <th className="min-w-[160px] px-4 pb-3">Category</th>
                     <th className="min-w-[220px] px-4 pb-3">Document</th>
                     <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
                     <th className="min-w-[100px] px-4 pb-3">Days Left</th>
@@ -122,9 +119,6 @@ const ExpiryDocumentsPage = () => {
                               {entityType}
                             </span>
                           </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.category || "uncategorized"}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {item.name || "---"}

@@ -1,8 +1,6 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
-import EntityDocument from "@/models/entityDocuments";
-import EntityCredential from "@/models/entityCredentials";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
 
@@ -22,31 +20,22 @@ export async function GET(request: NextRequest) {
     await requirePermission(request, "entities.write");
 
     const type = request.nextUrl.searchParams.get("type");
-    const category = (request.nextUrl.searchParams.get("category") || "").trim();
 
-    if (!type || !category) {
+    if (!type) {
       return Response.json({ options: [] }, { status: 200 });
     }
 
     if (type === "document") {
-      let values = await DocumentTemplate.distinct("name", {
-        published: true,
-        category,
+      const values = await DocumentTemplate.distinct("name", {
+        name: { $exists: true, $ne: "" },
       });
-      if (!values.length) {
-        values = await EntityDocument.distinct("name", { category });
-      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 
     if (type === "credential") {
-      let values = await CredentialTemplate.distinct("platform", {
-        published: true,
-        category,
+      const values = await CredentialTemplate.distinct("platform", {
+        platform: { $exists: true, $ne: "" },
       });
-      if (!values.length) {
-        values = await EntityCredential.distinct("platform", { category });
-      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 
