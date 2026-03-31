@@ -105,7 +105,7 @@ const getActionDescription = (activity: UserActivity) => {
 
     switch (action) {
         case "create":
-            return `Assigned role: ${newValues.role || "employee"}`;
+            return `Assigned role: ${newValues.role || "unspecified"}`;
         case "update":
             const changes = [];
             if (previousValues.username && newValues.username) {
