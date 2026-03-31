@@ -1,12 +1,12 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await isPartner(request);
+    await requirePermission(request, "payments.write");
     const reqBody = await request.json();
     await Records.create(reqBody);
     let { amount, number, type, method, ...rest } = reqBody;

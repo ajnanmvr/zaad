@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import { reactivateUser } from "@/services/userService";
@@ -12,7 +12,7 @@ export async function PUT(
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.reactivate");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);

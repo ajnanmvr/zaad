@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
     const keyword = request.nextUrl.searchParams.get("search");
     const companies = await Company.find({ name: { $regex: keyword, $options: "i" }, published: true }).select("name");
     const employees = await Employee.find({ name: { $regex: keyword, $options: "i" }, published: true }).select("name");

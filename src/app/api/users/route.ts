@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import { PAGINATION } from "@/config/pagination";
@@ -10,7 +10,7 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 export async function GET(request: NextRequest) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.read");
 
         const searchParams = request.nextUrl.searchParams;
         const pageNumber = parseInt(searchParams.get("page") || "0");
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.create");
 
         const { username, password, role, fullname } = await request.json();
         const currentUserId = await getUserFromCookie(request);

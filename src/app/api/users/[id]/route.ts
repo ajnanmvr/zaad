@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import {
@@ -16,7 +16,7 @@ export async function GET(
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.read");
 
         const { id } = params;
         const user = await getUserById(id);
@@ -39,7 +39,7 @@ export async function PUT(
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.update");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);
@@ -75,7 +75,7 @@ export async function DELETE(
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.delete");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);

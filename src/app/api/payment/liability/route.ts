@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isPartner(request);
+    await requirePermission(request, "payments.read");
     const records = await Records.find({
       published: true,
       $or: [{ method: "liability" }, { status: "liability" }],

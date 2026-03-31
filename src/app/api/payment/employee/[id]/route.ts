@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isPartner(request);
+    await requirePermission(request, "payments.read");
 
     const records = await Records.find({
       published: true,

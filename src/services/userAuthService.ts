@@ -1,9 +1,11 @@
 import User from "@/models/users";
+import UserSession from "@/models/userSessions";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { logUserActivity } from "@/helpers/userActivityLogger";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID, createHash } from "crypto";
 import { TUser } from "@/types/types";
 import { ServiceError } from "./serviceError";
 
@@ -11,18 +13,299 @@ type TAuthPayload = {
   id: string;
   username: string;
   role: "partner" | "employee";
+  tokenType: "access";
 };
 
-function createAuthToken(payload: TAuthPayload) {
+type TRefreshPayload = {
+  id: string;
+  username: string;
+  role: "partner" | "employee";
+  tokenType: "refresh";
+  sid: string;
+  fid: string;
+};
+
+type TTokenPair = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+const ACCESS_TOKEN_TTL = "15m";
+const REFRESH_TOKEN_TTL = "30d";
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000;
+
+function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new ServiceError("Missing JWT secret", 500);
   }
 
-  return jwt.sign(payload, secret, { expiresIn: "30d" });
+  return secret;
 }
 
-export async function loginUser(username?: string, password?: string) {
+function createAccessToken(payload: TAuthPayload) {
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+function createRefreshToken(payload: TRefreshPayload) {
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: REFRESH_TOKEN_TTL });
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function getExpiryDateFromToken(token: string): Date {
+  const decoded = jwt.decode(token) as { exp?: number } | null;
+  if (!decoded?.exp) {
+    throw new ServiceError("Invalid token expiry", 500);
+  }
+
+  return new Date(decoded.exp * 1000);
+}
+
+function getRequestMeta(request?: NextRequest) {
+  if (!request) {
+    return { ipAddress: "", userAgent: "" };
+  }
+
+  const ipAddress =
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") ||
+    "";
+  const userAgent = request.headers.get("user-agent") || "";
+
+  return { ipAddress, userAgent };
+}
+
+function setAuthCookies(
+  response: NextResponse,
+  tokens: TTokenPair,
+  role: "partner" | "employee"
+) {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  response.cookies.set("auth", tokens.accessToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  response.cookies.set("refresh", tokens.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  if (role === "partner") {
+    response.cookies.set("partner", "true", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
+    });
+  } else {
+    response.cookies.set("partner", "", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(0),
+    });
+  }
+}
+
+function clearAuthCookies(response: NextResponse) {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  response.cookies.set("auth", "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  });
+
+  response.cookies.set("refresh", "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  });
+
+  response.cookies.set("partner", "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  });
+}
+
+async function createSessionAndTokens(
+  user: {
+    _id: string;
+    username: string;
+    role: "partner" | "employee";
+  },
+  request?: NextRequest,
+  familyId?: string
+): Promise<TTokenPair> {
+  const tokenFamilyId = familyId || randomUUID();
+  const session = new UserSession({
+    user: user._id,
+    tokenHash: "",
+    familyId: tokenFamilyId,
+    userAgent: "",
+    ipAddress: "",
+    expiresAt: new Date(),
+  });
+
+  const refreshToken = createRefreshToken({
+    id: user._id.toString(),
+    username: user.username,
+    role: user.role,
+    tokenType: "refresh",
+    sid: session._id.toString(),
+    fid: tokenFamilyId,
+  });
+
+  const accessToken = createAccessToken({
+    id: user._id.toString(),
+    username: user.username,
+    role: user.role,
+    tokenType: "access",
+  });
+
+  const { ipAddress, userAgent } = getRequestMeta(request);
+  session.tokenHash = hashToken(refreshToken);
+  session.expiresAt = getExpiryDateFromToken(refreshToken);
+  session.ipAddress = ipAddress;
+  session.userAgent = userAgent;
+  await session.save();
+
+  return { accessToken, refreshToken };
+}
+
+async function revokeRefreshSession(refreshToken?: string) {
+  if (!refreshToken) {
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, getJwtSecret()) as TRefreshPayload;
+    if (payload.tokenType !== "refresh") {
+      return;
+    }
+
+    await UserSession.findByIdAndUpdate(payload.sid, {
+      revokedAt: new Date(),
+    });
+  } catch {
+    // ignore invalid/expired token on logout paths
+  }
+}
+
+export async function revokeAllSessionsForUser(userId: string) {
+  await UserSession.updateMany(
+    { user: userId, revokedAt: null },
+    { revokedAt: new Date() }
+  );
+}
+
+function buildUnauthorizedResponse(message: string, status: number = 401) {
+  const response = NextResponse.json({ error: message }, { status });
+  clearAuthCookies(response);
+  return response;
+}
+
+export function buildLoginResponse(
+  tokens: TTokenPair,
+  role: "partner" | "employee"
+) {
+  const response = NextResponse.json({
+    message: "Login successfull",
+    success: true,
+  });
+
+  setAuthCookies(response, tokens, role);
+  return response;
+}
+
+export async function rotateRefreshToken(request: NextRequest) {
+  const currentRefreshToken = request.cookies.get("refresh")?.value;
+  if (!currentRefreshToken) {
+    throw new ServiceError("Refresh token missing", 401);
+  }
+
+  let payload: TRefreshPayload;
+  try {
+    payload = jwt.verify(currentRefreshToken, getJwtSecret()) as TRefreshPayload;
+  } catch {
+    throw new ServiceError("Invalid refresh token", 401);
+  }
+
+  if (payload.tokenType !== "refresh" || !payload.sid || !payload.fid) {
+    throw new ServiceError("Invalid refresh token payload", 401);
+  }
+
+  const session = await UserSession.findById(payload.sid);
+  if (!session) {
+    throw new ServiceError("Session not found", 401);
+  }
+
+  if (session.tokenHash !== hashToken(currentRefreshToken)) {
+    await UserSession.updateMany(
+      { user: session.user, familyId: session.familyId, revokedAt: null },
+      { revokedAt: new Date() }
+    );
+    throw new ServiceError("Refresh token reuse detected", 401);
+  }
+
+  if (session.revokedAt || session.expiresAt.getTime() <= Date.now()) {
+    throw new ServiceError("Session expired", 401);
+  }
+
+  const user = await User.findOne({ _id: payload.id, published: true }).select(
+    "username role"
+  );
+  if (!user) {
+    throw new ServiceError("User not found", 401);
+  }
+
+  const tokens = await createSessionAndTokens(
+    {
+      _id: user._id.toString(),
+      username: user.username,
+      role: user.role,
+    },
+    request,
+    session.familyId
+  );
+
+  const nextSessionHash = hashToken(tokens.refreshToken);
+  const nextSession = await UserSession.findOne({ tokenHash: nextSessionHash });
+
+  await UserSession.findByIdAndUpdate(session._id, {
+    revokedAt: new Date(),
+    replacedBySessionId: nextSession?._id || null,
+  });
+
+  return {
+    tokens,
+    role: user.role as "partner" | "employee",
+  };
+}
+
+export async function loginUser(
+  username?: string,
+  password?: string,
+  request?: NextRequest
+) {
   if (!username || !password) {
     throw new ServiceError("Username and password are required", 400);
   }
@@ -32,19 +315,39 @@ export async function loginUser(username?: string, password?: string) {
     throw new ServiceError("user isn't available", 400);
   }
 
+  if (existingUser.lockUntil && existingUser.lockUntil.getTime() > Date.now()) {
+    throw new ServiceError("Account temporarily locked. Try again later", 423);
+  }
+
   const validPassword = await bcryptjs.compare(password, existingUser.password);
   if (!validPassword) {
+    const nextFailedCount = (existingUser.failedLoginCount || 0) + 1;
+    const shouldLock = nextFailedCount >= MAX_FAILED_LOGIN_ATTEMPTS;
+
+    await User.findByIdAndUpdate(existingUser._id, {
+      failedLoginCount: shouldLock ? 0 : nextFailedCount,
+      lockUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+    });
+
     throw new ServiceError("Invalid Password", 400);
   }
 
-  const token = createAuthToken({
-    id: existingUser._id.toString(),
-    username: existingUser.username,
-    role: existingUser.role,
+  await User.findByIdAndUpdate(existingUser._id, {
+    failedLoginCount: 0,
+    lockUntil: null,
   });
 
+  const tokens = await createSessionAndTokens(
+    {
+      _id: existingUser._id.toString(),
+      username: existingUser.username,
+      role: existingUser.role,
+    },
+    request
+  );
+
   return {
-    token,
+    tokens,
     role: existingUser.role,
   };
 }
@@ -82,13 +385,16 @@ export async function signupUser(payload: TUser) {
     password: hashedPassword,
     role,
     fullname,
+    failedLoginCount: 0,
+    lockUntil: null,
   });
 
   return newUser.save();
 }
 
-export function createLogoutResponse() {
-  const isProduction = process.env.NODE_ENV === "production";
+export async function createLogoutResponse(request?: NextRequest) {
+  const refreshToken = request?.cookies.get("refresh")?.value;
+  await revokeRefreshSession(refreshToken);
 
   const response = new NextResponse(
     JSON.stringify({
@@ -101,22 +407,32 @@ export function createLogoutResponse() {
     }
   );
 
-  response.cookies.set("auth", "", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(0),
-  });
-  response.cookies.set("partner", "", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(0),
-  });
+  clearAuthCookies(response);
 
   return response;
+}
+
+export async function createLogoutAllResponse(request: NextRequest) {
+  const userId = await getUserFromCookie(request);
+  await revokeAllSessionsForUser(userId);
+
+  const response = new NextResponse(
+    JSON.stringify({
+      message: "Logged out from all sessions",
+      success: true,
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+
+  clearAuthCookies(response);
+  return response;
+}
+
+export function createRefreshDeniedResponse(message: string, status = 401) {
+  return buildUnauthorizedResponse(message, status);
 }
 
 export async function changeAuthenticatedUserPassword(
@@ -160,7 +476,10 @@ export async function changeAuthenticatedUserPassword(
 
   await User.findByIdAndUpdate(userId, {
     password: hashedNewPassword,
+    passwordChangedAt: new Date(),
   });
+
+  await revokeAllSessionsForUser(userId);
 
   await logUserActivity({
     targetUserId: userId,
