@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(
       getRequestRateLimitKey(request, "auth-refresh"),
       30,
-      60 * 1000
+      60 * 1000,
+      { failOpen: false }
     );
 
     if (!rateLimit.allowed) {

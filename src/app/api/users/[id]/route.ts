@@ -9,7 +9,7 @@ import {
 } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// GET - Get single user by ID (partners only)
+// GET - Get single user by ID (requires users.read)
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -32,7 +32,7 @@ export async function GET(
     }
 }
 
-// PUT - Update user (partners only)
+// PUT - Update user (requires users.update)
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -68,7 +68,7 @@ export async function PUT(
     }
 }
 
-// DELETE - Soft delete user (partners only)
+// DELETE - Soft delete user (requires users.delete)
 export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }

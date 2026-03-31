@@ -1,6 +1,7 @@
 const rolePermissions = {
   partner: [
     "admin.access",
+    "roles.manage",
     "users.read",
     "users.create",
     "users.update",
@@ -26,6 +27,7 @@ const rolePermissions = {
 
 const requiredByRole = {
   partner: [
+    "roles.manage",
     "users.read",
     "users.create",
     "users.update",

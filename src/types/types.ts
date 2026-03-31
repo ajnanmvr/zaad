@@ -3,7 +3,7 @@ export type TUser = {
   username: string;
   password?: string;
   fullname?: string;
-  role?: "partner" | "employee";
+  role?: string;
 };
 export type TPasswordData = {
   platform: string;

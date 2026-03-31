@@ -4,9 +4,9 @@ import { NextRequest } from "next/server";
 import {
   AppPermission,
   AppRole,
-  getRolePermissions,
   hasPermission,
 } from "./permissions";
+import { getPermissionsForRole } from "@/services/roleService";
 
 export class AuthError extends Error {
   status: number;
@@ -49,7 +49,7 @@ async function buildPrincipal(request: NextRequest): Promise<AuthPrincipal> {
   }
 
   const role = user.role as AppRole;
-  const permissions = getRolePermissions(role);
+  const permissions = await getPermissionsForRole(role);
 
   return {
     userId: user._id.toString(),
@@ -92,7 +92,7 @@ export async function requirePermission(
 ): Promise<AuthPrincipal> {
   const principal = await requireAuth(request);
 
-  if (!hasPermission(principal.role, permission)) {
+  if (!hasPermission(principal.permissions, permission)) {
     throw new AuthError(`Missing permission: ${permission}`, 403);
   }
 
@@ -105,7 +105,7 @@ export async function requireAnyPermission(
 ): Promise<AuthPrincipal> {
   const principal = await requireAuth(request);
   const isAllowed = permissions.some((permission) =>
-    hasPermission(principal.role, permission)
+    hasPermission(principal.permissions, permission)
   );
 
   if (!isAllowed) {

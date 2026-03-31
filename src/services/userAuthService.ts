@@ -8,19 +8,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID, createHash } from "crypto";
 import { TUser } from "@/types/types";
 import { ServiceError } from "./serviceError";
-import { getRolePermissions } from "@/auth/permissions";
+import { getPermissionsForRole } from "./roleService";
 
 type TAuthPayload = {
   id: string;
   username: string;
-  role: "partner" | "employee";
+  role: string;
   tokenType: "access";
 };
 
 type TRefreshPayload = {
   id: string;
   username: string;
-  role: "partner" | "employee";
+  role: string;
   tokenType: "refresh";
   sid: string;
   fid: string;
@@ -93,7 +93,7 @@ function getRequestMeta(request?: NextRequest) {
 function setAuthCookies(
   response: NextResponse,
   tokens: TTokenPair,
-  _role: "partner" | "employee"
+  _role: string
 ) {
   const isProduction = process.env.NODE_ENV === "production";
 
@@ -136,7 +136,7 @@ async function createSessionAndTokens(
   user: {
     _id: string;
     username: string;
-    role: "partner" | "employee";
+    role: string;
   },
   request?: NextRequest,
   familyId?: string
@@ -280,7 +280,7 @@ function buildUnauthorizedResponse(message: string, status: number = 401) {
 
 export function buildLoginResponse(
   tokens: TTokenPair,
-  role: "partner" | "employee"
+  role: string
 ) {
   const response = NextResponse.json({
     message: "Login successfull",
@@ -369,7 +369,7 @@ export async function rotateRefreshToken(request: NextRequest) {
 
   return {
     tokens,
-    role: user.role as "partner" | "employee",
+    role: user.role as string,
   };
 }
 
@@ -457,7 +457,7 @@ export async function getCurrentUserFromRequest(request: NextRequest) {
     throw new ServiceError("No user found", 404);
   }
 
-  const permissions = getRolePermissions(user.role);
+  const permissions = await getPermissionsForRole(user.role);
 
   return {
     _id: user._id,

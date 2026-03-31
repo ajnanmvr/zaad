@@ -1,11 +1,9 @@
 "use client"
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { formatDate } from "@/utils/dateUtils";
-import { useUserContext } from "@/contexts/UserContext";
 import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiUserCheck, FiUserX, FiShield, FiUser } from "react-icons/fi";
 import clsx from "clsx";
 
@@ -13,7 +11,7 @@ interface User {
     _id: string;
     username: string;
     fullname: string;
-    role: "partner" | "employee";
+    role: string;
     createdAt: string;
     updatedAt: string;
     deletedAt?: string;
@@ -28,8 +26,6 @@ interface Pagination {
 }
 
 const UsersList = () => {
-    const router = useRouter();
-    const { user: currentUser } = useUserContext();
     const [users, setUsers] = useState<User[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
         currentPage: 0,
@@ -85,28 +81,11 @@ const UsersList = () => {
         setSearchTerm("");
     };
 
-    const handleDelete = async (userId: string, username: string, userRole: "partner" | "employee") => {
-        const isPartnerOperation = currentUser?.role === "partner" && userRole === "partner";
-
-        let confirmationMessage = `Are you sure you want to delete user "${username}"? The user will be moved to the deleted users section and can be reactivated later.`;
-
-        if (isPartnerOperation) {
-            confirmationMessage = `⚠️ PARTNER OPERATION WARNING ⚠️\n\nYou are about to delete another PARTNER: "${username}"\n\nThis is a sensitive operation that will:\n- Remove their partner-level access\n- Move them to deleted users section\n- They can be reactivated later\n\nAre you absolutely sure you want to proceed?`;
-        }
+    const handleDelete = async (userId: string, username: string) => {
+        const confirmationMessage = `Are you sure you want to delete user "${username}"? The user will be moved to the deleted users section and can be reactivated later.`;
 
         if (!confirm(confirmationMessage)) {
             return;
-        }
-
-        if (isPartnerOperation) {
-            if (!confirm(`FINAL CONFIRMATION: Delete partner "${username}"?\n\nType "DELETE" in the next prompt to confirm.`)) {
-                return;
-            }
-            const finalConfirm = prompt(`To delete partner "${username}", please type: DELETE`);
-            if (finalConfirm !== "DELETE") {
-                toast.error("Operation cancelled - incorrect confirmation");
-                return;
-            }
         }
 
         try {
@@ -119,14 +98,8 @@ const UsersList = () => {
         }
     };
 
-    const handleReactivate = async (userId: string, username: string, userRole: "partner" | "employee") => {
-        const isPartnerOperation = currentUser?.role === "partner" && userRole === "partner";
-
-        let confirmationMessage = `Are you sure you want to reactivate user "${username}"?`;
-
-        if (isPartnerOperation) {
-            confirmationMessage = `⚠️ PARTNER REACTIVATION ⚠️\n\nYou are about to reactivate PARTNER: "${username}"\n\nThis will restore their full partner-level access and privileges.\n\nAre you sure you want to proceed?`;
-        }
+    const handleReactivate = async (userId: string, username: string) => {
+        const confirmationMessage = `Are you sure you want to reactivate user "${username}"?`;
 
         if (!confirm(confirmationMessage)) {
             return;
@@ -293,9 +266,7 @@ const UsersList = () => {
                                         <td className="px-6 py-4">
                                             <span className={clsx(
                                                 "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold capitalize ring-1 ring-inset",
-                                                user.role === 'partner' 
-                                                    ? "bg-teal-50 text-teal-700 ring-teal-500/20 dark:bg-teal-500/10 dark:text-teal-300" 
-                                                    : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                                "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
                                             )}>
                                                 {user.role}
                                             </span>
@@ -310,7 +281,7 @@ const UsersList = () => {
                                             <div className="flex items-center justify-end gap-2">
                                                 {showDeleted ? (
                                                     <button
-                                                        onClick={() => handleReactivate(user._id, user.username, user.role)}
+                                                        onClick={() => handleReactivate(user._id, user.username)}
                                                         className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
                                                         title="Reactivate User"
                                                     >
@@ -326,7 +297,7 @@ const UsersList = () => {
                                                             <FiEdit2 className="text-lg" />
                                                         </Link>
                                                         <button
-                                                            onClick={() => handleDelete(user._id, user.username, user.role)}
+                                                            onClick={() => handleDelete(user._id, user.username)}
                                                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
                                                             title="Delete / Archive"
                                                         >

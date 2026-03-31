@@ -9,12 +9,13 @@ export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit(
       getRequestRateLimitKey(request, "auth-login"),
       10,
-      5 * 60 * 1000
+      5 * 60 * 1000,
+      { failOpen: false }
     );
 
     if (!rateLimit.allowed) {
       return Response.json(
-        { error: "Too many login attempts. Try again later." },
+        { error: "Authentication service temporarily unavailable or rate limited." },
         { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } }
       );
     }

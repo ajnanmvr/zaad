@@ -6,7 +6,7 @@ import { PAGINATION } from "@/config/pagination";
 import { createUser, listUsers } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// GET - List all users (partners only)
+// GET - List all users (requires users.read)
 export async function GET(request: NextRequest) {
     try {
         await connect();
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST - Create new user (partners only)
+// POST - Create new user (requires users.create)
 export async function POST(request: NextRequest) {
     try {
         await connect();

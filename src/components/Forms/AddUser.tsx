@@ -17,25 +17,63 @@ interface AddUserProps {
     };
 }
 
+type RoleOption = {
+    name: string;
+    permissions: string[];
+};
+
 const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     const router = useRouter();
     const { user: currentUser } = useUserContext();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [targetUserData, setTargetUserData] = useState(initialData);
+    const [roles, setRoles] = useState<RoleOption[]>([]);
     const [formData, setFormData] = useState({
         username: initialData?.username || "",
         fullname: initialData?.fullname || "",
-        role: initialData?.role || "employee",
+        role: initialData?.role || "",
         password: "",
         confirmPassword: ""
     });
 
     const isEditMode = Boolean(editUserId);
-    const isEditingOtherPartner = isEditMode &&
-        targetUserData?.role === "partner" &&
-        currentUser?.role === "partner" &&
+    const initialRole = initialData?.role;
+    const currentUserIsAdmin = Array.isArray(currentUser?.permissions) && currentUser.permissions.includes("admin.access");
+    const targetRoleIsAdmin = Boolean(
+        targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
+    );
+    const isEditingOtherAdmin = isEditMode &&
+        targetRoleIsAdmin &&
+        currentUserIsAdmin &&
         editUserId !== currentUser?._id;
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const { data } = await axios.get("/api/roles");
+                const fetchedRoles = Array.isArray(data?.roles)
+                    ? data.roles.map((role: any) => ({
+                          name: role.name,
+                          permissions: Array.isArray(role.permissions)
+                              ? role.permissions
+                              : [],
+                      }))
+                    : [];
+
+                setRoles(fetchedRoles);
+
+                if (!initialRole && fetchedRoles.length > 0) {
+                    setFormData((prev) => ({ ...prev, role: fetchedRoles[0].name }));
+                }
+            } catch {
+                setRoles([]);
+                toast.error("Unable to load roles. Please try again.");
+            }
+        };
+
+        fetchRoles();
+    }, [initialRole]);
 
     // Fetch target user data if not provided (for edit mode)
     useEffect(() => {
@@ -66,15 +104,17 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
             return false;
         }
 
-        // Check if trying to change password of another partner
-        if (isEditingOtherPartner && formData.password) {
-            toast.error("Partners cannot change passwords of other partners");
+        // Prevent password changes for another admin account from this form
+        if (isEditingOtherAdmin && formData.password) {
+            toast.error("Admin users cannot change passwords of other admin users");
             return false;
         }
 
-        // Check if trying to downgrade another partner to employee
-        if (isEditingOtherPartner && formData.role === "employee") {
-            toast.error("Partners cannot downgrade other partners to employee role");
+        const selectedRole = roles.find((role) => role.name === formData.role);
+        const selectedIsAdmin = Boolean(selectedRole?.permissions?.includes("admin.access"));
+
+        if (isEditingOtherAdmin && !selectedIsAdmin) {
+            toast.error("Admin users cannot downgrade other admin users");
             return false;
         }
 
@@ -103,24 +143,31 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
 
         if (!validateForm()) return;
 
-        // Additional confirmation for sensitive partner operations
-        const isCreatingPartner = !isEditMode && formData.role === "partner";
-        const isChangingToPartner = isEditMode && targetUserData?.role !== "partner" && formData.role === "partner";
-        const isEditingPartner = isEditingOtherPartner;
+        // Additional confirmation for sensitive admin operations
+        const targetIsAdmin = Boolean(
+            targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
+        );
+        const selectedIsAdmin = Boolean(
+            roles.find((role) => role.name === formData.role)?.permissions?.includes("admin.access")
+        );
 
-        if (isCreatingPartner) {
-            const confirmPartnerCreation = confirm(
-                `⚠️ CREATING NEW PARTNER ⚠️\n\nYou are about to create a new PARTNER account: "${formData.username}"\n\nPartners have full administrative privileges including:\n- Managing all users\n- Accessing sensitive data\n- System configuration\n\nAre you sure you want to create this partner account?`
+        const isCreatingAdmin = !isEditMode && selectedIsAdmin;
+        const isChangingToAdmin = isEditMode && !targetIsAdmin && selectedIsAdmin;
+        const isEditingAdmin = isEditingOtherAdmin;
+
+        if (isCreatingAdmin) {
+            const confirmAdminCreation = confirm(
+                `⚠️ CREATING NEW ADMIN ROLE ⚠️\n\nYou are about to create an ADMIN account: "${formData.username}"\n\nAre you sure you want to proceed?`
             );
-            if (!confirmPartnerCreation) {
+            if (!confirmAdminCreation) {
                 setIsLoading(false);
                 return;
             }
         }
 
-        if (isChangingToPartner) {
+        if (isChangingToAdmin) {
             const confirmPromotion = confirm(
-                `⚠️ PROMOTING TO PARTNER ⚠️\n\nYou are about to promote "${formData.username}" from ${targetUserData?.role} to PARTNER.\n\nThis will grant them full administrative privileges.\n\nAre you sure you want to proceed?`
+                `⚠️ PROMOTING TO ADMIN ROLE ⚠️\n\nYou are about to promote "${formData.username}" from ${targetUserData?.role} to ${formData.role}.\n\nThis will grant administrative privileges.\n\nAre you sure you want to proceed?`
             );
             if (!confirmPromotion) {
                 setIsLoading(false);
@@ -128,11 +175,11 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
             }
         }
 
-        if (isEditingPartner) {
-            const confirmPartnerEdit = confirm(
-                `⚠️ EDITING PARTNER ACCOUNT ⚠️\n\nYou are about to modify another PARTNER account: "${targetUserData?.username}"\n\nThis is a sensitive operation. Are you sure you want to proceed?`
+        if (isEditingAdmin) {
+            const confirmAdminEdit = confirm(
+                `⚠️ EDITING ADMIN ACCOUNT ⚠️\n\nYou are about to modify another ADMIN account: "${targetUserData?.username}"\n\nThis is a sensitive operation. Are you sure you want to proceed?`
             );
-            if (!confirmPartnerEdit) {
+            if (!confirmAdminEdit) {
                 setIsLoading(false);
                 return;
             }
@@ -239,41 +286,27 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                 <div className="mb-6">
                     <label className={labelClass}>
                         Account Role <span className="text-rose-500">*</span>
-                        {isEditingOtherPartner && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot downgrade other partners)</span>}
+                        {isEditingOtherAdmin && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot downgrade other admin users)</span>}
                     </label>
-                    <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
-                        <label className={clsx(
-                                "flex-1 cursor-pointer rounded-lg px-4 py-3 text-center transition-all",
-                                formData.role === 'employee' ? "bg-white shadow-sm ring-1 ring-slate-200 text-emerald-700 font-bold dark:bg-slate-800 dark:ring-slate-700 dark:text-emerald-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
-                                isEditingOtherPartner && formData.role !== 'employee' && "opacity-50 cursor-not-allowed"
-                            )}>
-                            <input 
-                                type="radio" 
-                                name="role" 
-                                value="employee" 
-                                checked={formData.role === "employee"} 
-                                onChange={handleChange} 
-                                className="sr-only"
-                                disabled={isLoading || isEditingOtherPartner}
-                            />
-                            Standard Employee
-                        </label>
-                        <label className={clsx(
-                                "flex-1 cursor-pointer rounded-lg px-4 py-3 text-center transition-all",
-                                formData.role === 'partner' ? "bg-white shadow-sm ring-1 ring-slate-200 text-teal-700 font-bold dark:bg-slate-800 dark:ring-slate-700 dark:text-teal-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                            )}>
-                            <input 
-                                type="radio" 
-                                name="role" 
-                                value="partner" 
-                                checked={formData.role === "partner"} 
-                                onChange={handleChange} 
-                                className="sr-only"
-                                disabled={isLoading}
-                            />
-                            Administrator / Partner
-                        </label>
-                    </div>
+                    <select
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        className={inputClass}
+                        disabled={isLoading || isEditingOtherAdmin}
+                        required
+                    >
+                        {roles.length === 0 && (
+                            <option value="" disabled>
+                                No roles available
+                            </option>
+                        )}
+                        {roles.map((role) => (
+                            <option key={role.name} value={role.name}>
+                                {role.name}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 <hr className="my-6 border-slate-200 dark:border-slate-700" />
@@ -283,8 +316,8 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                     <div>
                         <label className={labelClass}>
                             Password {!isEditMode && <span className="text-rose-500">*</span>}
-                            {isEditMode && !isEditingOtherPartner && <span className="text-xs text-slate-500 ml-2 font-normal">(Leave blank to keep current)</span>}
-                            {isEditingOtherPartner && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot edit partner password)</span>}
+                            {isEditMode && !isEditingOtherAdmin && <span className="text-xs text-slate-500 ml-2 font-normal">(Leave blank to keep current)</span>}
+                            {isEditingOtherAdmin && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot edit admin password)</span>}
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -296,14 +329,14 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 placeholder={
-                                    isEditingOtherPartner
+                                    isEditingOtherAdmin
                                         ? "Disabled"
                                         : isEditMode
                                             ? "New password"
                                             : "Min. 6 characters"
                                 }
                                 className={clsx(inputClass, "pl-11 pr-12")}
-                                disabled={isLoading || isEditingOtherPartner}
+                                disabled={isLoading || isEditingOtherAdmin}
                                 required={!isEditMode}
                                 minLength={6}
                             />
@@ -311,7 +344,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                                 type="button"
                                 onClick={togglePasswordVisibility}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
-                                disabled={isEditingOtherPartner}
+                                disabled={isEditingOtherAdmin}
                             >
                                 {showPassword ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
                             </button>
@@ -319,7 +352,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
                     </div>
 
                     {/* Confirm Password */}
-                    {(!isEditMode || (formData.password && !isEditingOtherPartner)) && (
+                    {(!isEditMode || (formData.password && !isEditingOtherAdmin)) && (
                         <div>
                             <label className={labelClass}>
                                 Confirm Password <span className="text-rose-500">*</span>

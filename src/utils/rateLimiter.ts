@@ -3,7 +3,8 @@ import { redis } from "@/db/redis";
 export async function checkRateLimit(
   key: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  options?: { failOpen?: boolean }
 ): Promise<{ allowed: boolean; remaining: number; retryAfter: number }> {
   try {
     const redisKey = `rate-limit:${key}`;
@@ -31,7 +32,15 @@ export async function checkRateLimit(
       retryAfter,
     };
   } catch {
-    // Fail-open if Redis is temporarily unavailable.
+    const failOpen = options?.failOpen ?? true;
+    if (!failOpen) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: 1,
+      };
+    }
+
     return {
       allowed: true,
       remaining: limit - 1,
