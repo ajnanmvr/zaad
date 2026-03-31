@@ -14,9 +14,9 @@ import {
   replaceEntityDocuments,
 } from "@/services/entityDocumentService";
 import {
-  listEntityPasswords,
-  replaceEntityPasswords,
-} from "@/services/entityPasswordService";
+  listEntityCredentials,
+  replaceEntityCredentials,
+} from "@/services/entityCredentialService";
 
 
 export async function PUT(
@@ -28,14 +28,14 @@ export async function PUT(
 
   const { id } = params;
   const reqBody = await request.json();
-  const { entityData, documents, passwords } = splitEntityPayload(reqBody);
+  const { entityData, documents, credentials } = splitEntityPayload(reqBody);
   await updateCompanyEntity(id, entityData);
 
   if (documents) {
     await replaceEntityDocuments(id, documents);
   }
-  if (passwords) {
-    await replaceEntityPasswords(id, passwords);
+  if (credentials) {
+    await replaceEntityCredentials(id, credentials);
   }
 
   return Response.json(
@@ -65,9 +65,9 @@ export async function GET(
     await isAuthenticated(request);
 
     const company: TCompanyData | null = await getCompanyEntityById(params.id);
-    const [documents, passwords] = await Promise.all([
+    const [documents, credentials] = await Promise.all([
       listEntityDocuments(params.id),
-      listEntityPasswords(params.id),
+      listEntityCredentials(params.id),
     ]);
 
     if (!company) {
@@ -101,7 +101,8 @@ export async function GET(
       transactionNo: company.transactionNo,
       isMainland: company.isMainland,
       remarks: company.remarks,
-      password: passwords,
+      credentials,
+      password: credentials,
       documents: modifiedDocuments,
     };
 

@@ -8,6 +8,7 @@ export type TUser = {
 export type TPasswordData = {
   platform: string;
   username: string;
+  credential?: string;
   password: string;
 };
 export type TCompanyData = {
@@ -23,6 +24,7 @@ export type TCompanyData = {
   transactionNo?: string;
   isMainland?: "mainland" | "freezone";
   remarks?: string;
+  credentials?: TPasswordData[];
   password?: TPasswordData[];
   documents?: TDocuments[];
   transactions?: [];
@@ -96,6 +98,7 @@ export type TEmployeeData = {
   _id: string;
   name: string;
   entityType?: "employee" | "individual";
+  credentials?: TPasswordData[];
   password?: TPasswordData[];
   company?: TCompanyData;
   isActive: boolean;

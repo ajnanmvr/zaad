@@ -5,6 +5,7 @@ import { PAGINATION } from "@/config/pagination";
 
 type EntityPayload = {
   documents?: any[];
+  credentials?: any[];
   password?: any[];
   [key: string]: any;
 };
@@ -20,11 +21,15 @@ function normalizePagination(page: number, limit: number) {
 }
 
 export function splitEntityPayload(payload: EntityPayload) {
-  const { documents, password, ...entityData } = payload;
+  const { documents, credentials, password, ...entityData } = payload;
   return {
     entityData,
     documents: Array.isArray(documents) ? documents : undefined,
-    passwords: Array.isArray(password) ? password : undefined,
+    credentials: Array.isArray(credentials)
+      ? credentials
+      : Array.isArray(password)
+        ? password
+        : undefined,
   };
 }
 

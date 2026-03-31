@@ -7,7 +7,7 @@ import {
   splitEntityPayload,
 } from "@/services/entityService";
 import { replaceEntityDocuments } from "@/services/entityDocumentService";
-import { replaceEntityPasswords } from "@/services/entityPasswordService";
+import { replaceEntityCredentials } from "@/services/entityCredentialService";
 import { PAGINATION, parsePaginationParams } from "@/config/pagination";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     await isAuthenticated(request);
 
     const reqBody = await request.json();
-    const { entityData, documents, passwords } = splitEntityPayload(reqBody);
+    const { entityData, documents, credentials } = splitEntityPayload(reqBody);
 
     const data = await createEmployeeOrIndividualEntity(
       entityData,
@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     if (documents) {
       await replaceEntityDocuments(data._id.toString(), documents);
     }
-    if (passwords) {
-      await replaceEntityPasswords(data._id.toString(), passwords);
+    if (credentials) {
+      await replaceEntityCredentials(data._id.toString(), credentials);
     }
 
     return Response.json(
