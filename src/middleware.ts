@@ -22,7 +22,11 @@ export const config = {
   matcher: [
     "/accounts/:path*",
     "/company/:path*",
+    "/documents/:path*",
     "/employee/:path*",
+    "/individual/:path*",
+    "/settings/:path*",
+    "/users/:path*",
     "/login",
     "/",
   ],

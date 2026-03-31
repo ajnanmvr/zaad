@@ -36,6 +36,10 @@ const ExpiryDocumentsPage = () => {
             <div className="py-10 text-center text-sm text-rose-600 dark:text-rose-400">
               Failed to load expiry documents. Please refresh the page.
             </div>
+          ) : rows.length === 0 ? (
+            <div className="py-10 text-center text-sm text-slate-600 dark:text-slate-400">
+              No expiry documents found.
+            </div>
           ) : (
             <>
               <table className="mt-2 w-full text-left">

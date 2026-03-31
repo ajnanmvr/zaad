@@ -88,6 +88,8 @@ export async function signupUser(payload: TUser) {
 }
 
 export function createLogoutResponse() {
+  const isProduction = process.env.NODE_ENV === "production";
+
   const response = new NextResponse(
     JSON.stringify({
       message: "Logout Successful",
@@ -99,9 +101,18 @@ export function createLogoutResponse() {
     }
   );
 
-  response.cookies.set("auth", "", { httpOnly: true, expires: new Date(0) });
+  response.cookies.set("auth", "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  });
   response.cookies.set("partner", "", {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
     expires: new Date(0),
   });
 

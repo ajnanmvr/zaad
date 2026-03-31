@@ -13,15 +13,21 @@ export async function POST(request: NextRequest) {
       message: "Login successfull",
       success: true,
     });
+    const isProduction = process.env.NODE_ENV === "production";
+
     response.cookies.set("auth", result.token, {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
     });
 
     if (result.role === "partner") {
       response.cookies.set("partner", "true", {
         httpOnly: true,
-        secure: true,
+        secure: isProduction,
+        sameSite: "lax",
+        path: "/",
       });
     }
     return response;
