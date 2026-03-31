@@ -1,6 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { getCompanyEntityById } from "@/services/entityService";
 import {
   deleteEntityDocument,
@@ -13,7 +13,7 @@ export async function PUT(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "documents.write");
     const { id, doc } = params;
     const { name, issueDate, expiryDate, attachment } = await request.json();
     const company = await getCompanyEntityById(id);
@@ -45,7 +45,7 @@ export async function DELETE(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "documents.write");
     const { id, doc } = params;
     const company = await getCompanyEntityById(id);
     if (!company) {

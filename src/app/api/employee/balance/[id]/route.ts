@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { TRecordData } from "@/types/records";
 import { NextRequest } from "next/server";
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
     const employeeRecords: TRecordData[] = await Records.find({
       published: true,

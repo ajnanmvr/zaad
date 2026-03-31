@@ -9,6 +9,8 @@ const ensureModelsLoaded = () => {
         require('../models/employees');
         require('../models/records');
         require('../models/users');
+        require('../models/userSessions');
+        require('../models/roles');
     } catch (error) {
         console.warn('Warning: Could not preload models:', error);
     }

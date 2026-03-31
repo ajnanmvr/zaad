@@ -239,7 +239,7 @@ const SingleCompany = () => {
                         dropdownOpen ? "flex" : "hidden"
                       )}
                     >
-                      {user?.role === "partner" && (
+                      {Array.isArray(user?.permissions) && user.permissions.includes("payments.read") && (
                         <Link 
                           href={`/accounts/transactions/company/${id}`} 
                           className="px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary dark:text-slate-300 dark:hover:bg-slate-700/50 dark:hover:text-white"

@@ -14,8 +14,7 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["partner", "employee"],
-    default: "employee",
+    required: [true, "Please provide a role"],
   },
   published: {
     type: Boolean,
@@ -24,6 +23,26 @@ const UserSchema = new mongoose.Schema({
   deletedAt: {
     type: Date,
     default: null,
+  },
+  passwordChangedAt: {
+    type: Date,
+    default: null,
+  },
+  failedLoginCount: {
+    type: Number,
+    default: 0,
+  },
+  lockUntil: {
+    type: Date,
+    default: null,
+  },
+  mfaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  roleVersion: {
+    type: Number,
+    default: 1,
   },
 }, {
   timestamps: true

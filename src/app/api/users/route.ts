@@ -1,16 +1,16 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import { PAGINATION } from "@/config/pagination";
 import { createUser, listUsers } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// GET - List all users (partners only)
+// GET - List all users (requires users.read)
 export async function GET(request: NextRequest) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.read");
 
         const searchParams = request.nextUrl.searchParams;
         const pageNumber = parseInt(searchParams.get("page") || "0");
@@ -38,11 +38,11 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST - Create new user (partners only)
+// POST - Create new user (requires users.create)
 export async function POST(request: NextRequest) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.create");
 
         const { username, password, role, fullname } = await request.json();
         const currentUserId = await getUserFromCookie(request);

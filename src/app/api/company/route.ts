@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import {
   createCompanyEntity,
@@ -13,7 +13,7 @@ import { PAGINATION, parsePaginationParams } from "@/config/pagination";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.write");
     const reqBody = await request.json();
     const { entityData, documents, credentials } = splitEntityPayload(reqBody);
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   await connect();
-  await isAuthenticated(request);
+  await requirePermission(request, "entities.read");
 
   const { page, limit } = parsePaginationParams(
     request.nextUrl.searchParams,

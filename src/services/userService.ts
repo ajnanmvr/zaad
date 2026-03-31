@@ -3,6 +3,7 @@ import bcryptjs from "bcryptjs";
 import { logUserActivity, getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 import { ServiceError } from "./serviceError";
+import { getPermissionsForRole, roleExists } from "./roleService";
 
 type TListUsersInput = {
   pageNumber: number;
@@ -45,7 +46,7 @@ export async function listUsers(input: TListUsersInput) {
 type TCreateUserInput = {
   username?: string;
   password?: string;
-  role?: "partner" | "employee";
+  role?: string;
   fullname?: string;
   performedById: string;
   request: NextRequest;
@@ -54,8 +55,12 @@ type TCreateUserInput = {
 export async function createUser(input: TCreateUserInput) {
   const { username, password, role, fullname, performedById, request } = input;
 
-  if (!username || !password) {
-    throw new ServiceError("Username and password are required", 400);
+  if (!username || !password || !role) {
+    throw new ServiceError("Username, password and role are required", 400);
+  }
+
+  if (!(await roleExists(role))) {
+    throw new ServiceError("Invalid role selected", 400);
   }
 
   if (password.length < 6) {
@@ -73,7 +78,7 @@ export async function createUser(input: TCreateUserInput) {
   const newUser = new User({
     username,
     password: hashedPassword,
-    role: role || "employee",
+    role,
     fullname: fullname || "",
   });
 
@@ -117,7 +122,7 @@ type TUpdateUserInput = {
   currentUserId: string;
   username?: string;
   fullname?: string;
-  role?: "partner" | "employee";
+  role?: string;
   password?: string;
   request: NextRequest;
 };
@@ -130,23 +135,36 @@ export async function updateUser(input: TUpdateUserInput) {
     throw new ServiceError("User not found", 404);
   }
 
-  if (id === currentUserId && role === "employee") {
+  const existingUserPermissions = await getPermissionsForRole(existingUser.role);
+  const isExistingUserAdmin = existingUserPermissions.includes("admin.access");
+
+  let isTargetRoleAdmin = false;
+  if (role) {
+    if (!(await roleExists(role))) {
+      throw new ServiceError("Invalid role selected", 400);
+    }
+
+    const targetRolePermissions = await getPermissionsForRole(role);
+    isTargetRoleAdmin = targetRolePermissions.includes("admin.access");
+  }
+
+  if (id === currentUserId && role && isExistingUserAdmin && !isTargetRoleAdmin) {
     throw new ServiceError(
-      "You cannot change your own role from partner to employee",
+      "You cannot remove your own admin access",
       400
     );
   }
 
-  if (role === "employee" && existingUser.role === "partner" && id !== currentUserId) {
+  if (role && isExistingUserAdmin && !isTargetRoleAdmin && id !== currentUserId) {
     throw new ServiceError(
-      "Partners cannot downgrade other partners to employee role",
+      "Admin users cannot downgrade other admin users",
       403
     );
   }
 
-  if (password && existingUser.role === "partner" && id !== currentUserId) {
+  if (password && isExistingUserAdmin && id !== currentUserId) {
     throw new ServiceError(
-      "Partners cannot change passwords of other partners",
+      "Admin users cannot change passwords of other admin users",
       403
     );
   }

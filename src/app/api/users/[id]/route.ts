@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import {
@@ -9,14 +9,14 @@ import {
 } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// GET - Get single user by ID (partners only)
+// GET - Get single user by ID (requires users.read)
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.read");
 
         const { id } = params;
         const user = await getUserById(id);
@@ -32,14 +32,14 @@ export async function GET(
     }
 }
 
-// PUT - Update user (partners only)
+// PUT - Update user (requires users.update)
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.update");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);
@@ -68,14 +68,14 @@ export async function PUT(
     }
 }
 
-// DELETE - Soft delete user (partners only)
+// DELETE - Soft delete user (requires users.delete)
 export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.delete");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);

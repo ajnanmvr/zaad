@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:rbac": "node scripts/rbac-matrix-check.mjs",
+    "seed:roles": "node scripts/seed-system-roles.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.63.0",

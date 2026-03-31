@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { NextRequest } from "next/server";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "payments.read");
     let { suffix, number } = await Records.findOne({
       published: true,
     })

@@ -1,7 +1,9 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import ChangePassword from "@/components/Forms/ChangePassword";
+import SessionManager from "@/components/Settings/SessionManager";
 import { useUserContext } from "@/contexts/UserContext";
+import Link from "next/link";
 import { FiUser, FiShield, FiBriefcase } from "react-icons/fi";
 
 const SettingsPage = () => {
@@ -74,6 +76,36 @@ const SettingsPage = () => {
                 <div className="flex flex-col gap-8 xl:col-span-7">
                     {/* Change Password Component */}
                     <ChangePassword />
+                    <SessionManager />
+                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+                        <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Security Console</h3>
+                        <div className="flex flex-wrap gap-3">
+                            {Array.isArray(user?.permissions) && user.permissions.includes("roles.manage") && (
+                                <Link
+                                    href="/settings/roles"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                >
+                                    Manage Roles
+                                </Link>
+                            )}
+                            {Array.isArray(user?.permissions) && user.permissions.includes("settings.read") && (
+                                <Link
+                                    href="/settings/permissions"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                >
+                                    Permission Matrix
+                                </Link>
+                            )}
+                            {Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read") && (
+                                <Link
+                                    href="/users/activity"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                >
+                                    View Activity Audit
+                                </Link>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

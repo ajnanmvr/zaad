@@ -1,5 +1,5 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { listIndividualEntities } from "@/services/entityService";
 import { PAGINATION, parsePaginationParams } from "@/config/pagination";
@@ -7,7 +7,7 @@ import { PAGINATION, parsePaginationParams } from "@/config/pagination";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
     const { page, limit } = parsePaginationParams(
       request.nextUrl.searchParams,

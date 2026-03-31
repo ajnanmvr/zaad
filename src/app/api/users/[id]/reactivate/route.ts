@@ -1,18 +1,18 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { NextRequest } from "next/server";
 import { reactivateUser } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// PUT - Reactivate (restore) soft-deleted user (partners only)
+// PUT - Reactivate (restore) soft-deleted user (requires users.reactivate)
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.reactivate");
 
         const { id } = params;
         const currentUserId = await getUserFromCookie(request);

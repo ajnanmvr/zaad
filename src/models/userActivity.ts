@@ -13,7 +13,20 @@ const UserActivitySchema = new mongoose.Schema({
     },
     action: {
         type: String,
-        enum: ["create", "update", "delete", "password_change", "role_change", "reactivate"],
+        enum: [
+            "create",
+            "update",
+            "delete",
+            "password_change",
+            "role_change",
+            "reactivate",
+            "login",
+            "logout",
+            "logout_all",
+            "token_refresh",
+            "session_revoke",
+            "auth_denied"
+        ],
         required: true,
     },
     details: {

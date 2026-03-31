@@ -1,18 +1,18 @@
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { PAGINATION } from "@/config/pagination";
 import { listUserActivityHistory } from "@/services/userService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
-// GET - Get user activity history (partners only)
+// GET - Get user activity history (requires users.activity.read)
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         await connect();
-        await isPartner(request);
+        await requirePermission(request, "users.activity.read");
 
         const { id } = params;
         const searchParams = request.nextUrl.searchParams;

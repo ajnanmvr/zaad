@@ -1,6 +1,6 @@
 // Import necessary modules and models
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import Company from "@/models/companies";
 import { NextRequest } from "next/server";
 
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
     const companies = await Company.find({
       name: { $regex: params.search, $options: "i" },
       published: true,

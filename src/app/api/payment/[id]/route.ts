@@ -1,6 +1,6 @@
 import Records from "@/models/records";
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 
 export async function DELETE(
@@ -8,7 +8,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isPartner(request);
+  await requirePermission(request, "payments.write");
   const { id } = params;
   await Records.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
@@ -19,7 +19,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isPartner(request);
+  await requirePermission(request, "payments.read");
   try {
     const { id } = params;
     const data = await Records.findById(id);
@@ -34,7 +34,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isPartner(request);
+  await requirePermission(request, "payments.write");
   const { id } = params;
   try {
     const reqBody = await request.json();

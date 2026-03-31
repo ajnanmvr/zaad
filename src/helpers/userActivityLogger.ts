@@ -5,7 +5,19 @@ import { PAGINATION } from "@/config/pagination";
 export interface LogUserActivityOptions {
     targetUserId: string;
     performedById: string;
-    action: "create" | "update" | "delete" | "password_change" | "role_change" | "reactivate";
+    action:
+        | "create"
+        | "update"
+        | "delete"
+        | "password_change"
+        | "role_change"
+        | "reactivate"
+        | "login"
+        | "logout"
+        | "logout_all"
+        | "token_refresh"
+        | "session_revoke"
+        | "auth_denied";
     details?: Record<string, any>;
     previousValues?: Record<string, any>;
     newValues?: Record<string, any>;

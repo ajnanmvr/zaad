@@ -2,7 +2,7 @@ import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
 import { TCompanyData } from "@/types/types";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import {
   getCompanyEntityById,
   softDeleteCompanyEntity,
@@ -24,7 +24,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isAuthenticated(request);
+  await requirePermission(request, "entities.write");
 
   const { id } = params;
   const reqBody = await request.json();
@@ -49,7 +49,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isAuthenticated(request);
+  await requirePermission(request, "entities.write");
 
   const { id } = params;
   await softDeleteCompanyEntity(id);
@@ -62,7 +62,7 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
     const company: TCompanyData | null = await getCompanyEntityById(params.id);
     const [documents, credentials] = await Promise.all([
