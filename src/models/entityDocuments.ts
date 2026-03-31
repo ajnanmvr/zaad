@@ -8,6 +8,7 @@ const EntityDocumentSchema = new Schema(
       required: true,
       index: true,
     },
+    category: String,
     name: String,
     issueDate: String,
     expiryDate: String,

@@ -4,6 +4,7 @@ import calculateStatus from "@/utils/calculateStatus";
 import { PAGINATION } from "@/config/pagination";
 
 type DocumentInput = {
+  category?: string;
   name?: string;
   issueDate?: string;
   expiryDate?: string;
@@ -33,6 +34,7 @@ export async function replaceEntityDocuments(entityId: string, documents: Docume
   await EntityDocument.insertMany(
     documents.map((doc) => ({
       entity: entityId,
+      category: doc?.category,
       name: doc?.name,
       issueDate: doc?.issueDate,
       expiryDate: doc?.expiryDate,
@@ -43,13 +45,14 @@ export async function replaceEntityDocuments(entityId: string, documents: Docume
 
 export async function listEntityDocuments(entityId: string) {
   return EntityDocument.find({ entity: entityId }).select(
-    "name issueDate expiryDate attachment"
+    "category name issueDate expiryDate attachment"
   );
 }
 
 export async function createEntityDocument(entityId: string, payload: DocumentInput) {
   return EntityDocument.create({
     entity: entityId,
+    category: payload?.category,
     name: payload?.name,
     issueDate: payload?.issueDate,
     expiryDate: payload?.expiryDate,
@@ -65,6 +68,7 @@ export async function updateEntityDocument(
   return EntityDocument.findOneAndUpdate(
     { _id: documentId, entity: entityId },
     {
+      ...(payload.category !== undefined ? { category: payload.category } : {}),
       ...(payload.name !== undefined ? { name: payload.name } : {}),
       ...(payload.issueDate !== undefined ? { issueDate: payload.issueDate } : {}),
       ...(payload.expiryDate !== undefined ? { expiryDate: payload.expiryDate } : {}),
@@ -88,7 +92,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
 
   const [documents, total] = await Promise.all([
     EntityDocument.find({})
-      .select("entity name issueDate expiryDate attachment")
+      .select("entity category name issueDate expiryDate attachment")
       .sort({ expiryDate: 1, createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
@@ -112,6 +116,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
     const status = calculateStatus(doc.expiryDate);
     return {
       id: doc._id,
+      category: doc.category,
       name: doc.name,
       issueDate: doc.issueDate,
       expiryDate: doc.expiryDate,

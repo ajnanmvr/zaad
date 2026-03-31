@@ -6,10 +6,11 @@ export type TUser = {
   role?: string;
 };
 export type TPasswordData = {
+  category?: string;
   platform: string;
   username: string;
   credential?: string;
-  password: string;
+  password?: string;
 };
 export type TCompanyData = {
   _id?: string;
@@ -35,6 +36,7 @@ export type TCompanyData = {
 export type TDocuments = {
   _id: string;
   id?: string;
+  category?: string;
   name?: string;
   status?: string;
   issueDate?: string;
@@ -81,6 +83,7 @@ export type TPaginatedResponse<T> = {
 
 export type TExpiryDocumentItem = {
   id: string;
+  category?: string;
   name?: string;
   issueDate?: string;
   expiryDate?: string;

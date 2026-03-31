@@ -5,9 +5,10 @@ import { TEmployeeData } from "@/types/types";
 import axios from "axios";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FiMoreVertical, FiEdit2, FiTrash2, FiFileText, FiUser, FiLock, FiPhone, FiMail } from "react-icons/fi";
 import clsx from "clsx";
+import { CREDENTIAL_CATEGORY_OPTIONS, DOCUMENT_CATEGORY_OPTIONS } from "@/config/entityCategories";
 
 const SingleEmployee = () => {
   const router = useRouter()
@@ -17,6 +18,7 @@ const SingleEmployee = () => {
   const [isEditDocsOpen, setIsEditDocsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [editData, setEditData] = useState({
+    category: "",
     name: "",
     issueDate: "",
     expiryDate: "",
@@ -24,6 +26,53 @@ const SingleEmployee = () => {
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
   const { user } = useUserContext();
+  const employeeCredentials = useMemo(() => {
+    return employee?.credentials?.length
+      ? employee.credentials
+      : employee?.password || [];
+  }, [employee]);
+  const employeeDocuments = useMemo(() => employee?.documents || [], [employee]);
+  const [documentCategoryFilter, setDocumentCategoryFilter] = useState("all");
+  const [credentialCategoryFilter, setCredentialCategoryFilter] = useState("all");
+
+  const documentCategories = useMemo(() => {
+    const merged = [
+      ...DOCUMENT_CATEGORY_OPTIONS,
+      ...employeeDocuments
+        .map((doc) => doc?.category?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ];
+    return Array.from(new Set(merged));
+  }, [employeeDocuments]);
+
+  const credentialCategories = useMemo(() => {
+    const merged = [
+      ...CREDENTIAL_CATEGORY_OPTIONS,
+      ...employeeCredentials
+        .map((credential) => credential?.category?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ];
+    return Array.from(new Set(merged));
+  }, [employeeCredentials]);
+
+  const filteredEmployeeDocuments = useMemo(() => {
+    if (documentCategoryFilter === "all") {
+      return employeeDocuments;
+    }
+    return employeeDocuments.filter(
+      (doc) => (doc.category || "uncategorized") === documentCategoryFilter
+    );
+  }, [employeeDocuments, documentCategoryFilter]);
+
+  const filteredEmployeeCredentials = useMemo(() => {
+    if (credentialCategoryFilter === "all") {
+      return employeeCredentials;
+    }
+    return employeeCredentials.filter(
+      (credential) =>
+        (credential.category || "uncategorized") === credentialCategoryFilter
+    );
+  }, [employeeCredentials, credentialCategoryFilter]);
 
   const fetchData = async () => {
     try {
@@ -40,9 +89,10 @@ const SingleEmployee = () => {
     setIsConfirmationOpen(true);
   }
   const handleEdit = (editId: string) => {
-    const selectedDocument = employee?.documents?.find(doc => doc._id === editId);
+    const selectedDocument = employeeDocuments.find(doc => doc._id === editId);
     if (selectedDocument) {
       setEditData({
+        category: `${selectedDocument.category || ""}`,
         name: `${selectedDocument.name}`,
         issueDate: `${selectedDocument.issueDate}`,
         expiryDate: `${selectedDocument.expiryDate}`,
@@ -138,6 +188,25 @@ const SingleEmployee = () => {
             <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
               <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white">Edit Document</h3>
               <div className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    name="category"
+                    list="employee-document-category-options"
+                    value={editData.category}
+                    onChange={handleChange}
+                    placeholder="Select or type category"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
+                  <datalist id="employee-document-category-options">
+                    {documentCategories.map((category) => (
+                      <option key={category} value={category} />
+                    ))}
+                  </datalist>
+                </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Document Name <span className="text-rose-500">*</span>
@@ -327,25 +396,48 @@ const SingleEmployee = () => {
                   </dl>
                 </div>
 
-                {/* Passwords Card */}
-                {employee?.password && employee.password.length > 0 && (
+                {/* Credentials Card */}
+                {employeeCredentials.length > 0 && (
                   <div className="rounded-xl bg-slate-50 p-6 dark:bg-slate-800/50">
-                    <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-white">
+                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-white">
                       <FiLock className="text-rose-500" />
                       Platform Access
-                    </h3>
+                      </h3>
+                      <select
+                        title="Filter credentials by category"
+                        value={credentialCategoryFilter}
+                        onChange={(event) =>
+                          setCredentialCategoryFilter(event.target.value)
+                        }
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <option value="all">All categories</option>
+                        <option value="uncategorized">Uncategorized</option>
+                        {credentialCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="space-y-4">
-                      {employee.password.map((pass, index) => (
+                      {filteredEmployeeCredentials.map((pass, index) => (
                         <div key={index} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                          <h4 className="mb-2 font-semibold text-slate-800 dark:text-white">{pass.platform}</h4>
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <h4 className="font-semibold text-slate-800 dark:text-white">{pass.platform}</h4>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium capitalize text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                              {pass.category || "uncategorized"}
+                            </span>
+                          </div>
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-900/50">
                               <span className="block text-xs text-slate-500 dark:text-slate-400">Username</span>
                               <span className="font-medium text-slate-900 dark:text-slate-200 break-words">{pass.username}</span>
                             </div>
                             <div className="rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-900/50">
-                              <span className="block text-xs text-slate-500 dark:text-slate-400">Password</span>
-                              <span className="font-medium text-slate-900 dark:text-slate-200 break-words">{pass.password}</span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">Credential</span>
+                              <span className="font-medium text-slate-900 dark:text-slate-200 break-words">{pass.credential || pass.password || "---"}</span>
                             </div>
                           </div>
                         </div>
@@ -357,17 +449,34 @@ const SingleEmployee = () => {
             </div>
 
             {/* Documents Table Component */}
-            {employee?.documents && employee.documents.length > 0 && (
+            {employeeDocuments.length > 0 && (
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8">
-                <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
-                  <FiFileText className="text-emerald-500" />
-                  Employee Documents
-                </h3>
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
+                    <FiFileText className="text-emerald-500" />
+                    Employee Documents
+                  </h3>
+                  <select
+                    title="Filter documents by category"
+                    value={documentCategoryFilter}
+                    onChange={(event) => setDocumentCategoryFilter(event.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    <option value="all">All categories</option>
+                    <option value="uncategorized">Uncategorized</option>
+                    {documentCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                        <th className="min-w-[160px] pb-3 px-4">Category</th>
                         <th className="min-w-[220px] pb-3 pl-4">Document Name</th>
                         <th className="min-w-[150px] pb-3 px-4">Issue Date</th>
                         <th className="min-w-[150px] pb-3 px-4">Expiry Date</th>
@@ -376,11 +485,14 @@ const SingleEmployee = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {employee.documents.map(({ name, status, issueDate, expiryDate, _id }, key) => (
+                      {filteredEmployeeDocuments.map(({ category, name, status, issueDate, expiryDate, _id }, key) => (
                         <tr 
                           key={key} 
                           className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                         >
+                          <td className="px-4 py-4 text-sm capitalize text-slate-600 dark:text-slate-300">
+                            {category || "uncategorized"}
+                          </td>
                           <td className="py-4 pl-4">
                             <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
                               {name || "Unnamed Document"}

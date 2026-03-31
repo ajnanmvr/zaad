@@ -75,8 +75,9 @@ export async function GET(
     }
 
     const modifiedDocuments = documents.map(
-      ({ _id, name, issueDate, expiryDate }) => ({
+      ({ _id, category, name, issueDate, expiryDate }) => ({
         _id,
+        category,
         name,
         issueDate,
         expiryDate,

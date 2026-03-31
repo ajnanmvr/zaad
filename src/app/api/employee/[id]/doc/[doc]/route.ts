@@ -16,13 +16,15 @@ export async function PUT(
     await requirePermission(request, "documents.write");
 
     const { id, doc } = params;
-    const { name, issueDate, expiryDate, attachment } = await request.json();
+    const { category, name, issueDate, expiryDate, attachment } =
+      await request.json();
     const employee = await getEmployeeEntityById(id);
     if (!employee) {
       return Response.json({ message: "Employee not found" }, { status: 404 });
     }
 
     const data = await updateEntityDocument(id, doc, {
+      category,
       name,
       issueDate,
       expiryDate,

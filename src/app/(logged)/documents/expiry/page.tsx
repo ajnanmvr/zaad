@@ -6,9 +6,11 @@ import { TExpiryDocumentItem, TPaginatedResponse } from "@/types/types";
 import calculateStatus from "@/utils/calculateStatus";
 import formatDate from "@/utils/formatDate";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
+import Link from "next/link";
+import { DOCUMENT_CATEGORY_OPTIONS } from "@/config/entityCategories";
 
 const ExpiryDocumentsPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
@@ -20,8 +22,28 @@ const ExpiryDocumentsPage = () => {
     queryFn: () => fetchExpiryDocuments(page, PAGINATION.LIMITS.EXPIRY_DOCUMENTS),
   });
 
-  const rows = data?.data || [];
+  const rows = useMemo(() => data?.data || [], [data]);
   const pagination = data?.pagination;
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const categories = useMemo(() => {
+    const merged = [
+      ...DOCUMENT_CATEGORY_OPTIONS,
+      ...rows
+        .map((item) => item?.category?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ];
+    return Array.from(new Set(merged));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    if (categoryFilter === "all") {
+      return rows;
+    }
+    return rows.filter(
+      (item) => (item.category || "uncategorized") === categoryFilter
+    );
+  }, [rows, categoryFilter]);
 
   return (
     <>
@@ -42,10 +64,27 @@ const ExpiryDocumentsPage = () => {
             </div>
           ) : (
             <>
+              <div className="mb-4 flex justify-end">
+                <select
+                  title="Filter expiry documents by category"
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">All categories</option>
+                  <option value="uncategorized">Uncategorized</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <table className="mt-2 w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
                     <th className="min-w-[220px] pb-3 pl-4">Entity</th>
+                    <th className="min-w-[160px] px-4 pb-3">Category</th>
                     <th className="min-w-[220px] px-4 pb-3">Document</th>
                     <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
                     <th className="min-w-[100px] px-4 pb-3">Days Left</th>
@@ -53,12 +92,14 @@ const ExpiryDocumentsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((item) => {
+                  {filteredRows.map((item) => {
                     const status =
                       item.status || calculateStatus(item.expiryDate || "");
                     const daysLeft = item.daysLeft;
                     const entityName = item.entity?.name || "Unknown";
                     const entityType = item.entity?.entityType || "unknown";
+                    const entityId = item.entity?.id;
+                    const isCompanyRow = entityType === "company" && Boolean(entityId);
                     return (
                       <tr
                         key={item.id}
@@ -66,13 +107,25 @@ const ExpiryDocumentsPage = () => {
                       >
                         <td className="py-4 pl-4">
                           <div className="flex flex-col">
-                            <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
-                              {entityName}
-                            </span>
+                            {isCompanyRow ? (
+                              <Link
+                                href={`/company/${entityId}`}
+                                className="font-semibold capitalize text-primary hover:underline"
+                              >
+                                {entityName}
+                              </Link>
+                            ) : (
+                              <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                                {entityName}
+                              </span>
+                            )}
                             <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
                               {entityType}
                             </span>
                           </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
+                          {item.category || "uncategorized"}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {item.name || "---"}

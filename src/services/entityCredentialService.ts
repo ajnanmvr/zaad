@@ -5,6 +5,7 @@ import {
 } from "@/utils/credentialsCrypto";
 
 type CredentialInput = {
+  category?: string;
   platform?: string;
   username?: string;
   password?: string;
@@ -25,6 +26,7 @@ export async function replaceEntityCredentials(
       const plainSecret = item?.credential ?? item?.password ?? "";
       return {
         entity: entityId,
+        category: item?.category,
         platform: item?.platform,
         username: item?.username,
         secret: plainSecret ? encryptCredential(plainSecret) : "",
@@ -35,13 +37,14 @@ export async function replaceEntityCredentials(
 
 export async function listEntityCredentials(entityId: string) {
   const rows = await EntityCredential.find({ entity: entityId }).select(
-    "platform username secret"
+    "category platform username secret"
   );
 
   return rows.map((row: any) => {
     const decrypted = row?.secret ? decryptCredential(row.secret) : "";
     return {
       _id: row._id,
+      category: row.category,
       platform: row.platform,
       username: row.username,
       credential: decrypted,

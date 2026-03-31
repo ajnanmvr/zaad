@@ -4,10 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiBriefcase, FiLock, FiFileText } from "react-icons/fi";
 import clsx from "clsx";
+import {
+    CREDENTIAL_CATEGORY_OPTIONS,
+    DOCUMENT_CATEGORY_OPTIONS,
+} from "@/config/entityCategories";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
@@ -18,6 +22,44 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const [companyData, setCompanyData] = useState<any>({
         name: "", documents: [], password: []
     });
+    const [documentNameOptionsByCategory, setDocumentNameOptionsByCategory] =
+        useState<Record<string, string[]>>({});
+    const [credentialPlatformOptionsByCategory, setCredentialPlatformOptionsByCategory] =
+        useState<Record<string, string[]>>({});
+
+    const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
+
+    const fetchCategoryOptions = useCallback(async (
+        type: "document" | "credential",
+        category: string,
+    ) => {
+        const trimmed = category.trim();
+        if (!trimmed) return;
+
+        const key = normalizeCategoryKey(trimmed);
+        if (
+            (type === "document" && documentNameOptionsByCategory[key]) ||
+            (type === "credential" && credentialPlatformOptionsByCategory[key])
+        ) {
+            return;
+        }
+
+        try {
+            const { data } = await axios.get("/api/categories/names", {
+                params: { type, category: trimmed },
+            });
+            const options: string[] = Array.isArray(data?.options) ? data.options : [];
+
+            if (type === "document") {
+                setDocumentNameOptionsByCategory((prev) => ({ ...prev, [key]: options }));
+                return;
+            }
+
+            setCredentialPlatformOptionsByCategory((prev) => ({ ...prev, [key]: options }));
+        } catch (error) {
+            console.error("Error fetching category options:", error);
+        }
+    }, [credentialPlatformOptionsByCategory, documentNameOptionsByCategory]);
 
     const { data } = useQuery<any>({
         queryKey: [`${edit}`], queryFn: async () => {
@@ -41,6 +83,32 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             setisEditMode(false)
         }
     }, [edit, data])
+
+    useEffect(() => {
+        const documentCategories = Array.from(
+            new Set<string>(
+                (companyData?.documents || [])
+                    .map((doc: any) => doc?.category?.trim())
+                    .filter((category: string | undefined): category is string => Boolean(category))
+            )
+        );
+
+        const credentialCategories = Array.from(
+            new Set<string>(
+                (companyData?.password || [])
+                    .map((item: any) => item?.category?.trim())
+                    .filter((category: string | undefined): category is string => Boolean(category))
+            )
+        );
+
+        documentCategories.forEach((category) => {
+            void fetchCategoryOptions("document", category);
+        });
+
+        credentialCategories.forEach((category) => {
+            void fetchCategoryOptions("credential", category);
+        });
+    }, [companyData?.documents, companyData?.password, fetchCategoryOptions])
 
     const mutation = useMutation(
         {
@@ -94,7 +162,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handleAddPassword = (e: React.MouseEvent) => {
         e.preventDefault()
-        const password = { platform: "", username: "", password: "" }
+        const password = { category: "", platform: "", username: "", password: "" }
         if (!companyData.password) {
             setCompanyData({ ...companyData, password: [password] })
         } else {
@@ -105,7 +173,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handleAddDocument = (e: React.MouseEvent) => {
         e.preventDefault()
-        const documents = { name: "", issueDate: "", expiryDate: "" }
+        const documents = { category: "", name: "", issueDate: "", expiryDate: "" }
         if (!companyData.documents) {
             setCompanyData({ ...companyData, documents: [documents] })
         } else {
@@ -343,14 +411,31 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                     </button>
                                     
                                     <div className="mb-4 pr-10">
+                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Category</label>
+                                        <input
+                                            type="text"
+                                            list="company-credential-category-options"
+                                            value={item?.category || ""}
+                                            placeholder="Select or type category"
+                                            onChange={(e) => handlePasswordChange(index, 'category', e.target.value)}
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="mb-4 pr-10">
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Platform</label>
                                         <input
                                             type="text"
+                                            list={`company-platform-options-${index}`}
                                             value={item?.platform || ""}
                                             placeholder="e.g. MOHRE, Tasheel"
                                             onChange={(e) => handlePasswordChange(index, 'platform', e.target.value)}
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
                                         />
+                                        <datalist id={`company-platform-options-${index}`}>
+                                            {(credentialPlatformOptionsByCategory[normalizeCategoryKey(item?.category || "")] || []).map((option) => (
+                                                <option key={option} value={option} />
+                                            ))}
+                                        </datalist>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -420,16 +505,35 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
                                     <div className="mb-4 pr-10">
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                            Category
+                                        </label>
+                                        <input
+                                            type="text"
+                                            list="company-document-category-options"
+                                            value={doc?.category || ""}
+                                            onChange={(e) => handleDocumentChange(index, 'category', e.target.value)}
+                                            placeholder="Select or type category"
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="mb-4 pr-10">
+                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                             Document Name <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             required
+                                            list={`company-document-name-options-${index}`}
                                             value={doc?.name || ""}
                                             onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
                                             placeholder="e.g. Trade License"
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
                                         />
+                                        <datalist id={`company-document-name-options-${index}`}>
+                                            {(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).map((option) => (
+                                                <option key={option} value={option} />
+                                            ))}
+                                        </datalist>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -464,6 +568,16 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                 <FiPlus className="text-lg" />
                                 Add Document
                             </button>
+                            <datalist id="company-document-category-options">
+                                {DOCUMENT_CATEGORY_OPTIONS.map((category) => (
+                                    <option key={category} value={category} />
+                                ))}
+                            </datalist>
+                            <datalist id="company-credential-category-options">
+                                {CREDENTIAL_CATEGORY_OPTIONS.map((category) => (
+                                    <option key={category} value={category} />
+                                ))}
+                            </datalist>
                         </div>
                     </div>
                 </div>

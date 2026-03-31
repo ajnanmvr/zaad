@@ -8,6 +8,7 @@ const EntityCredentialSchema = new Schema(
       required: true,
       index: true,
     },
+    category: String,
     platform: String,
     username: String,
     secret: String,
