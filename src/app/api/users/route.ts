@@ -5,6 +5,7 @@ import { isPartner } from "@/helpers/isAuthenticated";
 import getUserFromCookie from "@/helpers/getUserFromCookie";
 import { logUserActivity } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
+import { PAGINATION } from "@/config/pagination";
 
 // GET - List all users (partners only)
 export async function GET(request: NextRequest) {
@@ -14,7 +15,9 @@ export async function GET(request: NextRequest) {
 
         const searchParams = request.nextUrl.searchParams;
         const pageNumber = parseInt(searchParams.get("page") || "0");
-        const limit = parseInt(searchParams.get("limit") || "10");
+        const limit = parseInt(
+            searchParams.get("limit") || String(PAGINATION.LIMITS.USER_LIST)
+        );
         const search = searchParams.get("search") || "";
         const showDeleted = searchParams.get("deleted") === "true";
 

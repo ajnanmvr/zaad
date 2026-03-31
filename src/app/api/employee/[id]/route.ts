@@ -1,9 +1,22 @@
 import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
-import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
+import {
+  getEmployeeEntityById,
+  softDeleteEmployeeEntity,
+  splitEntityPayload,
+  updateEmployeeEntity,
+} from "@/services/entityService";
+import {
+  listEntityDocuments,
+  replaceEntityDocuments,
+} from "@/services/entityDocumentService";
+import {
+  listEntityPasswords,
+  replaceEntityPasswords,
+} from "@/services/entityPasswordService";
 
 export async function PUT(
   request: NextRequest,
@@ -14,7 +27,16 @@ export async function PUT(
 
   const { id } = params;
   const reqBody = await request.json();
-  await Employee.findByIdAndUpdate(id, reqBody);
+  const { entityData, documents, passwords } = splitEntityPayload(reqBody);
+  await updateEmployeeEntity(id, entityData);
+
+  if (documents) {
+    await replaceEntityDocuments(id, documents);
+  }
+  if (passwords) {
+    await replaceEntityPasswords(id, passwords);
+  }
+
   return Response.json(
     { message: "data updated successfully" },
     { status: 201 }
@@ -29,7 +51,7 @@ export async function DELETE(
   await isAuthenticated(request);
 
   const { id } = params;
-  await Employee.findByIdAndUpdate(id, { published: false });
+  await softDeleteEmployeeEntity(id);
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
@@ -41,15 +63,20 @@ export async function GET(
     await connect();
     await isAuthenticated(request);
 
-    const employee = (await Employee.findById(params.id).populate(
-      "company"
+    const employee = (await getEmployeeEntityById(
+      params.id,
+      true
     )) as TEmployeeData;
+    const [documents, passwords] = await Promise.all([
+      listEntityDocuments(params.id),
+      listEntityPasswords(params.id),
+    ]);
 
     if (!employee) {
       return Response.json({ message: "employee not found" }, { status: 404 });
     }
 
-    const modifiedDocuments = employee.documents.map((document) => ({
+    const modifiedDocuments = documents.map((document: any) => ({
       _id: document._id,
       name: document.name,
       issueDate: document.issueDate,
@@ -73,7 +100,7 @@ export async function GET(
       email: employee.email,
       designation: employee.designation,
       remarks: employee.remarks,
-      password: employee.password,
+      password: passwords,
       documents: modifiedDocuments,
     };
 

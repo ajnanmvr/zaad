@@ -13,6 +13,7 @@ export type TPasswordData = {
 export type TCompanyData = {
   _id?: string;
   name: string;
+  entityType?: "company" | "employee" | "individual";
   licenseNo?: string;
   companyType?: string;
   emirates?: string;
@@ -23,7 +24,7 @@ export type TCompanyData = {
   isMainland?: "mainland" | "freezone";
   remarks?: string;
   password?: TPasswordData[];
-  documents: TDocuments[];
+  documents?: TDocuments[];
   transactions?: [];
   balance?: number;
   totalIncomes?: number;
@@ -56,11 +57,47 @@ export type TEmployeeList = TCompanyList & {
   company: TBaseData;
 };
 
+export type TEntityListItem = {
+  id: string;
+  name: string;
+  entityType: "company" | "employee" | "individual";
+  createdAt?: string;
+  company?: TBaseData;
+};
+
+export type TPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type TPaginatedResponse<T> = {
+  data: T[];
+  pagination: TPagination;
+};
+
+export type TExpiryDocumentItem = {
+  id: string;
+  name?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  attachment?: string;
+  status: "valid" | "expired" | "renewal" | "unknown";
+  daysLeft: number | null;
+  entity: {
+    id: string;
+    name: string;
+    entityType: "company" | "employee" | "individual";
+  };
+};
+
 export type TEmployeeData = {
   _id: string;
   name: string;
-  password: TPasswordData[];
-  company: TCompanyData;
+  entityType?: "employee" | "individual";
+  password?: TPasswordData[];
+  company?: TCompanyData;
   isActive: boolean;
   emiratesId?: string;
   nationality?: string;
@@ -69,9 +106,14 @@ export type TEmployeeData = {
   email?: string;
   designation?: string;
   remarks?: string;
-  documents: TDocuments[];
+  documents?: TDocuments[];
   transactions?: [];
   balance?: number;
   totalIncomes?: number;
   totalExpenses?: number;
+};
+
+export type TIndividualData = Omit<TEmployeeData, "company" | "entityType"> & {
+  entityType?: "individual";
+  company?: undefined;
 };

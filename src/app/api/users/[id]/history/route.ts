@@ -2,6 +2,7 @@ import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
 import { getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
+import { PAGINATION } from "@/config/pagination";
 
 // GET - Get user activity history (partners only)
 export async function GET(
@@ -15,7 +16,9 @@ export async function GET(
         const { id } = params;
         const searchParams = request.nextUrl.searchParams;
         const page = parseInt(searchParams.get("page") || "0");
-        const limit = parseInt(searchParams.get("limit") || "10");
+        const limit = parseInt(
+            searchParams.get("limit") || String(PAGINATION.LIMITS.USER_ACTIVITY)
+        );
 
         const result = await getUserActivityHistory(id, page, limit);
 

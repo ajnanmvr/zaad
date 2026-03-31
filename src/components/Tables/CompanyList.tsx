@@ -3,18 +3,27 @@ import axios from "axios";
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
-import { TCompanyList } from "@/types/types";
+import { TEntityListItem, TPaginatedResponse } from "@/types/types";
 import SkeletonList from "../common/SkeletonList";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchCompanies } from "@/libs/queries";
 import toast from "react-hot-toast";
 import { FiEye, FiTrash2 } from "react-icons/fi";
-import clsx from "clsx";
+import formatDate from "@/utils/formatDate";
+import { PAGINATION } from "@/config/pagination";
 
 function CompanyList({ sort }: { sort?: string }) {
 
     const queryClient = useQueryClient();
-    const { data: companies, isLoading: companyLoading, isError: companyError } = useQuery<TCompanyList[] | null>({ queryKey: ["companies"], queryFn: fetchCompanies });
+    const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+    const limit = PAGINATION.LIMITS.ENTITY_LIST;
+    const { data: companiesResponse, isLoading: companyLoading, isError: companyError } = useQuery<TPaginatedResponse<TEntityListItem>>({
+        queryKey: ["companies", page],
+        queryFn: () => fetchCompanies(page, limit),
+    });
+
+    const companies = companiesResponse?.data || [];
+    const pagination = companiesResponse?.pagination;
 
     const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -69,8 +78,7 @@ function CompanyList({ sort }: { sort?: string }) {
                 <>
                     <div className="flex bg-slate-50 text-left dark:bg-slate-800/50 justify-around font-medium text-slate-800 dark:text-slate-200 mt-4 rounded-t-lg">
                         <div className="min-w-[220px] px-4 py-4 xl:pl-11">Name</div>
-                        <div className="min-w-[150px] px-4 py-4">Expiry Date</div>
-                        <div className="min-w-[120px] px-4 py-4">Status</div>
+                        <div className="min-w-[150px] px-4 py-4">Created</div>
                         <div className="px-4 py-4">Actions</div>
                     </div>
                     <SkeletonList />
@@ -84,10 +92,7 @@ function CompanyList({ sort }: { sort?: string }) {
                                     Name
                                 </th>
                                 <th className="pb-3 px-4 min-w-[150px]">
-                                    Expiry Date
-                                </th>
-                                <th className="pb-3 px-4 min-w-[120px]">
-                                    Status
+                                    Created
                                 </th>
                                 <th className="pb-3 px-4 text-center">
                                     Actions
@@ -95,7 +100,7 @@ function CompanyList({ sort }: { sort?: string }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {companies?.map(({ id, name, expiryDate, docs, status }, key) => (
+                                                        {companies?.map(({ id, name, createdAt }, key) => (
                                 <tr 
                                   key={key}
                                   className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
@@ -106,25 +111,11 @@ function CompanyList({ sort }: { sort?: string }) {
                                                 <h5 className="font-semibold capitalize text-slate-800 group-hover:text-primary dark:text-slate-200 transition-colors">
                                                     {name}
                                                 </h5>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{docs} Documents</p>
                                             </div>
                                         </Link>
                                     </td>
                                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                                        {expiryDate}
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span
-                                            className={clsx(
-                                                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
-                                                status === "valid" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" : 
-                                                status === "expired" ? "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20" : 
-                                                status === "renewal" ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20" : 
-                                                "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/20"
-                                            )}
-                                        >
-                                            {status}
-                                        </span>
+                                        {formatDate(createdAt || null)}
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center justify-center space-x-2">
@@ -148,6 +139,29 @@ function CompanyList({ sort }: { sort?: string }) {
                             ))}
                         </tbody>
                     </table>
+                    <div className="mt-4 flex items-center justify-between">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Page {pagination?.page || 1} of {pagination?.totalPages || 1}
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                                disabled={!pagination || pagination.page <= 1}
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPage((prev) => prev + 1)}
+                                disabled={!pagination || pagination.page >= pagination.totalPages}
+                                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

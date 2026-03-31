@@ -1,5 +1,6 @@
 import UserActivity from "@/models/userActivity";
 import { NextRequest } from "next/server";
+import { PAGINATION } from "@/config/pagination";
 
 export interface LogUserActivityOptions {
     targetUserId: string;
@@ -56,7 +57,7 @@ export async function logUserActivity(options: LogUserActivityOptions) {
 export async function getUserActivityHistory(
     userId: string,
     page: number = 0,
-    limit: number = 10
+    limit: number = PAGINATION.LIMITS.USER_ACTIVITY
 ) {
     try {
         const skip = page * limit;

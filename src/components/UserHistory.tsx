@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/utils/dateUtils";
 import { FiUserCheck, FiEdit3, FiUserX, FiLock, FiShield, FiRefreshCw, FiActivity } from "react-icons/fi";
 import clsx from "clsx";
+import { PAGINATION } from "@/config/pagination";
 
 interface UserActivity {
     _id: string;
@@ -144,7 +145,7 @@ export default function UserHistory({ userId, className = "" }: UserHistoryProps
             if (!append) setLoading(true);
             else setLoadingMore(true);
 
-            const response = await fetch(`/api/users/${userId}/history?page=${page}&limit=10`);
+            const response = await fetch(`/api/users/${userId}/history?page=${page}&limit=${PAGINATION.LIMITS.USER_ACTIVITY}`);
 
             if (!response.ok) {
                 throw new Error("Failed to fetch activity history");

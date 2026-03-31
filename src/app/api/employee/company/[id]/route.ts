@@ -1,10 +1,9 @@
-import { TEmployeeData, TEmployeeList } from "@/types/types";
-import Employee from "@/models/employees";
-import processDocuments from "@/helpers/processDocuments";
-import calculateStatus from "@/utils/calculateStatus";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
 import connect from "@/db/mongo";
+import { listEmployeesByCompanyEntity } from "@/services/entityService";
+import { PAGINATION, parsePaginationParams } from "@/config/pagination";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -12,38 +11,14 @@ export async function GET(
   try {
     await connect();
     await isAuthenticated(request);
-
-    const employees: TEmployeeData[] = await Employee.find({
-      published: true,
-      company: params.id,
-    })
-      .select("name company documents")
-      .populate("company");
-
-    const data: TEmployeeList[] = [];
-
-    employees.forEach((employee) => {
-      const { expiryDate, docsCount } = processDocuments(employee.documents);
-      const status = calculateStatus(expiryDate);
-      data.push({
-        id: employee._id,
-        name: employee.name,
-        company: employee.company,
-        expiryDate,
-        docs: docsCount,
-        status,
-      });
-    });
-
-    data.sort((a, b) =>
-      a.expiryDate === "---"
-        ? 1
-        : b.expiryDate === "---"
-          ? -1
-          : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
+    
+    const { page, limit } = parsePaginationParams(
+      request.nextUrl.searchParams,
+      PAGINATION.LIMITS.ENTITY_LIST
     );
+    const response = await listEmployeesByCompanyEntity(params.id, page, limit);
 
-    return Response.json({ count: employees.length, data }, { status: 200 });
+    return Response.json(response, { status: 200 });
   } catch (error) {
     console.error("Error fetching employees by company:", error);
     return Response.json(

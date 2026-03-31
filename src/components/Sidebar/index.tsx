@@ -12,6 +12,7 @@ import {
   FiUsers, 
   FiUserPlus, 
   FiFileText, 
+  FiClock,
   FiPieChart, 
   FiTrendingUp, 
   FiTrendingDown,
@@ -150,6 +151,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   Employees
                 </Link>
               </li>
+
+              <li>
+                <Link
+                  href="/individual"
+                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
+                    pathname.includes("individual") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                  }`}
+                >
+                  <FiUsers className="text-xl opacity-70 group-hover:opacity-100" />
+                  Individuals
+                </Link>
+              </li>
               
               {user?.role === "partner" && (
                 <li>
@@ -280,6 +293,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 >
                   <FiTrendingDown className="text-xl opacity-70 group-hover:opacity-100" />
                   Liability
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/documents/expiry"
+                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
+                    pathname === "/documents/expiry" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                  }`}
+                >
+                  <FiClock className="text-xl opacity-70 group-hover:opacity-100" />
+                  Expiry Documents
                 </Link>
               </li>
 

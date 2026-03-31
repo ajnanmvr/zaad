@@ -1,4 +1,4 @@
-import { TEmployeeList } from "@/types/types"
+import { TEntityListItem, TPagination } from "@/types/types"
 import Link from "next/link"
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useState } from "react";
@@ -7,9 +7,19 @@ import SkeletonList from "../common/SkeletonList";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { FiEye, FiTrash2 } from "react-icons/fi";
-import clsx from "clsx";
+import formatDate from "@/utils/formatDate";
 
-function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | null | undefined, isLoading?: boolean }) {
+function EmployeeList({
+    employees,
+    isLoading,
+    pagination,
+    onPageChange,
+}: {
+    employees: TEntityListItem[] | null | undefined,
+    isLoading?: boolean,
+    pagination?: TPagination,
+    onPageChange?: (page: number) => void,
+}) {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
     const queryClient = useQueryClient();
@@ -54,13 +64,13 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                     <>
                         <div className="mt-4 flex justify-around rounded-t-lg bg-slate-50 text-left font-medium text-slate-800 dark:bg-slate-800/50 dark:text-slate-200">
                             <div className="min-w-[220px] px-4 py-4 xl:pl-11">Name</div>
-                            <div className="min-w-[150px] px-4 py-4">Expiry Date</div>
-                            <div className="min-w-[120px] px-4 py-4">Status</div>
+                            <div className="min-w-[150px] px-4 py-4">Created</div>
                             <div className="px-4 py-4">Actions</div>
                         </div>
                         <SkeletonList />
                     </>
                 ) : (
+                    <>
                     <table className="mt-2 w-full text-left">
                         <thead>
                             <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -68,10 +78,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                                     Name
                                 </th>
                                 <th className="min-w-[150px] px-4 pb-3">
-                                    Expiry Date
-                                </th>
-                                <th className="min-w-[120px] px-4 pb-3">
-                                    Status
+                                    Created
                                 </th>
                                 <th className="px-4 pb-3 text-center">
                                     Actions
@@ -79,7 +86,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                             </tr>
                         </thead>
                         <tbody>
-                            {employees?.map(({ id, name, expiryDate, docs, status, company }, key) => (
+                            {employees?.map(({ id, name, company, createdAt }, key) => (
                                 <tr 
                                     key={key}
                                     className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
@@ -97,20 +104,7 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
-                                        {expiryDate}
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span
-                                            className={clsx(
-                                                "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
-                                                status === "valid" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" : 
-                                                status === "expired" ? "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20" : 
-                                                status === "renewal" ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20" : 
-                                                "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/20"
-                                            )}
-                                        >
-                                            {status}
-                                        </span>
+                                        {formatDate(createdAt || null)}
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center justify-center space-x-2">
@@ -134,6 +128,32 @@ function EmployeeList({ employees, isLoading }: { employees: TEmployeeList[] | n
                             ))}
                         </tbody>
                     </table>
+                    {pagination && onPageChange && (
+                        <div className="mt-4 flex items-center justify-between">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Page {pagination.page} of {pagination.totalPages}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onPageChange(Math.max(pagination.page - 1, 1))}
+                                    disabled={pagination.page <= 1}
+                                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onPageChange(pagination.page + 1)}
+                                    disabled={pagination.page >= pagination.totalPages}
+                                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    </>
                 )}
             </div>
         </div>

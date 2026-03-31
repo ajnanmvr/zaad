@@ -1,8 +1,12 @@
 import connect from "@/db/mongo";
-import Employee from "@/models/employees";
-import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
 import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { getEmployeeEntityById } from "@/services/entityService";
+import {
+  deleteEntityDocument,
+  updateEntityDocument,
+} from "@/services/entityDocumentService";
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
@@ -13,21 +17,22 @@ export async function PUT(
 
     const { id, doc } = params;
     const { name, issueDate, expiryDate, attachment } = await request.json();
-    const Data = await Employee.findById(id);
+    const employee = await getEmployeeEntityById(id);
+    if (!employee) {
+      return Response.json({ message: "Employee not found" }, { status: 404 });
+    }
 
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
+    const data = await updateEntityDocument(id, doc, {
+      name,
+      issueDate,
+      expiryDate,
+      attachment,
+    });
+
     if (!data) {
-      return Response.json({ message: "Employee not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
-    if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
-    }
-    if (name) data.documents[documentIndex].name = name;
-    if (issueDate) data.documents[documentIndex].issueDate = issueDate;
-    if (expiryDate) data.documents[documentIndex].expiryDate = expiryDate;
-    if (attachment) data.documents[documentIndex].attachment = attachment;
 
-    await data.save();
     return Response.json({ message: "Document updated successfully", data });
   } catch (err) {
     console.error(err);
@@ -44,20 +49,15 @@ export async function DELETE(
     await isAuthenticated(request);
 
     const { id, doc } = params;
-    const Data = await Employee.findById(id);
+    const employee = await getEmployeeEntityById(id);
+    if (!employee) {
+      return Response.json({ message: "Employee not found" }, { status: 404 });
+    }
 
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
+    const data = await deleteEntityDocument(id, doc);
     if (!data) {
-      return Response.json({ message: "Employee not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
-
-    if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
-    }
-
-    data.documents.splice(documentIndex, 1);
-
-    await data.save();
 
     return Response.json({ message: "Document deleted successfully" });
   } catch (err) {
