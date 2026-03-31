@@ -1,8 +1,9 @@
 import connect from "@/db/mongo";
 import { isPartner } from "@/helpers/isAuthenticated";
-import { getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 import { PAGINATION } from "@/config/pagination";
+import { listUserActivityHistory } from "@/services/userService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 // GET - Get user activity history (partners only)
 export async function GET(
@@ -20,15 +21,15 @@ export async function GET(
             searchParams.get("limit") || String(PAGINATION.LIMITS.USER_ACTIVITY)
         );
 
-        const result = await getUserActivityHistory(id, page, limit);
+        const result = await listUserActivityHistory(id, page, limit);
 
         return Response.json(result, { status: 200 });
 
     } catch (error) {
         console.error("Error fetching user activity history:", error);
         return Response.json(
-            { error: "Failed to fetch activity history" },
-            { status: 500 }
+            { error: getServiceErrorMessage(error, "Failed to fetch activity history") },
+            { status: getServiceErrorStatus(error) }
         );
     }
 }
