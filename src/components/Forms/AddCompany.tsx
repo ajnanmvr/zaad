@@ -8,10 +8,6 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiBriefcase, FiLock, FiFileText } from "react-icons/fi";
 import clsx from "clsx";
-import {
-    CREDENTIAL_CATEGORY_OPTIONS,
-    DOCUMENT_CATEGORY_OPTIONS,
-} from "@/config/entityCategories";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
@@ -26,6 +22,8 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         useState<Record<string, string[]>>({});
     const [credentialPlatformOptionsByCategory, setCredentialPlatformOptionsByCategory] =
         useState<Record<string, string[]>>({});
+    const [documentCategoryOptions, setDocumentCategoryOptions] = useState<string[]>([]);
+    const [credentialCategoryOptions, setCredentialCategoryOptions] = useState<string[]>([]);
 
     const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
 
@@ -61,6 +59,24 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         }
     }, [credentialPlatformOptionsByCategory, documentNameOptionsByCategory]);
 
+    const fetchCategoryLists = useCallback(async () => {
+        try {
+            const [documentRes, credentialRes] = await Promise.all([
+                axios.get("/api/categories", { params: { type: "document" } }),
+                axios.get("/api/categories", { params: { type: "credential" } }),
+            ]);
+
+            setDocumentCategoryOptions(
+                Array.isArray(documentRes.data?.options) ? documentRes.data.options : []
+            );
+            setCredentialCategoryOptions(
+                Array.isArray(credentialRes.data?.options) ? credentialRes.data.options : []
+            );
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    }, []);
+
     const { data } = useQuery<any>({
         queryKey: [`${edit}`], queryFn: async () => {
             const { data } = await axios.get(`/api/company/${edit}`);
@@ -83,6 +99,10 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             setisEditMode(false)
         }
     }, [edit, data])
+
+    useEffect(() => {
+        void fetchCategoryLists();
+    }, [fetchCategoryLists]);
 
     useEffect(() => {
         const documentCategories = Array.from(
@@ -184,6 +204,9 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
 
     const handleDocumentChange = (index: number, field: string, value: string | Date) => {
         const updatedDocuments = [...companyData.documents];
+        if (field === "category") {
+            updatedDocuments[index].name = "";
+        }
         updatedDocuments[index][field] = value;
         setCompanyData({ ...companyData, documents: updatedDocuments });
     };
@@ -520,20 +543,24 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                             Document Name <span className="text-rose-500">*</span>
                                         </label>
-                                        <input
-                                            type="text"
+                                        <select
+                                            title="Select document name"
                                             required
-                                            list={`company-document-name-options-${index}`}
                                             value={doc?.name || ""}
                                             onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
-                                            placeholder="e.g. Trade License"
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                        <datalist id={`company-document-name-options-${index}`}>
+                                        >
+                                            <option value="" disabled>
+                                                {doc?.category ? "Select document" : "Select category first"}
+                                            </option>
                                             {(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).map((option) => (
-                                                <option key={option} value={option} />
+                                                <option key={option} value={option}>{option}</option>
                                             ))}
-                                        </datalist>
+                                            {doc?.name &&
+                                                !(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).includes(doc.name) && (
+                                                    <option value={doc.name}>{doc.name}</option>
+                                            )}
+                                        </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -558,6 +585,18 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                             />
                                         </div>
                                     </div>
+                                    <div className="mt-4">
+                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                            Notes
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            value={doc?.notes || ""}
+                                            onChange={(e) => handleDocumentChange(index, 'notes', e.target.value)}
+                                            placeholder="Optional notes"
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
+                                        />
+                                    </div>
                                 </div>
                             ))}
 
@@ -569,12 +608,12 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                 Add Document
                             </button>
                             <datalist id="company-document-category-options">
-                                {DOCUMENT_CATEGORY_OPTIONS.map((category) => (
+                                {documentCategoryOptions.map((category) => (
                                     <option key={category} value={category} />
                                 ))}
                             </datalist>
                             <datalist id="company-credential-category-options">
-                                {CREDENTIAL_CATEGORY_OPTIONS.map((category) => (
+                                {credentialCategoryOptions.map((category) => (
                                     <option key={category} value={category} />
                                 ))}
                             </datalist>

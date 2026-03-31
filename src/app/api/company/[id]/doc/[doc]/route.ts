@@ -15,7 +15,7 @@ export async function PUT(
     await connect();
     await requirePermission(request, "documents.write");
     const { id, doc } = params;
-    const { category, name, issueDate, expiryDate, attachment } =
+    const { category, name, issueDate, expiryDate, notes } =
       await request.json();
     const company = await getCompanyEntityById(id);
     if (!company) {
@@ -27,7 +27,7 @@ export async function PUT(
       name,
       issueDate,
       expiryDate,
-      attachment,
+      notes,
     });
 
     if (!data) {

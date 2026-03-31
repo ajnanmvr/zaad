@@ -10,7 +10,6 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
-import { DOCUMENT_CATEGORY_OPTIONS } from "@/config/entityCategories";
 
 const ExpiryDocumentsPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
@@ -27,13 +26,13 @@ const ExpiryDocumentsPage = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const categories = useMemo(() => {
-    const merged = [
-      ...DOCUMENT_CATEGORY_OPTIONS,
-      ...rows
-        .map((item) => item?.category?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ];
-    return Array.from(new Set(merged));
+    return Array.from(
+      new Set(
+        rows
+          .map((item) => item?.category?.trim())
+          .filter((value): value is string => Boolean(value))
+      )
+    );
   }, [rows]);
 
   const filteredRows = useMemo(() => {

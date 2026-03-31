@@ -41,7 +41,7 @@ export type TDocuments = {
   status?: string;
   issueDate?: string;
   expiryDate: string;
-  attachment?: string;
+  notes?: string;
 };
 
 export type TCompanyList = {
@@ -87,7 +87,7 @@ export type TExpiryDocumentItem = {
   name?: string;
   issueDate?: string;
   expiryDate?: string;
-  attachment?: string;
+  notes?: string;
   status: "valid" | "expired" | "renewal" | "unknown";
   daysLeft: number | null;
   entity: {

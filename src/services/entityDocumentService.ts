@@ -8,7 +8,7 @@ type DocumentInput = {
   name?: string;
   issueDate?: string;
   expiryDate?: string;
-  attachment?: string;
+  notes?: string;
 };
 
 function calculateDaysLeft(expiryDate?: string) {
@@ -38,14 +38,14 @@ export async function replaceEntityDocuments(entityId: string, documents: Docume
       name: doc?.name,
       issueDate: doc?.issueDate,
       expiryDate: doc?.expiryDate,
-      attachment: doc?.attachment,
+      notes: doc?.notes,
     }))
   );
 }
 
 export async function listEntityDocuments(entityId: string) {
   return EntityDocument.find({ entity: entityId }).select(
-    "category name issueDate expiryDate attachment"
+    "category name issueDate expiryDate notes"
   );
 }
 
@@ -56,7 +56,7 @@ export async function createEntityDocument(entityId: string, payload: DocumentIn
     name: payload?.name,
     issueDate: payload?.issueDate,
     expiryDate: payload?.expiryDate,
-    attachment: payload?.attachment,
+    notes: payload?.notes,
   });
 }
 
@@ -72,7 +72,7 @@ export async function updateEntityDocument(
       ...(payload.name !== undefined ? { name: payload.name } : {}),
       ...(payload.issueDate !== undefined ? { issueDate: payload.issueDate } : {}),
       ...(payload.expiryDate !== undefined ? { expiryDate: payload.expiryDate } : {}),
-      ...(payload.attachment !== undefined ? { attachment: payload.attachment } : {}),
+      ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
     },
     { new: true }
   );
@@ -92,7 +92,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
 
   const [documents, total] = await Promise.all([
     EntityDocument.find({})
-      .select("entity category name issueDate expiryDate attachment")
+      .select("entity category name issueDate expiryDate notes")
       .sort({ expiryDate: 1, createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
@@ -120,7 +120,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
       name: doc.name,
       issueDate: doc.issueDate,
       expiryDate: doc.expiryDate,
-      attachment: doc.attachment,
+      notes: doc.notes,
       status,
       daysLeft: calculateDaysLeft(doc.expiryDate),
       entity: {

@@ -82,6 +82,7 @@ export async function GET(
       name: document.name,
       issueDate: document.issueDate,
       expiryDate: document.expiryDate,
+      notes: document.notes,
       status: calculateStatus(document.expiryDate),
     }));
 

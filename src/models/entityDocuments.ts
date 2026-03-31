@@ -8,13 +8,11 @@ const EntityDocumentSchema = new Schema(
       required: true,
       index: true,
     },
-    category: String,
-    name: String,
     issueDate: String,
     expiryDate: String,
-    attachment: String,
+    notes: String,
   },
-  { timestamps: true, collection: "documents" }
+  { timestamps: true, collection: "documents" },
 );
 
 const EntityDocument =

@@ -3,6 +3,8 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import EntityDocument from "@/models/entityDocuments";
 import EntityCredential from "@/models/entityCredentials";
+import DocumentTemplate from "@/models/documentTemplates";
+import CredentialTemplate from "@/models/credentialTemplates";
 
 function normalizeValues(values: unknown[]) {
   const cleaned = values
@@ -27,12 +29,24 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === "document") {
-      const values = await EntityDocument.distinct("name", { category });
+      let values = await DocumentTemplate.distinct("name", {
+        published: true,
+        category,
+      });
+      if (!values.length) {
+        values = await EntityDocument.distinct("name", { category });
+      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 
     if (type === "credential") {
-      const values = await EntityCredential.distinct("platform", { category });
+      let values = await CredentialTemplate.distinct("platform", {
+        published: true,
+        category,
+      });
+      if (!values.length) {
+        values = await EntityCredential.distinct("platform", { category });
+      }
       return Response.json({ options: normalizeValues(values) }, { status: 200 });
     }
 

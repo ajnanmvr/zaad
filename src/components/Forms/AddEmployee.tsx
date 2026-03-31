@@ -10,10 +10,6 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiUser, FiLock, FiFileText } from "react-icons/fi";
 import clsx from "clsx";
-import {
-    CREDENTIAL_CATEGORY_OPTIONS,
-    DOCUMENT_CATEGORY_OPTIONS,
-} from "@/config/entityCategories";
 
 const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
     const router = useRouter()
@@ -28,6 +24,8 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         useState<Record<string, string[]>>({});
     const [credentialPlatformOptionsByCategory, setCredentialPlatformOptionsByCategory] =
         useState<Record<string, string[]>>({});
+    const [documentCategoryOptions, setDocumentCategoryOptions] = useState<string[]>([]);
+    const [credentialCategoryOptions, setCredentialCategoryOptions] = useState<string[]>([]);
 
     const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
 
@@ -63,6 +61,24 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         }
     }, [credentialPlatformOptionsByCategory, documentNameOptionsByCategory]);
 
+    const fetchCategoryLists = useCallback(async () => {
+        try {
+            const [documentRes, credentialRes] = await Promise.all([
+                axios.get("/api/categories", { params: { type: "document" } }),
+                axios.get("/api/categories", { params: { type: "credential" } }),
+            ]);
+
+            setDocumentCategoryOptions(
+                Array.isArray(documentRes.data?.options) ? documentRes.data.options : []
+            );
+            setCredentialCategoryOptions(
+                Array.isArray(credentialRes.data?.options) ? credentialRes.data.options : []
+            );
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    }, []);
+
     useEffect(() => {
         if (company) {
             setEmployeeData((prev: any) => ({ ...prev, company }))
@@ -88,6 +104,10 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
             setisEditMode(false)
         }
     }, [edit, data])
+
+    useEffect(() => {
+        void fetchCategoryLists();
+    }, [fetchCategoryLists]);
 
     useEffect(() => {
         const documentCategories = Array.from(
@@ -205,7 +225,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
 
     const handleAddDocument = (e: React.MouseEvent) => {
         e.preventDefault()
-        const documents = { category: "", name: "", issueDate: "", expiryDate: "", attachment: "" }
+        const documents = { category: "", name: "", issueDate: "", expiryDate: "", notes: "" }
         if (!employeeData.documents) {
             setEmployeeData({ ...employeeData, documents: [documents] })
         } else {
@@ -217,6 +237,9 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const handleDocumentChange = (index: number, field: string, value: string | Date) => {
         const updatedDocuments = [...(employeeData.documents || [])];
         if (updatedDocuments[index]) {
+            if (field === "category") {
+                updatedDocuments[index].name = "";
+            }
             updatedDocuments[index][field] = value;
             setEmployeeData({ ...employeeData, documents: updatedDocuments });
         }
@@ -545,20 +568,24 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                         <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                             Document Name <span className="text-rose-500">*</span>
                                         </label>
-                                        <input
-                                            type="text"
+                                        <select
+                                            title="Select document name"
                                             required
-                                            list={`employee-document-name-options-${index}`}
                                             value={doc?.name || ""}
                                             onChange={(e) => handleDocumentChange(index, 'name', e.target.value)}
-                                            placeholder="e.g. Visa, Passport"
                                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                        <datalist id={`employee-document-name-options-${index}`}>
+                                        >
+                                            <option value="" disabled>
+                                                {doc?.category ? "Select document" : "Select category first"}
+                                            </option>
                                             {(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).map((option) => (
-                                                <option key={option} value={option} />
+                                                <option key={option} value={option}>{option}</option>
                                             ))}
-                                        </datalist>
+                                            {doc?.name &&
+                                                !(documentNameOptionsByCategory[normalizeCategoryKey(doc?.category || "")] || []).includes(doc.name) && (
+                                                    <option value={doc.name}>{doc.name}</option>
+                                            )}
+                                        </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -583,6 +610,18 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                             />
                                         </div>
                                     </div>
+                                    <div className="mt-4">
+                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                            Notes
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            value={doc?.notes || ""}
+                                            onChange={(e) => handleDocumentChange(index, 'notes', e.target.value)}
+                                            placeholder="Optional notes"
+                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
+                                        />
+                                    </div>
                                 </div>
                             ))}
 
@@ -594,12 +633,12 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                 Add Document
                             </button>
                             <datalist id="employee-document-category-options">
-                                {DOCUMENT_CATEGORY_OPTIONS.map((category) => (
+                                {documentCategoryOptions.map((category) => (
                                     <option key={category} value={category} />
                                 ))}
                             </datalist>
                             <datalist id="employee-credential-category-options">
-                                {CREDENTIAL_CATEGORY_OPTIONS.map((category) => (
+                                {credentialCategoryOptions.map((category) => (
                                     <option key={category} value={category} />
                                 ))}
                             </datalist>

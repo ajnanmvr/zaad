@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:rbac": "node scripts/rbac-matrix-check.mjs",
-    "seed:roles": "node scripts/seed-system-roles.mjs"
+    "seed:roles": "node scripts/seed-system-roles.mjs",
+    "migrate:category-templates": "node scripts/migrate-category-templates.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.63.0",

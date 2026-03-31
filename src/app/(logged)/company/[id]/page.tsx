@@ -5,10 +5,9 @@ import { TCompanyData } from "@/types/types";
 import axios from "axios";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiMoreVertical, FiEdit2, FiTrash2, FiFileText, FiBriefcase, FiLock } from "react-icons/fi";
 import clsx from "clsx";
-import { CREDENTIAL_CATEGORY_OPTIONS, DOCUMENT_CATEGORY_OPTIONS } from "@/config/entityCategories";
 
 const SingleCompany = () => {
   const router = useRouter()
@@ -22,6 +21,7 @@ const SingleCompany = () => {
     name: "",
     issueDate: "",
     expiryDate: "",
+    notes: "",
   });
   const [isConfirmationOpenCompany, setIsConfirmationOpenCompany] = useState(false);
   const { id }: { id: string } = useParams()
@@ -34,25 +34,49 @@ const SingleCompany = () => {
   const companyDocuments = useMemo(() => company?.documents || [], [company]);
   const [documentCategoryFilter, setDocumentCategoryFilter] = useState("all");
   const [credentialCategoryFilter, setCredentialCategoryFilter] = useState("all");
+  const [documentNameOptionsByCategory, setDocumentNameOptionsByCategory] =
+    useState<Record<string, string[]>>({});
+
+  const normalizeCategoryKey = (value: string) => value.trim().toLowerCase();
+
+  const fetchDocumentNameOptions = useCallback(async (category: string) => {
+    const trimmed = category.trim();
+    if (!trimmed) return;
+
+    const key = normalizeCategoryKey(trimmed);
+    if (documentNameOptionsByCategory[key]) {
+      return;
+    }
+
+    try {
+      const { data } = await axios.get("/api/categories/names", {
+        params: { type: "document", category: trimmed },
+      });
+      const options: string[] = Array.isArray(data?.options) ? data.options : [];
+      setDocumentNameOptionsByCategory((prev) => ({ ...prev, [key]: options }));
+    } catch (error) {
+      console.error("Error fetching document name options:", error);
+    }
+  }, [documentNameOptionsByCategory]);
 
   const documentCategories = useMemo(() => {
-    const merged = [
-      ...DOCUMENT_CATEGORY_OPTIONS,
-      ...companyDocuments
-        .map((doc) => doc?.category?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ];
-    return Array.from(new Set(merged));
+    return Array.from(
+      new Set(
+        companyDocuments
+          .map((doc) => doc?.category?.trim())
+          .filter((value): value is string => Boolean(value))
+      )
+    );
   }, [companyDocuments]);
 
   const credentialCategories = useMemo(() => {
-    const merged = [
-      ...CREDENTIAL_CATEGORY_OPTIONS,
-      ...companyCredentials
-        .map((credential) => credential?.category?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ];
-    return Array.from(new Set(merged));
+    return Array.from(
+      new Set(
+        companyCredentials
+          .map((credential) => credential?.category?.trim())
+          .filter((value): value is string => Boolean(value))
+      )
+    );
   }, [companyCredentials]);
 
   const filteredCompanyDocuments = useMemo(() => {
@@ -96,9 +120,11 @@ const SingleCompany = () => {
         name: `${selectedDocument.name}`,
         issueDate: `${selectedDocument.issueDate}`,
         expiryDate: `${selectedDocument.expiryDate}`,
+        notes: `${selectedDocument.notes || ""}`,
       });
       setSelectedDocumentId(editId);
       setIsEditDocsOpen(true);
+      void fetchDocumentNameOptions(selectedDocument.category || "");
     } else {
       console.error("Document not found!");
     }
@@ -128,6 +154,16 @@ const SingleCompany = () => {
 
   }
   const handleChange = (e: any) => {
+    if (e.target.name === "category") {
+      void fetchDocumentNameOptions(e.target.value || "");
+      setEditData({
+        ...editData,
+        category: e.target.value,
+        name: "",
+      });
+      return;
+    }
+
     setEditData({
       ...editData, [e.target.name]: e.target.value
     })
@@ -166,6 +202,20 @@ const SingleCompany = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const categories = Array.from(
+      new Set(
+        companyDocuments
+          .map((doc) => doc?.category?.trim())
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+
+    categories.forEach((category) => {
+      void fetchDocumentNameOptions(category);
+    });
+  }, [companyDocuments, fetchDocumentNameOptions]);
 
   return (
     <>
@@ -211,15 +261,25 @@ const SingleCompany = () => {
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Document Name <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
+                    title="Select document name"
                     name="name"
                     required
                     value={editData.name}
                     onChange={handleChange}
-                    placeholder="Enter document name"
                     className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
-                  />
+                  >
+                    <option value="" disabled>
+                      {editData.category ? "Select document" : "Select category first"}
+                    </option>
+                    {(documentNameOptionsByCategory[normalizeCategoryKey(editData.category || "")] || []).map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                    {editData.name &&
+                      !(documentNameOptionsByCategory[normalizeCategoryKey(editData.category || "")] || []).includes(editData.name) && (
+                        <option value={editData.name}>{editData.name}</option>
+                    )}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-5 sm:flex-row">
                   <div className="w-full sm:w-1/2">
@@ -247,6 +307,19 @@ const SingleCompany = () => {
                       className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    name="notes"
+                    value={editData.notes}
+                    onChange={handleChange}
+                    placeholder="Optional notes"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary"
+                  />
                 </div>
               </div>
 
@@ -490,12 +563,13 @@ const SingleCompany = () => {
                         <th className="min-w-[220px] pb-3 pl-4">Document Name</th>
                         <th className="min-w-[150px] pb-3 px-4">Issue Date</th>
                         <th className="min-w-[150px] pb-3 px-4">Expiry Date</th>
+                        <th className="min-w-[220px] pb-3 px-4">Notes</th>
                         <th className="min-w-[120px] pb-3 px-4">Status</th>
                         <th className="pb-3 px-4 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCompanyDocuments.map(({ category, name, status, issueDate, expiryDate, _id }, key) => (
+                      {filteredCompanyDocuments.map(({ category, name, status, issueDate, expiryDate, notes, _id }, key) => (
                         <tr 
                           key={key} 
                           className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
@@ -513,6 +587,9 @@ const SingleCompany = () => {
                           </td>
                           <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                             {expiryDate || "---"}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                            {notes || "---"}
                           </td>
                           <td className="px-4 py-4">
                             <span
