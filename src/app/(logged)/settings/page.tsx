@@ -88,6 +88,14 @@ const SettingsPage = () => {
                                     Manage Roles
                                 </Link>
                             )}
+                            {Array.isArray(user?.permissions) && user.permissions.includes("settings.read") && (
+                                <Link
+                                    href="/settings/permissions"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                                >
+                                    Permission Matrix
+                                </Link>
+                            )}
                             {Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read") && (
                                 <Link
                                     href="/users/activity"

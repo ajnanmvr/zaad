@@ -5,6 +5,7 @@ import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type RoleView = {
@@ -14,13 +15,17 @@ type RoleView = {
   isSystem?: boolean;
 };
 
+type PermissionCatalogResponse = {
+  groups: Record<string, string[]>;
+};
+
 const RolesPage = () => {
   const { user } = useUserContext();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [permissionsInput, setPermissionsInput] = useState("");
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [editingRoleName, setEditingRoleName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -40,24 +45,36 @@ const RolesPage = () => {
     enabled: canManageRoles,
   });
 
+  const permissionsQuery = useQuery({
+    queryKey: ["permissions-catalog-for-roles"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/permissions");
+      return data as PermissionCatalogResponse;
+    },
+    enabled: canManageRoles,
+  });
+
   const roles = useMemo(() => query.data || [], [query.data]);
 
   const resetForm = () => {
     setName("");
     setDescription("");
-    setPermissionsInput("");
+    setSelectedPermissions([]);
     setEditingRoleName(null);
+  };
+
+  const togglePermission = (permission: string) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(permission)
+        ? prev.filter((item) => item !== permission)
+        : [...prev, permission]
+    );
   };
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
 
-    const parsedPermissions = permissionsInput
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    if (!name.trim() || parsedPermissions.length === 0) {
+    if (!name.trim() || selectedPermissions.length === 0) {
       return;
     }
 
@@ -66,13 +83,13 @@ const RolesPage = () => {
       if (editingRoleName) {
         await axios.put(`/api/roles/${encodeURIComponent(editingRoleName)}`, {
           description: description.trim(),
-          permissions: parsedPermissions,
+          permissions: selectedPermissions,
         });
       } else {
         await axios.post("/api/roles", {
           name: name.trim(),
           description: description.trim(),
-          permissions: parsedPermissions,
+          permissions: selectedPermissions,
         });
       }
 
@@ -87,7 +104,7 @@ const RolesPage = () => {
     setEditingRoleName(role.name);
     setName(role.name);
     setDescription(role.description || "");
-    setPermissionsInput(role.permissions.join(", "));
+    setSelectedPermissions(role.permissions);
   };
 
   const handleDelete = async (roleName: string) => {
@@ -107,9 +124,19 @@ const RolesPage = () => {
     );
   }
 
+  const permissionGroups = permissionsQuery.data?.groups || {};
+
   return (
     <>
       <Breadcrumb pageName="Role Management" />
+      <div className="mb-4">
+        <Link
+          href="/settings/permissions"
+          className="inline-flex rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        >
+          Open Permission Matrix
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 xl:col-span-5">
@@ -136,13 +163,30 @@ const RolesPage = () => {
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium">Permissions</label>
-              <textarea
-                className="min-h-28 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-                value={permissionsInput}
-                onChange={(e) => setPermissionsInput(e.target.value)}
-                placeholder="users.read, users.create, invoice.read"
-              />
-              <p className="mt-1 text-xs text-slate-500">Comma separated permission keys.</p>
+              <div className="max-h-64 space-y-3 overflow-y-auto rounded-lg border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                {Object.entries(permissionGroups).map(([group, permissions]) => (
+                  <div key={group}>
+                    <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {group}
+                    </h3>
+                    <div className="grid grid-cols-1 gap-2">
+                      {permissions.map((permission) => (
+                        <label key={permission} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selectedPermissions.includes(permission)}
+                            onChange={() => togglePermission(permission)}
+                          />
+                          {permission}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {selectedPermissions.length} permission{selectedPermissions.length === 1 ? "" : "s"} selected.
+              </p>
             </div>
             <button
               type="submit"

@@ -23,9 +23,10 @@ const EditUserPage = () => {
     const [userData, setUserData] = useState<UserData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const canReadUsers = Array.isArray(user?.permissions) && user.permissions.includes("users.read");
+    const canUpdateUsers = Array.isArray(user?.permissions) && user.permissions.includes("users.update");
 
     useEffect(() => {
-        if (user && !canReadUsers) {
+        if (user && (!canReadUsers || !canUpdateUsers)) {
             router.push("/");
             return;
         }
@@ -44,12 +45,12 @@ const EditUserPage = () => {
             }
         };
 
-        if (user && canReadUsers && userId) {
+        if (user && canReadUsers && canUpdateUsers && userId) {
             fetchUser();
         }
-    }, [user, canReadUsers, router, userId]);
+    }, [user, canReadUsers, canUpdateUsers, router, userId]);
 
-    if (!user || !canReadUsers) {
+    if (!user || !canReadUsers || !canUpdateUsers) {
         return (
             <>
                 <div className="flex justify-center items-center min-h-64">

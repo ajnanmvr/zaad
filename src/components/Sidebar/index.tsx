@@ -17,7 +17,8 @@ import {
   FiTrendingUp, 
   FiTrendingDown,
   FiBookOpen,
-  FiFolderPlus
+  FiFolderPlus,
+  FiShield
 } from "react-icons/fi";
 
 interface SidebarProps {
@@ -176,6 +177,32 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   >
                     <FiUserPlus className="text-xl opacity-70 group-hover:opacity-100" />
                     System Users
+                  </Link>
+                </li>
+              )}
+              {can("roles.manage") && (
+                <li>
+                  <Link
+                    href="/settings/roles"
+                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
+                      pathname === "/settings/roles" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                    }`}
+                  >
+                    <FiShield className="text-xl opacity-70 group-hover:opacity-100" />
+                    Role Management
+                  </Link>
+                </li>
+              )}
+              {can("settings.read") && (
+                <li>
+                  <Link
+                    href="/settings/permissions"
+                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
+                      pathname === "/settings/permissions" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                    }`}
+                  >
+                    <FiShield className="text-xl opacity-70 group-hover:opacity-100" />
+                    Permission Matrix
                   </Link>
                 </li>
               )}
