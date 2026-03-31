@@ -37,7 +37,7 @@ async function run() {
   const companiesCol = db.collection("companies");
   const employeesCol = db.collection("employees");
   const entitiesCol = db.collection("entities");
-  const docsCol = db.collection("entityDocuments");
+  const docsCol = db.collection("documents");
   const credsCol = db.collection("credentials");
 
   const [legacyCompanies, legacyEmployees] = await Promise.all([

@@ -13,11 +13,11 @@ const EntityDocumentSchema = new Schema(
     expiryDate: String,
     attachment: String,
   },
-  { timestamps: true }
+  { timestamps: true, collection: "documents" }
 );
 
 const EntityDocument =
-  (mongoose.models.entityDocuments as Model<any>) ||
-  mongoose.model("entityDocuments", EntityDocumentSchema);
+  (mongoose.models.documents as Model<any>) ||
+  mongoose.model("documents", EntityDocumentSchema);
 
 export default EntityDocument;

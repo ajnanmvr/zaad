@@ -68,6 +68,20 @@ function toObjectId(id) {
   return typeof id === "string" ? new mongoose.Types.ObjectId(id) : id;
 }
 
+async function resolveCollection(db, preferred, fallbacks = []) {
+  const names = [preferred, ...fallbacks];
+  const existing = await db.listCollections({}, { nameOnly: true }).toArray();
+  const existingSet = new Set(existing.map((item) => item.name));
+
+  for (const name of names) {
+    if (existingSet.has(name)) {
+      return db.collection(name);
+    }
+  }
+
+  return db.collection(preferred);
+}
+
 async function run() {
   loadEnvLocal();
 
@@ -81,10 +95,13 @@ async function run() {
   const db = mongoose.connection.db;
   const legacyCompanies = db.collection("companies");
   const legacyEmployees = db.collection("employees");
-  const legacyEntityPasswords = db.collection("entityPasswords");
+  const legacyEntityPasswords = await resolveCollection(db, "entitypassword", [
+    "entityPasswords",
+    "entitypasswords",
+  ]);
 
   const entities = db.collection("entities");
-  const entityDocuments = db.collection("entityDocuments");
+  const entityDocuments = db.collection("documents");
   const credentials = db.collection("credentials");
 
   const counters = {
