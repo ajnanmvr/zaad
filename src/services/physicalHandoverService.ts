@@ -42,6 +42,7 @@ export async function listHandovers(page: number, limit: number, search?: string
       entity: {
         id: h.entity?._id,
         name: h.entity?.name,
+        type: h.entity?.entityType,
       },
       documentName: h.documentName,
       receivedAt: h.receivedAt,

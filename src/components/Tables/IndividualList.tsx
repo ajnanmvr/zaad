@@ -7,8 +7,12 @@ import { TEntityListItem, TPaginatedResponse } from "@/types/types";
 import SkeletonList from "../common/SkeletonList";
 import formatDate from "@/utils/formatDate";
 import { PAGINATION } from "@/config/pagination";
+import { FiPlus, FiFileText } from "react-icons/fi";
+import AddHandoverModal from "../Modals/AddHandoverModal";
 
 function IndividualList() {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedIndividual, setSelectedIndividual] = useState<{id: string, name: string} | null>(null);
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const limit = PAGINATION.LIMITS.ENTITY_LIST;
 
@@ -38,6 +42,7 @@ function IndividualList() {
                 <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
                   <th className="min-w-[220px] pb-3 pl-4">Name</th>
                   <th className="min-w-[150px] px-4 pb-3">Created</th>
+                  <th className="px-4 pb-3 text-center">Handover</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,10 +59,33 @@ function IndividualList() {
                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                       {formatDate(individual.createdAt || null)}
                     </td>
+                    <td className="px-4 py-4">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => {
+                            setSelectedIndividual({ id: individual._id!, name: individual.name });
+                            setShowAddModal(true);
+                          }}
+                          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary hover:text-white dark:border-slate-700 dark:text-slate-400 dark:hover:bg-primary dark:hover:text-white"
+                        >
+                          <FiPlus />
+                          Record
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            
+            {showAddModal && selectedIndividual && (
+              <AddHandoverModal
+                isOpen={showAddModal}
+                onSuccess={() => setShowAddModal(false)}
+                onCancel={() => setShowAddModal(false)}
+                initialEntity={{ id: selectedIndividual.id, name: selectedIndividual.name, type: "individual" }}
+              />
+            )}
             <div className="mt-4 flex items-center justify-between">
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Page {pagination?.page || 1} of {pagination?.totalPages || 1}

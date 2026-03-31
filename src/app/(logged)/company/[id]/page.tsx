@@ -10,6 +10,7 @@ import { FiMoreVertical, FiEdit2, FiTrash2, FiFileText, FiBriefcase, FiLock } fr
 import clsx from "clsx";
 import calculateStatus from "@/utils/calculateStatus";
 import calculateDaysLeft from "@/utils/calculateDaysLeft";
+import HandoverList from "@/components/HandoverList";
 
 const SingleCompany = () => {
   const router = useRouter()
@@ -916,7 +917,11 @@ const SingleCompany = () => {
                   No documents yet. <button onClick={handleAddDocument} className="text-primary hover:underline">Add one</button>
                 </div>
               )}
-            </div>
+            <HandoverList 
+              entityId={id} 
+              entityName={company?.name || "Company"} 
+              entityType="company" 
+            />
           </div>
         )}
       </div>

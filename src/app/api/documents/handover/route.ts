@@ -47,8 +47,9 @@ export async function GET(request: NextRequest) {
       PAGINATION.LIMITS.ENTITY_LIST
     );
     const search = request.nextUrl.searchParams.get("search") || undefined;
+    const entityId = request.nextUrl.searchParams.get("entityId") || undefined;
     
-    const response = await listHandovers(page, limit, search);
+    const response = await listHandovers(page, limit, search, entityId);
 
     return Response.json(response, { status: 200 });
   } catch (error: any) {

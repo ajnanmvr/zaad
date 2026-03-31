@@ -40,10 +40,11 @@ export const fetchExpiryDocuments = async (
 export const fetchHandovers = async (
   page: number = PAGINATION.DEFAULT_PAGE,
   limit: number = PAGINATION.LIMITS.ENTITY_LIST,
-  search?: string
+  search?: string,
+  entityId?: string
 ) => {
   const { data } = await axios.get(
-    `/api/documents/handover?page=${page}&limit=${limit}${search ? `&search=${search}` : ""}`
+    `/api/documents/handover?page=${page}&limit=${limit}${search ? `&search=${search}` : ""}${entityId ? `&entityId=${entityId}` : ""}`
   );
   return data;
 };

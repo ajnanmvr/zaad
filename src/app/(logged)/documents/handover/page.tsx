@@ -128,9 +128,16 @@ const HandoverPage = () => {
                         className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                       >
                         <td className="py-4 pl-4">
-                          <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
-                             {entityName}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="font-semibold capitalize text-slate-800 dark:text-white ring-offset-background">
+                               {entityName}
+                            </span>
+                            {item.entity?.type && (
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                                {item.entity.type}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-col">

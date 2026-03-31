@@ -3,7 +3,7 @@ import { TBaseData } from "@/types/types";
 import axios from "axios";
 import clsx from "clsx";
 import { debounce } from "lodash";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiChevronDown, FiUserPlus, FiBriefcase, FiFileText, FiCalendar, FiInfo } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 
@@ -11,9 +11,14 @@ interface AddHandoverModalProps {
   isOpen: boolean;
   onSuccess: () => void;
   onCancel: () => void;
+  initialEntity?: {
+    id: string;
+    name: string;
+    type: string;
+  };
 }
 
-const AddHandoverModal = ({ isOpen, onSuccess, onCancel }: AddHandoverModalProps) => {
+const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHandoverModalProps) => {
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
@@ -25,6 +30,27 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel }: AddHandoverModalProps
     remarks: "",
     receivedAt: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm
   });
+
+  useEffect(() => {
+    if (isOpen && initialEntity) {
+      setSelectedOption(initialEntity.type);
+      setSearchValue(initialEntity.name);
+      setFormData((prev) => ({
+        ...prev,
+        entity: initialEntity.id,
+      }));
+    } else if (isOpen) {
+       // Reset if no initial entity
+       setSelectedOption("");
+       setSearchValue("");
+       setFormData({
+         entity: "",
+         documentName: "",
+         remarks: "",
+         receivedAt: new Date().toISOString().slice(0, 16),
+       });
+    }
+  }, [isOpen, initialEntity]);
 
   const fetchSearchSuggestions = async (
     inputValue: string,
@@ -108,6 +134,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel }: AddHandoverModalProps
               </label>
               <div className="relative z-20">
                 <select
+                  disabled={!!initialEntity}
                   title="Entity Type"
                   value={selectedOption}
                   onChange={(e) => {
@@ -139,7 +166,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel }: AddHandoverModalProps
                 </span>
                 <input
                   type="text"
-                  disabled={!selectedOption}
+                  disabled={!selectedOption || !!initialEntity}
                   value={searchValue}
                   onChange={handleSearchChange}
                   placeholder={selectedOption ? `Search ${selectedOption}...` : "Select type first"}
@@ -147,7 +174,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel }: AddHandoverModalProps
                   autoComplete="off"
                 />
               </div>
-              {searchSuggestions.length > 0 && (
+              {searchSuggestions.length > 0 && !initialEntity && (
                 <ul className="absolute z-30 mt-2 w-full max-h-48 overflow-y-auto rounded-lg border border-stroke bg-white py-1 shadow-lg dark:border-form-strokedark dark:bg-form-input">
                   {searchSuggestions.map((s, key) => (
                     <li

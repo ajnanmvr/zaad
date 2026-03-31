@@ -10,8 +10,13 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
+import { FiPlus, FiFileText } from "react-icons/fi";
+import AddHandoverModal from "@/components/Modals/AddHandoverModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ExpiryDocumentsPage = () => {
+  const queryClient = useQueryClient();
+  const [showAddHandover, setShowAddHandover] = useState(false);
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
 
   const { data, isLoading, isError } = useQuery<
@@ -45,7 +50,30 @@ const ExpiryDocumentsPage = () => {
   return (
     <>
       <Breadcrumb pageName="Expiry Documents" />
+      <AddHandoverModal 
+        isOpen={showAddHandover}
+        onSuccess={() => {
+          setShowAddHandover(false);
+          queryClient.invalidateQueries({ queryKey: ["handovers"] });
+        }}
+        onCancel={() => setShowAddHandover(false)}
+      />
+
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <FiFileText className="text-primary opacity-70" />
+            Expiry Alerts
+          </h3>
+          <button
+            onClick={() => setShowAddHandover(true)}
+            className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-white shadow-lg shadow-primary/20 transition hover:bg-opacity-90"
+          >
+            <FiPlus className="text-xl" />
+            Record Physical Handover
+          </button>
+        </div>
+        
         <div className="max-w-full overflow-x-auto">
           {isLoading ? (
             <div className="flex justify-center py-10">
