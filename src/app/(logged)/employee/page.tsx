@@ -30,6 +30,8 @@ const TablesPage = () => {
           isLoading={employeeLoading}
           pagination={pagination}
           onPageChange={setPage}
+          addEntityHref="/employee/register"
+          addEntityLabel="Add Employee"
         />
       </div>
     </>

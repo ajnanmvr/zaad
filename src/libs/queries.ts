@@ -11,9 +11,31 @@ export const fetchEmployees = async (
 
 export const fetchCompanies = async (
   page: number = PAGINATION.DEFAULT_PAGE,
-  limit: number = PAGINATION.LIMITS.ENTITY_LIST
+  limit: number = PAGINATION.LIMITS.ENTITY_LIST,
+  options?: {
+    search?: string;
+    sortBy?: "newest" | "oldest" | "name-asc" | "name-desc";
+    createdWithinDays?: number;
+  }
 ) => {
-  const { data } = await axios.get(`/api/company?page=${page}&limit=${limit}`);
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  if (options?.search) {
+    params.set("search", options.search);
+  }
+
+  if (options?.sortBy) {
+    params.set("sortBy", options.sortBy);
+  }
+
+  if (typeof options?.createdWithinDays === "number") {
+    params.set("createdWithinDays", String(options.createdWithinDays));
+  }
+
+  const { data } = await axios.get(`/api/company?${params.toString()}`);
   return data;
 };
 

@@ -71,6 +71,11 @@ export type TEntityListItem = {
   entityType: "company" | "employee" | "individual";
   createdAt?: string;
   company?: TBaseData;
+  documentStatusCounts?: {
+    expired: number;
+    renewal: number;
+    valid: number;
+  };
 };
 
 export type TPagination = {

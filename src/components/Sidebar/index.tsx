@@ -4,26 +4,63 @@ import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import SidebarLinkGroup from "./SidebarLinkGroup";
-import { useUserContext } from "@/contexts/UserContext";
-import { 
-  FiHome, 
-  FiBriefcase, 
-  FiUsers, 
-  FiUserPlus, 
-  FiFileText, 
-  FiClock,
-  FiPieChart, 
-  FiTrendingUp, 
-  FiTrendingDown,
+import {
   FiBookOpen,
+  FiBriefcase,
+  FiChevronRight,
+  FiClock,
+  FiFileText,
   FiFolderPlus,
-  FiShield
+  FiHome,
+  FiKey,
+  FiLayers,
+  FiLock,
+  FiPieChart,
+  FiShield,
+  FiTrendingDown,
+  FiTrendingUp,
+  FiUserPlus,
+  FiUsers,
+  FiX,
 } from "react-icons/fi";
+
+import { useUserContext } from "@/contexts/UserContext";
+import SidebarLinkGroup from "./SidebarLinkGroup";
 
 interface SidebarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (arg: boolean) => void;
+}
+
+type NavItemProps = {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+};
+
+function NavItem({ href, icon, label, active }: NavItemProps) {
+  return (
+    <Link
+      href={href}
+      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+        active
+          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+      }`}
+    >
+      <span className="text-lg opacity-80 group-hover:opacity-100">{icon}</span>
+      {label}
+    </Link>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <h3 className="mb-3 ml-4 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+      {title}
+    </h3>
+  );
 }
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
@@ -31,13 +68,11 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const { user } = useUserContext();
   const can = (permission: string) =>
     Array.isArray(user?.permissions) && (user?.permissions as string[]).includes(permission);
-  const trigger = useRef<any>(null);
-  const sidebar = useRef<any>(null);
 
-  let storedSidebarExpanded = "true";
-  const [sidebarExpanded, setSidebarExpanded] = useState(
-    storedSidebarExpanded === null ? false : storedSidebarExpanded === "true"
-  );
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const sidebar = useRef<HTMLElement | null>(null);
+
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
@@ -46,22 +81,25 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
         !sidebarOpen ||
         sidebar.current.contains(target as Node) ||
         trigger.current.contains(target as Node)
-      )
+      ) {
         return;
+      }
       setSidebarOpen(false);
     };
+
     document.addEventListener("click", clickHandler);
     return () => document.removeEventListener("click", clickHandler);
-  });
+  }, [sidebarOpen, setSidebarOpen]);
 
   useEffect(() => {
     const keyHandler = ({ key }: KeyboardEvent) => {
       if (!sidebarOpen || key !== "Escape") return;
       setSidebarOpen(false);
     };
+
     document.addEventListener("keydown", keyHandler);
     return () => document.removeEventListener("keydown", keyHandler);
-  });
+  }, [sidebarOpen, setSidebarOpen]);
 
   useEffect(() => {
     localStorage.setItem("sidebar-expanded", sidebarExpanded.toString());
@@ -75,380 +113,303 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   return (
     <aside
       ref={sidebar}
-      className={`absolute left-0 top-0 z-9999 flex h-screen w-72.5 flex-col overflow-y-hidden bg-white border-r border-slate-200/50 duration-300 ease-linear dark:bg-slate-900/90 dark:backdrop-blur-xl dark:border-slate-800/50 lg:static lg:translate-x-0 ${
+      className={`absolute left-0 top-0 z-9999 flex h-screen w-72.5 flex-col overflow-y-hidden border-r border-slate-200/70 bg-white/85 shadow-2xl shadow-slate-200/40 backdrop-blur-xl duration-300 ease-linear dark:border-slate-800/70 dark:bg-slate-900/90 dark:shadow-none lg:static lg:translate-x-0 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <div className="flex items-center justify-between gap-2 px-6 py-5.5 lg:py-6.5">
-        <Link href="/">
-          <div className="flex items-center gap-3">
-             <Image
+      <div className="border-b border-slate-200/70 px-6 py-5 dark:border-slate-800/80">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <Image
               width={140}
               height={32}
-              src={"/images/logo/logo-dark.svg"}
+              src="/images/logo/logo-dark.svg"
               alt="Logo"
               priority
               className="dark:hidden"
             />
-             <Image
+            <Image
               width={140}
               height={32}
-              src={"/images/logo/logo.svg"}
+              src="/images/logo/logo.svg"
               alt="Logo"
               priority
               className="hidden dark:block drop-shadow-md"
             />
-          </div>
-        </Link>
-        <button
-          ref={trigger}
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-controls="sidebar"
-          aria-expanded={sidebarOpen}
-          className="block lg:hidden text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
-        >
-          <FiHome className="text-xl" />
-        </button>
+          </Link>
+
+          <button
+            ref={trigger}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-controls="sidebar"
+            aria-expanded={sidebarOpen}
+            className="block rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 lg:hidden"
+          >
+            <FiX className="text-xl" />
+          </button>
+        </div>
       </div>
 
-      <div className="no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear">
-        <nav className="mt-2 px-4 py-4 lg:mt-4 lg:px-6">
-          
+      <div className="no-scrollbar flex flex-col overflow-y-auto px-4 py-4">
+        <nav className="space-y-7">
           <div>
-            <h3 className="mb-4 ml-4 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Overview
-            </h3>
-            <ul className="mb-6 flex flex-col gap-1.5">
+            <SectionTitle title="Workspace" />
+            <ul className="space-y-1.5">
               <li>
-                <Link
-                  href="/"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiHome className="text-xl opacity-70 group-hover:opacity-100" />
-                  Dashboard
-                </Link>
+                <NavItem href="/" icon={<FiHome />} label="Dashboard" active={pathname === "/"} />
               </li>
-              
+            </ul>
+          </div>
+
+          <div>
+            <SectionTitle title="Entities" />
+            <ul className="space-y-1.5">
               <li>
-                <Link
+                <NavItem
                   href="/company"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname.includes("company") && !pathname.includes("register") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiBriefcase className="text-xl opacity-70 group-hover:opacity-100" />
-                  Companies
-                </Link>
+                  icon={<FiBriefcase />}
+                  label="Companies"
+                  active={pathname.startsWith("/company") && !pathname.includes("register")}
+                />
               </li>
-              
               <li>
-                <Link
+                <NavItem
                   href="/employee"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname.includes("employee") && !pathname.includes("register") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiUsers className="text-xl opacity-70 group-hover:opacity-100" />
-                  Employees
-                </Link>
+                  icon={<FiUsers />}
+                  label="Employees"
+                  active={pathname.startsWith("/employee") && !pathname.includes("register")}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/individual"
+                  icon={<FiUsers />}
+                  label="Individuals"
+                  active={pathname.startsWith("/individual")}
+                />
               </li>
 
-              <li>
-                <Link
-                  href="/individual"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname.includes("individual") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiUsers className="text-xl opacity-70 group-hover:opacity-100" />
-                  Individuals
-                </Link>
-              </li>
-              
-              {can("users.read") && (
-                <li>
-                  <Link
-                    href="/users"
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                      pathname.includes("users") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                    }`}
-                  >
-                    <FiUserPlus className="text-xl opacity-70 group-hover:opacity-100" />
-                    System Users
-                  </Link>
-                </li>
-              )}
-              {can("roles.manage") && (
-                <li>
-                  <Link
-                    href="/settings/roles"
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                      pathname === "/settings/roles" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                    }`}
-                  >
-                    <FiShield className="text-xl opacity-70 group-hover:opacity-100" />
-                    Role Management
-                  </Link>
-                </li>
-              )}
-              {can("settings.read") && (
-                <li>
-                  <Link
-                    href="/settings/permissions"
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                      pathname === "/settings/permissions" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                    }`}
-                  >
-                    <FiShield className="text-xl opacity-70 group-hover:opacity-100" />
-                    Permission Matrix
-                  </Link>
-                </li>
-              )}
-              
               <SidebarLinkGroup activeCondition={pathname.includes("register")}>
                 {(handleClick, open) => (
-                  <React.Fragment>
+                  <>
                     <Link
                       href="#"
-                      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                        pathname.includes("register") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
+                      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                        pathname.includes("register")
+                          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                       }`}
-                      onClick={(e) => {
-                        e.preventDefault();
+                      onClick={(event) => {
+                        event.preventDefault();
                         sidebarExpanded ? handleClick() : setSidebarExpanded(true);
                       }}
                     >
-                      <FiFolderPlus className="text-xl opacity-70 group-hover:opacity-100" />
-                      Registration
-                      <svg
-                        className={`absolute right-4 top-1/2 -translate-y-1/2 fill-current transition-transform duration-200 ${
-                          open ? "rotate-180" : ""
-                        }`}
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
-                          fill=""
-                        />
-                      </svg>
+                      <FiFolderPlus className="text-lg opacity-80" />
+                      Add Entity
+                      <FiChevronRight
+                        className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                      />
                     </Link>
-                    <div className={`translate transform overflow-hidden ${!open ? "hidden" : ""}`}>
-                      <ul className="mb-2 mt-2 flex flex-col gap-1 pl-11">
+                    <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                      <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
                         <li>
-                          <Link
+                          <NavItem
                             href="/company/register"
-                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:text-slate-800 dark:text-slate-400 dark:hover:text-white ${
-                              pathname === "/company/register" ? "text-primary dark:text-primary font-semibold" : ""
-                            }`}
-                          >
-                            New Company
-                          </Link>
+                            icon={<FiLayers />}
+                            label="New Company"
+                            active={pathname === "/company/register"}
+                          />
                         </li>
                         <li>
-                          <Link
+                          <NavItem
                             href="/employee/register"
-                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:text-slate-800 dark:text-slate-400 dark:hover:text-white ${
-                              pathname === "/employee/register" ? "text-primary dark:text-primary font-semibold" : ""
-                            }`}
-                          >
-                            New Employee
-                          </Link>
+                            icon={<FiUserPlus />}
+                            label="New Employee"
+                            active={pathname === "/employee/register"}
+                          />
                         </li>
                         <li>
-                          <Link
+                          <NavItem
                             href="/individual/register"
-                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:text-slate-800 dark:text-slate-400 dark:hover:text-white ${
-                              pathname === "/individual/register" ? "text-primary dark:text-primary font-semibold" : ""
-                            }`}
-                          >
-                            New Individual
-                          </Link>
+                            icon={<FiUsers />}
+                            label="New Individual"
+                            active={pathname === "/individual/register"}
+                          />
                         </li>
                       </ul>
                     </div>
-                  </React.Fragment>
+                  </>
                 )}
               </SidebarLinkGroup>
             </ul>
           </div>
 
           <div>
-            <h3 className="mb-4 ml-4 mt-8 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Finance
-            </h3>
-            <ul className="mb-6 flex flex-col gap-1.5">
+            <SectionTitle title="Documents & Credentials" />
+            <ul className="space-y-1.5">
+              <li>
+                <NavItem
+                  href="/documents/expiry"
+                  icon={<FiClock />}
+                  label="Expiry Documents"
+                  active={pathname === "/documents/expiry"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/documents/handover"
+                  icon={<FiFileText />}
+                  label="Physical Handover"
+                  active={pathname === "/documents/handover"}
+                />
+              </li>
+
+              {can("entities.write") && (
+                <SidebarLinkGroup activeCondition={pathname.startsWith("/settings/templates")}>
+                  {(handleClick, open) => (
+                    <>
+                      <Link
+                        href="#"
+                        className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                          pathname.startsWith("/settings/templates")
+                            ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                        }`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                        }}
+                      >
+                        <FiLock className="text-lg opacity-80" />
+                        Types & Platforms
+                        <FiChevronRight
+                          className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                        />
+                      </Link>
+                      <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                        <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          <li>
+                            <NavItem
+                              href="/settings/templates"
+                              icon={<FiLayers />}
+                              label="Types & Platforms"
+                              active={pathname === "/settings/templates"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/templates#document-templates"
+                              icon={<FiFileText />}
+                              label="Document Types"
+                              active={false}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/templates#credential-templates"
+                              icon={<FiKey />}
+                              label="Credential Platforms"
+                              active={false}
+                            />
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </SidebarLinkGroup>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <SectionTitle title="Finance" />
+            <ul className="space-y-1.5">
               {can("payments.read") && (
                 <li>
-                  <Link
+                  <NavItem
                     href="/accounts/transactions/analytics"
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                      pathname === "/accounts/transactions/analytics" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                    }`}
-                  >
-                    <FiPieChart className="text-xl opacity-70 group-hover:opacity-100" />
-                    Analytics
-                  </Link>
+                    icon={<FiPieChart />}
+                    label="Analytics"
+                    active={pathname === "/accounts/transactions/analytics"}
+                  />
                 </li>
               )}
-              
               <li>
-                <Link
+                <NavItem
                   href="/accounts/transactions/self"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/accounts/transactions/self" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiBookOpen className="text-xl opacity-70 group-hover:opacity-100" />
-                  ZAAD Records
-                </Link>
+                  icon={<FiBookOpen />}
+                  label="ZAAD Records"
+                  active={pathname === "/accounts/transactions/self"}
+                />
               </li>
-
               <li>
-                <Link
+                <NavItem
                   href="/accounts/transactions"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/accounts/transactions" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiTrendingUp className="text-xl opacity-70 group-hover:opacity-100" />
-                  Transactions
-                </Link>
+                  icon={<FiTrendingUp />}
+                  label="Transactions"
+                  active={pathname === "/accounts/transactions"}
+                />
               </li>
-
               <li>
-                <Link
+                <NavItem
                   href="/accounts/transactions/liability"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/accounts/transactions/liability" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiTrendingDown className="text-xl opacity-70 group-hover:opacity-100" />
-                  Liability
-                </Link>
+                  icon={<FiTrendingDown />}
+                  label="Liability"
+                  active={pathname === "/accounts/transactions/liability"}
+                />
               </li>
-
               <li>
-                <Link
-                  href="/documents/expiry"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/documents/expiry" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiClock className="text-xl opacity-70 group-hover:opacity-100" />
-                  Expiry Documents
-                </Link>
-              </li>
-
-              <li>
-                <Link
-                  href="/documents/handover"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/documents/handover" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiFileText className="text-xl opacity-70 group-hover:opacity-100" />
-                  Physical Handover
-                </Link>
-              </li>
-
-              <SidebarLinkGroup activeCondition={pathname.includes("income") || pathname.includes("expense")}>
-                {(handleClick, open) => (
-                  <React.Fragment>
-                    <Link
-                      href="#"
-                      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                        (pathname.includes("income") || pathname.includes("expense")) ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                      }`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
-                      }}
-                    >
-                      <FiFolderPlus className="text-xl opacity-70 group-hover:opacity-100" />
-                      Add Record
-                      <svg
-                        className={`absolute right-4 top-1/2 -translate-y-1/2 fill-current transition-transform duration-200 ${
-                          open ? "rotate-180" : ""
-                        }`}
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
-                          fill=""
-                        />
-                      </svg>
-                    </Link>
-                    <div className={`translate transform overflow-hidden ${!open ? "hidden" : ""}`}>
-                      <ul className="mb-2 mt-2 flex flex-col gap-1 pl-11">
-                        <li>
-                          <Link
-                            href="/accounts/income"
-                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:bg-emerald-50 hover:text-emerald-600 dark:text-slate-400 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400 ${
-                              pathname.includes("income") ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""
-                            }`}
-                          >
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 text-lg font-bold">
-                              +
-                            </span>
-                            Income
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            href="/accounts/expense"
-                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 ${
-                              pathname.includes("expense") ? "text-rose-600 dark:text-rose-400 font-semibold" : ""
-                            }`}
-                          >
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 text-lg font-bold">
-                              -
-                            </span>
-                            Expense
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </React.Fragment>
-                )}
-              </SidebarLinkGroup>
-              
-              <li>
-                <Link
+                <NavItem
                   href="/accounts/clients"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname.includes("clients") && !pathname.includes("register") ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiUsers className="text-xl opacity-70 group-hover:opacity-100" />
-                  Clients
-                </Link>
+                  icon={<FiUsers />}
+                  label="Clients"
+                  active={pathname.startsWith("/accounts/clients")}
+                />
               </li>
-              
               <li>
-                <Link
+                <NavItem
                   href="/accounts/invoice"
-                  className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium text-slate-600 duration-300 ease-in-out hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white ${
-                    pathname === "/accounts/invoice" ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white font-semibold shadow-sm" : ""
-                  }`}
-                >
-                  <FiFileText className="text-xl opacity-70 group-hover:opacity-100" />
-                  Invoices
-                </Link>
+                  icon={<FiFileText />}
+                  label="Invoices"
+                  active={pathname === "/accounts/invoice"}
+                />
               </li>
+            </ul>
+          </div>
+
+          <div>
+            <SectionTitle title="Administration" />
+            <ul className="space-y-1.5">
+              {can("users.read") && (
+                <li>
+                  <NavItem
+                    href="/users"
+                    icon={<FiUserPlus />}
+                    label="System Users"
+                    active={pathname.startsWith("/users")}
+                  />
+                </li>
+              )}
+              {can("roles.manage") && (
+                <li>
+                  <NavItem
+                    href="/settings/roles"
+                    icon={<FiShield />}
+                    label="Role Management"
+                    active={pathname === "/settings/roles"}
+                  />
+                </li>
+              )}
+              {can("settings.read") && (
+                <li>
+                  <NavItem
+                    href="/settings/permissions"
+                    icon={<FiShield />}
+                    label="Permission Matrix"
+                    active={pathname === "/settings/permissions"}
+                  />
+                </li>
+              )}
             </ul>
           </div>
         </nav>

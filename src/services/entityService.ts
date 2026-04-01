@@ -1,8 +1,10 @@
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Individual from "@/models/individuals";
+import EntityDocument from "@/models/entityDocuments";
 import { PAGINATION } from "@/config/pagination";
 import generateEntityColor from "@/utils/generateEntityColor";
+import calculateStatus from "@/utils/calculateStatus";
 
 type EntityPayload = {
   documents?: any[];
@@ -19,6 +21,36 @@ function normalizePagination(page: number, limit: number) {
   );
   const skip = (normalizedPage - 1) * normalizedLimit;
   return { normalizedPage, normalizedLimit, skip };
+}
+
+async function getDocumentStatusCountsByEntityIds(entityIds: string[]) {
+  if (!entityIds.length) {
+    return new Map<string, { expired: number; renewal: number; valid: number }>();
+  }
+
+  const rows = await EntityDocument.find({ entity: { $in: entityIds } }).select(
+    "entity expiryDate"
+  );
+
+  const countsMap = new Map<string, { expired: number; renewal: number; valid: number }>();
+
+  for (const row of rows as any[]) {
+    const entityId = row.entity?.toString();
+    if (!entityId || !row.expiryDate) {
+      continue;
+    }
+
+    const status = calculateStatus(row.expiryDate);
+    if (status !== "expired" && status !== "renewal" && status !== "valid") {
+      continue;
+    }
+
+    const current = countsMap.get(entityId) || { expired: 0, renewal: 0, valid: 0 };
+    current[status] += 1;
+    countsMap.set(entityId, current);
+  }
+
+  return countsMap;
 }
 
 export function splitEntityPayload(payload: EntityPayload) {
@@ -79,18 +111,55 @@ export async function getEmployeeEntityById(entityId: string, populateCompany = 
   return query;
 }
 
-export async function listCompanyEntities(page: number, limit: number) {
+type TCompanySort = "newest" | "oldest" | "name-asc" | "name-desc";
+
+type TListCompanyEntitiesOptions = {
+  search?: string;
+  sortBy?: TCompanySort;
+  createdWithinDays?: number;
+};
+
+export async function listCompanyEntities(
+  page: number,
+  limit: number,
+  options?: TListCompanyEntitiesOptions
+) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query = { published: true, entityType: "company" };
+  const query: any = { published: true, entityType: "company" };
+
+  if (options?.search) {
+    query.name = { $regex: options.search, $options: "i" };
+  }
+
+  if (options?.createdWithinDays && options.createdWithinDays > 0) {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - options.createdWithinDays);
+    query.createdAt = { $gte: sinceDate };
+  }
+
+  const sortConfigByOption: Record<TCompanySort, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    "name-asc": { name: 1 },
+    "name-desc": { name: -1 },
+  };
+
+  const sortBy = options?.sortBy && sortConfigByOption[options.sortBy]
+    ? options.sortBy
+    : "newest";
+  const sortConfig = sortConfigByOption[sortBy];
 
   const [companies, total] = await Promise.all([
     Company.find(query)
       .select("name createdAt color")
-      .sort({ createdAt: -1 })
+      .sort(sortConfig)
       .skip(skip)
       .limit(normalizedLimit),
     Company.countDocuments(query),
   ]);
+
+  const companyIds = companies.map((company: any) => company._id.toString());
+  const documentStatusCountsMap = await getDocumentStatusCountsByEntityIds(companyIds);
 
   return {
     data: companies.map((company: any) => ({
@@ -99,6 +168,12 @@ export async function listCompanyEntities(page: number, limit: number) {
       entityType: "company" as const,
       createdAt: company.createdAt,
       color: company.color,
+      documentStatusCounts:
+        documentStatusCountsMap.get(company._id.toString()) || {
+          expired: 0,
+          renewal: 0,
+          valid: 0,
+        },
     })),
     pagination: {
       page: normalizedPage,
@@ -123,6 +198,9 @@ export async function listEmployeeEntities(page: number, limit: number) {
     Employee.countDocuments(query),
   ]);
 
+  const employeeIds = employees.map((employee: any) => employee._id.toString());
+  const documentStatusCountsMap = await getDocumentStatusCountsByEntityIds(employeeIds);
+
   return {
     data: employees.map((employee: any) => ({
       id: employee._id,
@@ -131,6 +209,12 @@ export async function listEmployeeEntities(page: number, limit: number) {
       company: employee.company,
       createdAt: employee.createdAt,
       color: employee.color,
+      documentStatusCounts:
+        documentStatusCountsMap.get(employee._id.toString()) || {
+          expired: 0,
+          renewal: 0,
+          valid: 0,
+        },
     })),
     pagination: {
       page: normalizedPage,
@@ -154,6 +238,9 @@ export async function listIndividualEntities(page: number, limit: number) {
     Individual.countDocuments(query),
   ]);
 
+  const individualIds = individuals.map((individual: any) => individual._id.toString());
+  const documentStatusCountsMap = await getDocumentStatusCountsByEntityIds(individualIds);
+
   return {
     data: individuals.map((individual: any) => ({
       id: individual._id,
@@ -161,6 +248,12 @@ export async function listIndividualEntities(page: number, limit: number) {
       entityType: "individual" as const,
       createdAt: individual.createdAt,
       color: individual.color,
+      documentStatusCounts:
+        documentStatusCountsMap.get(individual._id.toString()) || {
+          expired: 0,
+          renewal: 0,
+          valid: 0,
+        },
     })),
     pagination: {
       page: normalizedPage,
@@ -193,6 +286,9 @@ export async function listEmployeesByCompanyEntity(
     Employee.countDocuments(query),
   ]);
 
+  const employeeIds = employees.map((employee: any) => employee._id.toString());
+  const documentStatusCountsMap = await getDocumentStatusCountsByEntityIds(employeeIds);
+
   return {
     data: employees.map((employee: any) => ({
       id: employee._id,
@@ -201,6 +297,12 @@ export async function listEmployeesByCompanyEntity(
       company: employee.company,
       createdAt: employee.createdAt,
       color: employee.color,
+      documentStatusCounts:
+        documentStatusCountsMap.get(employee._id.toString()) || {
+          expired: 0,
+          renewal: 0,
+          valid: 0,
+        },
     })),
     pagination: {
       page: normalizedPage,

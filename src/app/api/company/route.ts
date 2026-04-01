@@ -43,7 +43,28 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams,
     PAGINATION.LIMITS.ENTITY_LIST
   );
-  const response = await listCompanyEntities(page, limit);
+
+  const search = request.nextUrl.searchParams.get("search")?.trim();
+  const sortByParam = request.nextUrl.searchParams.get("sortBy");
+  const createdWithinDaysParam = request.nextUrl.searchParams.get("createdWithinDays");
+  const createdWithinDays = createdWithinDaysParam
+    ? Number(createdWithinDaysParam)
+    : undefined;
+
+  const response = await listCompanyEntities(page, limit, {
+    search: search || undefined,
+    sortBy:
+      sortByParam === "newest" ||
+      sortByParam === "oldest" ||
+      sortByParam === "name-asc" ||
+      sortByParam === "name-desc"
+        ? sortByParam
+        : undefined,
+    createdWithinDays:
+      typeof createdWithinDays === "number" && Number.isFinite(createdWithinDays)
+        ? createdWithinDays
+        : undefined,
+  });
 
   return Response.json(response, { status: 200 });
 }

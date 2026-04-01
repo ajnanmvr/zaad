@@ -28,7 +28,13 @@ const TablesPage = () => {
     <>
       <Breadcrumb pageName={"Company Employees"} />
       <div className="flex flex-col gap-10">
-        <EmployeeList employees={employees} pagination={pagination} onPageChange={setPage} />
+        <EmployeeList
+          employees={employees}
+          pagination={pagination}
+          onPageChange={setPage}
+          addEntityHref={`/employee/register/${params.company}`}
+          addEntityLabel="Add Employee"
+        />
       </div>
     </>
   );

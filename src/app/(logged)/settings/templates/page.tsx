@@ -80,14 +80,14 @@ const TemplatesPage = () => {
   if (user && !canManageTemplates) {
     return (
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-        <Breadcrumb pageName="Template Management" />
+        <Breadcrumb pageName="Document Types & Credential Platforms" />
         <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-8 dark:border-rose-800 dark:bg-rose-500/10">
           <h3 className="mb-2 text-lg font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
             <FiAlertCircle className="text-xl" />
             Access Denied
           </h3>
           <p className="text-rose-600 dark:text-rose-300">
-            You need the <code className="bg-rose-200 px-2 py-1 rounded dark:bg-rose-900">entities.write</code> permission to manage templates.
+            You need the <code className="bg-rose-200 px-2 py-1 rounded dark:bg-rose-900">entities.write</code> permission to manage document types and credential platforms.
           </p>
         </div>
       </div>
@@ -112,22 +112,22 @@ const TemplatesPage = () => {
         name: documentName.trim(),
       });
 
-      toast.success("Document template added successfully");
+      toast.success("Document type added successfully");
       setDocumentName("");
       await queryClient.invalidateQueries({ queryKey: ["document-templates"] });
     } catch (error: any) {
       console.error("Error response:", error.response);
       console.error("Error message:", error.message);
       if (error.response?.status === 409) {
-        toast.error("Document template with this name already exists");
+        toast.error("Document type with this name already exists");
       } else if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Permission denied. You need entities.write permission");
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error("Failed to add document template");
+        toast.error("Failed to add document type");
       }
-      console.error("Error adding document template:", error);
+      console.error("Error adding document type:", error);
     } finally {
       setLoadingDocument(false);
     }
@@ -148,29 +148,29 @@ const TemplatesPage = () => {
         platform: credentialPlatform.trim(),
       });
 
-      toast.success("Credential template added successfully");
+      toast.success("Credential platform added successfully");
       setCredentialPlatform("");
       await queryClient.invalidateQueries({ queryKey: ["credential-templates"] });
     } catch (error: any) {
       console.error("Error response:", error.response);
       console.error("Error message:", error.message);
       if (error.response?.status === 409) {
-        toast.error("Credential template with this platform already exists");
+        toast.error("Credential platform with this name already exists");
       } else if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Permission denied. You need entities.write permission");
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error("Failed to add credential template");
+        toast.error("Failed to add credential platform");
       }
-      console.error("Error adding credential template:", error);
+      console.error("Error adding credential platform:", error);
     } finally {
       setLoadingCredential(false);
     }
   };
 
   const handleDeleteDocument = async (templateId: string) => {
-    if (!window.confirm("Are you sure you want to delete this document template?")) {
+    if (!window.confirm("Are you sure you want to delete this document type?")) {
       return;
     }
 
@@ -180,18 +180,18 @@ const TemplatesPage = () => {
         params: { id: templateId, type: "document" },
       });
 
-      toast.success("Document template deleted successfully");
+      toast.success("Document type deleted successfully");
       await queryClient.invalidateQueries({ queryKey: ["document-templates"] });
     } catch (error) {
-      console.error("Error deleting document template:", error);
-      toast.error("Failed to delete document template");
+      console.error("Error deleting document type:", error);
+      toast.error("Failed to delete document type");
     } finally {
       setDeletingId(null);
     }
   };
 
   const handleDeleteCredential = async (templateId: string) => {
-    if (!window.confirm("Are you sure you want to delete this credential template?")) {
+    if (!window.confirm("Are you sure you want to delete this credential platform?")) {
       return;
     }
 
@@ -201,10 +201,10 @@ const TemplatesPage = () => {
         params: { id: templateId, type: "credential" },
       });
 
-      toast.success("Credential template deleted successfully");
+      toast.success("Credential platform deleted successfully");
       await queryClient.invalidateQueries({ queryKey: ["credential-templates"] });
     } catch (error: any) {
-      console.error("Error deleting credential template:", error);
+      console.error("Error deleting credential platform:", error);
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
@@ -217,24 +217,24 @@ const TemplatesPage = () => {
 
   return (
     <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-      <Breadcrumb pageName="Template Management" />
+      <Breadcrumb pageName="Document Types & Credential Platforms" />
 
       <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Document Templates */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+        {/* Document Types */}
+        <div id="document-templates" className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
           <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center gap-3">
             <FiFileText className="text-2xl text-emerald-500" />
             <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-              Document Templates
+              Document Types
             </h3>
           </div>
 
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Add Document Template Form */}
+            {/* Add Document Type Form */}
             <form onSubmit={handleAddDocumentTemplate} className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Template Name <span className="text-rose-500">*</span>
+                  Document Type Name <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -261,10 +261,10 @@ const TemplatesPage = () => {
               </div>
             </form>
 
-            {/* Document Templates List */}
+            {/* Document Types List */}
             <div>
               <h4 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                Existing Templates
+                Existing Document Types
               </h4>
               {documentTemplates.length > 0 ? (
                 <div className="space-y-2">
@@ -285,7 +285,7 @@ const TemplatesPage = () => {
                         onClick={() => handleDeleteDocument(template._id)}
                         disabled={deletingId === template._id}
                         className="ml-3 rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-slate-700"
-                        title="Delete template"
+                        title="Delete document type"
                       >
                         <FiTrash2 className="text-lg" />
                       </button>
@@ -296,7 +296,7 @@ const TemplatesPage = () => {
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-800/50">
                   <FiAlertCircle className="mx-auto text-3xl text-slate-400 dark:text-slate-500 mb-2" />
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No document templates yet
+                    No document types yet
                   </p>
                 </div>
               )}
@@ -304,17 +304,17 @@ const TemplatesPage = () => {
           </div>
         </div>
 
-        {/* Credential Templates */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+        {/* Credential Platforms */}
+        <div id="credential-templates" className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
           <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center gap-3">
             <FiLock className="text-2xl text-blue-500" />
             <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-              Credential Templates
+              Credential Platforms
             </h3>
           </div>
 
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Add Credential Template Form */}
+            {/* Add Credential Platform Form */}
             <form onSubmit={handleAddCredentialTemplate} className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
