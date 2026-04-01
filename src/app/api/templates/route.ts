@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,10 +63,14 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching templates:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching templates:", error);
+    }
+
     return Response.json(
-      { message: "Error fetching templates", options: [] },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error fetching templates"), options: [] },
+      { status }
     );
   }
 }
@@ -134,10 +139,14 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error creating template:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error creating template:", error);
+    }
+
     return Response.json(
-      { message: "Error creating template" },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error creating template") },
+      { status }
     );
   }
 }
@@ -191,10 +200,14 @@ export async function DELETE(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error deleting template:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error deleting template:", error);
+    }
+
     return Response.json(
-      { message: "Error deleting template" },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error deleting template") },
+      { status }
     );
   }
 }

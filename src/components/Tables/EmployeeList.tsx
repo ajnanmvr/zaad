@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { FiEye, FiTrash2 } from "react-icons/fi";
 import formatDate from "@/utils/formatDate";
+import EntityAvatar from "../common/EntityAvatar";
 
 function EmployeeList({
     employees,
@@ -86,21 +87,24 @@ function EmployeeList({
                             </tr>
                         </thead>
                         <tbody>
-                            {employees?.map(({ id, name, company, createdAt }, key) => (
+                            {employees?.map(({ id, name, company, createdAt, color }, key) => (
                                 <tr 
                                     key={key}
                                     className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                                 >
                                     <td className="py-4 pl-4">
-                                        <div className="flex flex-col">
-                                            <Link href={`/employee/${id}`}>
-                                                <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">
-                                                    {name}
-                                                </h5>
-                                            </Link>
-                                            <Link href={`/company/${company?._id}`} className="mt-0.5 text-xs text-slate-500 hover:text-primary hover:underline dark:text-slate-400">
-                                                {company?.name}
-                                            </Link>
+                                        <div className="flex items-center gap-3">
+                                            <EntityAvatar name={name} color={color} size="md" />
+                                            <div className="flex flex-col">
+                                                <Link href={`/employee/${id}`}>
+                                                    <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">
+                                                        {name}
+                                                    </h5>
+                                                </Link>
+                                                <Link href={`/company/${company?._id}`} className="mt-0.5 text-xs text-slate-500 hover:text-primary hover:underline dark:text-slate-400">
+                                                    {company?.name}
+                                                </Link>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">

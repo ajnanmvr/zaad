@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiBriefcase, FiLock, FiFileText } from "react-icons/fi";
 import clsx from "clsx";
+import ColorPicker from "./ColorPicker";
 
 const AddCompany = ({ edit }: { edit: string | string[] }) => {
     const router = useRouter()
@@ -214,6 +215,11 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                                     className={inputClasses}
                                 />
                             </div>
+
+                            <ColorPicker
+                                selectedColor={companyData?.color}
+                                onChange={(color) => setCompanyData({ ...companyData, color })}
+                            />
 
                             <div className="mb-6 flex flex-col gap-6 sm:flex-row">
                                 <div className="w-full sm:w-1/2">

@@ -11,6 +11,7 @@ import clsx from "clsx";
 import calculateStatus from "@/utils/calculateStatus";
 import calculateDaysLeft from "@/utils/calculateDaysLeft";
 import HandoverList from "@/components/HandoverList";
+import EntityAvatar from "@/components/common/EntityAvatar";
 
 const SingleEmployee = () => {
   const router = useRouter()
@@ -604,9 +605,12 @@ const SingleEmployee = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-5">
-                  <div className="hidden h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 ring-1 ring-indigo-100 dark:bg-slate-800 dark:ring-slate-700 sm:flex">
-                    <FiUser className="text-3xl text-indigo-500 opacity-80" />
-                  </div>
+                  <EntityAvatar 
+                    name={employee?.name || ""} 
+                    color={employee?.color} 
+                    size="lg" 
+                    className="hidden sm:flex" 
+                  />
                   <div>
                     <h2 className="text-3xl capitalize font-bold text-slate-900 dark:text-white">
                       {employee?.name}

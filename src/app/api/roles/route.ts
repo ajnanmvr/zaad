@@ -22,10 +22,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "settings.write");
+    const principal = await requirePermission(request, "settings.write");
 
     const payload = await request.json();
-    const role = await createRole(payload);
+    const role = await createRole(payload, {
+      performedById: principal.userId,
+      request,
+    });
 
     return Response.json({ message: "Role created", role }, { status: 201 });
   } catch (error) {

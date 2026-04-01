@@ -93,7 +93,7 @@ function getRequestMeta(request?: NextRequest) {
 function setAuthCookies(
   response: NextResponse,
   tokens: TTokenPair,
-  _role: string
+  _role: string,
 ) {
   const isProduction = process.env.NODE_ENV === "production";
 
@@ -139,7 +139,7 @@ async function createSessionAndTokens(
     role: string;
   },
   request?: NextRequest,
-  familyId?: string
+  familyId?: string,
 ): Promise<TTokenPair> {
   const tokenFamilyId = familyId || randomUUID();
   const session = new UserSession({
@@ -199,7 +199,9 @@ async function revokeRefreshSession(refreshToken?: string) {
   }
 }
 
-function decodeRefreshPayloadFromRequest(request: NextRequest): TRefreshPayload | null {
+function decodeRefreshPayloadFromRequest(
+  request: NextRequest,
+): TRefreshPayload | null {
   const refreshToken = request.cookies.get("refresh")?.value;
   if (!refreshToken) {
     return null;
@@ -220,12 +222,12 @@ function decodeRefreshPayloadFromRequest(request: NextRequest): TRefreshPayload 
 export async function revokeAllSessionsForUser(userId: string) {
   await UserSession.updateMany(
     { user: userId, revokedAt: null },
-    { revokedAt: new Date() }
+    { revokedAt: new Date() },
   );
 }
 
 export async function listCurrentUserSessions(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<TSessionView[]> {
   const userId = await getUserFromCookie(request);
   const currentRefresh = decodeRefreshPayloadFromRequest(request);
@@ -247,7 +249,7 @@ export async function listCurrentUserSessions(
 
 export async function revokeCurrentUserSessionById(
   request: NextRequest,
-  sessionId: string
+  sessionId: string,
 ): Promise<{ isCurrentSession: boolean }> {
   const userId = await getUserFromCookie(request);
   const currentRefresh = decodeRefreshPayloadFromRequest(request);
@@ -278,10 +280,7 @@ function buildUnauthorizedResponse(message: string, status: number = 401) {
   return response;
 }
 
-export function buildLoginResponse(
-  tokens: TTokenPair,
-  role: string
-) {
+export function buildLoginResponse(tokens: TTokenPair, role: string) {
   const response = NextResponse.json({
     message: "Login successfull",
     success: true,
@@ -299,7 +298,10 @@ export async function rotateRefreshToken(request: NextRequest) {
 
   let payload: TRefreshPayload;
   try {
-    payload = jwt.verify(currentRefreshToken, getJwtSecret()) as TRefreshPayload;
+    payload = jwt.verify(
+      currentRefreshToken,
+      getJwtSecret(),
+    ) as TRefreshPayload;
   } catch {
     throw new ServiceError("Invalid refresh token", 401);
   }
@@ -316,7 +318,7 @@ export async function rotateRefreshToken(request: NextRequest) {
   if (session.tokenHash !== hashToken(currentRefreshToken)) {
     await UserSession.updateMany(
       { user: session.user, familyId: session.familyId, revokedAt: null },
-      { revokedAt: new Date() }
+      { revokedAt: new Date() },
     );
 
     await logUserActivity({
@@ -335,9 +337,10 @@ export async function rotateRefreshToken(request: NextRequest) {
   }
 
   const user = await User.findOne({ _id: payload.id, published: true }).select(
-    "username role"
+    "username role",
   );
   if (!user) {
+    
     throw new ServiceError("User not found", 401);
   }
 
@@ -348,7 +351,7 @@ export async function rotateRefreshToken(request: NextRequest) {
       role: user.role,
     },
     request,
-    session.familyId
+    session.familyId,
   );
 
   const nextSessionHash = hashToken(tokens.refreshToken);
@@ -376,7 +379,7 @@ export async function rotateRefreshToken(request: NextRequest) {
 export async function loginUser(
   username?: string,
   password?: string,
-  request?: NextRequest
+  request?: NextRequest,
 ) {
   if (!username || !password) {
     throw new ServiceError("Username and password are required", 400);
@@ -413,7 +416,9 @@ export async function loginUser(
       targetUserId: existingUser._id.toString(),
       performedById: existingUser._id.toString(),
       action: "auth_denied",
-      details: { reason: shouldLock ? "invalid_password_lockout" : "invalid_password" },
+      details: {
+        reason: shouldLock ? "invalid_password_lockout" : "invalid_password",
+      },
       request,
     });
 
@@ -431,7 +436,7 @@ export async function loginUser(
       username: existingUser.username,
       role: existingUser.role,
     },
-    request
+    request,
   );
 
   await logUserActivity({
@@ -450,7 +455,7 @@ export async function loginUser(
 export async function getCurrentUserFromRequest(request: NextRequest) {
   const userId = await getUserFromCookie(request);
   const user = await User.findOne({ _id: userId, published: true }).select(
-    "username fullname role"
+    "username fullname role",
   );
 
   if (!user) {
@@ -516,7 +521,7 @@ export async function createLogoutResponse(request?: NextRequest) {
     {
       status: 200,
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
 
   clearAuthCookies(response);
@@ -543,7 +548,7 @@ export async function createLogoutAllResponse(request: NextRequest) {
     {
       status: 200,
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
 
   clearAuthCookies(response);
@@ -558,14 +563,20 @@ export async function changeAuthenticatedUserPassword(
   userId: string,
   currentPassword?: string,
   newPassword?: string,
-  request?: NextRequest
+  request?: NextRequest,
 ) {
   if (!currentPassword || !newPassword) {
-    throw new ServiceError("Current password and new password are required", 400);
+    throw new ServiceError(
+      "Current password and new password are required",
+      400,
+    );
   }
 
   if (newPassword.length < 6) {
-    throw new ServiceError("New password must be at least 6 characters long", 400);
+    throw new ServiceError(
+      "New password must be at least 6 characters long",
+      400,
+    );
   }
 
   const user = await User.findById(userId);
@@ -575,7 +586,7 @@ export async function changeAuthenticatedUserPassword(
 
   const isCurrentPasswordValid = await bcryptjs.compare(
     currentPassword,
-    user.password
+    user.password,
   );
 
   if (!isCurrentPasswordValid) {
@@ -586,7 +597,7 @@ export async function changeAuthenticatedUserPassword(
   if (isSamePassword) {
     throw new ServiceError(
       "New password must be different from current password",
-      400
+      400,
     );
   }
 

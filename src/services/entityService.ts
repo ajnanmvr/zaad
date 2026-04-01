@@ -2,6 +2,7 @@ import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Individual from "@/models/individuals";
 import { PAGINATION } from "@/config/pagination";
+import generateEntityColor from "@/utils/generateEntityColor";
 
 type EntityPayload = {
   documents?: any[];
@@ -34,10 +35,16 @@ export function splitEntityPayload(payload: EntityPayload) {
 }
 
 export async function createCompanyEntity(entityData: any) {
+  if (!entityData.color) {
+    entityData.color = generateEntityColor();
+  }
   return Company.create(entityData);
 }
 
 export async function createEmployeeOrIndividualEntity(entityData: any, entityType?: string) {
+  if (!entityData.color) {
+    entityData.color = generateEntityColor();
+  }
   if (entityType === "individual") {
     return Individual.create(entityData);
   }
@@ -78,7 +85,7 @@ export async function listCompanyEntities(page: number, limit: number) {
 
   const [companies, total] = await Promise.all([
     Company.find(query)
-      .select("name createdAt")
+      .select("name createdAt color")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
@@ -91,6 +98,7 @@ export async function listCompanyEntities(page: number, limit: number) {
       name: company.name,
       entityType: "company" as const,
       createdAt: company.createdAt,
+      color: company.color,
     })),
     pagination: {
       page: normalizedPage,
@@ -107,7 +115,7 @@ export async function listEmployeeEntities(page: number, limit: number) {
 
   const [employees, total] = await Promise.all([
     Employee.find(query)
-      .select("name company createdAt")
+      .select("name company createdAt color")
       .populate("company", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -122,6 +130,7 @@ export async function listEmployeeEntities(page: number, limit: number) {
       entityType: "employee" as const,
       company: employee.company,
       createdAt: employee.createdAt,
+      color: employee.color,
     })),
     pagination: {
       page: normalizedPage,
@@ -138,7 +147,7 @@ export async function listIndividualEntities(page: number, limit: number) {
 
   const [individuals, total] = await Promise.all([
     Individual.find(query)
-      .select("name createdAt")
+      .select("name createdAt color")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
@@ -151,6 +160,7 @@ export async function listIndividualEntities(page: number, limit: number) {
       name: individual.name,
       entityType: "individual" as const,
       createdAt: individual.createdAt,
+      color: individual.color,
     })),
     pagination: {
       page: normalizedPage,
@@ -175,7 +185,7 @@ export async function listEmployeesByCompanyEntity(
 
   const [employees, total] = await Promise.all([
     Employee.find(query)
-      .select("name company createdAt")
+      .select("name company createdAt color")
       .populate("company", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -190,6 +200,7 @@ export async function listEmployeesByCompanyEntity(
       entityType: "employee" as const,
       company: employee.company,
       createdAt: employee.createdAt,
+      color: employee.color,
     })),
     pagination: {
       page: normalizedPage,

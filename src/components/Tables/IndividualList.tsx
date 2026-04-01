@@ -9,10 +9,11 @@ import formatDate from "@/utils/formatDate";
 import { PAGINATION } from "@/config/pagination";
 import { FiPlus, FiFileText } from "react-icons/fi";
 import AddHandoverModal from "../Modals/AddHandoverModal";
+import EntityAvatar from "../common/EntityAvatar";
 
 function IndividualList() {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedIndividual, setSelectedIndividual] = useState<{id: string, name: string} | null>(null);
+  const [selectedIndividual, setSelectedIndividual] = useState<{ id: string, name: string } | null>(null);
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const limit = PAGINATION.LIMITS.ENTITY_LIST;
 
@@ -52,9 +53,12 @@ function IndividualList() {
                     className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                   >
                     <td className="py-4 pl-4">
-                      <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
-                        {individual.name}
-                      </h5>
+                      <div className="flex items-center gap-3">
+                        <EntityAvatar name={individual.name} color={individual.color} size="md" />
+                        <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                          {individual.name}
+                        </h5>
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                       {formatDate(individual.createdAt || null)}
@@ -77,7 +81,7 @@ function IndividualList() {
                 ))}
               </tbody>
             </table>
-            
+
             {showAddModal && selectedIndividual && (
               <AddHandoverModal
                 isOpen={showAddModal}

@@ -28,7 +28,7 @@ export async function listHandovers(page: number, limit: number, search?: string
 
   const [handovers, total] = await Promise.all([
     PhysicalHandover.find(query)
-      .populate("entity", "name")
+      .populate("entity", "name entityType color")
       .populate("receivedBy", "fullname")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -43,6 +43,7 @@ export async function listHandovers(page: number, limit: number, search?: string
         id: h.entity?._id,
         name: h.entity?.name,
         type: h.entity?.entityType,
+        color: h.entity?.color,
       },
       documentName: h.documentName,
       receivedAt: h.receivedAt,

@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { FiEye, FiTrash2 } from "react-icons/fi";
 import formatDate from "@/utils/formatDate";
 import { PAGINATION } from "@/config/pagination";
+import EntityAvatar from "../common/EntityAvatar";
 
 function CompanyList({ sort }: { sort?: string }) {
 
@@ -100,17 +101,20 @@ function CompanyList({ sort }: { sort?: string }) {
                             </tr>
                         </thead>
                         <tbody>
-                                                        {companies?.map(({ id, name, createdAt }, key) => (
+                                                        {companies?.map(({ id, name, createdAt, color }, key) => (
                                 <tr 
                                   key={key}
                                   className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                                 >
                                     <td className="py-4 pl-4">
                                         <Link href={sort === "a" ? `/accounts/transactions/company/${id}` : `/company/${id}`}>  
-                                            <div className="flex flex-col">
-                                                <h5 className="font-semibold capitalize text-slate-800 group-hover:text-primary dark:text-slate-200 transition-colors">
-                                                    {name}
-                                                </h5>
+                                            <div className="flex items-center gap-3">
+                                                <EntityAvatar name={name} color={color} size="md" />
+                                                <div className="flex flex-col">
+                                                    <h5 className="font-semibold capitalize text-slate-800 group-hover:text-primary dark:text-slate-200 transition-colors">
+                                                        {name}
+                                                    </h5>
+                                                </div>
                                             </div>
                                         </Link>
                                     </td>

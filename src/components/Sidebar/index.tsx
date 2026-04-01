@@ -262,6 +262,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             New Employee
                           </Link>
                         </li>
+                        <li>
+                          <Link
+                            href="/individual/register"
+                            className={`group relative flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-sm text-slate-500 duration-300 ease-in-out hover:text-slate-800 dark:text-slate-400 dark:hover:text-white ${
+                              pathname === "/individual/register" ? "text-primary dark:text-primary font-semibold" : ""
+                            }`}
+                          >
+                            New Individual
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </React.Fragment>

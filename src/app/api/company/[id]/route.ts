@@ -17,43 +17,58 @@ import {
   listEntityCredentials,
   replaceEntityCredentials,
 } from "@/services/entityCredentialService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await requirePermission(request, "entities.write");
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
 
-  const { id } = params;
-  const reqBody = await request.json();
-  const { entityData, documents, credentials } = splitEntityPayload(reqBody);
-  await updateCompanyEntity(id, entityData);
+    const { id } = params;
+    const reqBody = await request.json();
+    const { entityData, documents, credentials } = splitEntityPayload(reqBody);
+    await updateCompanyEntity(id, entityData);
 
-  if (documents) {
-    await replaceEntityDocuments(id, documents);
+    if (documents) {
+      await replaceEntityDocuments(id, documents);
+    }
+    if (credentials) {
+      await replaceEntityCredentials(id, credentials);
+    }
+
+    return Response.json(
+      { message: "data updated successfully" },
+      { status: 201 }
+    );
+  } catch (error) {
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error updating company data") },
+      { status: getServiceErrorStatus(error) }
+    );
   }
-  if (credentials) {
-    await replaceEntityCredentials(id, credentials);
-  }
-
-  return Response.json(
-    { message: "data updated successfully" },
-    { status: 201 }
-  );
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await requirePermission(request, "entities.write");
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
 
-  const { id } = params;
-  await softDeleteCompanyEntity(id);
-  return Response.json({ message: "data deleted" }, { status: 200 });
+    const { id } = params;
+    await softDeleteCompanyEntity(id);
+    return Response.json({ message: "data deleted" }, { status: 200 });
+  } catch (error) {
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error deleting company data") },
+      { status: getServiceErrorStatus(error) }
+    );
+  }
 }
 
 export async function GET(
@@ -111,8 +126,8 @@ export async function GET(
     return Response.json({ data: responseData }, { status: 200 });
   } catch (error) {
     return Response.json(
-      { message: "Error fetching company data", error },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error fetching company data") },
+      { status: getServiceErrorStatus(error) }
     );
   }
 }

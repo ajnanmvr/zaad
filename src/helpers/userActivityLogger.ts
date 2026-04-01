@@ -24,6 +24,14 @@ export interface LogUserActivityOptions {
     request?: NextRequest;
 }
 
+const AUTH_ACTIVITY_ACTIONS_TO_SKIP = new Set([
+    "login",
+    "logout",
+    "token_refresh",
+    "session_revoke",
+    "auth_denied",
+]);
+
 export async function logUserActivity(options: LogUserActivityOptions) {
     try {
         const {
@@ -35,6 +43,10 @@ export async function logUserActivity(options: LogUserActivityOptions) {
             newValues = {},
             request
         } = options;
+
+        if (AUTH_ACTIVITY_ACTIONS_TO_SKIP.has(action)) {
+            return;
+        }
 
         let ipAddress = "";
         let userAgent = "";

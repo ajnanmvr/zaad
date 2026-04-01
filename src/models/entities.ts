@@ -15,6 +15,10 @@ const EntitySchema = new Schema(
       default: true,
       required: true,
     },
+    color: {
+      type: String,
+      default: "#3C50E0",
+    },
   },
   {
     timestamps: true,

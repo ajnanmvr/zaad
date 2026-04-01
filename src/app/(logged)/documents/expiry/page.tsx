@@ -13,6 +13,7 @@ import Link from "next/link";
 import { FiPlus, FiFileText } from "react-icons/fi";
 import AddHandoverModal from "@/components/Modals/AddHandoverModal";
 import { useQueryClient } from "@tanstack/react-query";
+import EntityAvatar from "@/components/common/EntityAvatar";
 
 const ExpiryDocumentsPage = () => {
   const queryClient = useQueryClient();
@@ -130,22 +131,25 @@ const ExpiryDocumentsPage = () => {
                         className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                       >
                         <td className="py-4 pl-4">
-                          <div className="flex flex-col">
-                            {isCompanyRow ? (
-                              <Link
-                                href={`/company/${entityId}`}
-                                className="font-semibold capitalize text-primary hover:underline"
-                              >
-                                {entityName}
-                              </Link>
-                            ) : (
-                              <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
-                                {entityName}
+                          <div className="flex items-center gap-3">
+                            <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
+                            <div className="flex flex-col">
+                              {isCompanyRow ? (
+                                <Link
+                                  href={`/company/${entityId}`}
+                                  className="font-semibold capitalize text-primary hover:underline"
+                                >
+                                  {entityName}
+                                </Link>
+                              ) : (
+                                <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                                  {entityName}
+                                </span>
+                              )}
+                              <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
+                                {entityType}
                               </span>
-                            )}
-                            <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
-                              {entityType}
-                            </span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">

@@ -9,6 +9,7 @@ import { toast } from "react-hot-toast";
 import { FiBriefcase, FiUsers, FiAlertCircle, FiEye } from "react-icons/fi";
 import formatDate from "@/utils/formatDate";
 import { PAGINATION } from "@/config/pagination";
+import EntityAvatar from "@/components/common/EntityAvatar";
 
 export default function Home() {
 
@@ -79,16 +80,19 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {companies?.slice(0, 5).map(({ id, name, createdAt, entityType }, key) => (
+                        {companies?.slice(0, 5).map(({ id, name, createdAt, entityType, color }, key) => (
                           <tr 
                             key={key} 
                             className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                           >
                             <td className="py-4 pl-4">
-                              <div className="flex flex-col">
-                                <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
-                                  {name}
-                                </h5>
+                              <div className="flex items-center gap-3">
+                                <EntityAvatar name={name} color={color} size="sm" />
+                                <div className="flex flex-col">
+                                  <h5 className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                                    {name}
+                                  </h5>
+                                </div>
                               </div>
                             </td>
                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
@@ -145,7 +149,7 @@ export default function Home() {
                         key={key}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="h-2.5 w-2.5 rounded-full ring-4 bg-emerald-500 ring-emerald-100 dark:ring-emerald-900/30"></div>
+                          <EntityAvatar name={employee.name} color={employee.color} size="sm" />
                           <div>
                             <h5 className="font-semibold capitalize text-slate-800 group-hover:text-primary dark:text-slate-200 transition-colors">
                               {employee.name}

@@ -1,6 +1,8 @@
 import Role from "@/models/roles";
 import { redis } from "@/db/redis";
 import { ServiceError } from "./serviceError";
+import { NextRequest } from "next/server";
+import { logUserActivity } from "@/helpers/userActivityLogger";
 
 const CACHE_TTL_SECONDS = 5 * 60;
 
@@ -75,7 +77,7 @@ export async function createRole(input: {
   name: string;
   description?: string;
   permissions?: string[];
-}) {
+}, audit?: { performedById: string; request?: NextRequest }) {
   const name = (input.name || "").trim().toLowerCase();
   if (!name) {
     throw new ServiceError("Role name is required", 400);
@@ -95,12 +97,32 @@ export async function createRole(input: {
   });
 
   await invalidateRolePermissionCache(name);
+
+  if (audit?.performedById) {
+    await logUserActivity({
+      targetUserId: audit.performedById,
+      performedById: audit.performedById,
+      action: "create",
+      details: {
+        entityType: "role",
+        roleName: role.name,
+      },
+      newValues: {
+        name: role.name,
+        description: role.description,
+        permissions: role.permissions,
+      },
+      request: audit.request,
+    });
+  }
+
   return role;
 }
 
 export async function updateRole(
   roleName: string,
-  input: { description?: string; permissions?: string[] }
+  input: { description?: string; permissions?: string[] },
+  audit?: { performedById: string; request?: NextRequest }
 ) {
   const normalizedRole = (roleName || "").trim().toLowerCase();
   if (!normalizedRole) {
@@ -108,6 +130,10 @@ export async function updateRole(
   }
 
   const existing = await Role.findOne({ name: normalizedRole, published: true });
+
+  if (!existing) {
+    throw new ServiceError("Role not found", 404);
+  }
 
   if (existing?.isSystem) {
     throw new ServiceError("System roles cannot be modified", 403);
@@ -132,10 +158,35 @@ export async function updateRole(
   }
 
   await invalidateRolePermissionCache(normalizedRole);
+
+  if (audit?.performedById) {
+    await logUserActivity({
+      targetUserId: audit.performedById,
+      performedById: audit.performedById,
+      action: "update",
+      details: {
+        entityType: "role",
+        roleName: role.name,
+      },
+      previousValues: {
+        description: existing.description,
+        permissions: existing.permissions,
+      },
+      newValues: {
+        description: role.description,
+        permissions: role.permissions,
+      },
+      request: audit.request,
+    });
+  }
+
   return role;
 }
 
-export async function deleteRole(roleName: string) {
+export async function deleteRole(
+  roleName: string,
+  audit?: { performedById: string; request?: NextRequest }
+) {
   const normalizedRole = (roleName || "").trim().toLowerCase();
   const role = await Role.findOne({ name: normalizedRole, published: true });
 
@@ -149,4 +200,25 @@ export async function deleteRole(roleName: string) {
 
   await Role.findByIdAndUpdate(role._id, { published: false });
   await invalidateRolePermissionCache(normalizedRole);
+
+  if (audit?.performedById) {
+    await logUserActivity({
+      targetUserId: audit.performedById,
+      performedById: audit.performedById,
+      action: "delete",
+      details: {
+        entityType: "role",
+        roleName: role.name,
+      },
+      previousValues: {
+        description: role.description,
+        permissions: role.permissions,
+        published: true,
+      },
+      newValues: {
+        published: false,
+      },
+      request: audit.request,
+    });
+  }
 }

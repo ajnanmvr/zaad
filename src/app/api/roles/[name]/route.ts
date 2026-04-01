@@ -10,10 +10,13 @@ export async function PUT(
 ) {
   try {
     await connect();
-    await requirePermission(request, "settings.write");
+    const principal = await requirePermission(request, "settings.write");
 
     const payload = await request.json();
-    const role = await updateRole(params.name, payload);
+    const role = await updateRole(params.name, payload, {
+      performedById: principal.userId,
+      request,
+    });
 
     return Response.json({ message: "Role updated", role }, { status: 200 });
   } catch (error) {
@@ -30,9 +33,12 @@ export async function DELETE(
 ) {
   try {
     await connect();
-    await requirePermission(request, "settings.write");
+    const principal = await requirePermission(request, "settings.write");
 
-    await deleteRole(params.name);
+    await deleteRole(params.name, {
+      performedById: principal.userId,
+      request,
+    });
 
     return Response.json({ message: "Role deleted" }, { status: 200 });
   } catch (error) {

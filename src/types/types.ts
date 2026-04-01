@@ -16,6 +16,7 @@ export type TPasswordData = {
 export type TCompanyData = {
   _id?: string;
   name: string;
+  color?: string;
   entityType?: "company" | "employee" | "individual";
   licenseNo?: string;
   companyType?: string;
@@ -63,8 +64,10 @@ export type TEmployeeList = TCompanyList & {
 };
 
 export type TEntityListItem = {
+  _id: string;
   id: string;
   name: string;
+  color?: string;
   entityType: "company" | "employee" | "individual";
   createdAt?: string;
   company?: TBaseData;
@@ -94,6 +97,7 @@ export type TExpiryDocumentItem = {
   entity: {
     id: string;
     name: string;
+    color?: string;
     entityType: "company" | "employee" | "individual";
   };
 };
@@ -101,6 +105,7 @@ export type TExpiryDocumentItem = {
 export type TEmployeeData = {
   _id: string;
   name: string;
+  color?: string;
   entityType?: "employee" | "individual";
   credentials?: TPasswordData[];
   password?: TPasswordData[];
@@ -130,6 +135,8 @@ export type TPhysicalHandover = {
   entity: {
     id: string;
     name: string;
+    type: string;
+    color?: string;
   };
   documentName: string;
   receivedAt: string | Date;

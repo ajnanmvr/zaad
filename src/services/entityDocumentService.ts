@@ -113,7 +113,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
     .map((doc) => doc.entity?.toString())
     .filter((id): id is string => Boolean(id));
   const entities = await Entity.find({ _id: { $in: entityIds } }).select(
-    "name entityType"
+    "name entityType color"
   );
 
   const entityMap = new Map<string, any>();
@@ -137,6 +137,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
         id: doc.entity,
         name: entity?.name || "Unknown",
         entityType: entity?.entityType || "unknown",
+        color: entity?.color,
       },
     };
   });

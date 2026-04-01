@@ -10,8 +10,17 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiUser, FiLock, FiFileText } from "react-icons/fi";
 import clsx from "clsx";
+import ColorPicker from "./ColorPicker";
 
-const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: string | string[] }) => {
+const AddEmployee = ({
+    company,
+    edit,
+    individualMode = false,
+}: {
+    company?: string | string[];
+    edit?: string | string[];
+    individualMode?: boolean;
+}) => {
     const router = useRouter()
     const queryClient = useQueryClient();
     const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
@@ -78,28 +87,39 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
     const mutation = useMutation(
         {
             mutationFn: async (employeeData) => {
+                const payload = individualMode
+                    ? { ...employeeData, entityType: "individual" }
+                    : employeeData;
+
+                if (individualMode) {
+                    delete payload.company;
+                }
+
                 if (isEditMode) {
-                    await axios.put(`/api/employee/${edit}`, employeeData);
+                    await axios.put(`/api/employee/${edit}`, payload);
                 } else {
-                    await axios.post("/api/employee", employeeData);
+                    await axios.post("/api/employee", payload);
                 }
             },
             onMutate: () => {
-                toast.loading("Saving employee details...");
+                toast.loading(individualMode ? "Saving individual details..." : "Saving employee details...");
             },
             onSuccess: () => {
                 if (isEditMode) {
                     router.replace(`/employee/${edit}`);
                 } else {
-                    router.push("/employee");
+                    router.push(individualMode ? "/individual" : "/employee");
                 }
                 toast.dismiss()
-                toast.success("Employee details saved successfully!");
+                toast.success(individualMode ? "Individual details saved successfully!" : "Employee details saved successfully!");
                 queryClient.invalidateQueries({ queryKey: ["employees"] });
+                if (individualMode) {
+                    queryClient.invalidateQueries({ queryKey: ["individuals"] });
+                }
             },
             onError: () => {
                 toast.dismiss()
-                toast.error("Failed to save employee details");
+                toast.error(individualMode ? "Failed to save individual details" : "Failed to save employee details");
             }
         }
     );
@@ -213,9 +233,13 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
         })
     }
 
-    const breadCrumb = isEditMode ? "Edit Employee" : "Add Employee"
-    const confirmBtn = isEditMode ? "Save Changes" : "Create Employee"
-    const cancelLink = isEditMode ? `/employee/${edit}` : "/employee"
+    const breadCrumb = isEditMode
+        ? (individualMode ? "Edit Individual" : "Edit Employee")
+        : (individualMode ? "Add Individual" : "Add Employee")
+    const confirmBtn = isEditMode
+        ? "Save Changes"
+        : (individualMode ? "Create Individual" : "Create Employee")
+    const cancelLink = isEditMode ? `/employee/${edit}` : (individualMode ? "/individual" : "/employee")
 
     const inputClasses = "w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary w-full";
     const labelClasses = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
@@ -245,12 +269,17 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                     value={employeeData?.name || ""}
                                     onChange={handleChange}
                                     required
-                                    placeholder="Enter employee full name"
+                                    placeholder={individualMode ? "Enter individual full name" : "Enter employee full name"}
                                     className={inputClasses}
                                 />
                             </div>
 
-                            {!company && (
+                            <ColorPicker
+                                selectedColor={employeeData?.color}
+                                onChange={(color) => setEmployeeData({ ...employeeData, color })}
+                            />
+
+                            {!company && !individualMode && (
                                 <div className="mb-6 relative">
                                     <label className={labelClasses}>
                                         Company Association
@@ -314,7 +343,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                     name="email"
                                     value={employeeData?.email || ""}
                                     onChange={handleChange}
-                                    placeholder="employee@company.com"
+                                    placeholder={individualMode ? "individual@email.com" : "employee@company.com"}
                                     className={inputClasses}
                                 />
                             </div>
@@ -351,7 +380,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                                     name="designation"
                                     value={employeeData?.designation || ""}
                                     onChange={handleChange}
-                                    placeholder="e.g. Software Engineer, Manager"
+                                    placeholder={individualMode ? "e.g. Consultant, Freelancer" : "e.g. Software Engineer, Manager"}
                                     className={inputClasses}
                                 />
                             </div>
@@ -484,7 +513,7 @@ const AddEmployee = ({ company, edit }: { company?: string | string[], edit?: st
                             <div className="flex items-center gap-3">
                                 <FiFileText className="text-xl text-emerald-500" />
                                 <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                                    Employee Documents
+                                    {individualMode ? "Individual Documents" : "Employee Documents"}
                                 </h3>
                             </div>
                         </div>
