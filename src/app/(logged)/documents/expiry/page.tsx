@@ -15,6 +15,40 @@ import EntityAvatar from "@/components/common/EntityAvatar";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import { toast } from "react-hot-toast";
 
+function formatRelativeExpiry(daysLeft: number | null) {
+  if (daysLeft === null) {
+    return "---";
+  }
+
+  const absDays = Math.abs(daysLeft);
+  const years = Math.floor(absDays / 365);
+  const months = Math.floor(absDays / 30);
+
+  const suffix = daysLeft >= 0 ? "left" : "ago";
+
+  if (years >= 1) {
+    return `${years} year${years === 1 ? "" : "s"} ${suffix}`;
+  }
+
+  if (months >= 1) {
+    return `${months} month${months === 1 ? "" : "s"} ${suffix}`;
+  }
+
+  return `${absDays} day${absDays === 1 ? "" : "s"} ${suffix}`;
+}
+
+function getEntityHref(entityId?: string, entityType?: string) {
+  if (!entityId || !entityType) {
+    return null;
+  }
+
+  if (entityType === "company" || entityType === "employee" || entityType === "individual") {
+    return `/${entityType}/${entityId}`;
+  }
+
+  return null;
+}
+
 const ExpiryDocumentsPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
@@ -70,7 +104,7 @@ const ExpiryDocumentsPage = () => {
       EntityType: item.entity?.entityType || "",
       DocumentName: item.name || "",
       ExpiryDate: formatDate(item.expiryDate || null),
-      DaysLeft: item.daysLeft ?? "",
+      DaysLeft: formatRelativeExpiry(item.daysLeft),
       Status: item.status || calculateStatus(item.expiryDate || ""),
       Notes: item.notes || "",
     }));
@@ -259,8 +293,8 @@ const ExpiryDocumentsPage = () => {
                         className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                       />
                     </th>
-                    <th className="min-w-[220px] pb-3 pl-4">Entity</th>
-                    <th className="min-w-[220px] px-4 pb-3">Document</th>
+                    <th className="min-w-[240px] pb-3 pl-4">Document</th>
+                    <th className="min-w-[220px] px-4 pb-3">Entity</th>
                     <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
                     <th className="min-w-[100px] px-4 pb-3">Days Left</th>
                     <th className="min-w-[120px] px-4 pb-3">Status</th>
@@ -274,7 +308,7 @@ const ExpiryDocumentsPage = () => {
                     const entityName = item.entity?.name || "Unknown";
                     const entityType = item.entity?.entityType || "unknown";
                     const entityId = item.entity?.id;
-                    const isCompanyRow = entityType === "company" && Boolean(entityId);
+                    const entityHref = getEntityHref(entityId, entityType);
                     return (
                       <tr
                         key={item.id}
@@ -297,17 +331,41 @@ const ExpiryDocumentsPage = () => {
                         </td>
                         <td className="py-4 pl-4">
                           <div className="flex items-center gap-3">
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                              <FiFileText />
+                            </span>
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNameFilter(item.name || "unnamed");
+                                  setPage(PAGINATION.DEFAULT_PAGE);
+                                  setSelectedIds([]);
+                                }}
+                                className="text-left text-sm font-bold text-primary hover:underline"
+                                title="Show all entities with this document name"
+                              >
+                                {item.name || "Unnamed document"}
+                              </button>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                Template record
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
                             <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
                             <div className="flex flex-col">
-                              {isCompanyRow ? (
+                              {entityHref ? (
                                 <Link
-                                  href={`/company/${entityId}`}
-                                  className="font-semibold capitalize text-primary hover:underline"
+                                  href={entityHref}
+                                  className="text-sm font-semibold capitalize text-primary hover:underline"
                                 >
                                   {entityName}
                                 </Link>
                               ) : (
-                                <span className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                                <span className="text-sm font-medium capitalize text-slate-700 dark:text-slate-300">
                                   {entityName}
                                 </span>
                               )}
@@ -316,9 +374,6 @@ const ExpiryDocumentsPage = () => {
                               </span>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.name || "---"}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {formatDate(item.expiryDate || null)}
@@ -336,7 +391,7 @@ const ExpiryDocumentsPage = () => {
                                     : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20",
                             )}
                           >
-                            {daysLeft === null ? "---" : daysLeft}
+                            {formatRelativeExpiry(daysLeft)}
                           </span>
                         </td>
                         <td className="px-4 py-4">

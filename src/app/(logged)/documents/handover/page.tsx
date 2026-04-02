@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
+import Link from "next/link";
 import {
   FiArrowRightCircle,
   FiCheckCircle,
@@ -22,6 +23,18 @@ import AddHandoverModal from "@/components/Modals/AddHandoverModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import EntityAvatar from "@/components/common/EntityAvatar";
+
+function getEntityHref(entityId?: string, entityType?: string) {
+  if (!entityId || !entityType) {
+    return null;
+  }
+
+  if (entityType === "company" || entityType === "employee" || entityType === "individual") {
+    return `/${entityType}/${entityId}`;
+  }
+
+  return null;
+}
 
 const HandoverPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
@@ -203,6 +216,7 @@ const HandoverPage = () => {
                   {rows.map((item) => {
                     const status = item.status;
                     const entityName = item.entity?.name || "Unknown";
+                    const entityHref = getEntityHref(item.entity?.id, item.entity?.type);
                     const isReturned = status === "returned";
 
                     return (
@@ -214,9 +228,18 @@ const HandoverPage = () => {
                           <div className="flex items-center gap-3">
                             <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
                             <div className="flex flex-col">
-                              <span className="font-semibold capitalize text-slate-800 dark:text-white">
-                                {entityName}
-                              </span>
+                              {entityHref ? (
+                                <Link
+                                  href={entityHref}
+                                  className="font-semibold capitalize text-primary hover:underline"
+                                >
+                                  {entityName}
+                                </Link>
+                              ) : (
+                                <span className="font-semibold capitalize text-slate-800 dark:text-white">
+                                  {entityName}
+                                </span>
+                              )}
                               {item.entity?.type && (
                                 <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
                                   {item.entity.type}

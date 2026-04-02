@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import axios from "axios";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiDownload, FiEye, FiTrash2 } from "react-icons/fi";
+import { FiDownload } from "react-icons/fi";
 
 import { TEntityListItem, TPagination } from "@/types/types";
 import formatDate from "@/utils/formatDate";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
-import ConfirmationModal from "../Modals/ConfirmationModal";
 import DocumentStatusSummary from "../common/DocumentStatusSummary";
 import EntityAvatar from "../common/EntityAvatar";
 import SkeletonList from "../common/SkeletonList";
@@ -38,10 +35,6 @@ function EmployeeList({
   addEntityHref?: string;
   addEntityLabel?: string;
 }) {
-  const queryClient = useQueryClient();
-
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [searchInput, setSearchInput] = useState("");
@@ -49,17 +42,6 @@ function EmployeeList({
   const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(
     undefined
   );
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => axios.delete(`/api/employee/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast.success("Employee deleted successfully");
-    },
-    onError: () => {
-      toast.error("Failed to delete employee");
-    },
-  });
 
   const list = useMemo(() => employees ?? [], [employees]);
 
@@ -108,23 +90,6 @@ function EmployeeList({
     return filtered;
   }, [list, searchInput, sortBy, createdWithinDays]);
 
-  const handleDelete = (id: string) => {
-    setSelectedEmployeeId(id);
-    setIsConfirmationOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (selectedEmployeeId) {
-      deleteMutation.mutate(selectedEmployeeId);
-      setIsConfirmationOpen(false);
-    }
-  };
-
-  const cancelDelete = () => {
-    setSelectedEmployeeId(null);
-    setIsConfirmationOpen(false);
-  };
-
   const totalCount = pagination?.total ?? filteredEmployees.length;
   const allSelected =
     filteredEmployees.length > 0 &&
@@ -163,15 +128,7 @@ function EmployeeList({
   };
 
   return (
-    <>
-      <ConfirmationModal
-        isOpen={isConfirmationOpen}
-        message="Are you sure you want to delete this employee?"
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-      />
-
-      <EntityListingShell
+    <EntityListingShell
         title="Employee Directory"
         subtitle="Search, sort, and filter employees in one unified view."
         addEntityHref={addEntityHref}
@@ -191,7 +148,6 @@ function EmployeeList({
               <div className="min-w-[170px] px-4 py-4">Company</div>
               <div className="min-w-[150px] px-4 py-4">Created</div>
               <div className="min-w-[220px] px-4 py-4">Documents</div>
-              <div className="px-4 py-4">Actions</div>
             </div>
             <SkeletonList />
           </>
@@ -268,7 +224,6 @@ function EmployeeList({
                 <th className="min-w-[170px] px-4 pb-3">Company</th>
                 <th className="min-w-[150px] px-4 pb-3">Created</th>
                 <th className="min-w-[220px] px-4 pb-3">Documents</th>
-                <th className="px-4 pb-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -320,31 +275,12 @@ function EmployeeList({
                   <td className="px-4 py-4">
                     <DocumentStatusSummary counts={documentStatusCounts} />
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center justify-center space-x-2">
-                      <Link
-                        href={`/employee/${id}`}
-                        className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
-                        title="View Employee"
-                      >
-                        <FiEye className="text-lg" />
-                      </Link>
-                      <button
-                        title="Delete Employee"
-                        onClick={() => handleDelete(id!)}
-                        className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-slate-800"
-                      >
-                        <FiTrash2 className="text-lg" />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </EntityListingShell>
-    </>
   );
 }
 

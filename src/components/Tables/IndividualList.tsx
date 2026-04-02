@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FiDownload, FiPlus } from "react-icons/fi";
+import { FiDownload } from "react-icons/fi";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -12,7 +12,6 @@ import { TEntityListItem, TPaginatedResponse } from "@/types/types";
 import formatDate from "@/utils/formatDate";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
-import AddHandoverModal from "../Modals/AddHandoverModal";
 import DocumentStatusSummary from "../common/DocumentStatusSummary";
 import EntityAvatar from "../common/EntityAvatar";
 import SkeletonList from "../common/SkeletonList";
@@ -21,11 +20,6 @@ import EntityListingShell from "./EntityListingShell";
 type EntitySort = "newest" | "oldest" | "name-asc" | "name-desc";
 
 function IndividualList() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedIndividual, setSelectedIndividual] = useState<
-    { id: string; name: string } | null
-  >(null);
-
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -211,7 +205,6 @@ function IndividualList() {
                 <th className="min-w-[220px] pb-3 pl-4">Name</th>
                 <th className="min-w-[150px] px-4 pb-3">Created</th>
                 <th className="min-w-[220px] px-4 pb-3">Documents</th>
-                <th className="px-4 pb-3 text-center">Handover</th>
               </tr>
             </thead>
             <tbody>
@@ -255,39 +248,12 @@ function IndividualList() {
                   <td className="px-4 py-4">
                     <DocumentStatusSummary counts={individual.documentStatusCounts} />
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => {
-                          setSelectedIndividual({ id: individual._id!, name: individual.name });
-                          setShowAddModal(true);
-                        }}
-                        className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-primary hover:text-white dark:border-slate-700 dark:text-slate-400 dark:hover:bg-primary dark:hover:text-white"
-                      >
-                        <FiPlus />
-                        Record
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </EntityListingShell>
-
-      {showAddModal && selectedIndividual && (
-        <AddHandoverModal
-          isOpen={showAddModal}
-          onSuccess={() => setShowAddModal(false)}
-          onCancel={() => setShowAddModal(false)}
-          initialEntity={{
-            id: selectedIndividual.id,
-            name: selectedIndividual.name,
-            type: "individual",
-          }}
-        />
-      )}
     </>
   );
 }
