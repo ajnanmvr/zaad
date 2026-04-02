@@ -4,6 +4,9 @@ import { NextRequest } from "next/server";
 import { listArchivedDocuments } from "@/services/entityDocumentService";
 import { PAGINATION, parsePaginationParams } from "@/config/pagination";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -16,7 +19,12 @@ export async function GET(request: NextRequest) {
 
     const response = await listArchivedDocuments(page, limit);
 
-    return Response.json(response, { status: 200 });
+    return Response.json(response, {
+      status: 200,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
+    });
   } catch (error) {
     console.error("Error fetching archived documents:", error);
     return Response.json(

@@ -6,11 +6,13 @@ import { PAGINATION } from "@/config/pagination";
 import { fetchArchivedDocuments } from "@/libs/queries";
 import { TExpiryDocumentItem, TPaginatedResponse } from "@/types/types";
 import formatDate from "@/utils/formatDate";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { FiArchive, FiArrowLeft, FiFileText } from "react-icons/fi";
+import { FiArchive, FiArrowLeft, FiCornerUpLeft, FiFileText } from "react-icons/fi";
+import { toast } from "react-hot-toast";
 
 function getEntityHref(entityId?: string, entityType?: string) {
   if (!entityId || !entityType) {
@@ -25,8 +27,10 @@ function getEntityHref(entityId?: string, entityType?: string) {
 }
 
 const ArchivedDocumentsPage = () => {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
+  const [unarchivingId, setUnarchivingId] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
     queryKey: ["archived-documents", page, limit],
@@ -35,6 +39,21 @@ const ArchivedDocumentsPage = () => {
 
   const rows = useMemo(() => data?.data || [], [data]);
   const pagination = data?.pagination;
+
+  const unarchiveDocument = async (itemId: string) => {
+    try {
+      setUnarchivingId(itemId);
+      await axios.put(`/api/documents/unarchive/${itemId}`);
+      toast.success("Document moved back to expiry list");
+      await queryClient.invalidateQueries({ queryKey: ["archived-documents"] });
+      await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
+    } catch (error) {
+      toast.error("Failed to unarchive document");
+      console.error(error);
+    } finally {
+      setUnarchivingId(null);
+    }
+  };
 
   return (
     <>
@@ -102,6 +121,7 @@ const ArchivedDocumentsPage = () => {
                     <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
                     <th className="min-w-[150px] px-4 pb-3">Archived On</th>
                     <th className="min-w-[260px] px-4 pb-3">Archive Notes</th>
+                    <th className="min-w-[140px] px-4 pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -159,6 +179,19 @@ const ArchivedDocumentsPage = () => {
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                           <span className={clsx(!item.archiveNotes && "text-slate-400")}>{item.archiveNotes || "No notes provided"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => unarchiveDocument(item.id)}
+                              disabled={unarchivingId === item.id}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                            >
+                              <FiCornerUpLeft />
+                              {unarchivingId === item.id ? "Unarchiving..." : "Unarchive"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

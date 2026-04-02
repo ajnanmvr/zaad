@@ -121,6 +121,18 @@ export async function archiveDocumentById(documentId: string, archiveNotes?: str
   );
 }
 
+export async function unarchiveDocumentById(documentId: string) {
+  return EntityDocument.findByIdAndUpdate(
+    documentId,
+    {
+      archived: false,
+      archivedAt: null,
+      archiveNotes: null,
+    },
+    { new: true }
+  );
+}
+
 export async function listExpiryDocuments(page: number, limit: number) {
   const normalizedPage = Math.max(page || PAGINATION.DEFAULT_PAGE, 1);
   const normalizedLimit = Math.max(
