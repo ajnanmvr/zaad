@@ -188,8 +188,8 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     fetchPrev();
   }, []);
 
-  const inputClass = "w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
-  const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+  const inputClass = "w-full appearance-none rounded-2xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
+  const labelClass = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400";
   
   const themeColor = type === "income" ? "emerald" : "rose";
   const themeBorder = type === "income" ? "border-emerald-500/50 hover:border-emerald-500 ring-emerald-500/20" : "border-rose-500/50 hover:border-rose-500 ring-rose-500/20";
@@ -199,22 +199,52 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     <>
       <Breadcrumb pageName={(edit ? "Edit " : "Add ") + capitalize(recordData?.type)} />
 
-      <form className="relative mx-auto max-w-4xl" action="#">
-        <div className="flex flex-col gap-9">
-          <div className={clsx("rounded-2xl border bg-white shadow-sm ring-1 transition-all duration-300 dark:bg-slate-900/50", themeBorder)}>
-            
-            {/* Header Area */}
-            <div className={clsx("rounded-t-2xl border-b p-6 sm:p-8", type === "income" ? "border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-500/5" : "border-rose-100 bg-rose-50/50 dark:border-rose-900/30 dark:bg-rose-500/5")}>
-               <h3 className={clsx("text-xl font-bold flex items-center gap-2", type === "income" ? "text-emerald-800 dark:text-emerald-400" : "text-rose-800 dark:text-rose-400")}>
-                  {type === "income" ? <FiCheckCircle /> : <FiDollarSign />} 
-                  {edit ? "Edit Record Details" : "New Transaction Record"}
-               </h3>
-               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                 Complete all the required fields below to firmly register this {type} into the accounting ledger.
-               </p>
-            </div>
+      <form className="relative mx-auto max-w-5xl" action="#">
+        <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
+          <div className={clsx(
+            "relative overflow-hidden border-b p-6 sm:p-7",
+            type === "income"
+              ? "border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:border-emerald-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20"
+              : "border-rose-200/80 bg-gradient-to-br from-rose-50 via-white to-orange-50 dark:border-rose-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-rose-950/20"
+          )}>
+            <div className={clsx(
+              "pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl",
+              type === "income" ? "bg-emerald-300/20" : "bg-rose-300/20"
+            )} />
+            <div className={clsx(
+              "pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full blur-3xl",
+              type === "income" ? "bg-teal-300/20" : "bg-orange-300/20"
+            )} />
 
-            <div className="p-6 sm:p-8 space-y-8">
+            <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className={clsx(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider",
+                  type === "income"
+                    ? "border-emerald-300/60 bg-emerald-100/80 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    : "border-rose-300/60 bg-rose-100/80 text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/30 dark:text-rose-300"
+                )}>
+                  {type === "income" ? <FiCheckCircle /> : <FiDollarSign />}
+                  {type === "income" ? "Income Entry" : "Expense Entry"}
+                </p>
+                <h3 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                  {edit ? "Edit Transaction Record" : "Create Transaction Record"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Capture client, method, amount, and status details with a clean structured flow.
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                <span className={clsx("h-2.5 w-2.5 rounded-full", type === "income" ? "bg-emerald-500" : "bg-rose-500")} />
+                {edit ? "Update Mode" : "Create Mode"}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-7">
+            <div className={clsx("rounded-2xl border p-5 sm:p-6", themeBorder)}>
+            <div className="space-y-8">
               {!edit && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -526,6 +556,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                 </button>
               </div>
 
+            </div>
             </div>
           </div>
         </div>

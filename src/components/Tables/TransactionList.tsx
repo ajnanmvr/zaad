@@ -195,7 +195,7 @@ const TransactionList = ({
       )}
 
       {/* Main Table Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-8">
+      <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
         
         <ConfirmationModal
           isOpen={isConfirmationOpen}
@@ -387,18 +387,26 @@ const TransactionList = ({
           </div>
         )}
 
-        {/* Header Section */}
-        <div className="mb-6 flex flex-col justify-between items-start gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-              Transaction History
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {filter.m || filter.t ? `Filtered by: ${filter.t} ${filter.m}` : "All recent transactions"}
-            </p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 sm:p-7">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-200/40 blur-2xl dark:bg-cyan-500/10" />
+          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-200/50 blur-xl dark:bg-emerald-500/10" />
+
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">Transaction History</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">
+                  {filter.m || filter.t ? `Filtered by: ${filter.t} ${filter.m}` : "All recent transactions"}
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                {recordsWithBalance.length} Records
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
             <button
               onClick={() => setFilterOpen(true)}
               className={clsx(
@@ -416,7 +424,7 @@ const TransactionList = ({
             >
               <FiArrowDownLeft /> Self Deposit
             </button>
-            <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block"></div>
+            <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
             <Link
               href={"/accounts/income"}
               className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/20"
@@ -429,21 +437,23 @@ const TransactionList = ({
             >
               <FiPlus /> Expense
             </Link>
+            </div>
           </div>
         </div>
 
-        {/* Enhanced Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="p-6 sm:p-7">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+          <div className="max-w-full overflow-x-auto">
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-                <th className="py-4 pl-4 min-w-[120px]">Record ID</th>
-                <th className="py-4 px-4 min-w-[200px]">Client Details</th>
-                <th className="py-4 px-4 min-w-[150px]">Method</th>
-                <th className="py-4 px-4 min-w-[150px]">Amount</th>
-                <th className="py-4 px-4 min-w-[150px]">Date/Time</th>
-                {type && <th className="py-4 px-4 min-w-[120px]">Balance</th>}
-                <th className="py-4 pr-4 pl-2 text-center">Actions</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                <th className="min-w-[120px] pb-3 pl-4">Record ID</th>
+                <th className="min-w-[200px] px-4 pb-3">Client Details</th>
+                <th className="min-w-[150px] px-4 pb-3">Method</th>
+                <th className="min-w-[150px] px-4 pb-3">Amount</th>
+                <th className="min-w-[150px] px-4 pb-3">Date/Time</th>
+                {type && <th className="min-w-[120px] px-4 pb-3">Balance</th>}
+                <th className="px-4 pb-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -463,7 +473,7 @@ const TransactionList = ({
                 recordsWithBalance.map((record, key) => (
                   <tr 
                     key={key} 
-                    className="group border-b border-slate-100 transition-colors hover:bg-slate-50/50 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                    className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                   >
                     <td className="py-4 pl-4 align-top">
                       <div className="flex flex-col gap-1">
@@ -562,6 +572,7 @@ const TransactionList = ({
             </tbody>
           </table>
         </div>
+        </div>
       </div>
       
       {/* Pagination Container */}
@@ -588,6 +599,7 @@ const TransactionList = ({
           </div>
         </div>
       )}
+      </div>
     </>
   );
 };

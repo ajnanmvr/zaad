@@ -88,21 +88,48 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const breadCrumb = isEditMode ? "Edit Invoice" : "Create Invoice"
     
     // UI Helpers
-    const inputClass = "w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
-    const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+    const inputClass = "w-full appearance-none rounded-2xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
+    const labelClass = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 
     return (
         <div className="space-y-6">
             <Breadcrumb pageName={`${breadCrumb}`} />
             
             <form className="relative" onSubmit={handleSubmit}>
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
+                    <div className="relative overflow-hidden border-b border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-cyan-50 p-6 dark:border-violet-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-violet-950/20 sm:p-7">
+                        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-300/20 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+
+                        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <p className="inline-flex items-center gap-2 rounded-full border border-violet-300/60 bg-violet-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-violet-700 dark:border-violet-700/40 dark:bg-violet-900/30 dark:text-violet-300">
+                                    <FiFileText />
+                                    Billing Composer
+                                </p>
+                                <h3 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                                    {isEditMode ? "Edit Invoice" : "Create Invoice"}
+                                </h3>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    Build a polished invoice with structured details, line items, and settings.
+                                </p>
+                            </div>
+
+                            <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                                <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+                                {isEditMode ? "Edit Mode" : "Draft Mode"}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 sm:p-7">
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     
                     {/* Left Column: Core Invoice Details */}
                     <div className="xl:col-span-2 space-y-6">
                         
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
-                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+                            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 rounded-t-3xl dark:border-slate-800 dark:bg-slate-800/40">
                                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                     <FiFileText className="text-emerald-500" /> Primary Details
                                 </h3>
@@ -186,8 +213,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                         </div>
 
                         {/* Items Section */}
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
-                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50 flex justify-between items-center">
+                        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+                            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 rounded-t-3xl dark:border-slate-800 dark:bg-slate-800/40 flex justify-between items-center">
                                 <h3 className="font-bold text-slate-800 dark:text-white">
                                     Line Items
                                 </h3>
@@ -208,7 +235,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                 )}
                                 
                                 {invoiceData?.items?.map((doc: any, index: number) => (
-                                    <div key={index} className="relative rounded-xl border border-slate-200 bg-slate-50/30 p-5 dark:border-slate-700/50 dark:bg-slate-800/30">
+                                    <div key={index} className="relative rounded-2xl border border-slate-200 bg-slate-50/40 p-5 dark:border-slate-700/60 dark:bg-slate-800/30">
                                         <button 
                                             type="button"
                                             onClick={(e) => { e.preventDefault(); handleDeleteDocument(index) }}
@@ -278,8 +305,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
                     {/* Right Column: Settings & Meta */}
                     <div className="space-y-6">
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
-                            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+                            <div className="border-b border-slate-200 bg-slate-50/70 px-6 py-5 rounded-t-3xl dark:border-slate-800 dark:bg-slate-800/40">
                                 <h3 className="font-bold text-slate-800 dark:text-white">
                                     Invoice Settings
                                 </h3>
@@ -424,7 +451,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                         </div>
 
                         {/* Actions */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50 space-y-3">
+                        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 space-y-3 xl:sticky xl:top-6">
                             <button 
                                 type="submit" 
                                 className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
@@ -440,6 +467,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                         </div>
                     </div>
 
+                </div>
+                </div>
                 </div>
             </form>
         </div>

@@ -4,7 +4,7 @@ import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -32,6 +32,11 @@ const InvoiceList = () => {
       setHasMore(data.hasMore)
     }
   }, [data])
+
+  const totalAmount = useMemo(
+    () => invoices.reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
+    [invoices]
+  );
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
@@ -76,7 +81,7 @@ const InvoiceList = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
       <ConfirmationModal
         isOpen={isConfirmationOpen}
         message="Are you sure you want to securely delete this invoice? This action cannot be reversed."
@@ -84,19 +89,32 @@ const InvoiceList = () => {
         onCancel={cancelAction}
       />
 
-      {/* Header and Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <FiFileText className="text-emerald-500" /> Invoice Directory
-          </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Manage all issued invoices, view details, and track amounts across your clients.
-          </p>
-        </div>
+      <div className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-violet-50 via-white to-cyan-50 p-6 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-violet-200/40 blur-2xl dark:bg-violet-500/10" />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-cyan-200/50 blur-xl dark:bg-cyan-500/10" />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">Invoice Directory</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">
+                Manage issued invoices, view details, and track billing totals.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                {invoices.length} Visible
+              </div>
+              <div className="inline-flex items-center rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-bold text-violet-700 dark:border-violet-700/40 dark:bg-violet-900/30 dark:text-violet-300">
+                {totalAmount.toFixed(2)} AED
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
+            <div className="relative min-w-[240px] flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
               <FiSearch />
             </span>
@@ -129,15 +147,16 @@ const InvoiceList = () => {
             <span className="hidden sm:inline">Create Invoice</span>
             <span className="sm:hidden">Create</span>
           </Link>
+          </div>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+      <div className="p-6 sm:p-7">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
         <div className="max-w-full overflow-x-auto custom-scrollbar">
           <table className="w-full whitespace-nowrap text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
                 <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Invoice No</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Client</th>
                 <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Purpose</th>
@@ -221,9 +240,10 @@ const InvoiceList = () => {
             </tbody>
           </table>
         </div>
+        </div>
         
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/30">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             Showing Page <span className="font-bold text-slate-800 dark:text-slate-200">{pageNumber + 1}</span>
           </p>
