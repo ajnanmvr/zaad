@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
 
     const searchParams = request.nextUrl.searchParams;
-    const filter = filterData(searchParams, false);
+    const filter = filterData(searchParams, true);
     const [companies, employees, allRecords]: [
       TCompanyData[],
       TEmployeeData[],

@@ -15,12 +15,6 @@ export type TAccountsData = {
   CashExpense: number;
   TasdeedExpense: number;
   SwiperExpense: number;
-  last12MonthsExpenses: number[];
-  last12MonthsProfit: number[];
-  monthNames: string[];
-  profitLast7DaysTotal: number[];
-  expensesLast7DaysTotal: number[];
-  daysOfWeekInitials: string[];
   profit: number;
   netProfit: number;
   zaadExpenseTotal: number;

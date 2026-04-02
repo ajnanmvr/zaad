@@ -1,7 +1,4 @@
 import connect from "@/db/mongo";
-import calculateLast12Months from "@/helpers/calculateLast12Months";
-import calculateLast12MonthsTotals from "@/helpers/calculateLast12MonthsTotals";
-import calculateLast7Days from "@/helpers/calculateLast7Days";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { TRecordDataWithCreatedAt } from "@/types/records";
@@ -76,9 +73,6 @@ export async function GET(request: NextRequest): Promise<Response> {
         profit += record.serviceFee || 0;
       }
     });
-    if (searchParams.toString() === "") {
-    }
-
     const zaadExpenseTotal: number = parseFloat(
       expenseRecords
         .filter((record) => record?.self === "zaad")
@@ -90,35 +84,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       (profit - zaadExpenseTotal).toFixed(2)
     );
 
-    const currentDate: Date = new Date();
-    const currentYear: number = currentDate.getFullYear();
-
-    const last7DaysDates: Date[] = [];
-    const daysOfWeekInitials: string[] = [];
-
-    for (let i: number = 6; i >= 0; i--) {
-      const date: Date = new Date(currentDate);
-      date.setDate(currentDate.getDate() - i);
-      last7DaysDates.push(date);
-      const dayInitial: string = date
-        .toLocaleString("en-US", { weekday: "short" })[0]
-        .toUpperCase();
-      daysOfWeekInitials.push(dayInitial);
-    }
-
-    const [expensesLast7DaysTotal, profitLast7DaysTotal] = calculateLast7Days(
-      expenseRecords,
-      last7DaysDates
-    );
-
-    const last12Months: { month: number; name: string; year: number }[] =
-      calculateLast12Months(currentDate, currentYear);
-
-    const [last12MonthsExpenses, last12MonthsProfit] =
-      await calculateLast12MonthsTotals(expenseRecords, last12Months);
-
-    const monthNames: string[] = last12Months.map(({ name }) => name),
-      totalIncomeAmount: number =
+    const totalIncomeAmount: number =
         BankIncome + CashIncome + TasdeedIncome + SwiperIncome,
       totalExpenseAmount: number =
         BankExpense + CashExpense + TasdeedExpense + SwiperExpense,
@@ -146,13 +112,6 @@ export async function GET(request: NextRequest): Promise<Response> {
         CashExpense,
         TasdeedExpense,
         SwiperExpense,
-        daysOfWeekInitials,
-        expensesLast7DaysTotal,
-        profitLast7DaysTotal,
-        last12Months,
-        monthNames,
-        last12MonthsExpenses,
-        last12MonthsProfit,
         profit,
         zaadExpenseTotal,
         netProfit,
