@@ -360,14 +360,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
               <li>
                 <NavItem
-                  href="/accounts/clients"
-                  icon={<FiUsers />}
-                  label="Clients"
-                  active={pathname.startsWith("/accounts/clients")}
-                />
-              </li>
-              <li>
-                <NavItem
                   href="/accounts/invoice"
                   icon={<FiFileText />}
                   label="Invoices"
