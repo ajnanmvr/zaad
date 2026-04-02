@@ -109,6 +109,7 @@ export async function GET(
     const responseData = {
       id: company._id,
       name: company.name,
+      color: company.color,
       licenseNo: company.licenseNo,
       companyType: company.companyType,
       emirates: company.emirates,

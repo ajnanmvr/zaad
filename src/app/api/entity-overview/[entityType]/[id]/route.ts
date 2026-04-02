@@ -41,10 +41,15 @@ export async function GET(
         : entityType === "employee"
           ? Employee
           : Individual;
-    const entity = await entityModel
+    const entityQuery = entityModel
       .findById(entityId)
-      .select("name email phone1 phone2 color company")
-      .populate("company", "name color");
+      .select("name email phone1 phone2 color company");
+
+    if (entityType === "employee") {
+      entityQuery.populate("company", "name color");
+    }
+
+    const entity = await entityQuery;
 
     if (!entity) {
       return Response.json({ message: "Entity not found" }, { status: 404 });

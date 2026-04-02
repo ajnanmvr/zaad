@@ -68,14 +68,30 @@ export function splitEntityPayload(payload: EntityPayload) {
 
 export async function createCompanyEntity(entityData: any) {
   if (!entityData.color) {
-    entityData.color = generateEntityColor();
+    // Fetch all existing company colors to avoid duplicates
+    const existingColors = await Company.find({ published: true })
+      .select("color")
+      .lean()
+      .then((docs) => docs.map((doc: any) => doc.color).filter(Boolean));
+    
+    entityData.color = generateEntityColor(existingColors);
   }
   return Company.create(entityData);
 }
 
 export async function createEmployeeOrIndividualEntity(entityData: any, entityType?: string) {
   if (!entityData.color) {
-    entityData.color = generateEntityColor();
+    // Fetch all existing colors from both employees and individuals to avoid duplicates
+    const [employeeColors, individualColors] = await Promise.all([
+      Employee.find({ published: true }).select("color").lean(),
+      Individual.find({ published: true }).select("color").lean(),
+    ]).then(([employees, individuals]) => [
+      employees.map((doc: any) => doc.color).filter(Boolean),
+      individuals.map((doc: any) => doc.color).filter(Boolean),
+    ]);
+    
+    const allExistingColors = [...employeeColors, ...individualColors];
+    entityData.color = generateEntityColor(allExistingColors);
   }
   if (entityType === "individual") {
     return Individual.create(entityData);

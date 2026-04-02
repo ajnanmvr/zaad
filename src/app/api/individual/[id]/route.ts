@@ -47,6 +47,7 @@ export async function GET(
     const responseData = {
       id: individual._id,
       name: individual.name,
+      color: individual.color,
       emiratesId: individual.emiratesId,
       nationality: individual.nationality,
       phone1: individual.phone1,
