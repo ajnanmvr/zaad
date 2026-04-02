@@ -40,6 +40,9 @@ export async function GET(
         issueDate: document.issueDate,
         expiryDate: document.expiryDate,
         notes: document.notes,
+        archived: document.archived,
+        archiveNotes: document.archiveNotes,
+        archivedAt: document.archivedAt,
         status: calculateStatus(document.expiryDate),
       }))
       .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());

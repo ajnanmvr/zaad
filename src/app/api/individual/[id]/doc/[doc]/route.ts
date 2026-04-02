@@ -1,7 +1,7 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
-import { getCompanyEntityById } from "@/services/entityService";
+import Individual from "@/models/individuals";
 import {
   deleteEntityDocument,
   updateEntityDocument,
@@ -14,11 +14,12 @@ export async function PUT(
   try {
     await connect();
     await requirePermission(request, "documents.write");
+
     const { id, doc } = params;
     const { documentTemplate, issueDate, expiryDate, notes, archived, archiveNotes } = await request.json();
-    const company = await getCompanyEntityById(id);
-    if (!company) {
-      return Response.json({ message: "Company not found" }, { status: 404 });
+    const individual = await Individual.findById(id);
+    if (!individual) {
+      return Response.json({ message: "Individual not found" }, { status: 404 });
     }
 
     const data = await updateEntityDocument(id, doc, {
@@ -48,10 +49,11 @@ export async function DELETE(
   try {
     await connect();
     await requirePermission(request, "documents.write");
+
     const { id, doc } = params;
-    const company = await getCompanyEntityById(id);
-    if (!company) {
-      return Response.json({ message: "Company not found" }, { status: 404 });
+    const individual = await Individual.findById(id);
+    if (!individual) {
+      return Response.json({ message: "Individual not found" }, { status: 404 });
     }
 
     const data = await deleteEntityDocument(id, doc);
@@ -65,4 +67,3 @@ export async function DELETE(
     return Response.json({ message: "Server Error" }, { status: 500 });
   }
 }
-

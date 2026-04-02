@@ -41,6 +41,7 @@ const HandoverPage = () => {
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<
@@ -66,6 +67,7 @@ const HandoverPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handovers"] });
       toast.success("Record deleted");
+      setDeleteConfirmId(null);
     },
     onError: () => toast.error("Failed to delete record"),
   });
@@ -300,13 +302,21 @@ const HandoverPage = () => {
                                 </button>
                               )}
                               <button
-                                title="Delete Record"
+                                title={deleteConfirmId === item.id ? "Click again to permanently delete" : "Delete Record"}
                                 onClick={() => {
-                                  if (confirm("Are you sure you want to delete this record?")) {
+                                  if (deleteConfirmId === item.id) {
                                     deleteMutation.mutate(item.id);
+                                  } else {
+                                    setDeleteConfirmId(item.id);
+                                    toast.error("Click delete again to confirm");
                                   }
                                 }}
-                                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
+                                className={clsx(
+                                  "rounded-lg p-2 transition-colors",
+                                  deleteConfirmId === item.id
+                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                    : "text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10",
+                                )}
                               >
                                 <FiTrash2 className="text-lg" />
                               </button>

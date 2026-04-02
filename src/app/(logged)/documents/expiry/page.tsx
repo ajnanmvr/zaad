@@ -5,15 +5,18 @@ import { fetchExpiryDocuments } from "@/libs/queries";
 import { TExpiryDocumentItem, TPaginatedResponse } from "@/types/types";
 import calculateStatus from "@/utils/calculateStatus";
 import formatDate from "@/utils/formatDate";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Fragment, useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
-import { FiAlertCircle, FiCalendar, FiDownload, FiFileText } from "react-icons/fi";
+import axios from "axios";
+import { FiAlertCircle, FiArchive, FiCalendar, FiEdit2, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
 import EntityAvatar from "@/components/common/EntityAvatar";
+import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import { toast } from "react-hot-toast";
+import AddExpiryDocumentModal from "@/components/Modals/AddExpiryDocumentModal";
 
 function formatRelativeExpiry(daysLeft: number | null) {
   if (daysLeft === null) {
@@ -50,9 +53,17 @@ function getEntityHref(entityId?: string, entityType?: string) {
 }
 
 const ExpiryDocumentsPage = () => {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showAddDocument, setShowAddDocument] = useState(false);
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [archivingDocumentId, setArchivingDocumentId] = useState<string | null>(null);
+  const [archiveNotesDraft, setArchiveNotesDraft] = useState("");
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [editDraft, setEditDraft] = useState({ expiryDate: "", notes: "" });
 
   const { data, isLoading, isError } = useQuery<
     TPaginatedResponse<TExpiryDocumentItem>
@@ -81,6 +92,9 @@ const ExpiryDocumentsPage = () => {
     }
     return rows.filter((item) => (item.name || "unnamed") === nameFilter);
   }, [rows, nameFilter]);
+
+  const isDocumentFiltered = nameFilter !== "all";
+  const activeDocumentLabel = nameFilter === "unnamed" ? "Unnamed" : nameFilter;
 
   const statusCounts = useMemo(() => {
     return rows.reduce(
@@ -132,15 +146,141 @@ const ExpiryDocumentsPage = () => {
     toast.success(`${mode === "selected" ? "Selected" : "Visible"} rows exported as ${format.toUpperCase()}`);
   };
 
+  const startEditDocument = (item: TExpiryDocumentItem) => {
+    setEditingDocumentId(item.id);
+    setEditDraft({
+      expiryDate: item.expiryDate || "",
+      notes: item.notes || "",
+    });
+  };
+
+  const cancelEditDocument = () => {
+    setEditingDocumentId(null);
+    setEditDraft({ expiryDate: "", notes: "" });
+  };
+
+  const startArchiveDocument = (item: TExpiryDocumentItem) => {
+    setArchivingDocumentId(item.id);
+    setArchiveNotesDraft(item.archiveNotes || "");
+  };
+
+  const cancelArchiveDocument = () => {
+    setArchivingDocumentId(null);
+    setArchiveNotesDraft("");
+  };
+
+  const saveEditDocument = async (item: TExpiryDocumentItem) => {
+    if (!editDraft.expiryDate) {
+      toast.error("Please choose an expiry date");
+      return;
+    }
+
+    try {
+      await axios.put(`/api/${item.entity.entityType}/${item.entity.id}/doc/${item.id}`, {
+        documentTemplate: item.documentTemplate,
+        issueDate: item.issueDate,
+        expiryDate: editDraft.expiryDate,
+        notes: editDraft.notes || undefined,
+      });
+      toast.success("Document updated successfully");
+      cancelEditDocument();
+      await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
+    } catch (error) {
+      toast.error("Failed to update document");
+      console.error(error);
+    }
+  };
+
+  const deleteDocument = async (item: TExpiryDocumentItem) => {
+    if (deleteConfirmId !== item.id) {
+      setDeleteConfirmId(item.id);
+      toast.error("Click delete again to confirm");
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/${item.entity.entityType}/${item.entity.id}/doc/${item.id}`);
+      toast.success("Document deleted successfully");
+      setDeleteConfirmId(null);
+      if (editingDocumentId === item.id) {
+        cancelEditDocument();
+      }
+      await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
+    } catch (error) {
+      toast.error("Failed to delete document");
+      console.error(error);
+    }
+  };
+
+  const archiveDocument = async (item: TExpiryDocumentItem) => {
+    try {
+      setIsArchiving(true);
+      await axios.put(`/api/documents/archive/${item.id}`, {
+        archiveNotes: archiveNotesDraft || undefined,
+      });
+
+      toast.success("Document archived");
+      setSelectedIds((prev) => prev.filter((id) => id !== item.id));
+      queryClient.setQueriesData(
+        { queryKey: ["expiry-documents"] },
+        (previous: TPaginatedResponse<TExpiryDocumentItem> | undefined) => {
+          if (!previous) {
+            return previous;
+          }
+
+          const nextData = previous.data.filter((row) => row.id !== item.id);
+          const nextTotal = Math.max((previous.pagination?.total || 0) - 1, 0);
+
+          return {
+            ...previous,
+            data: nextData,
+            pagination: {
+              ...previous.pagination,
+              total: nextTotal,
+              totalPages: Math.max(
+                1,
+                Math.ceil(nextTotal / (previous.pagination?.limit || limit || 1))
+              ),
+            },
+          };
+        }
+      );
+      cancelArchiveDocument();
+      await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
+      await queryClient.invalidateQueries({ queryKey: ["archived-documents"] });
+    } catch (error) {
+      toast.error("Failed to archive document");
+      console.error(error);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
   return (
     <>
       <Breadcrumb pageName="Expiry Documents" />
 
-      <section className="relative overflow-hidden rounded-3xl border border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-rose-50 p-5 shadow-sm dark:border-amber-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20 sm:p-6">
+      <AddExpiryDocumentModal
+        isOpen={showAddDocument}
+        onSuccess={() => {
+          setShowAddDocument(false);
+          void queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
+        }}
+        onCancel={() => setShowAddDocument(false)}
+      />
+
+      <section
+        className={clsx(
+          "relative overflow-visible rounded-3xl p-5 shadow-sm sm:p-6",
+          isDocumentFiltered
+            ? "border-2 border-amber-400/80 bg-gradient-to-br from-amber-100 via-amber-50 to-rose-50 dark:border-amber-600/70 dark:from-amber-950/30 dark:via-slate-900 dark:to-amber-950/30"
+            : "border border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-rose-50 dark:border-amber-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20",
+        )}
+      >
         <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -left-12 h-48 w-48 rounded-full bg-rose-300/20 blur-3xl" />
 
-        <div className="relative flex items-center justify-between">
+        <div className="relative z-20 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-300">
               <FiAlertCircle />
@@ -149,6 +289,24 @@ const ExpiryDocumentsPage = () => {
             <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
               Document Expiry Control
             </h2>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/documents/archived"
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <FiArchive className="text-base" />
+              Archived Documents
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowAddDocument(true)}
+              className="inline-flex w-fit items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              <FiPlus className="text-lg" />
+              Add Document
+            </button>
           </div>
         </div>
 
@@ -170,13 +328,32 @@ const ExpiryDocumentsPage = () => {
             <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{rows.length}</p>
           </div>
         </div>
+
+        {isDocumentFiltered && (
+          <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-100/70 px-4 py-3 text-amber-900 dark:border-amber-700/70 dark:bg-amber-900/20 dark:text-amber-200">
+            <p className="text-sm font-semibold">
+              List filtered by document: <span className="rounded-md bg-white/80 px-2 py-1 font-black dark:bg-slate-900/60">{activeDocumentLabel}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setNameFilter("all");
+                setPage(PAGINATION.DEFAULT_PAGE);
+                setSelectedIds([]);
+              }}
+              className="rounded-lg border border-amber-400 bg-white/80 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 transition hover:bg-white dark:border-amber-700 dark:bg-slate-900/50 dark:text-amber-200 dark:hover:bg-slate-900"
+            >
+              Clear Filter
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
             <FiFileText className="text-slate-500" />
-            Expiry Documents List
+            {isDocumentFiltered ? `Expiry Documents List - ${activeDocumentLabel}` : "Expiry Documents List"}
           </h3>
 
           <div className="flex items-center gap-2">
@@ -214,50 +391,7 @@ const ExpiryDocumentsPage = () => {
             </select>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => exportRows("csv", "selected")}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <FiDownload /> CSV Selected
-            </button>
-            <button
-              type="button"
-              onClick={() => exportRows("excel", "selected")}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <FiDownload /> Excel Selected
-            </button>
-            <button
-              type="button"
-              onClick={() => exportRows("pdf", "selected")}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <FiDownload /> PDF Selected
-            </button>
-            <button
-              type="button"
-              onClick={() => exportRows("csv", "all")}
-              className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-cyan-700"
-            >
-              <FiDownload /> CSV All
-            </button>
-            <button
-              type="button"
-              onClick={() => exportRows("excel", "all")}
-              className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-cyan-700"
-            >
-              <FiDownload /> Excel All
-            </button>
-            <button
-              type="button"
-              onClick={() => exportRows("pdf", "all")}
-              className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-cyan-700"
-            >
-              <FiDownload /> PDF All
-            </button>
-          </div>
+          <ExportActionsMenu onExport={exportRows} />
         </div>
 
         <div className="max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -298,6 +432,7 @@ const ExpiryDocumentsPage = () => {
                     <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
                     <th className="min-w-[100px] px-4 pb-3">Days Left</th>
                     <th className="min-w-[120px] px-4 pb-3">Status</th>
+                    <th className="min-w-[120px] px-4 pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -309,9 +444,11 @@ const ExpiryDocumentsPage = () => {
                     const entityType = item.entity?.entityType || "unknown";
                     const entityId = item.entity?.id;
                     const entityHref = getEntityHref(entityId, entityType);
+                    const isEditing = editingDocumentId === item.id;
+
                     return (
+                      <Fragment key={item.id}>
                       <tr
-                        key={item.id}
                         className="border-b border-slate-100 transition-colors last:border-0 hover:bg-amber-50/40 dark:border-slate-800 dark:hover:bg-amber-500/5"
                       >
                         <td className="px-3 py-4">
@@ -347,9 +484,6 @@ const ExpiryDocumentsPage = () => {
                               >
                                 {item.name || "Unnamed document"}
                               </button>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">
-                                Template record
-                              </span>
                             </div>
                           </div>
                         </td>
@@ -410,7 +544,121 @@ const ExpiryDocumentsPage = () => {
                             {status}
                           </span>
                         </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditDocument(item)}
+                              className="rounded-lg border border-blue-300 p-2 text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                              title="Edit document"
+                            >
+                              <FiEdit2 className="text-sm" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startArchiveDocument(item)}
+                              className="rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                              title="Archive document"
+                            >
+                              <FiArchive className="text-sm" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteDocument(item)}
+                              className={clsx(
+                                "rounded-lg border p-2 transition",
+                                deleteConfirmId === item.id
+                                  ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                  : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                              )}
+                              title="Delete document"
+                            >
+                              <FiTrash2 className="text-sm" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
+                      {isEditing && (
+                        <tr className="border-b border-slate-100 bg-amber-50/30 dark:border-slate-800 dark:bg-amber-500/5">
+                          <td colSpan={7} className="px-4 py-4">
+                            <div className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4 dark:border-amber-900/40 dark:bg-slate-900/60 sm:grid-cols-2">
+                              <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Expiry Date</label>
+                                <input
+                                  type="date"
+                                  value={editDraft.expiryDate}
+                                  onChange={(event) => setEditDraft((prev) => ({ ...prev, expiryDate: event.target.value }))}
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</label>
+                                <textarea
+                                  rows={3}
+                                  value={editDraft.notes}
+                                  onChange={(event) => setEditDraft((prev) => ({ ...prev, notes: event.target.value }))}
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                />
+                              </div>
+                              <div className="sm:col-span-2 flex flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={cancelEditDocument}
+                                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEditDocument(item)}
+                                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+                                >
+                                  Save Changes
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {archivingDocumentId === item.id && (
+                        <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/40">
+                          <td colSpan={7} className="px-4 py-4">
+                            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60">
+                              <div>
+                                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                  Archive Notes (Reason)
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  value={archiveNotesDraft}
+                                  onChange={(event) => setArchiveNotesDraft(event.target.value)}
+                                  placeholder="Reason for archiving this document"
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                                />
+                              </div>
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={cancelArchiveDocument}
+                                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => archiveDocument(item)}
+                                  disabled={isArchiving}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                                >
+                                  <FiArchive />
+                                  {isArchiving ? "Archiving..." : "Archive Document"}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

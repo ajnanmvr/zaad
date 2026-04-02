@@ -10,9 +10,11 @@ import { FiTrash2, FiPlus, FiBriefcase, FiLock, FiFileText } from "react-icons/f
 import clsx from "clsx";
 import ColorPicker from "./ColorPicker";
 
-const AddCompany = ({ edit }: { edit: string | string[] }) => {
+const AddCompany = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
     const queryClient = useQueryClient();
+    const editId = Array.isArray(edit) ? edit[0] : edit;
+    const hasEditId = typeof editId === "string" && editId.trim().length > 0;
     const [isEditMode, setisEditMode] = useState(false);
     const [selectedOption, setSelectedOption] = useState<string>("");
     const [isOptionSelected, setIsOptionSelected] = useState<boolean>(false);
@@ -45,11 +47,11 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     }, []);
 
     const { data } = useQuery<any>({
-        queryKey: [`${edit}`], queryFn: async () => {
-            const { data } = await axios.get(`/api/company/${edit}`);
+        queryKey: ["company", editId], queryFn: async () => {
+            const { data } = await axios.get(`/api/company/${editId}`);
             return (data.data);
         },
-        enabled: edit !== ""
+        enabled: hasEditId
     });
 
     useEffect(() => {
@@ -59,13 +61,12 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
     }, [companyData?.isMainland])
 
     useEffect(() => {
-        if (edit !== "") {
-            setisEditMode(true)
+        setisEditMode(hasEditId)
+
+        if (hasEditId && data) {
             setCompanyData(data || { name: "", documents: [], password: [] })
-        } else {
-            setisEditMode(false)
         }
-    }, [edit, data])
+    }, [hasEditId, data])
 
     useEffect(() => {
         void fetchTemplateLists();
@@ -75,7 +76,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
         {
             mutationFn: async (companyData) => {
                 if (isEditMode) {
-                    await axios.put(`/api/company/${edit}`, companyData);
+                    await axios.put(`/api/company/${editId}`, companyData);
                 } else {
                     await axios.post("/api/company", companyData);
                 }
@@ -85,7 +86,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
             },
             onSuccess: () => {
                 if (isEditMode) {
-                    router.replace(`/company/${edit}`);
+                    router.replace(`/company/${editId}`);
                 } else {
                     router.push("/company");
                 }
@@ -200,12 +201,12 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                     {isEditMode ? "Update Company Profile" : "Create Company Profile"}
                 </h2>
                 <p className="relative mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Add company profile details, platform access, and documents in one organized workflow.
+                    Add company profile details in one organized workflow.
                 </p>
             </div>
 
             <form className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12" onSubmit={handleSubmit}>
-                <div className="flex flex-col gap-8 xl:col-span-7">
+                <div className="flex flex-col gap-8 xl:col-span-12">
                     {/* Company Details Card */}
                     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
                         <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-5 dark:border-slate-800">
@@ -366,7 +367,7 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                             {/* Action Buttons */}
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
                                 <Link 
-                                    href={isEditMode ? `/company/${edit}` : "/company"} 
+                                    href={isEditMode ? `/company/${editId}` : "/company"} 
                                     className="flex w-full sm:w-auto justify-center rounded-2xl border border-slate-300 bg-white px-8 py-3.5 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 md:order-1"
                                 >
                                     Cancel
@@ -382,193 +383,6 @@ const AddCompany = ({ edit }: { edit: string | string[] }) => {
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-8 xl:col-span-5">
-                    {/* Passwords Card */}
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
-                        <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <FiLock className="text-xl text-emerald-500" />
-                                <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                                    Platform Access
-                                </h3>
-                            </div>
-                        </div>
-                        <div className="px-6 py-6 sm:p-8">
-                            {(!companyData?.password || companyData?.password.length === 0) && (
-                                <div className="text-center py-6 text-slate-500 dark:text-slate-400">
-                                    No platform passwords added yet.
-                                </div>
-                            )}
-
-                            {companyData?.password?.map((item: any, index: number) => (
-                                <div key={index} className="mb-6 rounded-xl border border-slate-100 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50 relative group">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleDeletePassword(index);
-                                        }}
-                                        className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md bg-white text-rose-500 shadow-sm transition-colors hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-700 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                                        title="Remove Platform"
-                                    >
-                                        <FiTrash2 />
-                                    </button>
-                                    
-                                    <div className="mb-4 pr-10">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Platform</label>
-                                        <select
-                                            title="Select platform"
-                                            value={item?.credentialTemplate || ""}
-                                            onChange={(e) => handlePasswordChange(index, 'credentialTemplate', e.target.value)}
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        >
-                                            <option value="" disabled>Select platform</option>
-                                            {credentialTemplateOptions.map((option) => (
-                                                <option key={option.id} value={option.id}>{option.platform}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Username</label>
-                                            <input
-                                                type="text"
-                                                value={item?.username || ""}
-                                                onChange={(e) => handlePasswordChange(index, 'username', e.target.value)}
-                                                placeholder="Username"
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Password</label>
-                                            <input
-                                                type="text"
-                                                value={item?.password || ""}
-                                                onChange={(e) => handlePasswordChange(index, 'password', e.target.value)}
-                                                placeholder="Password"
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Notes</label>
-                                        <textarea
-                                            rows={3}
-                                            value={item?.notes || ""}
-                                            onChange={(e) => handlePasswordChange(index, 'notes', e.target.value)}
-                                            placeholder="Optional notes"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-
-                            <button 
-                                onClick={handleAddPassword} 
-                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 py-3 font-medium text-slate-600 transition-colors hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
-                            >
-                                <FiPlus className="text-lg" />
-                                Add Platform Credentials
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Documents Card */}
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
-                        <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <FiFileText className="text-xl text-emerald-500" />
-                                <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                                    Company Documents
-                                </h3>
-                            </div>
-                        </div>
-                        <div className="px-6 py-6 sm:p-8">
-                            {(!companyData?.documents || companyData?.documents.length === 0) && (
-                                <div className="text-center py-6 text-slate-500 dark:text-slate-400">
-                                    No documents attached yet.
-                                </div>
-                            )}
-
-                            {companyData?.documents?.map((doc: any, index: number) => (
-                                <div key={index} className="mb-6 rounded-xl border border-slate-100 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50 relative group">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            handleDeleteDocument(index)
-                                        }}
-                                        className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md bg-white text-rose-500 shadow-sm transition-colors hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-700 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                                        title="Remove Document"
-                                    >
-                                        <FiTrash2 />
-                                    </button>
-
-                                    <div className="mb-4 pr-10">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                            Document Name <span className="text-rose-500">*</span>
-                                        </label>
-                                        <select
-                                            title="Select document template"
-                                            required
-                                            value={doc?.documentTemplate || ""}
-                                            onChange={(e) => handleDocumentChange(index, 'documentTemplate', e.target.value)}
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        >
-                                            <option value="" disabled>Select document</option>
-                                            {documentTemplateOptions.map((option) => (
-                                                <option key={option.id} value={option.id}>{option.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">Issue Date</label>
-                                            <input
-                                                type="date"
-                                                value={doc?.issueDate || ""}
-                                                onChange={(e) => handleDocumentChange(index, 'issueDate', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                                Expiry Date <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                required
-                                                value={doc?.expiryDate || ""}
-                                                onChange={(e) => handleDocumentChange(index, 'expiryDate', e.target.value)}
-                                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4">
-                                        <label className="mb-1 block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                            Notes
-                                        </label>
-                                        <textarea
-                                            rows={3}
-                                            value={doc?.notes || ""}
-                                            onChange={(e) => handleDocumentChange(index, 'notes', e.target.value)}
-                                            placeholder="Optional notes"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-emerald-500"
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-
-                            <button 
-                                onClick={handleAddDocument} 
-                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 py-3 font-medium text-slate-600 transition-colors hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
-                            >
-                                <FiPlus className="text-lg" />
-                                Add Document
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </form>
         </div>
     );

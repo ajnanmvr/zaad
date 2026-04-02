@@ -9,6 +9,7 @@ import { capitalize, debounce } from "lodash";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiUserPlus, FiBriefcase, FiDollarSign, FiFileText, FiHash, FiCheckCircle } from "react-icons/fi";
+import EntityAvatar from "../common/EntityAvatar";
 
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
@@ -81,7 +82,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const handleInputChange = (e: any) => {
     setSearchValue(e.target.value);
     const inputName = e.target.name;
-    debounceSearch(searchValue, inputName);
+    debounceSearch(e.target.value, inputName);
   };
 
   const fetchBalance = async (Id?: string) => {
@@ -265,7 +266,13 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                               key={key}
                               onClick={() => handleEmployeeSelection(employee)}
                             >
-                              {employee.name}
+                              <div className="flex items-center gap-3">
+                                <EntityAvatar name={employee.name} color={employee.color} size="sm" />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{employee.name}</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Individual</span>
+                                </div>
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -298,7 +305,13 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                               key={key}
                               onClick={() => handleCompanySelection(company)}
                             >
-                              {company.name}
+                              <div className="flex items-center gap-3">
+                                <EntityAvatar name={company.name} color={company.color} size="sm" />
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{company.name}</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Company</span>
+                                </div>
+                              </div>
                             </li>
                           ))}
                         </ul>

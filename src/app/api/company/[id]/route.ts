@@ -90,13 +90,16 @@ export async function GET(
     }
 
     const modifiedDocuments = documents.map(
-      ({ _id, documentTemplate, name, issueDate, expiryDate, notes }) => ({
+      ({ _id, documentTemplate, name, issueDate, expiryDate, notes, archived, archiveNotes, archivedAt }) => ({
         _id,
         documentTemplate,
         name,
         issueDate,
         expiryDate,
         notes,
+        archived,
+        archiveNotes,
+        archivedAt,
         status: calculateStatus(expiryDate),
       })
     );

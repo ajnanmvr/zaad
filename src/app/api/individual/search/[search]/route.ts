@@ -15,7 +15,7 @@ export async function GET(
     const individuals = await Individual.find({
       name: { $regex: params.search, $options: "i" },
       published: true,
-    }).select("name");
+    }).select("name color entityType");
 
     return Response.json(individuals, { status: 200 });
   } catch (error) {

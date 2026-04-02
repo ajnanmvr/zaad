@@ -14,6 +14,7 @@ import {
   FiUserPlus,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
+import EntityAvatar from "../common/EntityAvatar";
 
 interface AddHandoverModalProps {
   isOpen: boolean;
@@ -180,8 +181,8 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
                 >
                   <option value="" disabled>Select Type</option>
                   <option value="company">Company</option>
-                  <option value="employee">Individual / Employee</option>
-                  <option value="individual">Direct Individual</option>
+                  <option value="employee">Employee</option>
+                  <option value="individual">Individual</option>
                 </select>
                 <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                   <FiChevronDown />
@@ -235,7 +236,13 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
                       key={key}
                       onClick={() => handleEntitySelection(s)}
                     >
-                      {s.name}
+                      <div className="flex items-center gap-3">
+                        <EntityAvatar name={s.name} color={s.color} size="sm" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{s.name}</span>
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400">{s.entityType || selectedOption}</span>
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>

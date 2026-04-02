@@ -2,39 +2,27 @@ import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
 import { getCompanyEntityById } from "@/services/entityService";
-import {
-  deleteEntityDocument,
-  updateEntityDocument,
-} from "@/services/entityDocumentService";
+import { deleteEntityCredential, updateEntityCredential } from "@/services/entityCredentialService";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; doc: string } }
+  { params }: { params: { id: string; credential: string } }
 ) {
   try {
     await connect();
     await requirePermission(request, "documents.write");
-    const { id, doc } = params;
-    const { documentTemplate, issueDate, expiryDate, notes, archived, archiveNotes } = await request.json();
+    const { id, credential } = params;
     const company = await getCompanyEntityById(id);
     if (!company) {
       return Response.json({ message: "Company not found" }, { status: 404 });
     }
 
-    const data = await updateEntityDocument(id, doc, {
-      documentTemplate,
-      issueDate,
-      expiryDate,
-      notes,
-      archived,
-      archiveNotes,
-    });
-
+    const data = await updateEntityCredential(id, credential, await request.json());
     if (!data) {
-      return Response.json({ message: "Document not found" }, { status: 404 });
+      return Response.json({ message: "Credential not found" }, { status: 404 });
     }
 
-    return Response.json({ message: "Document updated successfully", data });
+    return Response.json({ message: "Credential updated successfully", data });
   } catch (err) {
     console.error(err);
     return Response.json({ message: "Server Error" }, { status: 500 });
@@ -43,26 +31,25 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; doc: string } }
+  { params }: { params: { id: string; credential: string } }
 ) {
   try {
     await connect();
     await requirePermission(request, "documents.write");
-    const { id, doc } = params;
+    const { id, credential } = params;
     const company = await getCompanyEntityById(id);
     if (!company) {
       return Response.json({ message: "Company not found" }, { status: 404 });
     }
 
-    const data = await deleteEntityDocument(id, doc);
+    const data = await deleteEntityCredential(id, credential);
     if (!data) {
-      return Response.json({ message: "Document not found" }, { status: 404 });
+      return Response.json({ message: "Credential not found" }, { status: 404 });
     }
 
-    return Response.json({ message: "Document deleted successfully" });
+    return Response.json({ message: "Credential deleted successfully" });
   } catch (err) {
     console.error(err);
     return Response.json({ message: "Server Error" }, { status: 500 });
   }
 }
-

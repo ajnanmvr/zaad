@@ -16,6 +16,13 @@ const EntityDocumentSchema = new Schema(
     issueDate: String,
     expiryDate: String,
     notes: String,
+    archived: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    archiveNotes: String,
+    archivedAt: Date,
   },
   { timestamps: true, collection: "documents" },
 );

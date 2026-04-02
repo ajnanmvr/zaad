@@ -15,7 +15,7 @@ export async function GET(
     const companies = await Employee.find({
       name: { $regex: params.search, $options: "i" },
       published: true,
-    }).select("name");
+    }).select("name color entityType");
 
     return Response.json(companies, { status: 200 });
   } catch (error) {

@@ -59,6 +59,16 @@ export const fetchExpiryDocuments = async (
   return data;
 };
 
+export const fetchArchivedDocuments = async (
+  page: number = PAGINATION.DEFAULT_PAGE,
+  limit: number = PAGINATION.LIMITS.EXPIRY_DOCUMENTS
+) => {
+  const { data } = await axios.get(
+    `/api/documents/archived?page=${page}&limit=${limit}`
+  );
+  return data;
+};
+
 export const fetchHandovers = async (
   page: number = PAGINATION.DEFAULT_PAGE,
   limit: number = PAGINATION.LIMITS.ENTITY_LIST,

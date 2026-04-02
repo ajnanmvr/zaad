@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   FiCheckCircle,
   FiCreditCard,
+  FiEdit2,
   FiEye,
   FiEyeOff,
   FiFileText,
@@ -18,6 +19,7 @@ import {
   FiMessageSquare,
   FiPhone,
   FiPlus,
+  FiTrash2,
   FiTag,
   FiUser,
   FiUsers,
@@ -91,6 +93,9 @@ type EntityDetailsResponse = {
       issueDate?: string;
       expiryDate?: string;
       notes?: string;
+      archived?: boolean;
+      archiveNotes?: string;
+      archivedAt?: string;
     }>;
     credentials?: Array<{
       _id: string;
@@ -135,6 +140,10 @@ export default function EntityOverviewHub({
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const [editingCredentialId, setEditingCredentialId] = useState<string | null>(null);
+  const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<string | null>(null);
+  const [deleteCredentialConfirmId, setDeleteCredentialConfirmId] = useState<string | null>(null);
   const [documentDraft, setDocumentDraft] = useState({
     documentTemplate: "",
     issueDate: "",
@@ -190,8 +199,8 @@ export default function EntityOverviewHub({
   const entity = overviewRes?.data.entity;
   const counts = overviewRes?.data.counts;
   const details = detailRes?.data;
-  const documents = detailRes?.data?.documents || [];
-  const credentials = detailRes?.data?.credentials || [];
+  const documents = useMemo(() => detailRes?.data?.documents || [], [detailRes?.data?.documents]);
+  const credentials = useMemo(() => detailRes?.data?.credentials || [], [detailRes?.data?.credentials]);
   const documentOptions = documentTemplateRes?.options || [];
   const credentialOptions = credentialTemplateRes?.options || [];
   const isLoading = !overviewRes || !detailRes;
@@ -273,6 +282,8 @@ export default function EntityOverviewHub({
         issueDate: item.issueDate,
         expiryDate: item.expiryDate,
         notes: item.notes,
+        archived: item.archived,
+        archiveNotes: item.archiveNotes,
       })),
       {
         documentTemplate: documentDraft.documentTemplate,
@@ -284,9 +295,20 @@ export default function EntityOverviewHub({
 
     try {
       setIsAddingDocument(true);
-      await axios.put(`/api/${entityType}/${id}`, { documents: nextDocuments });
-      toast.success("Document added successfully");
+      if (editingDocumentId) {
+        await axios.put(`/api/${entityType}/${id}/doc/${editingDocumentId}`, {
+          documentTemplate: documentDraft.documentTemplate,
+          issueDate: documentDraft.issueDate || undefined,
+          expiryDate: documentDraft.expiryDate,
+          notes: documentDraft.notes || undefined,
+        });
+        toast.success("Document updated successfully");
+      } else {
+        await axios.put(`/api/${entityType}/${id}`, { documents: nextDocuments });
+        toast.success("Document added successfully");
+      }
       setShowAddDocument(false);
+      setEditingDocumentId(null);
       setDocumentDraft({
         documentTemplate: "",
         issueDate: "",
@@ -329,9 +351,20 @@ export default function EntityOverviewHub({
 
     try {
       setIsAddingCredential(true);
-      await axios.put(`/api/${entityType}/${id}`, { credentials: nextCredentials });
-      toast.success("Credential added successfully");
+      if (editingCredentialId) {
+        await axios.put(`/api/${entityType}/${id}/credential/${editingCredentialId}`, {
+          credentialTemplate: credentialDraft.credentialTemplate,
+          username: credentialDraft.username,
+          notes: credentialDraft.notes || undefined,
+          password: credentialDraft.password,
+        });
+        toast.success("Credential updated successfully");
+      } else {
+        await axios.put(`/api/${entityType}/${id}`, { credentials: nextCredentials });
+        toast.success("Credential added successfully");
+      }
       setShowAddCredential(false);
+      setEditingCredentialId(null);
       setCredentialDraft({
         credentialTemplate: "",
         username: "",
@@ -344,6 +377,64 @@ export default function EntityOverviewHub({
       console.error(error);
     } finally {
       setIsAddingCredential(false);
+    }
+  };
+
+  const startEditDocument = (doc: NonNullable<EntityDetailsResponse["data"]["documents"]>[number]) => {
+    setEditingDocumentId(doc._id);
+    setDocumentDraft({
+      documentTemplate: doc.documentTemplate || "",
+      issueDate: doc.issueDate || "",
+      expiryDate: doc.expiryDate || "",
+      notes: doc.notes || "",
+    });
+    setShowAddDocument(true);
+  };
+
+  const startEditCredential = (item: NonNullable<EntityDetailsResponse["data"]["credentials"]>[number]) => {
+    setEditingCredentialId(item._id);
+    setCredentialDraft({
+      credentialTemplate: item.credentialTemplate || "",
+      username: item.username || "",
+      password: item.credential || item.password || "",
+      notes: item.notes || "",
+    });
+    setShowAddCredential(true);
+  };
+
+  const deleteDocument = async (docId: string) => {
+    if (deleteDocumentConfirmId !== docId) {
+      setDeleteDocumentConfirmId(docId);
+      toast.error("Click delete again to confirm");
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/${entityType}/${id}/doc/${docId}`);
+      toast.success("Document deleted successfully");
+      setDeleteDocumentConfirmId(null);
+      await refetchDetails();
+    } catch (error) {
+      toast.error("Failed to delete document");
+      console.error(error);
+    }
+  };
+
+  const deleteCredential = async (credentialId: string) => {
+    if (deleteCredentialConfirmId !== credentialId) {
+      setDeleteCredentialConfirmId(credentialId);
+      toast.error("Click delete again to confirm");
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/${entityType}/${id}/credential/${credentialId}`);
+      toast.success("Credential deleted successfully");
+      setDeleteCredentialConfirmId(null);
+      await refetchDetails();
+    } catch (error) {
+      toast.error("Failed to delete credential");
+      console.error(error);
     }
   };
 
@@ -513,11 +604,20 @@ export default function EntityOverviewHub({
                     </select>
                     <button
                       type="button"
-                      onClick={() => setShowAddDocument((prev) => !prev)}
+                      onClick={() => {
+                        setShowAddDocument((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingDocumentId(null);
+                            setDocumentDraft({ documentTemplate: "", issueDate: "", expiryDate: "", notes: "" });
+                          }
+                          return next;
+                        });
+                      }}
                       className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                     >
                       <FiPlus />
-                      {showAddDocument ? "Cancel" : "Add Document"}
+                      {showAddDocument ? "Cancel" : editingDocumentId ? "Edit Document" : "Add Document"}
                     </button>
                   </div>
 
@@ -583,6 +683,7 @@ export default function EntityOverviewHub({
                   ) : (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
                       {sortedDocuments.map((doc, index) => {
+                        const isArchived = Boolean(doc.archived);
                         const status = calculateStatus(doc.expiryDate || "");
                         return (
                           <div
@@ -599,30 +700,60 @@ export default function EntityOverviewHub({
                               </p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">Issue: {formatDate(doc.issueDate)}</p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">Expiry: {formatDate(doc.expiryDate)}</p>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={clsx(
-                                    "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
-                                    status === "valid"
-                                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                      : status === "expired"
-                                        ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-                                  )}
-                                >
-                                  {status}
-                                </span>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span
+                                className={clsx(
+                                  "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
+                                  isArchived
+                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
+                                    : status === "valid"
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                    : status === "expired"
+                                      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                      : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                )}
+                              >
+                                {isArchived ? "archived" : status}
+                              </span>
+                              {!isArchived && (
                                 <button
                                   type="button"
                                   onClick={() => startRenew(doc)}
-                                  className="rounded-md border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                  className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                                 >
                                   Renew
                                 </button>
-                              </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => startEditDocument(doc)}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                              >
+                                <FiEdit2 />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteDocument(doc._id)}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
+                                  deleteDocumentConfirmId === doc._id
+                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                )}
+                              >
+                                <FiTrash2 />
+                                Delete
+                              </button>
                             </div>
                             {hasValue(doc.notes) && (
                               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{doc.notes}</p>
+                            )}
+                            {hasValue(doc.archiveNotes) && (
+                              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                Archive reason: {doc.archiveNotes}
+                              </p>
                             )}
                             {renewingDocId === doc._id && (
                               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -674,11 +805,20 @@ export default function EntityOverviewHub({
                     </select>
                     <button
                       type="button"
-                      onClick={() => setShowAddCredential((prev) => !prev)}
+                      onClick={() => {
+                        setShowAddCredential((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingCredentialId(null);
+                            setCredentialDraft({ credentialTemplate: "", username: "", password: "", notes: "" });
+                          }
+                          return next;
+                        });
+                      }}
                       className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-700/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
                     >
                       <FiPlus />
-                      {showAddCredential ? "Cancel" : "Add Credential"}
+                      {showAddCredential ? "Cancel" : editingCredentialId ? "Edit Credential" : "Add Credential"}
                     </button>
                   </div>
 
@@ -783,6 +923,29 @@ export default function EntityOverviewHub({
                                     {isVisible ? <FiEyeOff /> : <FiEye />}
                                   </button>
                                 )}
+                              <button
+                                type="button"
+                                onClick={() => startEditCredential(item)}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                                title="Edit credential"
+                              >
+                                <FiEdit2 />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteCredential(item._id)}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
+                                  deleteCredentialConfirmId === item._id
+                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                )}
+                                title="Delete credential"
+                              >
+                                <FiTrash2 />
+                                Delete
+                              </button>
                               </div>
                             </div>
                             {hasValue(item.notes) && (

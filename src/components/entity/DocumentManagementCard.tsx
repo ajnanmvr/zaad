@@ -44,6 +44,7 @@ export default function DocumentManagementCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [suppressWarning, setSuppressWarning] = useState(document.suppressWarning ?? false);
   const [newExpiryDate, setNewExpiryDate] = useState(document.expiryDate || "");
 
@@ -65,6 +66,12 @@ export default function DocumentManagementCard({
   };
 
   const handleDelete = async () => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      toast.error("Click delete again to confirm");
+      return;
+    }
+
     try {
       setIsDeleting(true);
       await axios.delete(`/api/${entityType}/${entityId}/doc/${document._id}`);
@@ -75,6 +82,7 @@ export default function DocumentManagementCard({
       console.error(error);
     } finally {
       setIsDeleting(false);
+      setDeleteConfirm(false);
     }
   };
 
@@ -174,8 +182,11 @@ export default function DocumentManagementCard({
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="rounded-lg bg-white p-2 text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-50 dark:bg-slate-700 dark:text-rose-400 dark:hover:bg-slate-600"
-            title="Delete document"
+            className={clsx(
+              "rounded-lg bg-white p-2 shadow-sm transition disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600",
+              deleteConfirm ? "text-rose-700 hover:bg-rose-100 dark:text-rose-300" : "text-rose-600 hover:bg-rose-50 dark:text-rose-400",
+            )}
+            title={deleteConfirm ? "Click again to confirm deletion" : "Delete document"}
           >
             <FiTrash2 className="text-lg" />
           </button>

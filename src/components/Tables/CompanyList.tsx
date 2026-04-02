@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiDownload } from "react-icons/fi";
 
 import { PAGINATION } from "@/config/pagination";
 import { fetchCompanies } from "@/libs/queries";
@@ -13,6 +12,7 @@ import formatDate from "@/utils/formatDate";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 import DocumentStatusSummary from "../common/DocumentStatusSummary";
+import ExportActionsMenu from "../common/ExportActionsMenu";
 import EntityAvatar from "../common/EntityAvatar";
 import SkeletonList from "../common/SkeletonList";
 import EntityListingShell from "./EntityListingShell";
@@ -127,36 +127,7 @@ function CompanyList({ sort }: { sort?: string }) {
         setSelectedIds([]);
       }}
       headerActions={
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => exportSelection("csv", "selected")}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <FiDownload /> CSV Selected
-          </button>
-          <button
-            type="button"
-            onClick={() => exportSelection("excel", "selected")}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <FiDownload /> Excel Selected
-          </button>
-          <button
-            type="button"
-            onClick={() => exportSelection("pdf", "selected")}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <FiDownload /> PDF Selected
-          </button>
-          <button
-            type="button"
-            onClick={() => exportSelection("csv", "all")}
-            className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-cyan-700"
-          >
-            <FiDownload /> CSV All
-          </button>
-        </div>
+        <ExportActionsMenu onExport={exportSelection} />
       }
     >
       <div className="max-w-full overflow-x-auto">

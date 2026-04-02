@@ -44,6 +44,9 @@ export type TDocuments = {
   issueDate?: string;
   expiryDate: string;
   notes?: string;
+  archived?: boolean;
+  archiveNotes?: string;
+  archivedAt?: string;
 };
 
 export type TCompanyList = {
@@ -57,6 +60,8 @@ export type TCompanyList = {
 export type TBaseData = {
   _id?: string;
   name: string;
+  color?: string;
+  entityType?: "company" | "employee" | "individual";
 };
 
 export type TEmployeeList = TCompanyList & {
@@ -97,6 +102,9 @@ export type TExpiryDocumentItem = {
   issueDate?: string;
   expiryDate?: string;
   notes?: string;
+  archived?: boolean;
+  archiveNotes?: string;
+  archivedAt?: string;
   status: "valid" | "expired" | "renewal" | "unknown";
   daysLeft: number | null;
   entity: {
