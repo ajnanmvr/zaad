@@ -99,11 +99,11 @@ const SettingsPage = () => {
                             )}
                             {Array.isArray(user?.permissions) && user.permissions.includes("entities.write") && (
                                 <Link
-                                    href="/settings/templates"
+                                    href="/settings/document-types"
                                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 flex items-center gap-2"
                                 >
                                     <FiPackage className="text-base" />
-                                    Manage Templates
+                                    Manage Types & Platforms
                                 </Link>
                             )}
                             {Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read") && (

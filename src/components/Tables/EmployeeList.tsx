@@ -5,10 +5,11 @@ import { useMemo, useState } from "react";
 import axios from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { FiEye, FiTrash2 } from "react-icons/fi";
+import { FiDownload, FiEye, FiTrash2 } from "react-icons/fi";
 
 import { TEntityListItem, TPagination } from "@/types/types";
 import formatDate from "@/utils/formatDate";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import DocumentStatusSummary from "../common/DocumentStatusSummary";
@@ -23,6 +24,8 @@ function EmployeeList({
   isLoading,
   pagination,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
   addEntityHref,
   addEntityLabel,
 }: {
@@ -30,6 +33,8 @@ function EmployeeList({
   isLoading?: boolean;
   pagination?: TPagination;
   onPageChange?: (page: number) => void;
+  pageSize?: number;
+  onPageSizeChange?: (size: number) => void;
   addEntityHref?: string;
   addEntityLabel?: string;
 }) {
@@ -37,6 +42,7 @@ function EmployeeList({
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [searchInput, setSearchInput] = useState("");
   const [sortBy, setSortBy] = useState<EntitySort>("newest");
@@ -120,6 +126,41 @@ function EmployeeList({
   };
 
   const totalCount = pagination?.total ?? filteredEmployees.length;
+  const allSelected =
+    filteredEmployees.length > 0 &&
+    filteredEmployees.every((row) => selectedIds.includes(String(row.id)));
+
+  const selectedRows = filteredEmployees.filter((row) => selectedIds.includes(String(row.id)));
+
+  const mapExportRows = (rows: TEntityListItem[]) =>
+    rows.map((row) => ({
+      Name: row.name,
+      Company: row.company?.name || "",
+      EntityType: row.entityType,
+      CreatedAt: formatDate(row.createdAt || null),
+      ExpiredDocs: row.documentStatusCounts?.expired || 0,
+      RenewalDocs: row.documentStatusCounts?.renewal || 0,
+      ValidDocs: row.documentStatusCounts?.valid || 0,
+    }));
+
+  const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
+    const sourceRows = mode === "selected" ? selectedRows : filteredEmployees;
+    const rows = mapExportRows(sourceRows);
+    if (!rows.length) {
+      toast.error(mode === "selected" ? "Select employees first" : "No employees to export");
+      return;
+    }
+
+    if (format === "csv") {
+      exportRowsCsv(rows, "employees");
+    } else if (format === "excel") {
+      exportRowsExcel(rows, "employees");
+    } else {
+      await exportRowsPdf(rows, "employees");
+    }
+
+    toast.success(`${mode === "selected" ? "Selected" : "Visible"} employees exported as ${format.toUpperCase()}`);
+  };
 
   return (
     <>
@@ -169,11 +210,60 @@ function EmployeeList({
             ? () => onPageChange(pagination.page + 1)
             : undefined
         }
+        pageSize={pageSize}
+        onPageSizeChange={onPageSizeChange}
+        headerActions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => exportSelection("csv", "selected")}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <FiDownload /> CSV Selected
+            </button>
+            <button
+              type="button"
+              onClick={() => exportSelection("excel", "selected")}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <FiDownload /> Excel Selected
+            </button>
+            <button
+              type="button"
+              onClick={() => exportSelection("pdf", "selected")}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <FiDownload /> PDF Selected
+            </button>
+            <button
+              type="button"
+              onClick={() => exportSelection("csv", "all")}
+              className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-2.5 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-cyan-700"
+            >
+              <FiDownload /> CSV All
+            </button>
+          </div>
+        }
       >
         <div className="max-w-full overflow-x-auto">
           <table className="mt-2 w-full text-left">
             <thead>
               <tr className="border-b border-slate-200 text-sm font-semibold tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                <th className="px-3 pb-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all employees"
+                    checked={allSelected}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setSelectedIds(filteredEmployees.map((row) => String(row.id)));
+                      } else {
+                        setSelectedIds([]);
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                </th>
                 <th className="min-w-[220px] pb-3 pl-4">Name</th>
                 <th className="min-w-[170px] px-4 pb-3">Company</th>
                 <th className="min-w-[150px] px-4 pb-3">Created</th>
@@ -187,6 +277,21 @@ function EmployeeList({
                   key={key}
                   className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                 >
+                  <td className="px-3 py-4">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${name}`}
+                      checked={selectedIds.includes(String(id))}
+                      onChange={(event) => {
+                        setSelectedIds((prev) =>
+                          event.target.checked
+                            ? Array.from(new Set([...prev, String(id)]))
+                            : prev.filter((rowId) => rowId !== String(id))
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                    />
+                  </td>
                   <td className="py-4 pl-4">
                     <div className="flex items-center gap-3">
                       <EntityAvatar name={name} color={color} size="md" />

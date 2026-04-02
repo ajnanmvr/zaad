@@ -265,12 +265,20 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
 
               {can("entities.write") && (
-                <SidebarLinkGroup activeCondition={pathname.startsWith("/settings/templates")}>
+                <SidebarLinkGroup
+                  activeCondition={
+                    pathname.startsWith("/settings/document-types") ||
+                    pathname.startsWith("/settings/credential-platforms") ||
+                    pathname.startsWith("/settings/templates")
+                  }
+                >
                   {(handleClick, open) => (
                     <>
                       <Link
                         href="#"
                         className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                          pathname.startsWith("/settings/document-types") ||
+                          pathname.startsWith("/settings/credential-platforms") ||
                           pathname.startsWith("/settings/templates")
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
@@ -290,26 +298,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
                           <li>
                             <NavItem
-                              href="/settings/templates"
+                              href="/settings/document-types"
                               icon={<FiLayers />}
-                              label="Types & Platforms"
-                              active={pathname === "/settings/templates"}
-                            />
-                          </li>
-                          <li>
-                            <NavItem
-                              href="/settings/templates#document-templates"
-                              icon={<FiFileText />}
                               label="Document Types"
-                              active={false}
+                              active={pathname === "/settings/document-types"}
                             />
                           </li>
                           <li>
                             <NavItem
-                              href="/settings/templates#credential-templates"
-                              icon={<FiKey />}
+                              href="/settings/credential-platforms"
+                              icon={<FiFileText />}
                               label="Credential Platforms"
-                              active={false}
+                              active={pathname === "/settings/credential-platforms"}
                             />
                           </li>
                         </ul>

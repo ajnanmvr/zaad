@@ -11,9 +11,10 @@ import { PAGINATION } from "@/config/pagination";
 
 const TablesPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+  const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const { data: employeesResponse, isLoading: employeeLoading, isError: employeeError } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["employees", page],
-    queryFn: () => fetchEmployees(page, PAGINATION.LIMITS.ENTITY_LIST),
+    queryKey: ["employees", page, limit],
+    queryFn: () => fetchEmployees(page, limit),
   });
 
   const employees = employeesResponse?.data;
@@ -30,6 +31,11 @@ const TablesPage = () => {
           isLoading={employeeLoading}
           pagination={pagination}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(size) => {
+            setLimit(size);
+            setPage(PAGINATION.DEFAULT_PAGE);
+          }}
           addEntityHref="/employee/register"
           addEntityLabel="Add Employee"
         />

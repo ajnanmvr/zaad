@@ -4,8 +4,8 @@ import { useParams } from "next/navigation";
 
 import EntityOverviewHub from "@/components/entity/EntityOverviewHub";
 
-export default function CompanyOverviewPage() {
+export default function IndividualOverviewPage() {
   const params = useParams<{ id: string }>();
 
-  return <EntityOverviewHub entityType="company" id={params.id} />;
+  return <EntityOverviewHub entityType="individual" id={params.id} />;
 }

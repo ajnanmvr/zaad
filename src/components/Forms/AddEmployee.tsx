@@ -86,7 +86,7 @@ const AddEmployee = ({
 
     const mutation = useMutation(
         {
-            mutationFn: async (employeeData) => {
+            mutationFn: async (employeeData: Record<string, any>) => {
                 const payload = individualMode
                     ? { ...employeeData, entityType: "individual" }
                     : employeeData;
@@ -241,21 +241,41 @@ const AddEmployee = ({
         : (individualMode ? "Create Individual" : "Create Employee")
     const cancelLink = isEditMode ? `/employee/${edit}` : (individualMode ? "/individual" : "/employee")
 
-    const inputClasses = "w-full rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition-all duration-300 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-primary w-full";
-    const labelClasses = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+    const inputClasses = "w-full rounded-2xl border border-slate-300/90 bg-white/95 px-5 py-3 text-slate-900 outline-none transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20";
+    const labelClasses = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 
     return (
         <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
             <Breadcrumb pageName={breadCrumb} />
 
+            <div className="relative mb-6 overflow-hidden rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 shadow-sm dark:border-cyan-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900">
+                <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-cyan-300/20 blur-2xl" />
+                <div className="pointer-events-none absolute -left-12 bottom-0 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl" />
+                <p className="relative inline-flex items-center rounded-full border border-cyan-300/60 bg-cyan-100/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-cyan-700 dark:border-cyan-700/50 dark:bg-cyan-900/30 dark:text-cyan-300">
+                    {individualMode ? "Individual Setup" : "Employee Setup"}
+                </p>
+                <h2 className="relative mt-3 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                    {isEditMode
+                        ? individualMode
+                            ? "Update Individual Profile"
+                            : "Update Employee Profile"
+                        : individualMode
+                            ? "Create Individual Profile"
+                            : "Create Employee Profile"}
+                </h2>
+                <p className="relative mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Configure profile details, platform access, and documents in one place.
+                </p>
+            </div>
+
             <form className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12" onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-8 xl:col-span-7">
                     {/* Employee Details Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
                         <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center gap-3">
                             <FiUser className="text-xl text-primary" />
                             <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                                Employee Details
+                                {individualMode ? "Individual Details" : "Employee Details"}
                             </h3>
                         </div>
                         <div className="p-6 sm:p-8">
@@ -401,13 +421,13 @@ const AddEmployee = ({
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
                                 <Link 
                                     href={cancelLink} 
-                                    className="flex w-full sm:w-auto justify-center rounded-xl border border-slate-300 bg-white px-8 py-3.5 font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 md:order-1"
+                                    className="flex w-full sm:w-auto justify-center rounded-2xl border border-slate-300 bg-white px-8 py-3.5 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 md:order-1"
                                 >
                                     Cancel
                                 </Link>
                                 <button 
                                     type="submit" 
-                                    className="flex w-full sm:w-auto justify-center rounded-xl bg-primary px-8 py-3.5 font-medium text-white transition hover:bg-opacity-90 shadow-sm shadow-primary/30 md:order-2"
+                                    className="flex w-full sm:w-auto justify-center rounded-2xl bg-cyan-600 px-8 py-3.5 font-semibold text-white transition hover:bg-cyan-700 shadow-sm shadow-cyan-600/30 md:order-2"
                                 >
                                     {confirmBtn}
                                 </button>
@@ -418,7 +438,7 @@ const AddEmployee = ({
 
                 <div className="flex flex-col gap-8 xl:col-span-5">
                     {/* Passwords Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
                         <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <FiLock className="text-xl text-emerald-500" />
@@ -508,7 +528,7 @@ const AddEmployee = ({
                     </div>
 
                     {/* Documents Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none">
                         <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <FiFileText className="text-xl text-emerald-500" />

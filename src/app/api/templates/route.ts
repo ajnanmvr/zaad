@@ -3,6 +3,8 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
+import EntityDocument from "@/models/entityDocuments";
+import EntityCredential from "@/models/entityCredentials";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
@@ -13,13 +15,28 @@ export async function GET(request: NextRequest) {
     const type = request.nextUrl.searchParams.get("type");
 
     if (type === "document") {
-      const templates = await DocumentTemplate.find({}).select("name").sort({ name: 1 });
+      const templates = await DocumentTemplate.find({})
+        .select("name createdAt")
+        .sort({ name: 1 });
+
+      const usageRows = await EntityDocument.aggregate([
+        { $match: { documentTemplate: { $ne: null } } },
+        { $group: { _id: "$documentTemplate", count: { $sum: 1 } } },
+      ]);
+
+      const usageMap = new Map<string, number>();
+      usageRows.forEach((row: any) => {
+        usageMap.set(row._id.toString(), row.count);
+      });
+
       return Response.json(
         {
           options: templates.map((item: any) => ({
             id: item._id.toString(),
             label: item.name,
             name: item.name,
+            createdAt: item.createdAt,
+            usageCount: usageMap.get(item._id.toString()) || 0,
           })),
         },
         { status: 200 }
@@ -28,14 +45,27 @@ export async function GET(request: NextRequest) {
 
     if (type === "credential") {
       const templates = await CredentialTemplate.find({})
-        .select("platform")
+        .select("platform createdAt")
         .sort({ platform: 1 });
+
+      const usageRows = await EntityCredential.aggregate([
+        { $match: { credentialTemplate: { $ne: null } } },
+        { $group: { _id: "$credentialTemplate", count: { $sum: 1 } } },
+      ]);
+
+      const usageMap = new Map<string, number>();
+      usageRows.forEach((row: any) => {
+        usageMap.set(row._id.toString(), row.count);
+      });
+
       return Response.json(
         {
           options: templates.map((item: any) => ({
             id: item._id.toString(),
             label: item.platform,
             platform: item.platform,
+            createdAt: item.createdAt,
+            usageCount: usageMap.get(item._id.toString()) || 0,
           })),
         },
         { status: 200 }
