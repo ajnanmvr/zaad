@@ -392,7 +392,7 @@ export default function AccountsDashboard() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 p-4 dark:border-emerald-900/30 dark:bg-emerald-950/20">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">Total Income</p>
           <p className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-300">{formatCurrency(accountsData?.totalIncomeAmount ?? 0)}</p>
@@ -404,6 +404,20 @@ export default function AccountsDashboard() {
         <div className="rounded-2xl border border-cyan-200/70 bg-cyan-50/70 p-4 dark:border-cyan-900/30 dark:bg-cyan-950/20">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-300">Net Balance</p>
           <p className="mt-2 text-2xl font-black text-cyan-700 dark:text-cyan-300">{formatCurrency(accountsData?.totalBalance ?? 0)}</p>
+        </div>
+        <div className="rounded-2xl border border-violet-200/70 bg-violet-50/70 p-4 dark:border-violet-900/30 dark:bg-violet-950/20">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">Profit</p>
+          <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-violet-700 dark:text-violet-300">
+            {(accountsData?.grossProfit ?? accountsData?.profit ?? 0) >= 0 ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
+            {formatCurrency(accountsData?.grossProfit ?? accountsData?.profit ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 dark:border-amber-900/30 dark:bg-amber-950/20">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">Profit After Office Expenses</p>
+          <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-amber-700 dark:text-amber-300">
+            {(accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0) >= 0 ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
+            {formatCurrency(accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0)}
+          </p>
         </div>
       </section>
 
@@ -417,10 +431,17 @@ export default function AccountsDashboard() {
           <p className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-100">{accountsData?.expenseCount ?? 0}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Net Profit</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Service Fee Profit</p>
           <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-slate-900 dark:text-slate-100">
-            {(accountsData?.netProfit ?? 0) >= 0 ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
-            {formatCurrency(accountsData?.netProfit ?? 0)}
+            {(accountsData?.grossProfit ?? accountsData?.profit ?? 0) >= 0 ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
+            {formatCurrency(accountsData?.grossProfit ?? accountsData?.profit ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Net Profit After Office Expenses</p>
+          <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-slate-900 dark:text-slate-100">
+            {(accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0) >= 0 ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
+            {formatCurrency(accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0)}
           </p>
         </div>
       </section>

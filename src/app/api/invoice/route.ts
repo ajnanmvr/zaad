@@ -32,9 +32,23 @@ export async function GET(request: NextRequest) {
     const query: any = { published: true };
     if (search) {
       const formattedDate = formatDate(new Date(search));
-      query.$or = [
+      const numericInvoiceNo = Number(search);
+      const orConditions = [
         { client: { $regex: search, $options: "i" } },
         { purpose: { $regex: search, $options: "i" } },
+        { date: { $regex: search, $options: "i" } },
+      ];
+
+      if (formattedDate !== "---") {
+        orConditions.push({ date: { $regex: formattedDate, $options: "i" } });
+      }
+
+      if (!Number.isNaN(numericInvoiceNo) && search.trim() !== "") {
+        orConditions.push({ invoiceNo: numericInvoiceNo });
+      }
+
+      query.$or = [
+        ...orConditions,
       ];
     }
 
@@ -46,7 +60,13 @@ export async function GET(request: NextRequest) {
 
     if (!invoice || invoice.length === 0) {
       return Response.json(
-        { message: "No invoice found", count: 0, hasMore: false, records: [] },
+        {
+          message: "No invoice found",
+          count: 0,
+          hasMore: false,
+          invoices: [],
+          records: [],
+        },
         { status: 200 }
       );
     }
@@ -69,7 +89,7 @@ export async function GET(request: NextRequest) {
         };
       });
     return Response.json(
-      { hasMore, invoices: transformedData },
+      { hasMore, count: transformedData.length, invoices: transformedData, records: transformedData },
       { status: 200 }
     );
   } catch (error) {

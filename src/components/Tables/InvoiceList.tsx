@@ -16,6 +16,7 @@ const InvoiceList = () => {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
 
@@ -28,13 +29,13 @@ const InvoiceList = () => {
 
   useEffect(() => {
     if (data) {
-      setInvoices(data.invoices)
+      setInvoices(Array.isArray(data.invoices) ? data.invoices : [])
       setHasMore(data.hasMore)
     }
   }, [data])
 
   const totalAmount = useMemo(
-    () => invoices.reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
+    () => (Array.isArray(invoices) ? invoices : []).reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
     [invoices]
   );
 
@@ -53,6 +54,8 @@ const InvoiceList = () => {
     onSuccess: () => {
       toast.dismiss()
       toast.success("Invoice deleted successfully")
+      setSelectedRecordId(null)
+      setIsConfirmationOpen(false)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
     onError: () => {
@@ -73,6 +76,7 @@ const InvoiceList = () => {
 
   const handleSearch = (e: any) => {
     const value = e.target.value;
+    setSearchInput(value);
     clearTimeout((window as any).searchDebounceTimeout);
     (window as any).searchDebounceTimeout = setTimeout(() => {
       setSearchQuery(value);
@@ -121,6 +125,7 @@ const InvoiceList = () => {
             <input
               type="text"
               name="search"
+              value={searchInput}
               onChange={handleSearch}
               placeholder="Search invoices..."
               className="w-full sm:w-64 rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500"
@@ -128,9 +133,9 @@ const InvoiceList = () => {
             {searchQuery && (
               <button
                 onClick={() => {
+                  setSearchInput("");
                   setSearchQuery("");
                   setPageNumber(0);
-                  (document.querySelector('input[name="search"]') as HTMLInputElement).value = "";
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
               >
@@ -185,9 +190,9 @@ const InvoiceList = () => {
                   </td>
                 </tr>
               ) : (
-                invoices.map((record, key) => (
+                invoices.map((record) => (
                   <tr
-                    key={key}
+                    key={record.id}
                     className="group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
                   >
                     <td className="px-6 py-4">

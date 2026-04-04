@@ -27,6 +27,35 @@ export function getRecordClient(record: any) {
 
 export function mapRecordListItem(record: any) {
   const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
+  const now = new Date();
+  const diffInMs = now.getTime() - new Date(record.createdAt).getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
+
+  const relativeDate = (() => {
+    if (diffInSeconds < 60) return `${Math.max(diffInSeconds, 0)} second${diffInSeconds === 1 ? "" : "s"} ago`;
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes === 1 ? "" : "s"} ago`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays} day${diffInDays === 1 ? "" : "s"} ago`;
+
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInDays < 30) return `${diffInWeeks} week${diffInWeeks === 1 ? "" : "s"} ago`;
+
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInDays < 365) return `${diffInMonths} month${diffInMonths === 1 ? "" : "s"} ago`;
+
+    const diffInYears = Math.floor(diffInDays / 365);
+    return `${diffInYears} year${diffInYears === 1 ? "" : "s"} ago`;
+  })();
+
+  const dateTime = format(createdAtInDubai, "MMM-dd hh:mma", {
+    timeZone: DUBAI_TIME_ZONE,
+  });
 
   return {
     id: record._id,
@@ -43,8 +72,8 @@ export function mapRecordListItem(record: any) {
     number: record.number,
     suffix: record.suffix,
     edited: record.edited,
-    date: format(createdAtInDubai, "MMM-dd hh:mma", {
-      timeZone: DUBAI_TIME_ZONE,
-    }),
+    date: relativeDate,
+    dateTime,
+    createdAt: record.createdAt,
   };
 }

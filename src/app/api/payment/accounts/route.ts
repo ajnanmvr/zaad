@@ -107,8 +107,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       (zaadExpenseTotal || 0).toFixed(2),
     );
 
-    const netProfit: number = parseFloat(
-      (profit - roundedZaadExpenseTotal).toFixed(2),
+    const grossProfit = parseFloat(profit.toFixed(2));
+    const profitAfterOfficeExpenses = parseFloat(
+      (grossProfit - roundedZaadExpenseTotal).toFixed(2),
     );
 
     const totalIncomeAmount: number =
@@ -140,9 +141,11 @@ export async function GET(request: NextRequest): Promise<Response> {
         CashExpense,
         TasdeedExpense,
         SwiperExpense,
-        profit,
+        profit: grossProfit,
+        grossProfit,
         zaadExpenseTotal: roundedZaadExpenseTotal,
-        netProfit,
+        profitAfterOfficeExpenses,
+        netProfit: profitAfterOfficeExpenses,
       },
       { status: 200 },
     );

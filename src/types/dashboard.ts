@@ -20,7 +20,9 @@ export type TAccountsData = {
   TasdeedExpense: number;
   SwiperExpense: number;
   profit: number;
+  grossProfit: number;
   netProfit: number;
+  profitAfterOfficeExpenses: number;
   zaadExpenseTotal: number;
 };
 

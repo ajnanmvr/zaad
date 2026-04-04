@@ -11,6 +11,7 @@ import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import SelfDepositModal from "../Modals/SelfDepositModal";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { 
   FiFilter, 
   FiArrowUpRight, 
@@ -38,6 +39,33 @@ const generateQuery = (filter: typeof baseData) => {
     query += `&m=${filter.m}`;
   }
   return query;
+};
+
+const formatTransactionListDate = (dateString: string | null | undefined) => {
+  if (!dateString) return "N/A";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "N/A";
+
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  if (isYesterday) {
+    return "Yesterday";
+  }
+
+  return formatRelativeDate(dateString);
 };
 
 const TransactionList = ({
@@ -353,7 +381,9 @@ const TransactionList = ({
                     {selectedRecord.date && (
                       <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
                         <span className="text-sm text-slate-500 dark:text-slate-400">Date</span>
-                        <span className="font-medium text-slate-900 dark:text-white">{selectedRecord.date}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">
+                          {formatDateTime(selectedRecord.createdAt || selectedRecord.dateTime || null)} ({formatRelativeDate(selectedRecord.createdAt || selectedRecord.dateTime || null)})
+                        </span>
                       </div>
                     )}
                     {selectedRecord.status && (
@@ -527,15 +557,18 @@ const TransactionList = ({
                           {record?.amount} <span className="text-xs font-medium">AED</span>
                         </span>
                         {record?.type === "expense" && record?.serviceFee && record.serviceFee != 0 && (
-                          <span className={clsx("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400")}>
-                            Fee +{record.serviceFee}
+                          <span className={clsx("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400")}>
+                            <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
+                            Fee {record.serviceFee}
                           </span>
                         )}
                       </div>
                     </td>
 
                     <td className="py-4 px-4 align-top text-sm text-slate-600 dark:text-slate-400">
-                      {record.date}
+                      <span title={formatDateTime(record.createdAt || record.dateTime || null)}>
+                        {formatTransactionListDate(record.createdAt || record.dateTime || null)}
+                      </span>
                     </td>
 
                     {type && (
