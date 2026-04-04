@@ -114,34 +114,83 @@ const TransactionList = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {records.map((data, key) => (
-              <Link
-                href={`/${data.client.type}/${data.client.id}`}
-                className="group rounded-2xl border border-slate-200 bg-slate-50/60 p-4 transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-md dark:border-slate-800 dark:bg-slate-800/50 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-900/20"
-                key={key}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className={clsx(data.netAmount > 0 ? "bg-orange-500 shadow-orange-500/20" : "bg-emerald-500 shadow-emerald-500/20", "mt-1 h-3 w-3 rounded-full shadow-sm")}></div>
-                    <div>
-                      <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-emerald-700 dark:text-slate-200 dark:group-hover:text-emerald-400">
-                        {data.client.name}
-                      </h5>
-                      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                        {data.client.type}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={clsx(
-                    data.netAmount > 0 ? "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-                    "rounded-xl px-3 py-1 text-sm font-bold"
-                  )}>
-                    {data.netAmount} AED
-                  </div>
-                </div>
-              </Link>
-            ))}
+          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="max-h-[70vh] overflow-auto">
+              <table className="w-full border-separate border-spacing-0 text-left">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
+                  <tr className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">Client</th>
+                    <th className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">Type</th>
+                    <th className="border-b border-slate-200 px-5 py-4 text-right dark:border-slate-800">Net Amount</th>
+                    <th className="border-b border-slate-200 px-5 py-4 text-center dark:border-slate-800">Direction</th>
+                    <th className="border-b border-slate-200 px-5 py-4 text-right dark:border-slate-800">Open</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((data, key) => {
+                    const isPayable = data.netAmount > 0;
+
+                    return (
+                      <tr
+                        key={key}
+                        className="group border-b border-slate-100 bg-white transition-colors last:border-0 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/60"
+                      >
+                        <td className="px-5 py-4 align-middle">
+                          <div className="flex items-center gap-3">
+                            <div className={clsx(isPayable ? "bg-orange-500 shadow-orange-500/20" : "bg-emerald-500 shadow-emerald-500/20", "h-3 w-3 rounded-full shadow-sm")} />
+                            <div>
+                              <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-emerald-700 dark:text-slate-200 dark:group-hover:text-emerald-400">
+                                {data.client.name}
+                              </h5>
+                              <p className="text-xs text-slate-500 dark:text-slate-500">
+                                {data.client.id}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-middle">
+                          <span className={clsx(
+                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider",
+                            data.client.type === "company" && "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300",
+                            data.client.type === "employee" && "bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300",
+                            data.client.type === "individual" && "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                          )}>
+                            {data.client.type}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right align-middle">
+                          <span className={clsx(
+                            "text-sm font-black sm:text-base",
+                            isPayable ? "text-orange-600 dark:text-orange-400" : "text-emerald-600 dark:text-emerald-400"
+                          )}>
+                            {Math.abs(data.netAmount)} AED
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-center align-middle">
+                          <span className={clsx(
+                            "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
+                            isPayable
+                              ? "bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
+                              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                          )}>
+                            {isPayable ? <FiTrendingDown /> : <FiTrendingUp />}
+                            {isPayable ? "Payable" : "Healthy"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right align-middle">
+                          <Link
+                            href={`/${data.client.type}/${data.client.id}`}
+                            className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300"
+                          >
+                            Open Profile
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>}
         </div>

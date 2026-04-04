@@ -68,12 +68,104 @@ const formatTransactionListDate = (dateString: string | null | undefined) => {
   return formatRelativeDate(dateString);
 };
 
+const getTransactionVisual = (record: TRecordList) => {
+  const status = (record?.status || "").toLowerCase();
+  const particular = (record?.particular || "").toLowerCase();
+  const isSelf = record?.client?.type === "self";
+
+  const isSelfTransfer =
+    status.includes("self deposit") ||
+    particular.includes("money removed from") ||
+    particular.includes("money recieved as exchange") ||
+    particular.includes("money received as exchange");
+
+  const isInstantProfit = status === "profit";
+  const isLiability = record?.method === "liability" || status.includes("liability");
+  const isOfficeExpense = status.includes("office expense") || particular.includes("office expense");
+  const isCompanyExpense =
+    isSelf &&
+    record?.type === "expense" &&
+    (isOfficeExpense || status.includes("debit"));
+
+  if (isSelfTransfer) {
+    if (record?.type === "income") {
+      return {
+        label: "Self Transfer In",
+        badgeClass:
+          "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-500/30",
+        amountClass: "text-cyan-600 dark:text-cyan-400",
+      };
+    }
+
+    return {
+      label: "Self Transfer Out",
+      badgeClass:
+        "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30",
+      amountClass: "text-blue-600 dark:text-blue-400",
+    };
+  }
+
+  if (isInstantProfit) {
+    if (record?.type === "income") {
+      return {
+        label: "Instant Profit In",
+        badgeClass:
+          "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+        amountClass: "text-emerald-600 dark:text-emerald-400",
+      };
+    }
+
+    return {
+      label: "Instant Profit Out",
+      badgeClass:
+        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+      amountClass: "text-rose-600 dark:text-rose-400",
+    };
+  }
+
+  if (isCompanyExpense) {
+    return {
+      label: "Company Expense",
+      badgeClass:
+        "bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:ring-fuchsia-500/30",
+      amountClass: "text-fuchsia-600 dark:text-fuchsia-400",
+    };
+  }
+
+  if (isLiability) {
+    return {
+      label: "Liability",
+      badgeClass:
+        "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
+      amountClass: "text-amber-600 dark:text-amber-400",
+    };
+  }
+
+  if (record?.type === "income") {
+    return {
+      label: "Income",
+      badgeClass:
+        "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+      amountClass: "text-emerald-600 dark:text-emerald-400",
+    };
+  }
+
+  return {
+    label: "Expense",
+    badgeClass:
+      "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+    amountClass: "text-rose-600 dark:text-rose-400",
+  };
+};
+
 const TransactionList = ({
   type,
   id,
+  embedded = false,
 }: {
   type?: string | string[];
   id?: string | string[];
+  embedded?: boolean;
 }) => {
   const queryClient = useQueryClient();
 
@@ -209,7 +301,7 @@ const TransactionList = ({
 
   return (
     <>
-      {type && (
+      {type && !embedded && (
         <>
           <Breadcrumb pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`} />
           <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
@@ -508,10 +600,14 @@ const TransactionList = ({
                 </tr>
               ) : (
                 recordsWithBalance.map((record, key) => (
-                  <tr 
-                    key={key} 
-                    className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                  >
+                  (() => {
+                    const transactionVisual = getTransactionVisual(record);
+
+                    return (
+                      <tr 
+                        key={key} 
+                        className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                      >
                     <td className="py-4 pl-4 align-top">
                       <div className="flex flex-col gap-1">
                         <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">
@@ -544,7 +640,7 @@ const TransactionList = ({
                         <span className="font-medium text-slate-700 dark:text-slate-300 capitalize text-sm">
                           {record?.method}
                         </span>
-                        {record?.status && renderBadge(record.status, "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700")}
+                        {renderBadge(transactionVisual.label, transactionVisual.badgeClass)}
                       </div>
                     </td>
 
@@ -552,7 +648,7 @@ const TransactionList = ({
                       <div className="flex flex-col items-start gap-1">
                         <span className={clsx(
                           "font-bold",
-                          record?.type === "expense" ? "text-rose-600 dark:text-rose-400" : record.method === "liability" ? "text-orange-500 dark:text-orange-400" : "text-emerald-600 dark:text-emerald-400"
+                          transactionVisual.amountClass
                         )}>
                           {record?.amount} <span className="text-xs font-medium">AED</span>
                         </span>
@@ -606,7 +702,9 @@ const TransactionList = ({
                           </button>
                        </div>
                     </td>
-                  </tr>
+                    </tr>
+                    );
+                  })()
                 ))
               )}
             </tbody>

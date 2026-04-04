@@ -93,7 +93,7 @@ function CompanyList({ sort }: { sort?: string }) {
   return (
     <EntityListingShell
       title="Entity Directory"
-      subtitle="Explore, search, and refine your companies with real-time controls."
+      subtitle="Company profiles with quick access to records and compliance status."
       addEntityHref="/company/register"
       addEntityLabel="Add Company"
       totalCount={totalCount}
@@ -126,8 +126,9 @@ function CompanyList({ sort }: { sort?: string }) {
         setPage(PAGINATION.DEFAULT_PAGE);
         setSelectedIds([]);
       }}
+      compactHeaderControls
       headerActions={
-        <ExportActionsMenu onExport={exportSelection} />
+        <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
       }
     >
       <div className="max-w-full overflow-x-auto">

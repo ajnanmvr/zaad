@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import axios from "axios";
 import { useRouter } from 'next/navigation'
+import { FiUser } from "react-icons/fi";
 import { useUserContext } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
 
@@ -65,17 +65,8 @@ const DropdownUser = () => {
           <span className="block text-xs">{user?.role}</span>
         </span>
 
-        <span className="h-12 w-12 rounded-full">
-          <Image
-            width={112}
-            height={112}
-            src={"/images/user/user-01.png"}
-            style={{
-              width: "auto",
-              height: "auto",
-            }}
-            alt="User"
-          />
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-cyan-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+          <FiUser className="text-xl" />
         </span>
 
         <svg

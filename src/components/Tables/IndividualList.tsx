@@ -117,7 +117,7 @@ function IndividualList() {
     <>
       <EntityListingShell
         title="Individual Directory"
-        subtitle="Find and manage individuals with search, sorting, and quick handover actions."
+        subtitle="Individual profiles linked to records, documents, and handovers."
         addEntityHref="/individual/register"
         addEntityLabel="Add Individual"
         totalCount={pagination?.total ?? filteredIndividuals.length}
@@ -150,8 +150,9 @@ function IndividualList() {
           setPage(PAGINATION.DEFAULT_PAGE);
           setSelectedIds([]);
         }}
+        compactHeaderControls
         headerActions={
-          <ExportActionsMenu onExport={exportSelection} />
+          <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
         }
       >
         <div className="max-w-full overflow-x-auto">

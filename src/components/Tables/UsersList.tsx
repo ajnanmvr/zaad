@@ -1,11 +1,12 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { formatDate } from "@/utils/dateUtils";
 import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiUserCheck, FiUserX, FiShield, FiUser } from "react-icons/fi";
 import clsx from "clsx";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface User {
     _id: string;
@@ -26,48 +27,64 @@ interface Pagination {
 }
 
 const UsersList = () => {
-    const [users, setUsers] = useState<User[]>([]);
-    const [pagination, setPagination] = useState<Pagination>({
-        currentPage: 0,
-        totalPages: 0,
-        totalUsers: 0,
-        hasMore: false
-    });
-    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(0);
     const [showDeleted, setShowDeleted] = useState(false);
+    const queryClient = useQueryClient();
 
-    const fetchUsers = async (page: number = 0, search: string = "", deleted: boolean = false) => {
-        try {
-            setIsLoading(true);
+    const { data, isLoading } = useQuery({
+        queryKey: ["users", currentPage, searchTerm, showDeleted],
+        queryFn: async () => {
             const params = new URLSearchParams({
-                page: page.toString(),
-                limit: "10"
+                page: currentPage.toString(),
+                limit: "10",
             });
 
-            if (search) {
-                params.append("search", search);
+            if (searchTerm) {
+                params.append("search", searchTerm);
             }
 
-            if (deleted) {
+            if (showDeleted) {
                 params.append("deleted", "true");
             }
 
             const { data } = await axios.get(`/api/users?${params}`);
-            setUsers(data.users);
-            setPagination(data.pagination);
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to fetch users";
-            toast.error(errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
+            return data as { users: User[]; pagination: Pagination };
+        },
+        placeholderData: keepPreviousData,
+    });
+
+    const users = data?.users || [];
+    const pagination = data?.pagination || {
+        currentPage: 0,
+        totalPages: 0,
+        totalUsers: 0,
+        hasMore: false,
     };
 
-    useEffect(() => {
-        fetchUsers(currentPage, searchTerm, showDeleted);
-    }, [currentPage, searchTerm, showDeleted]);
+    const deleteMutation = useMutation({
+        mutationFn: (userId: string) => axios.delete(`/api/users/${userId}`),
+        onSuccess: () => {
+            toast.success("User deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            const errorMessage = error.response?.data?.error || "Failed to delete user";
+            toast.error(errorMessage);
+        },
+    });
+
+    const reactivateMutation = useMutation({
+        mutationFn: (userId: string) => axios.put(`/api/users/${userId}/reactivate`),
+        onSuccess: () => {
+            toast.success("User reactivated successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            const errorMessage = error.response?.data?.error || "Failed to reactivate user";
+            toast.error(errorMessage);
+        },
+    });
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -91,7 +108,7 @@ const UsersList = () => {
         try {
             await axios.delete(`/api/users/${userId}`);
             toast.success("User deleted successfully");
-            fetchUsers(currentPage, searchTerm, showDeleted);
+            deleteMutation.mutate(userId);
         } catch (error: any) {
             const errorMessage = error.response?.data?.error || "Failed to delete user";
             toast.error(errorMessage);
@@ -106,9 +123,7 @@ const UsersList = () => {
         }
 
         try {
-            await axios.put(`/api/users/${userId}/reactivate`);
-            toast.success("User reactivated successfully");
-            fetchUsers(currentPage, searchTerm, showDeleted);
+            reactivateMutation.mutate(userId);
         } catch (error: any) {
             const errorMessage = error.response?.data?.error || "Failed to reactivate user";
             toast.error(errorMessage);

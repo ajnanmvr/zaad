@@ -2,6 +2,17 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  FiClipboard,
+  FiEdit2,
+  FiEye,
+  FiFileText,
+  FiFolder,
+  FiKey,
+  FiList,
+  FiTrash2,
+  FiUsers,
+} from "react-icons/fi";
 
 export type EntityType = "company" | "employee" | "individual";
 export type EntitySectionKey =
@@ -18,12 +29,6 @@ export type EntityMetric = {
   icon: ReactNode;
   label: string;
   value: number;
-};
-
-export type EntityActionLink = {
-  href: string;
-  label: string;
-  primary?: boolean;
 };
 
 export type EntityProfileLink = {
@@ -191,62 +196,47 @@ export function getSectionTitle(section: EntitySectionKey) {
 export function EntityProfileHeader({
   entityType,
   name,
-  description,
   avatarInitials,
   avatarColor,
   companyName,
   companyAvatarInitials,
   companyAvatarColor,
-  metrics,
-  actions,
+  onEditHref,
+  onDelete,
+  isDeleting,
 }: {
   entityType: EntityType;
   name: string;
-  description: string;
   avatarInitials: string;
   avatarColor: string;
   companyName?: string;
   companyAvatarInitials?: string;
   companyAvatarColor?: string;
-  metrics: EntityMetric[];
-  actions?: EntityActionLink[];
+  onEditHref: string;
+  onDelete: () => void;
+  isDeleting?: boolean;
 }) {
   return (
     <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(60,80,224,0.18),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.14),_transparent_30%)]" />
-      <div className="absolute right-0 top-0 h-40 w-40 -translate-y-1/2 translate-x-1/3 rounded-full bg-sky-400/10 blur-3xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(60,80,224,0.12),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.08),_transparent_30%)]" />
       <div className="relative p-6 sm:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4 min-w-0">
             <div
-              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] text-3xl font-black text-white ring-4 ring-white/40 dark:ring-slate-950/40"
+              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] text-2xl font-black text-white ring-4 ring-white/40 dark:ring-slate-950/40"
               style={{ backgroundColor: avatarColor }}
             >
               {avatarInitials}
             </div>
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.28em] text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
-                  {entityType} profile
-                </div>
-                <div>
-                  <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-                    {name}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
-                    {description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold capitalize text-white dark:bg-white dark:text-slate-900">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-slate-950 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-white dark:bg-white dark:text-slate-900">
                   {entityType}
                 </span>
                 {companyName && companyAvatarInitials && companyAvatarColor && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
                     <span
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black text-white"
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black text-white"
                       style={{ backgroundColor: companyAvatarColor }}
                     >
                       {companyAvatarInitials}
@@ -255,44 +245,29 @@ export function EntityProfileHeader({
                   </span>
                 )}
               </div>
-
-              {actions && actions.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {actions.map((action) => (
-                    <Link
-                      key={action.label}
-                      href={action.href}
-                      className={
-                        action.primary
-                          ? "inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-                          : "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900"
-                      }
-                    >
-                      {action.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <h1 className="truncate text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                {name}
+              </h1>
             </div>
           </div>
 
-          <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-xl xl:grid-cols-2">
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/70"
-              >
-                <div className="mb-3 inline-flex rounded-xl bg-slate-950 p-2 text-white dark:bg-white dark:text-slate-900">
-                  {metric.icon}
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                  {metric.label}
-                </p>
-                <p className="mt-1 text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                  {metric.value}
-                </p>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-3 sm:justify-end">
+            <Link
+              href={onEditHref || "#"}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <FiEdit2 className="mr-2" />
+              Edit profile
+            </Link>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FiTrash2 className="mr-2" />
+              {isDeleting ? "Deleting..." : "Delete profile"}
+            </button>
           </div>
         </div>
       </div>
@@ -304,11 +279,24 @@ export function EntityProfileTabs({
   entityType,
   id,
   activeSection,
+  sectionCounts,
 }: {
   entityType: EntityType;
   id: string;
   activeSection: EntitySectionKey;
+  sectionCounts?: Partial<Record<EntitySectionKey, number>>;
 }) {
+  const sectionIcons: Record<EntitySectionKey, ReactNode> = {
+    overview: <FiEye className="text-base" />,
+    details: <FiClipboard className="text-base" />,
+    documents: <FiFolder className="text-base" />,
+    credentials: <FiKey className="text-base" />,
+    handovers: <FiFileText className="text-base" />,
+    employees: <FiUsers className="text-base" />,
+    records: <FiList className="text-base" />,
+    invoices: <FiFileText className="text-base" />,
+  };
+
   const links = getEntitySectionLinks(entityType, id).map((link) => ({
     ...link,
     active:
@@ -321,18 +309,41 @@ export function EntityProfileTabs({
     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
       <div className="flex flex-wrap gap-2">
         {links.map((link) => (
+          (() => {
+            const sectionKey = link.label.toLowerCase() as EntitySectionKey;
+            const count = sectionCounts?.[sectionKey] || 0;
+            const showCount =
+              sectionKey !== "records" &&
+              sectionKey !== "invoices" &&
+              count > 0;
+
+            return (
           <Link
             key={link.label}
             href={link.href}
             aria-current={link.active ? "page" : undefined}
             className={
               link.active
-                ? "inline-flex items-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900"
-                : "inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                ? "inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900"
+                : "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
             }
           >
+            {sectionIcons[sectionKey]}
             {link.label}
+            {showCount && (
+              <span
+                className={
+                  link.active
+                    ? "inline-flex min-w-6 items-center justify-center rounded-full bg-white/20 px-1.5 py-0.5 text-[11px] font-bold dark:bg-slate-900/20"
+                    : "inline-flex min-w-6 items-center justify-center rounded-full bg-slate-200 px-1.5 py-0.5 text-[11px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-100"
+                }
+              >
+                {count}
+              </span>
+            )}
           </Link>
+            );
+          })()
         ))}
       </div>
     </div>
@@ -391,24 +402,28 @@ export function SectionCard({
   description,
   children,
 }: {
-  title: string;
+  title?: string;
   description?: string;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:p-6">
-      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-            {title}
-          </h2>
-          {description && (
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {description}
-            </p>
-          )}
+      {(title || description) && (
+        <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            {title && (
+              <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {description}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {children}
     </div>
   );

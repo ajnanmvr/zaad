@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
 import clsx from "clsx";
+import EntityAvatar from "../common/EntityAvatar";
 
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
@@ -299,7 +300,15 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                                     onClick={() => handleEntitySelection(suggestion)}
                                                                     className="cursor-pointer px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                                                                 >
-                                                                    {suggestion.name}
+                                                                    <div className="flex items-center gap-3">
+                                                                        <EntityAvatar name={suggestion.name} color={suggestion.color} size="sm" />
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-medium text-slate-800 dark:text-slate-100">{suggestion.name}</span>
+                                                                            <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                                                {selectedEntityType}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
                                                                 </li>
                                                             ))}
                                                         </ul>

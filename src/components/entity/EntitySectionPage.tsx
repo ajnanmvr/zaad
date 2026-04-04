@@ -31,6 +31,8 @@ import calculateStatus from "@/utils/calculateStatus";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import HandoverList from "../HandoverList";
 import EmployeeList from "@/components/Tables/EmployeeList";
+import InvoiceList from "@/components/Tables/InvoiceList";
+import TransactionList from "@/components/Tables/TransactionList";
 import { TEntityListItem, TPagination } from "@/types/types";
 
 import {
@@ -159,17 +161,33 @@ export default function EntitySectionPage({
   const [showAddCredential, setShowAddCredential] = useState(false);
   const [isAddingDocument, setIsAddingDocument] = useState(false);
   const [isAddingCredential, setIsAddingCredential] = useState(false);
-  const [visibleCredentialIds, setVisibleCredentialIds] = useState<string[]>([]);
-  const [documentSort, setDocumentSort] = useState<"expiry-asc" | "expiry-desc" | "name-asc">("expiry-asc");
-  const [credentialSort, setCredentialSort] = useState<"platform-asc" | "platform-desc" | "username-asc">("platform-asc");
+  const [visibleCredentialIds, setVisibleCredentialIds] = useState<string[]>(
+    [],
+  );
+  const [documentSort, setDocumentSort] = useState<
+    "expiry-asc" | "expiry-desc" | "name-asc"
+  >("expiry-asc");
+  const [credentialSort, setCredentialSort] = useState<
+    "platform-asc" | "platform-desc" | "username-asc"
+  >("platform-asc");
   const [renewingDocId, setRenewingDocId] = useState<string | null>(null);
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
-  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
-  const [editingCredentialId, setEditingCredentialId] = useState<string | null>(null);
-  const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<string | null>(null);
-  const [deleteCredentialConfirmId, setDeleteCredentialConfirmId] = useState<string | null>(null);
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(
+    null,
+  );
+  const [editingCredentialId, setEditingCredentialId] = useState<string | null>(
+    null,
+  );
+  const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<
+    string | null
+  >(null);
+  const [deleteCredentialConfirmId, setDeleteCredentialConfirmId] = useState<
+    string | null
+  >(null);
+  const [employeePage, setEmployeePage] = useState<number>(1);
+  const [employeePageSize, setEmployeePageSize] = useState<number>(20);
   const [documentDraft, setDocumentDraft] = useState({
     documentTemplate: "",
     issueDate: "",
@@ -194,59 +212,59 @@ export default function EntitySectionPage({
     },
   });
 
-  const { data: entityRes, refetch: refetchEntity } = useQuery<EntityDetailResponse>({
-    queryKey: ["entity-section-base", entityType, id],
-    queryFn: async () => {
-      const res = await fetch(`/api/${entityType}/${id}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch entity");
-      }
-      return res.json();
-    },
-    enabled: section === "details" || section === "documents" || section === "credentials" || section === "handovers" || section === "invoices",
-  });
+  const { data: entityRes, refetch: refetchEntity } =
+    useQuery<EntityDetailResponse>({
+      queryKey: ["entity-section-base", entityType, id],
+      queryFn: async () => {
+        const res = await fetch(`/api/${entityType}/${id}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch entity");
+        }
+        return res.json();
+      },
+      enabled:
+        section === "details" ||
+        section === "documents" ||
+        section === "credentials" ||
+        section === "handovers" ||
+        section === "invoices",
+    });
 
-  const { data: recordsRes } = useQuery<any>({
-    queryKey: ["entity-records", entityType, id],
+  const { data: employeesByCompanyRes } = useQuery<{
+    data: TEntityListItem[];
+    pagination: TPagination;
+  }>({
+    queryKey: ["company-employees", id, employeePage, employeePageSize],
     queryFn: async () => {
-      const endpoint = entityType === "individual" ? "/api/payment/self" : `/api/payment/${entityType}/${id}`;
-      const { data } = await axios.get(endpoint);
-      return data;
-    },
-    enabled: section === "records",
-  });
-
-  const { data: invoicesRes } = useQuery<any>({
-    queryKey: ["entity-invoices", entityType, id],
-    queryFn: async () => {
-      const { data } = await axios.get(`/api/invoice?page=0&entityId=${encodeURIComponent(id as string)}`);
-      return data;
-    },
-    enabled: section === "invoices" && Boolean(id),
-  });
-
-  const { data: employeesByCompanyRes } = useQuery<{ data: TEntityListItem[]; pagination: TPagination }>({
-    queryKey: ["company-employees", id],
-    queryFn: async () => {
-      const { data } = await axios.get(`/api/employee/company/${id}?page=1&limit=100`);
+      const { data } = await axios.get(
+        `/api/employee/company/${id}?page=${employeePage}&limit=${employeePageSize}`,
+      );
       return data;
     },
     enabled: section === "employees" && entityType === "company",
   });
 
-  const { data: documentTemplateRes } = useQuery<{ options: TemplateOption[] }>({
-    queryKey: ["document-template-options"],
-    queryFn: async () => {
-      const { data } = await axios.get("/api/templates", { params: { type: "document" } });
-      return data;
+  const { data: documentTemplateRes } = useQuery<{ options: TemplateOption[] }>(
+    {
+      queryKey: ["document-template-options"],
+      queryFn: async () => {
+        const { data } = await axios.get("/api/templates", {
+          params: { type: "document" },
+        });
+        return data;
+      },
+      enabled: section === "documents",
     },
-    enabled: section === "documents",
-  });
+  );
 
-  const { data: credentialTemplateRes } = useQuery<{ options: TemplateOption[] }>({
+  const { data: credentialTemplateRes } = useQuery<{
+    options: TemplateOption[];
+  }>({
     queryKey: ["credential-template-options"],
     queryFn: async () => {
-      const { data } = await axios.get("/api/templates", { params: { type: "credential" } });
+      const { data } = await axios.get("/api/templates", {
+        params: { type: "credential" },
+      });
       return data;
     },
     enabled: section === "credentials",
@@ -255,11 +273,14 @@ export default function EntitySectionPage({
   const entity = overviewRes?.data.entity;
   const counts = overviewRes?.data.counts;
   const details = entityRes?.data;
-  const documents = entityRes?.data?.documents || [];
-  const credentials = entityRes?.data?.credentials || [];
+  const documents = useMemo(() => entityRes?.data?.documents || [], [entityRes?.data?.documents]);
+  const credentials = useMemo(() => entityRes?.data?.credentials || [], [entityRes?.data?.credentials]);
   const entityName = entityRes?.data?.name || entity?.name || "Entity";
   const avatarInitials = initialsFromName(entity?.name || details?.name);
-  const avatarColor = resolveAvatarColorWithFallback(entity?.color || details?.color, entity?.name || details?.name);
+  const avatarColor = resolveAvatarColorWithFallback(
+    entity?.color || details?.color,
+    entity?.name || details?.name,
+  );
   const companyName = entity?.company?.name || details?.company?.name;
   const companyAvatarInitials = initialsFromName(companyName);
   const companyAvatarColor = resolveAvatarColorWithFallback(
@@ -291,20 +312,30 @@ export default function EntitySectionPage({
   const sortedCredentials = useMemo(() => {
     const clone = [...credentials];
     if (credentialSort === "platform-desc") {
-      return clone.sort((a, b) => (b.platform || "").localeCompare(a.platform || ""));
+      return clone.sort((a, b) =>
+        (b.platform || "").localeCompare(a.platform || ""),
+      );
     }
     if (credentialSort === "username-asc") {
-      return clone.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+      return clone.sort((a, b) =>
+        (a.username || "").localeCompare(b.username || ""),
+      );
     }
-    return clone.sort((a, b) => (a.platform || "").localeCompare(b.platform || ""));
+    return clone.sort((a, b) =>
+      (a.platform || "").localeCompare(b.platform || ""),
+    );
   }, [credentials, credentialSort]);
 
-  const startRenew = (doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number]) => {
+  const startRenew = (
+    doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number],
+  ) => {
     setRenewingDocId(doc._id);
     setRenewExpiryDate(doc.expiryDate ? doc.expiryDate.slice(0, 10) : "");
   };
 
-  const submitRenew = async (doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number]) => {
+  const submitRenew = async (
+    doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number],
+  ) => {
     if (!renewExpiryDate) {
       toast.error("Please choose a new expiry date");
       return;
@@ -340,7 +371,9 @@ export default function EntitySectionPage({
       return;
     }
 
-    const selectedTemplate = documentOptions.find((item) => item.id === documentDraft.documentTemplate);
+    const selectedTemplate = documentOptions.find(
+      (item) => item.id === documentDraft.documentTemplate,
+    );
     const nextDocuments = [
       ...documents.map((item) => ({
         documentTemplate: item.documentTemplate,
@@ -370,7 +403,9 @@ export default function EntitySectionPage({
         });
         toast.success("Document updated successfully");
       } else {
-        await axios.put(`/api/${entityType}/${id}`, { documents: nextDocuments });
+        await axios.put(`/api/${entityType}/${id}`, {
+          documents: nextDocuments,
+        });
         toast.success("Document added successfully");
       }
       setShowAddDocument(false);
@@ -418,15 +453,20 @@ export default function EntitySectionPage({
     try {
       setIsAddingCredential(true);
       if (editingCredentialId) {
-        await axios.put(`/api/${entityType}/${id}/credential/${editingCredentialId}`, {
-          credentialTemplate: credentialDraft.credentialTemplate,
-          username: credentialDraft.username,
-          notes: credentialDraft.notes || undefined,
-          password: credentialDraft.password,
-        });
+        await axios.put(
+          `/api/${entityType}/${id}/credential/${editingCredentialId}`,
+          {
+            credentialTemplate: credentialDraft.credentialTemplate,
+            username: credentialDraft.username,
+            notes: credentialDraft.notes || undefined,
+            password: credentialDraft.password,
+          },
+        );
         toast.success("Credential updated successfully");
       } else {
-        await axios.put(`/api/${entityType}/${id}`, { credentials: nextCredentials });
+        await axios.put(`/api/${entityType}/${id}`, {
+          credentials: nextCredentials,
+        });
         toast.success("Credential added successfully");
       }
       setShowAddCredential(false);
@@ -446,7 +486,9 @@ export default function EntitySectionPage({
     }
   };
 
-  const startEditDocument = (doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number]) => {
+  const startEditDocument = (
+    doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number],
+  ) => {
     setEditingDocumentId(doc._id);
     setDocumentDraft({
       documentTemplate: doc.documentTemplate || "",
@@ -457,7 +499,9 @@ export default function EntitySectionPage({
     setShowAddDocument(true);
   };
 
-  const startEditCredential = (item: NonNullable<EntityDetailResponse["data"]["credentials"]>[number]) => {
+  const startEditCredential = (
+    item: NonNullable<EntityDetailResponse["data"]["credentials"]>[number],
+  ) => {
     setEditingCredentialId(item._id);
     setCredentialDraft({
       credentialTemplate: item.credentialTemplate || "",
@@ -504,46 +548,6 @@ export default function EntitySectionPage({
     }
   };
 
-  const metrics: EntityMetric[] = [
-    {
-      icon: <FiFolder />,
-      label: "Documents",
-      value: counts?.documents || documents.length || 0,
-    },
-    {
-      icon: <FiFileText />,
-      label: "Handovers",
-      value: counts?.handovers || 0,
-    },
-    {
-      icon: <FiLayers />,
-      label: "Credentials",
-      value: counts?.credentials || credentials.length || 0,
-    },
-  ];
-
-  if (entityType === "company") {
-    metrics.push({
-      icon: <FiUsers />,
-      label: "Employees",
-      value: counts?.employees || employeesByCompanyRes?.data?.length || 0,
-    });
-  } else {
-    metrics.push({
-      icon: <FiCreditCard />,
-      label: "Invoices",
-      value: counts?.invoices || invoicesRes?.invoices?.length || 0,
-    });
-  }
-
-  const actions = [
-    {
-      href: `/${entityType}/${id}/edit`,
-      label: "Edit profile",
-      primary: true,
-    },
-  ];
-
   const handleDeleteEntity = async () => {
     if (!confirm(`Delete this ${entityType}?`)) {
       return;
@@ -562,17 +566,32 @@ export default function EntitySectionPage({
     }
   };
 
-  const needsEntityData = section === "details" || section === "documents" || section === "credentials" || section === "handovers" || section === "invoices";
+  const needsEntityData =
+    section === "details" ||
+    section === "documents" ||
+    section === "credentials" ||
+    section === "handovers" ||
+    section === "invoices";
   const needsRecordsData = section === "records";
-  const needsEmployeesData = section === "employees" && entityType === "company";
-  const needsInvoicesData = section === "invoices";
-  const isLoading = !overviewRes || (needsEntityData && !entityRes) || (needsRecordsData && !recordsRes) || (needsEmployeesData && !employeesByCompanyRes) || (needsInvoicesData && !invoicesRes);
+  const needsEmployeesData =
+    section === "employees" && entityType === "company";
+  const needsInvoicesData = false;
+  const showOverviewSidebar = section === "overview";
+  const isBaseLoading = !overviewRes;
+  const isSectionLoading =
+    (needsEntityData && !entityRes) ||
+    (needsEmployeesData && !employeesByCompanyRes) ||
+    (needsRecordsData && false) ||
+    (needsInvoicesData && false);
 
-  if (isLoading) {
+  if (isBaseLoading) {
     return (
       <>
         <Breadcrumb pageName={`${entityName} / ${sectionTitle}`} />
-        <EntitySectionSkeleton entityType={entityType} sectionTitle={sectionTitle} />
+        <EntitySectionSkeleton
+          entityType={entityType}
+          sectionTitle={sectionTitle}
+        />
       </>
     );
   }
@@ -585,39 +604,66 @@ export default function EntitySectionPage({
         <EntityProfileHeader
           entityType={entityType}
           name={entityName}
-          description={sectionDescription(section)}
           avatarInitials={avatarInitials}
           avatarColor={avatarColor}
           companyName={entityType === "employee" ? companyName : undefined}
-          companyAvatarInitials={entityType === "employee" ? companyAvatarInitials : undefined}
-          companyAvatarColor={entityType === "employee" ? companyAvatarColor : undefined}
-          metrics={metrics}
-          actions={actions}
+          companyAvatarInitials={
+            entityType === "employee" ? companyAvatarInitials : undefined
+          }
+          companyAvatarColor={
+            entityType === "employee" ? companyAvatarColor : undefined
+          }
+          onEditHref={`/${entityType}/${id}/edit`}
+          onDelete={handleDeleteEntity}
+          isDeleting={isDeletingEntity}
         />
 
-        <EntityProfileTabs entityType={entityType} id={id} activeSection={section} />
+        <EntityProfileTabs
+          entityType={entityType}
+          id={id}
+          activeSection={section}
+          sectionCounts={{
+            details: counts?.details || 0,
+            documents: counts?.documents || 0,
+            credentials: counts?.credentials || 0,
+            handovers: counts?.handovers || 0,
+            employees: counts?.employees || 0,
+            records: counts?.records || 0,
+            invoices: counts?.invoices || 0,
+          }}
+        />
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => router.push(`/${entityType}/${id}/edit`)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+        <div
+          className={clsx(
+            "grid gap-6",
+            showOverviewSidebar
+              ? "xl:grid-cols-[minmax(0,1.55fr)_360px]"
+              : "grid-cols-1",
+          )}
+        >
+          <SectionCard
+            title={
+              section === "employees" ||
+              section === "records" ||
+              section === "invoices"
+                ? undefined
+                : sectionTitle
+            }
+            description={
+              section === "employees" ||
+              section === "records" ||
+              section === "invoices"
+                ? undefined
+                : sectionDescription(section)
+            }
           >
-            Edit {entityType}
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteEntity}
-            disabled={isDeletingEntity}
-            className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
-          >
-            {isDeletingEntity ? "Deleting..." : `Delete ${entityType}`}
-          </button>
-        </div>
+            {isSectionLoading && (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent" />
+              </div>
+            )}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
-          <SectionCard title={sectionTitle} description={sectionDescription(section)}>
-            {section === "details" && (
+            {!isSectionLoading && section === "details" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <ProfileField label="Name" value={entityRes?.data?.name} />
                 <ProfileField label="Email" value={entityRes?.data?.email} />
@@ -626,39 +672,82 @@ export default function EntitySectionPage({
 
                 {entityType === "company" && (
                   <>
-                    <ProfileField label="License No" value={entityRes?.data?.licenseNo} />
-                    <ProfileField label="Company Type" value={entityRes?.data?.companyType} />
-                    <ProfileField label="Emirates" value={entityRes?.data?.emirates} />
-                    <ProfileField label="Transaction No" value={entityRes?.data?.transactionNo} />
-                    <ProfileField label="Mainland" value={entityRes?.data?.isMainland} />
+                    <ProfileField
+                      label="License No"
+                      value={entityRes?.data?.licenseNo}
+                    />
+                    <ProfileField
+                      label="Company Type"
+                      value={entityRes?.data?.companyType}
+                    />
+                    <ProfileField
+                      label="Emirates"
+                      value={entityRes?.data?.emirates}
+                    />
+                    <ProfileField
+                      label="Transaction No"
+                      value={entityRes?.data?.transactionNo}
+                    />
+                    <ProfileField
+                      label="Mainland"
+                      value={entityRes?.data?.isMainland}
+                    />
                   </>
                 )}
 
                 {entityType === "employee" && (
                   <>
-                    <ProfileField label="Company" value={entityRes?.data?.company?.name} />
-                    <ProfileField label="Emirates ID" value={entityRes?.data?.emiratesId} />
-                    <ProfileField label="Nationality" value={entityRes?.data?.nationality} />
-                    <ProfileField label="Designation" value={entityRes?.data?.designation} />
+                    <ProfileField
+                      label="Company"
+                      value={entityRes?.data?.company?.name}
+                    />
+                    <ProfileField
+                      label="Emirates ID"
+                      value={entityRes?.data?.emiratesId}
+                    />
+                    <ProfileField
+                      label="Nationality"
+                      value={entityRes?.data?.nationality}
+                    />
+                    <ProfileField
+                      label="Designation"
+                      value={entityRes?.data?.designation}
+                    />
                   </>
                 )}
 
                 {entityType === "individual" && (
                   <>
-                    <ProfileField label="Emirates ID" value={entityRes?.data?.emiratesId} />
-                    <ProfileField label="Nationality" value={entityRes?.data?.nationality} />
-                    <ProfileField label="Designation" value={entityRes?.data?.designation} />
+                    <ProfileField
+                      label="Emirates ID"
+                      value={entityRes?.data?.emiratesId}
+                    />
+                    <ProfileField
+                      label="Nationality"
+                      value={entityRes?.data?.nationality}
+                    />
+                    <ProfileField
+                      label="Designation"
+                      value={entityRes?.data?.designation}
+                    />
                   </>
                 )}
               </div>
             )}
 
-            {section === "documents" && (
+            {!isSectionLoading && section === "documents" && (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <select
                     value={documentSort}
-                    onChange={(event) => setDocumentSort(event.target.value as "expiry-asc" | "expiry-desc" | "name-asc")}
+                    onChange={(event) =>
+                      setDocumentSort(
+                        event.target.value as
+                          | "expiry-asc"
+                          | "expiry-desc"
+                          | "name-asc",
+                      )
+                    }
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                   >
                     <option value="expiry-asc">Sort: Expiry nearest</option>
@@ -672,7 +761,12 @@ export default function EntitySectionPage({
                         const next = !prev;
                         if (!next) {
                           setEditingDocumentId(null);
-                          setDocumentDraft({ documentTemplate: "", issueDate: "", expiryDate: "", notes: "" });
+                          setDocumentDraft({
+                            documentTemplate: "",
+                            issueDate: "",
+                            expiryDate: "",
+                            notes: "",
+                          });
                         }
                         return next;
                       });
@@ -680,7 +774,11 @@ export default function EntitySectionPage({
                     className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                   >
                     <FiPlus />
-                    {showAddDocument ? "Cancel" : editingDocumentId ? "Edit Document" : "Add Document"}
+                    {showAddDocument
+                      ? "Cancel"
+                      : editingDocumentId
+                        ? "Edit Document"
+                        : "Add Document"}
                   </button>
                 </div>
 
@@ -688,42 +786,72 @@ export default function EntitySectionPage({
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Document</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Document
+                        </label>
                         <select
                           value={documentDraft.documentTemplate}
-                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, documentTemplate: event.target.value }))}
+                          onChange={(event) =>
+                            setDocumentDraft((prev) => ({
+                              ...prev,
+                              documentTemplate: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         >
                           <option value="">Select document</option>
                           {documentOptions.map((option) => (
-                            <option key={option.id} value={option.id}>{option.name || "Unnamed document"}</option>
+                            <option key={option.id} value={option.id}>
+                              {option.name || "Unnamed document"}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Issue Date</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Issue Date
+                        </label>
                         <input
                           type="date"
                           value={documentDraft.issueDate}
-                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, issueDate: event.target.value }))}
+                          onChange={(event) =>
+                            setDocumentDraft((prev) => ({
+                              ...prev,
+                              issueDate: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Expiry Date</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Expiry Date
+                        </label>
                         <input
                           type="date"
                           value={documentDraft.expiryDate}
-                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, expiryDate: event.target.value }))}
+                          onChange={(event) =>
+                            setDocumentDraft((prev) => ({
+                              ...prev,
+                              expiryDate: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Notes
+                        </label>
                         <textarea
                           rows={3}
                           value={documentDraft.notes}
-                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, notes: event.target.value }))}
+                          onChange={(event) =>
+                            setDocumentDraft((prev) => ({
+                              ...prev,
+                              notes: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
@@ -742,7 +870,10 @@ export default function EntitySectionPage({
                 )}
 
                 {documents.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No documents found.</p>
+                  <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                    <FiFileText className="text-3xl opacity-30" />
+                    <p>No physical documents recorded for this entity.</p>
+                  </div>
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
                     {sortedDocuments.map((doc, index) => {
@@ -753,7 +884,8 @@ export default function EntitySectionPage({
                           key={doc._id}
                           className={clsx(
                             "p-4",
-                            index !== sortedDocuments.length - 1 && "border-b border-slate-200 dark:border-slate-700",
+                            index !== sortedDocuments.length - 1 &&
+                              "border-b border-slate-200 dark:border-slate-700",
                           )}
                         >
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
@@ -761,8 +893,12 @@ export default function EntitySectionPage({
                               <FiFileText className="text-slate-400" />
                               {doc.name || "Untitled document"}
                             </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">Issue: {formatDate(doc.issueDate)}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">Expiry: {formatDate(doc.expiryDate)}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                              Issue: {formatDate(doc.issueDate)}
+                            </p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                              Expiry: {formatDate(doc.expiryDate)}
+                            </p>
                           </div>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span
@@ -771,10 +907,10 @@ export default function EntitySectionPage({
                                 isArchived
                                   ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
                                   : status === "valid"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                  : status === "expired"
-                                    ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                                    : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                    : status === "expired"
+                                      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                      : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
                               )}
                             >
                               {isArchived ? "archived" : status}
@@ -811,7 +947,9 @@ export default function EntitySectionPage({
                             </button>
                           </div>
                           {hasValue(doc.notes) && (
-                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{doc.notes}</p>
+                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                              {doc.notes}
+                            </p>
                           )}
                           {hasValue(doc.archiveNotes) && (
                             <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -823,7 +961,9 @@ export default function EntitySectionPage({
                               <input
                                 type="date"
                                 value={renewExpiryDate}
-                                onChange={(event) => setRenewExpiryDate(event.target.value)}
+                                onChange={(event) =>
+                                  setRenewExpiryDate(event.target.value)
+                                }
                                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                               />
                               <button
@@ -851,12 +991,19 @@ export default function EntitySectionPage({
               </div>
             )}
 
-            {section === "credentials" && (
+            {!isSectionLoading && section === "credentials" && (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <select
                     value={credentialSort}
-                    onChange={(event) => setCredentialSort(event.target.value as "platform-asc" | "platform-desc" | "username-asc")}
+                    onChange={(event) =>
+                      setCredentialSort(
+                        event.target.value as
+                          | "platform-asc"
+                          | "platform-desc"
+                          | "username-asc",
+                      )
+                    }
                     className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                   >
                     <option value="platform-asc">Sort: Platform A-Z</option>
@@ -870,7 +1017,12 @@ export default function EntitySectionPage({
                         const next = !prev;
                         if (!next) {
                           setEditingCredentialId(null);
-                          setCredentialDraft({ credentialTemplate: "", username: "", password: "", notes: "" });
+                          setCredentialDraft({
+                            credentialTemplate: "",
+                            username: "",
+                            password: "",
+                            notes: "",
+                          });
                         }
                         return next;
                       });
@@ -878,7 +1030,11 @@ export default function EntitySectionPage({
                     className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-700/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
                   >
                     <FiPlus />
-                    {showAddCredential ? "Cancel" : editingCredentialId ? "Edit Credential" : "Add Credential"}
+                    {showAddCredential
+                      ? "Cancel"
+                      : editingCredentialId
+                        ? "Edit Credential"
+                        : "Add Credential"}
                   </button>
                 </div>
 
@@ -886,42 +1042,72 @@ export default function EntitySectionPage({
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Platform</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Platform
+                        </label>
                         <select
                           value={credentialDraft.credentialTemplate}
-                          onChange={(event) => setCredentialDraft((prev) => ({ ...prev, credentialTemplate: event.target.value }))}
+                          onChange={(event) =>
+                            setCredentialDraft((prev) => ({
+                              ...prev,
+                              credentialTemplate: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         >
                           <option value="">Select platform</option>
                           {credentialOptions.map((option) => (
-                            <option key={option.id} value={option.id}>{option.platform || "Unnamed platform"}</option>
+                            <option key={option.id} value={option.id}>
+                              {option.platform || "Unnamed platform"}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Username</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Username
+                        </label>
                         <input
                           type="text"
                           value={credentialDraft.username}
-                          onChange={(event) => setCredentialDraft((prev) => ({ ...prev, username: event.target.value }))}
+                          onChange={(event) =>
+                            setCredentialDraft((prev) => ({
+                              ...prev,
+                              username: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Password</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Password
+                        </label>
                         <input
                           type="text"
                           value={credentialDraft.password}
-                          onChange={(event) => setCredentialDraft((prev) => ({ ...prev, password: event.target.value }))}
+                          onChange={(event) =>
+                            setCredentialDraft((prev) => ({
+                              ...prev,
+                              password: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Notes</label>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Notes
+                        </label>
                         <textarea
                           rows={3}
                           value={credentialDraft.notes}
-                          onChange={(event) => setCredentialDraft((prev) => ({ ...prev, notes: event.target.value }))}
+                          onChange={(event) =>
+                            setCredentialDraft((prev) => ({
+                              ...prev,
+                              notes: event.target.value,
+                            }))
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
@@ -940,19 +1126,24 @@ export default function EntitySectionPage({
                 )}
 
                 {credentials.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No credentials found.</p>
+                  <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                    <FiLock className="text-3xl opacity-30" />
+                    <p>No credentials recorded for this entity.</p>
+                  </div>
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
                     {sortedCredentials.map((item, index) => {
                       const isVisible = visibleCredentialIds.includes(item._id);
-                      const plainSecret = item.credential || item.password || "";
+                      const plainSecret =
+                        item.credential || item.password || "";
 
                       return (
                         <div
                           key={item._id}
                           className={clsx(
                             "p-4",
-                            index !== sortedCredentials.length - 1 && "border-b border-slate-200 dark:border-slate-700",
+                            index !== sortedCredentials.length - 1 &&
+                              "border-b border-slate-200 dark:border-slate-700",
                           )}
                         >
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -966,7 +1157,14 @@ export default function EntitySectionPage({
                             </p>
                             <div className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 sm:col-span-2">
                               <FiLock className="text-slate-400" />
-                              <span>Password: {plainSecret ? (isVisible ? plainSecret : "******") : "-"}</span>
+                              <span>
+                                Password:{" "}
+                                {plainSecret
+                                  ? isVisible
+                                    ? plainSecret
+                                    : "******"
+                                  : "-"}
+                              </span>
                               {plainSecret && (
                                 <button
                                   type="button"
@@ -978,7 +1176,11 @@ export default function EntitySectionPage({
                                     );
                                   }}
                                   className="rounded-md border border-slate-300 p-1 text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                  title={isVisible ? "Hide password" : "Show password"}
+                                  title={
+                                    isVisible
+                                      ? "Hide password"
+                                      : "Show password"
+                                  }
                                 >
                                   {isVisible ? <FiEyeOff /> : <FiEye />}
                                 </button>
@@ -1022,149 +1224,140 @@ export default function EntitySectionPage({
               </div>
             )}
 
-            {section === "handovers" && (
-              <HandoverList entityId={id} entityName={entityName} entityType={entityType} compact />
+            {!isSectionLoading && section === "handovers" && (
+              <HandoverList
+                entityId={id}
+                entityName={entityName}
+                entityType={entityType}
+                compact
+              />
             )}
 
-            {section === "employees" && entityType === "company" && (
-              <EmployeeList employees={employeesByCompanyRes?.data} pagination={employeesByCompanyRes?.pagination} />
+            {!isSectionLoading && section === "employees" && entityType === "company" && (
+              <EmployeeList
+                employees={employeesByCompanyRes?.data}
+                pagination={employeesByCompanyRes?.pagination}
+                onPageChange={setEmployeePage}
+                pageSize={employeePageSize}
+                onPageSizeChange={(size) => {
+                  setEmployeePageSize(size);
+                  setEmployeePage(1);
+                }}
+              />
             )}
 
-            {section === "records" && (
-              <div className="space-y-3">
-                {(recordsRes?.records || []).length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No records found.</p>
-                ) : (
-                  recordsRes.records.map((record: any) => (
-                    <div
-                      key={record.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30"
-                    >
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
-                          {record.particular || "Transaction"}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {record.type} · {record.amount} AED
-                        </p>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                        {record.date}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
+            {!isSectionLoading && section === "records" && (
+              <TransactionList
+                type={entityType === "individual" ? "self" : entityType}
+                id={id}
+                embedded
+              />
             )}
 
-            {section === "invoices" && (
-              <div className="space-y-3">
-                {(invoicesRes?.invoices || []).length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No invoices found.</p>
-                ) : (
-                  invoicesRes.invoices.map((invoice: any) => (
-                    <div
-                      key={invoice.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30"
-                    >
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="font-semibold text-slate-900 dark:text-slate-100">
-                          {invoice.invoiceNo}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {invoice.amount} AED
-                        </p>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                        {invoice.client} · {invoice.date}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
+            {!isSectionLoading && section === "invoices" && (
+              <InvoiceList entityId={id} embedded />
             )}
           </SectionCard>
 
-          <aside className="space-y-6 xl:sticky xl:top-6 self-start">
-            <SectionCard title="Profile Snapshot" description="Quick facts and context.">
-              <div className="space-y-3">
-                <ProfileField label="Profile Type" value={entityType} />
-                <ProfileField label="Name" value={entityRes?.data?.name || entity?.name} />
-                <ProfileField label="Email" value={entityRes?.data?.email} />
-                <ProfileField label="Primary Phone" value={entityRes?.data?.phone1 || entityRes?.data?.phone2} />
-                {entityType === "employee" && (
-                  <ProfileField label="Company" value={companyName} />
-                )}
-                {entityType === "company" && <ProfileField label="Region" value={entityRes?.data?.emirates} />}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Status" description="Current record state and related indicators.">
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                    Status
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
-                    <FiCheckCircle />
-                    Active
-                  </p>
+          {showOverviewSidebar && (
+            <aside className="space-y-6 xl:sticky xl:top-6 self-start">
+              <SectionCard
+                title="Status"
+                description="Current record state and related indicators."
+              >
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                      Status
+                    </p>
+                    <p className="mt-1 inline-flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
+                      <FiCheckCircle />
+                      Active
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                      Section
+                    </p>
+                    <p className="mt-1 inline-flex items-center gap-2 font-semibold capitalize text-slate-900 dark:text-slate-100">
+                      <FiTag className="text-slate-400" />
+                      {sectionTitle}
+                    </p>
+                  </div>
+                  {section === "documents" && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                        Latest expiry
+                      </p>
+                      <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                        <FiCalendar className="text-slate-400" />
+                        {formatDate(documents[0]?.expiryDate)}
+                      </p>
+                    </div>
+                  )}
+                  {hasValue(
+                    entityRes?.data?.phone1 || entityRes?.data?.phone2,
+                  ) && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                        Primary Contact
+                      </p>
+                      <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                        <FiPhone className="text-slate-400" />
+                        {entityRes?.data?.phone1 || entityRes?.data?.phone2}
+                      </p>
+                    </div>
+                  )}
+                  {entityType === "company" &&
+                    hasValue(entityRes?.data?.emirates) && (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+                          Region
+                        </p>
+                        <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                          <FiGlobe className="text-slate-400" />
+                          {entityRes?.data?.emirates}
+                        </p>
+                      </div>
+                    )}
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                    Section
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-2 font-semibold capitalize text-slate-900 dark:text-slate-100">
-                    <FiTag className="text-slate-400" />
-                    {sectionTitle}
-                  </p>
-                </div>
-                {section === "documents" && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                      Latest expiry
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                      <FiCalendar className="text-slate-400" />
-                      {formatDate(documents[0]?.expiryDate)}
-                    </p>
-                  </div>
-                )}
-                {hasValue(entityRes?.data?.phone1 || entityRes?.data?.phone2) && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                      Primary Contact
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                      <FiPhone className="text-slate-400" />
-                      {entityRes?.data?.phone1 || entityRes?.data?.phone2}
-                    </p>
-                  </div>
-                )}
-                {entityType === "company" && hasValue(entityRes?.data?.emirates) && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                      Region
-                    </p>
-                    <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                      <FiGlobe className="text-slate-400" />
-                      {entityRes?.data?.emirates}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </SectionCard>
+              </SectionCard>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
-              <MetricCard icon={<FiFolder />} label="Documents" value={counts?.documents || documents.length || 0} />
-              <MetricCard icon={<FiFileText />} label="Handovers" value={counts?.handovers || 0} />
-              <MetricCard icon={<FiLayers />} label="Credentials" value={counts?.credentials || credentials.length || 0} />
-              {entityType === "company" && (
-                <MetricCard icon={<FiUsers />} label="Employees" value={counts?.employees || employeesByCompanyRes?.data?.length || 0} />
-              )}
-              <MetricCard icon={<FiCreditCard />} label="Invoices" value={counts?.invoices || invoicesRes?.invoices?.length || 0} />
-            </div>
-          </aside>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
+                <MetricCard
+                  icon={<FiFolder />}
+                  label="Documents"
+                  value={counts?.documents || documents.length || 0}
+                />
+                <MetricCard
+                  icon={<FiFileText />}
+                  label="Handovers"
+                  value={counts?.handovers || 0}
+                />
+                <MetricCard
+                  icon={<FiLayers />}
+                  label="Credentials"
+                  value={counts?.credentials || credentials.length || 0}
+                />
+                {entityType === "company" && (
+                  <MetricCard
+                    icon={<FiUsers />}
+                    label="Employees"
+                    value={
+                      counts?.employees ||
+                      employeesByCompanyRes?.data?.length ||
+                      0
+                    }
+                  />
+                )}
+                <MetricCard
+                  icon={<FiCreditCard />}
+                  label="Invoices"
+                  value={counts?.invoices || 0}
+                />
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </>

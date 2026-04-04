@@ -3,29 +3,22 @@ import { TInvoiceData } from "@/types/invoice"
 import { formatAmountInWords } from "@/utils/numberToWords"
 import axios from "axios"
 import { useParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import ReactToPrint from "react-to-print"
+import { useQuery } from "@tanstack/react-query"
 
 function SingleInvoice() {
-  const [invoice, setInvoice] = useState<TInvoiceData>()
-  const [isLoading, setIsLoading] = useState(true)
   const { id }: { id: string } = useParams()
-
-  const fetchData = async () => {
-    try {
-      const { data } = await axios.get(`/api/invoice/${id}`)
-      setInvoice(data)
-      setIsLoading(false)
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
   const componentRef = useRef(null)
-  useEffect(() => {
-    fetchData()
-  }, [])
-  console.log(invoice);
+
+  const { data: invoice, isLoading } = useQuery<TInvoiceData>({
+    queryKey: ["invoice", id],
+    queryFn: async () => {
+      const { data } = await axios.get(`/api/invoice/${id}`)
+      return data
+    },
+    enabled: Boolean(id),
+  })
 
   return (
     <>

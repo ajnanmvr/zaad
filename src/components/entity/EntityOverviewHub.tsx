@@ -33,7 +33,6 @@ import {
   EntityProfileSkeleton,
   EntityProfileTabs,
   EntityType,
-  EntityMetric,
   MetricCard,
   ProfileField,
   SectionCard,
@@ -447,46 +446,6 @@ export default function EntityOverviewHub({
     companyName,
   );
 
-  const metrics: EntityMetric[] = [
-    {
-      icon: <FiFolder />,
-      label: "Documents",
-      value: counts?.documents || 0,
-    },
-    {
-      icon: <FiFileText />,
-      label: "Handovers",
-      value: counts?.handovers || 0,
-    },
-    {
-      icon: <FiLayers />,
-      label: "Credentials",
-      value: counts?.credentials || 0,
-    },
-  ];
-
-  if (entityType === "company") {
-    metrics.push({
-      icon: <FiUsers />,
-      label: "Employees",
-      value: counts?.employees || 0,
-    });
-  } else {
-    metrics.push({
-      icon: <FiCreditCard />,
-      label: "Invoices",
-      value: counts?.invoices || 0,
-    });
-  }
-
-  const actions = [
-    {
-      href: `/${entityType}/${id}/edit`,
-      label: "Edit profile",
-      primary: true,
-    },
-  ];
-
   const handleDeleteEntity = async () => {
     if (!confirm(`Delete this ${entityType}?`)) {
       return;
@@ -516,35 +475,30 @@ export default function EntityOverviewHub({
           <EntityProfileHeader
             entityType={entityType}
             name={detailLoading ? "Loading profile..." : details?.name || entity?.name || "Entity Profile"}
-            description={sectionDescription(entityType)}
             avatarInitials={avatarInitials}
             avatarColor={avatarColor}
             companyName={entityType === "employee" ? companyName : undefined}
             companyAvatarInitials={entityType === "employee" ? companyAvatarInitials : undefined}
             companyAvatarColor={entityType === "employee" ? companyAvatarColor : undefined}
-            metrics={metrics}
-            actions={actions}
+            onEditHref={`/${entityType}/${id}/edit`}
+            onDelete={handleDeleteEntity}
+            isDeleting={isDeletingEntity}
           />
 
-          <EntityProfileTabs entityType={entityType} id={id} activeSection="overview" />
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => router.push(`/${entityType}/${id}/edit`)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              Edit {entityType}
-            </button>
-            <button
-              type="button"
-              onClick={handleDeleteEntity}
-              disabled={isDeletingEntity}
-              className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
-            >
-              {isDeletingEntity ? "Deleting..." : `Delete ${entityType}`}
-            </button>
-          </div>
+          <EntityProfileTabs
+            entityType={entityType}
+            id={id}
+            activeSection="overview"
+            sectionCounts={{
+              details: counts?.details || 0,
+              documents: counts?.documents || 0,
+              credentials: counts?.credentials || 0,
+              handovers: counts?.handovers || 0,
+              employees: counts?.employees || 0,
+              records: counts?.records || 0,
+              invoices: counts?.invoices || 0,
+            }}
+          />
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
             <div className="space-y-6">
@@ -976,18 +930,6 @@ export default function EntityOverviewHub({
             </div>
 
             <aside className="space-y-6 xl:sticky xl:top-6 self-start">
-              <SectionCard title="Profile Snapshot" description="Quick facts at a glance.">
-                <div className="space-y-3">
-                  <ProfileField label="Profile Type" value={entityType} />
-                  <ProfileField label="Name" value={details?.name || entity?.name} />
-                  <ProfileField label="Email" value={details?.email} />
-                  <ProfileField label="Primary Phone" value={details?.phone1 || details?.phone2} />
-                  {entityType === "employee" && (
-                    <ProfileField label="Company" value={companyName} />
-                  )}
-                </div>
-              </SectionCard>
-
               <SectionCard title="Status" description="Current state and related indicators.">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">

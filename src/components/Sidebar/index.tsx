@@ -67,7 +67,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
   const { user } = useUserContext();
   const can = (permission: string) =>
-    Array.isArray(user?.permissions) && (user?.permissions as string[]).includes(permission);
+    Array.isArray(user?.permissions) &&
+    (user?.permissions as string[]).includes(permission);
 
   const trigger = useRef<HTMLButtonElement | null>(null);
   const sidebar = useRef<HTMLElement | null>(null);
@@ -156,7 +157,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
             <SectionTitle title="Workspace" />
             <ul className="space-y-1.5">
               <li>
-                <NavItem href="/" icon={<FiHome />} label="Dashboard" active={pathname === "/"} />
+                <NavItem
+                  href="/"
+                  icon={<FiHome />}
+                  label="Dashboard"
+                  active={pathname === "/"}
+                />
               </li>
             </ul>
           </div>
@@ -169,7 +175,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   href="/company"
                   icon={<FiBriefcase />}
                   label="Companies"
-                  active={pathname.startsWith("/company") && !pathname.includes("register")}
+                  active={
+                    pathname.startsWith("/company") &&
+                    !pathname.includes("register")
+                  }
                 />
               </li>
               <li>
@@ -177,7 +186,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   href="/employee"
                   icon={<FiUsers />}
                   label="Employees"
-                  active={pathname.startsWith("/employee") && !pathname.includes("register")}
+                  active={
+                    pathname.startsWith("/employee") &&
+                    !pathname.includes("register")
+                  }
                 />
               </li>
               <li>
@@ -201,7 +213,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       }`}
                       onClick={(event) => {
                         event.preventDefault();
-                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                        sidebarExpanded
+                          ? handleClick()
+                          : setSidebarExpanded(true);
                       }}
                     >
                       <FiFolderPlus className="text-lg opacity-80" />
@@ -278,14 +292,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         href="#"
                         className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
                           pathname.startsWith("/settings/document-types") ||
-                          pathname.startsWith("/settings/credential-platforms") ||
+                          pathname.startsWith(
+                            "/settings/credential-platforms",
+                          ) ||
                           pathname.startsWith("/settings/templates")
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                         }`}
                         onClick={(event) => {
                           event.preventDefault();
-                          sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                          sidebarExpanded
+                            ? handleClick()
+                            : setSidebarExpanded(true);
                         }}
                       >
                         <FiLock className="text-lg opacity-80" />
@@ -309,7 +327,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               href="/settings/credential-platforms"
                               icon={<FiFileText />}
                               label="Credential Platforms"
-                              active={pathname === "/settings/credential-platforms"}
+                              active={
+                                pathname === "/settings/credential-platforms"
+                              }
                             />
                           </li>
                         </ul>
@@ -336,18 +356,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               )}
               <li>
                 <NavItem
-                  href="/accounts/transactions/self"
-                  icon={<FiBookOpen />}
-                  label="ZAAD Records"
-                  active={pathname === "/accounts/transactions/self"}
+                  href="/accounts/transactions"
+                  icon={<FiTrendingUp />}
+                  label="All Transactions"
+                  active={pathname === "/accounts/transactions"}
                 />
               </li>
               <li>
                 <NavItem
-                  href="/accounts/transactions"
-                  icon={<FiTrendingUp />}
-                  label="Transactions"
-                  active={pathname === "/accounts/transactions"}
+                  href="/accounts/transactions/self"
+                  icon={<FiBookOpen />}
+                  label="Company Records"
+                  active={pathname === "/accounts/transactions/self"}
                 />
               </li>
               <li>

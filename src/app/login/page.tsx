@@ -19,7 +19,7 @@ const SignIn: React.FC = () => {
             toast.loading("Authenticating...", { id: "login" });
             await axios.post("/api/users/auth/login", user);
             toast.success("Login successful! Redirecting...", { id: "login" });
-            router.refresh();
+            router.push("/");
         } catch (error: any) {
             toast.error(error.response?.data?.error || "Login Failed", { id: "login" });
             setIsLoading(false);

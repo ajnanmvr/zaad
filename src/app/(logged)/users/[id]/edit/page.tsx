@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
 import axios from "axios";
@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import AddUser from "@/components/Forms/AddUser";
 import UserHistory from "@/components/UserHistory";
+import { useQuery } from "@tanstack/react-query";
 
 interface UserData {
   username: string;
@@ -20,8 +21,6 @@ const EditUserPage = () => {
   const params = useParams();
   const userId = params.id as string;
 
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const canReadUsers =
     Array.isArray(user?.permissions) && user.permissions.includes("users.read");
   const canUpdateUsers =
@@ -31,28 +30,23 @@ const EditUserPage = () => {
   useEffect(() => {
     if (user && (!canReadUsers || !canUpdateUsers)) {
       router.push("/");
-      return;
     }
+  }, [user, canReadUsers, canUpdateUsers, router]);
 
-    // Fetch user data
-    const fetchUser = async () => {
-      try {
-        const { data } = await axios.get(`/api/users/${userId}`);
-        setUserData(data.user);
-      } catch (error: any) {
-        const errorMessage =
-          error.response?.data?.error || "Failed to fetch user";
-        toast.error(errorMessage);
-        router.push("/users");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (user && canReadUsers && canUpdateUsers && userId) {
-      fetchUser();
-    }
-  }, [user, canReadUsers, canUpdateUsers, router, userId]);
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ["user-edit", userId],
+    queryFn: async () => {
+      const { data } = await axios.get(`/api/users/${userId}`);
+      return data.user as UserData;
+    },
+    enabled: Boolean(user && canReadUsers && canUpdateUsers && userId),
+    retry: false,
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error || "Failed to fetch user";
+      toast.error(errorMessage);
+      router.push("/users");
+    },
+  });
 
   if (!user || !canReadUsers || !canUpdateUsers) {
     return (

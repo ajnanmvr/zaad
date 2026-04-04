@@ -130,7 +130,7 @@ function EmployeeList({
   return (
     <EntityListingShell
         title="Employee Directory"
-        subtitle="Search, sort, and filter employees in one unified view."
+      subtitle="Company team members linked to this profile."
         addEntityHref={addEntityHref}
         addEntityLabel={addEntityLabel}
         totalCount={totalCount}
@@ -168,8 +168,9 @@ function EmployeeList({
         }
         pageSize={pageSize}
         onPageSizeChange={onPageSizeChange}
+        compactHeaderControls
         headerActions={
-          <ExportActionsMenu onExport={exportSelection} />
+          <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
         }
       >
         <div className="max-w-full overflow-x-auto">
