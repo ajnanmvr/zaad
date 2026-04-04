@@ -1251,6 +1251,9 @@ export default function EntitySectionPage({
                 type={entityType === "individual" ? "self" : entityType}
                 id={id}
                 embedded
+                lockEntityType={entityType}
+                lockEntityId={id}
+                lockEntityName={entityName}
               />
             )}
 

@@ -162,10 +162,16 @@ const TransactionList = ({
   type,
   id,
   embedded = false,
+  lockEntityType,
+  lockEntityId,
+  lockEntityName,
 }: {
   type?: string | string[];
   id?: string | string[];
   embedded?: boolean;
+  lockEntityType?: string;
+  lockEntityId?: string;
+  lockEntityName?: string;
 }) => {
   const queryClient = useQueryClient();
 
@@ -298,6 +304,16 @@ const TransactionList = ({
       {status}
     </span>
   );
+
+  const incomeHref =
+    embedded && lockEntityType && lockEntityId
+      ? `/accounts/income?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}`
+      : "/accounts/income";
+
+  const expenseHref =
+    embedded && lockEntityType && lockEntityId
+      ? `/accounts/expense?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}`
+      : "/accounts/expense";
 
   return (
     <>
@@ -516,9 +532,20 @@ const TransactionList = ({
           </div>
         )}
 
-        <div className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 sm:p-7">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-200/40 blur-2xl dark:bg-cyan-500/10" />
-          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-200/50 blur-xl dark:bg-emerald-500/10" />
+        <div
+          className={clsx(
+            "border-b border-slate-200/80 p-6 dark:border-slate-800 sm:p-7",
+            embedded
+              ? "bg-white dark:bg-slate-900"
+              : "relative overflow-hidden bg-gradient-to-br from-cyan-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900",
+          )}
+        >
+          {!embedded && (
+            <>
+              <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-200/40 blur-2xl dark:bg-cyan-500/10" />
+              <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-200/50 blur-xl dark:bg-emerald-500/10" />
+            </>
+          )}
 
           <div className="relative z-10 flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -555,13 +582,13 @@ const TransactionList = ({
             </button>
             <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
             <Link
-              href={"/accounts/income"}
+              href={incomeHref}
               className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/20"
             >
               <FiPlus /> Income
             </Link>
             <Link
-              href={"/accounts/expense"}
+              href={expenseHref}
               className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-600 shadow-sm shadow-rose-500/20"
             >
               <FiPlus /> Expense
@@ -714,7 +741,7 @@ const TransactionList = ({
       </div>
       
       {/* Pagination Container */}
-      {!isLoading && recordsWithBalance.length > 0 && (
+      {!isLoading && (
         <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-6 dark:border-slate-800">
           <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
             Showing page <span className="font-semibold text-slate-800 dark:text-white">{pageNumber + 1}</span>

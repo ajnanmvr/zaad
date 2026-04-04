@@ -6,7 +6,7 @@ import { TBaseData } from "@/types/types";
 import axios from "axios";
 import clsx from "clsx";
 import { capitalize, debounce } from "lodash";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiUserPlus, FiBriefcase, FiDollarSign, FiFileText, FiHash, FiCheckCircle } from "react-icons/fi";
 import EntityAvatar from "../common/EntityAvatar";
@@ -14,7 +14,12 @@ import EntityAvatar from "../common/EntityAvatar";
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const { user } = useUserContext();
+  const lockEntityType = searchParams.get("lockEntityType") || "";
+  const lockEntityId = searchParams.get("lockEntityId") || "";
+  const lockEntityName = searchParams.get("lockEntityName") || "";
+  const isLockedEntity = Boolean(!edit && lockEntityType && lockEntityId);
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [selectedMethod, setSelectedMethod] = useState<string>("");
@@ -43,6 +48,25 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         employee: undefined,
       });
   }, [selectedOption]);
+
+  useEffect(() => {
+    if (!isLockedEntity) return;
+
+    const nextClientType = lockEntityType === "company" ? "company" : lockEntityType === "self" ? "self" : lockEntityType;
+    setSelectedOption(nextClientType);
+    setSearchValue(lockEntityName || "");
+    setSearchSuggestions([]);
+    setClientType(nextClientType);
+
+    setRecordData((prev) => ({
+      ...prev,
+      company: lockEntityType === "company" ? lockEntityId : undefined,
+      employee: lockEntityType === "employee" || lockEntityType === "individual" ? lockEntityId : undefined,
+      self: lockEntityType === "self" ? "zaad" : undefined,
+    }));
+
+    fetchBalance(lockEntityId);
+  }, [isLockedEntity, lockEntityType, lockEntityId, lockEntityName]);
 
   useEffect(() => {
     if (clientFee !== "") {
@@ -256,6 +280,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         title="client type"
                         value={selectedOption}
                         name="client-type"
+                        disabled={isLockedEntity}
                         onChange={(e) => {
                           const value = e.target.value;
                           setSelectedOption(value);
@@ -281,9 +306,18 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       </span>
                     </div>
                   </div>
+
+                  {isLockedEntity && (
+                    <div>
+                      <label className={labelClass}>Locked Entity</label>
+                      <div className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {lockEntityName || lockEntityId} ({capitalize(lockEntityType)})
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Dynamic Fields based on Client Type */}
-                  {(selectedOption === "employee" || selectedOption === "individual") && (
+                  {!isLockedEntity && (selectedOption === "employee" || selectedOption === "individual") && (
                     <div className="relative">
                       <label className={labelClass}>
                         {selectedOption === "individual" ? "Individual Name" : "Employee Name"}
@@ -330,7 +364,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                     </div>
                   )}
 
-                  {selectedOption === "company" && (
+                  {!isLockedEntity && selectedOption === "company" && (
                     <div className="relative">
                       <label className={labelClass}>Company Name</label>
                       <div className="relative">
