@@ -2,6 +2,7 @@ import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { NextRequest, NextResponse } from "next/server";
+import { getRecordClient, PAYMENT_POPULATE_FIELDS } from "../utils";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
       published: true,
       $or: [{ method: "liability" }, { status: "liability" }],
     })
-      .populate(["createdBy", "company", "employee"])
+      .populate(PAYMENT_POPULATE_FIELDS)
       .sort({ createdAt: -1 });
 
     if (!records || records.length === 0) {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     interface Client {
       name: string;
       id: string;
-      type: "company" | "employee";
+      type: "company" | "employee" | "individual";
     }
 
     interface GroupedData {
@@ -43,18 +44,12 @@ export async function GET(request: NextRequest) {
     }
 
     const groupedData = records.reduce((acc: GroupedData, record: any) => {
-      const client: Client | null = (() => {
-        const { company, employee } = record;
-        return company
-          ? { name: company.name, id: company._id, type: "company" }
-          : employee
-            ? { name: employee.name, id: employee._id, type: "employee" }
-            : null;
-      })();
+      const client = getRecordClient(record) as Client | null;
 
       if (client) {
-        if (!acc[client.id]) {
-          acc[client.id] = {
+        const clientId = client.id.toString();
+        if (!acc[clientId]) {
+          acc[clientId] = {
             client,
             income: 0,
             expense: 0
@@ -62,9 +57,9 @@ export async function GET(request: NextRequest) {
         }
 
         if (record.type === "income") {
-          acc[client.id].income += record.amount;
+          acc[clientId].income += record.amount;
         } else if (record.type === "expense") {
-          acc[client.id].expense += record.amount;
+          acc[clientId].expense += record.amount;
         }
       }
 

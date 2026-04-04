@@ -1,10 +1,8 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
-import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
-
-const DUBAI_TIME_ZONE = "Asia/Dubai";
+import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../../utils";
 
 export async function GET(
   request: NextRequest,
@@ -16,9 +14,9 @@ export async function GET(
 
     const records = await Records.find({
       published: true,
-      employee: { _id: params.id },
+      employee: params.id,
     })
-      .populate(["createdBy", "company", "employee"])
+      .populate(PAYMENT_POPULATE_FIELDS)
       .sort({ createdAt: -1 });
 
     if (!records || records.length === 0) {
@@ -36,43 +34,11 @@ export async function GET(
       );
     }
 
-    const transformedData = records
-      .map((record) => {
-        const client = () => {
-          const { company, employee, self } = record;
-          return company
-            ? { name: company.name, id: company._id, type: "company" }
-            : employee
-              ? { name: employee.name, id: employee._id, type: "employee" }
-              : self
-                ? { name: self, type: "self" }
-                : null;
-        };
-
-        const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-
-        return {
-          id: record._id,
-          type: record.type,
-          client: client(),
-          method: record.method,
-          particular: record.particular,
-          invoiceNo: record.invoiceNo,
-          amount: record.amount?.toFixed(2),
-          serviceFee: record.serviceFee?.toFixed(2),
-          creator: record?.createdBy?.username,
-          status: record.status,
-          number: record.number,
-          suffix: record.suffix,
-          date: format(createdAtInDubai, "MMM-dd hh:mma", {
-            timeZone: DUBAI_TIME_ZONE,
-          }),
-        };
-      });
+    const transformedData = records.map(mapRecordListItem);
 
     const allRecords = await Records.find({
       published: true,
-      employee: { _id: params.id },
+      employee: params.id,
     });
 
     const totalIncome = allRecords.reduce(

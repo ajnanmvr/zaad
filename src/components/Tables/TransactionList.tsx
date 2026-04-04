@@ -133,6 +133,9 @@ const TransactionList = ({
     onSuccess: () => {
       toast.dismiss();
       toast.success("Record deleted successfully");
+      setSelectedRecordId(null);
+      setIsConfirmationOpen(false);
+      setIsSecondConfirmationOpen(false);
       queryClient.invalidateQueries({ queryKey: ["payment"] });
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["profits"] });
@@ -144,7 +147,11 @@ const TransactionList = ({
   });
 
   const secondConfirmDelete = async () => {
-    deleteMutation.mutate(selectedRecordId!);
+    if (!selectedRecordId) {
+      setIsSecondConfirmationOpen(false);
+      return;
+    }
+    deleteMutation.mutate(selectedRecordId);
     setIsSecondConfirmationOpen(false);
   };
 

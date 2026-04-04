@@ -23,6 +23,13 @@ const baseFilter = {
 
 const formatCurrency = (value: number) => `${value.toFixed(2)} AED`;
 
+const toTitleCase = (value: string) =>
+  value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+
 const currentMonthYearLabel = new Date().toLocaleString("en-US", {
   month: "long",
   year: "numeric",
@@ -109,35 +116,69 @@ export default function AccountsDashboard() {
   const monthInvalid = draft.mode === "month" && !draft.m && !draft.y.trim();
   const disableApply = rangeInvalid || yearInvalid || monthInvalid;
 
-  const methodRows = [
-    {
-      method: "Cash",
-      income: accountsData?.CashIncome ?? 0,
-      expense: accountsData?.CashExpense ?? 0,
-      balance: accountsData?.cashBalance ?? 0,
-    },
-    {
-      method: "Bank",
-      income: accountsData?.BankIncome ?? 0,
-      expense: accountsData?.BankExpense ?? 0,
-      balance:
-        (accountsData?.BankIncome ?? 0) -
-        (accountsData?.BankExpense ?? 0) +
-        ((accountsData?.SwiperIncome ?? 0) - (accountsData?.SwiperExpense ?? 0)),
-    },
-    {
-      method: "Tasdeed",
-      income: accountsData?.TasdeedIncome ?? 0,
-      expense: accountsData?.TasdeedExpense ?? 0,
-      balance: accountsData?.tasdeedBalance ?? 0,
-    },
-    {
-      method: "Swiper",
-      income: accountsData?.SwiperIncome ?? 0,
-      expense: accountsData?.SwiperExpense ?? 0,
-      balance: (accountsData?.SwiperIncome ?? 0) - (accountsData?.SwiperExpense ?? 0),
-    },
-  ];
+  const methodRows = useMemo(() => {
+    const incomeSummary = accountsData?.summary?.income || {};
+    const expenseSummary = accountsData?.summary?.expense || {};
+
+    const summaryMethods = new Set([
+      ...Object.keys(incomeSummary),
+      ...Object.keys(expenseSummary),
+    ]);
+
+    // Keep legacy methods visible if summary is absent/partial.
+    if (summaryMethods.size === 0) {
+      return [
+        {
+          key: "cash",
+          method: "Cash",
+          income: accountsData?.CashIncome ?? 0,
+          expense: accountsData?.CashExpense ?? 0,
+        },
+        {
+          key: "bank",
+          method: "Bank",
+          income: accountsData?.BankIncome ?? 0,
+          expense: accountsData?.BankExpense ?? 0,
+        },
+        {
+          key: "tasdeed",
+          method: "Tasdeed",
+          income: accountsData?.TasdeedIncome ?? 0,
+          expense: accountsData?.TasdeedExpense ?? 0,
+        },
+        {
+          key: "swiper",
+          method: "Swiper",
+          income: accountsData?.SwiperIncome ?? 0,
+          expense: accountsData?.SwiperExpense ?? 0,
+        },
+      ].map((row) => ({ ...row, balance: row.income - row.expense }));
+    }
+
+    const preferredOrder = ["cash", "bank", "tasdeed", "swiper"];
+    const orderedMethods = Array.from(summaryMethods).sort((a, b) => {
+      const ia = preferredOrder.indexOf(a);
+      const ib = preferredOrder.indexOf(b);
+      if (ia !== -1 || ib !== -1) {
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      }
+      return a.localeCompare(b);
+    });
+
+    return orderedMethods.map((method) => {
+      const income = incomeSummary[method] || 0;
+      const expense = expenseSummary[method] || 0;
+      return {
+        key: method,
+        method: toTitleCase(method),
+        income,
+        expense,
+        balance: income - expense,
+      };
+    });
+  }, [accountsData]);
 
   const applyFilter = () => {
     setFilter({ ...draft });
@@ -398,7 +439,7 @@ export default function AccountsDashboard() {
             </thead>
             <tbody>
               {methodRows.map((row) => (
-                <tr key={row.method} className="border-b border-slate-100 text-sm dark:border-slate-800">
+                <tr key={row.key} className="border-b border-slate-100 text-sm dark:border-slate-800">
                   <td className="px-2 py-3 font-bold text-slate-900 dark:text-slate-100">{row.method}</td>
                   <td className="px-2 py-3 text-emerald-600 dark:text-emerald-400">{formatCurrency(row.income)}</td>
                   <td className="px-2 py-3 text-rose-600 dark:text-rose-400">{formatCurrency(row.expense)}</td>

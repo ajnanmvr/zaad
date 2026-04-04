@@ -133,7 +133,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     fetchBalance(selected._id);
   };
 
-  const handleEmployeeSelection = (selected: TBaseData) => {
+  const handleEntitySelection = (selected: TBaseData) => {
     setSearchValue(selected.name);
     setRecordData({
       ...recordData,
@@ -256,12 +256,24 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         title="client type"
                         value={selectedOption}
                         name="client-type"
-                        onChange={(e) => setSelectedOption(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedOption(value);
+                          setSearchValue("");
+                          setSearchSuggestions([]);
+                          setRecordData((prev) => ({
+                            ...prev,
+                            company: undefined,
+                            employee: undefined,
+                            self: value === "self" ? "zaad" : undefined,
+                          }));
+                        }}
                         className={inputClass}
                       >
                         <option value="" disabled>Select any one</option>
                         <option value="company">Company</option>
-                        <option value="employee">Individual</option>
+                        <option value="employee">Employee</option>
+                        <option value="individual">Individual</option>
                         <option value="self">ZAAD Self</option>
                       </select>
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -271,36 +283,44 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                   </div>
                   
                   {/* Dynamic Fields based on Client Type */}
-                  {selectedOption === "employee" && (
+                  {(selectedOption === "employee" || selectedOption === "individual") && (
                     <div className="relative">
-                      <label className={labelClass}>Individual Name</label>
+                      <label className={labelClass}>
+                        {selectedOption === "individual" ? "Individual Name" : "Employee Name"}
+                      </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                           <FiUserPlus />
                         </span>
                         <input
                           type="text"
-                          name="employee"
+                          name={selectedOption}
                           onChange={handleInputChange}
                           value={searchValue}
                           autoComplete="off"
-                          placeholder="Search individual..."
+                          placeholder={
+                            selectedOption === "individual"
+                              ? "Search individual..."
+                              : "Search employee..."
+                          }
                           className={clsx(inputClass, "pl-11")}
                         />
                       </div>
                       {searchSuggestions.length > 0 && (
                         <ul className="absolute z-30 mt-2 w-full max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                          {searchSuggestions.map((employee, key) => (
+                          {searchSuggestions.map((entity, key) => (
                             <li
                               className="cursor-pointer px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-emerald-600 dark:text-slate-300 dark:hover:bg-slate-700"
                               key={key}
-                              onClick={() => handleEmployeeSelection(employee)}
+                              onClick={() => handleEntitySelection(entity)}
                             >
                               <div className="flex items-center gap-3">
-                                <EntityAvatar name={employee.name} color={employee.color} size="sm" />
+                                <EntityAvatar name={entity.name} color={entity.color} size="sm" />
                                 <div className="flex flex-col">
-                                  <span className="font-medium">{employee.name}</span>
-                                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Individual</span>
+                                  <span className="font-medium">{entity.name}</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                                    {selectedOption === "individual" ? "Individual" : "Employee"}
+                                  </span>
                                 </div>
                               </div>
                             </li>

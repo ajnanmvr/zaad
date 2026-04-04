@@ -1,15 +1,13 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
-import { format, toZonedTime } from "date-fns-tz";
 import { NextRequest } from "next/server";
-
-const DUBAI_TIME_ZONE = "Asia/Dubai";
+import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../utils";
 
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.read");
 
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = searchParams.get("page") || 0;
@@ -19,7 +17,7 @@ export async function GET(request: NextRequest) {
       published: true,
       self: "zaad",
     })
-      .populate(["createdBy", "company", "employee"])
+      .populate(PAYMENT_POPULATE_FIELDS)
       .skip(+pageNumber * contentPerSection)
       .limit(contentPerSection + 1)
       .sort({ createdAt: -1 });
@@ -43,37 +41,7 @@ export async function GET(request: NextRequest) {
     const hasMore = records.length > contentPerSection;
     const transformedData = records
       .slice(0, contentPerSection)
-      .map((record) => {
-        const client = () => {
-          const { company, employee, self } = record;
-          return company
-            ? { name: company.name, id: company._id, type: "company" }
-            : employee
-              ? { name: employee.name, id: employee._id, type: "employee" }
-              : self
-                ? { name: self, type: "self" }
-                : null;
-        };
-        const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
-
-        return {
-          id: record._id,
-          type: record.type,
-          client: client(),
-          method: record.method,
-          particular: record.particular,
-          invoiceNo: record.invoiceNo,
-          amount: record.amount?.toFixed(2),
-          serviceFee: record.serviceFee?.toFixed(2),
-          creator: record?.createdBy?.username,
-          status: record.status,
-          number: record.number,
-          suffix: record.suffix,
-          date: format(createdAtInDubai, "MMM-dd hh:mma", {
-            timeZone: DUBAI_TIME_ZONE,
-          }),
-        };
-      });
+      .map(mapRecordListItem);
 
     const allRecords = await Records.find({
       published: true,

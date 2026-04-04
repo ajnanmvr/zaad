@@ -9,8 +9,8 @@ interface ConfirmationModalProps {
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, message, onConfirm, onCancel }) => {
     return isOpen ? (
-        <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/55 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200 dark:bg-black dark:ring-slate-800">
                 <p className="mb-4 font-bold">{message}</p>
                 <div className="flex justify-end">
                     <button onClick={onCancel} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">

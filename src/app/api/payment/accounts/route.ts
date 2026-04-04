@@ -1,10 +1,21 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
-import { TRecordDataWithCreatedAt } from "@/types/records";
 import { filterData } from "@/utils/filterData";
 import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
+
+type TMethodAggregateRow = {
+  _id: {
+    type: "income" | "expense";
+    method: string;
+  };
+  total: number;
+  count: number;
+  serviceFeeTotal: number;
+  zaadExpenseTotal: number;
+};
+
 export async function GET(request: NextRequest): Promise<Response> {
   const searchParams = request.nextUrl.searchParams;
   try {
@@ -12,76 +23,92 @@ export async function GET(request: NextRequest): Promise<Response> {
     await requirePermission(request, "payments.read");
 
     const filter = filterData(searchParams, true);
-    const allRecords: TRecordDataWithCreatedAt[] = await Records.find(filter);
-    const expenseRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
-      (record) => record.type === "expense"
-    );
-    const incomeRecords: TRecordDataWithCreatedAt[] = allRecords.filter(
-      (record) => record.type === "income"
-    );
+    const aggregate = (await Records.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            type: "$type",
+            method: "$method",
+          },
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
+          serviceFeeTotal: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", "expense"] },
+                { $ifNull: ["$serviceFee", 0] },
+                0,
+              ],
+            },
+          },
+          zaadExpenseTotal: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", "expense"] },
+                    { $eq: ["$self", "zaad"] },
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ])) as TMethodAggregateRow[];
 
-    const expenseCount: number = expenseRecords.length;
-    const incomeCount: number = incomeRecords.length;
+    const summary: Record<string, Record<string, number>> = {
+      income: {},
+      expense: {},
+    };
 
-    let BankExpense: number = 0,
-      CashExpense: number = 0,
-      TasdeedExpense: number = 0,
-      SwiperExpense: number = 0,
-      BankIncome: number = 0,
-      CashIncome: number = 0,
-      TasdeedIncome: number = 0,
-      SwiperIncome: number = 0,
-      profit: number = 0;
+    let incomeCount = 0;
+    let expenseCount = 0;
+    let profit = 0;
+    let zaadExpenseTotal = 0;
 
-    incomeRecords.forEach((record) => {
-      switch (record.method) {
-        case "bank":
-          BankIncome += record.amount || 0;
-          break;
-        case "cash":
-          CashIncome += record.amount || 0;
-          break;
-        case "tasdeed":
-          TasdeedIncome += record.amount || 0;
-          break;
-        case "swiper":
-          SwiperIncome += record.amount || 0;
-          break;
-        default:
-          break;
+    for (const row of aggregate) {
+      const type = row?._id?.type;
+      const method = row?._id?.method || "unknown";
+      if (!type) continue;
+
+      if (!summary[type]) {
+        summary[type] = {};
       }
-    });
+      summary[type][method] = row.total || 0;
 
-    expenseRecords.forEach((record) => {
-      switch (record.method) {
-        case "bank":
-          BankExpense += record.amount || 0;
-          break;
-        case "cash":
-          CashExpense += record.amount || 0;
-          break;
-        case "tasdeed":
-          TasdeedExpense += record.amount || 0;
-          break;
-        case "swiper":
-          SwiperExpense += record.amount || 0;
-          break;
-        default:
-          break;
+      if (type === "income") {
+        incomeCount += row.count || 0;
       }
-      if (record?.serviceFee || 0 > 0) {
-        profit += record.serviceFee || 0;
+      if (type === "expense") {
+        expenseCount += row.count || 0;
+        profit += row.serviceFeeTotal || 0;
+        zaadExpenseTotal += row.zaadExpenseTotal || 0;
       }
-    });
-    const zaadExpenseTotal: number = parseFloat(
-      expenseRecords
-        .filter((record) => record?.self === "zaad")
-        .reduce((total, record) => total + (record.amount || 0), 0)
-        .toFixed(2)
+    }
+
+    const getMethodTotal = (type: "income" | "expense", method: string) =>
+      summary[type]?.[method] || 0;
+
+    const BankIncome = getMethodTotal("income", "bank");
+    const CashIncome = getMethodTotal("income", "cash");
+    const TasdeedIncome = getMethodTotal("income", "tasdeed");
+    const SwiperIncome = getMethodTotal("income", "swiper");
+
+    const BankExpense = getMethodTotal("expense", "bank");
+    const CashExpense = getMethodTotal("expense", "cash");
+    const TasdeedExpense = getMethodTotal("expense", "tasdeed");
+    const SwiperExpense = getMethodTotal("expense", "swiper");
+
+    const roundedZaadExpenseTotal = parseFloat(
+      (zaadExpenseTotal || 0).toFixed(2),
     );
 
     const netProfit: number = parseFloat(
-      (profit - zaadExpenseTotal).toFixed(2)
+      (profit - roundedZaadExpenseTotal).toFixed(2),
     );
 
     const totalIncomeAmount: number =
@@ -98,6 +125,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       {
         expenseCount,
         incomeCount,
+        summary,
         totalIncomeAmount,
         totalExpenseAmount,
         totalBalance,
@@ -113,10 +141,10 @@ export async function GET(request: NextRequest): Promise<Response> {
         TasdeedExpense,
         SwiperExpense,
         profit,
-        zaadExpenseTotal,
+        zaadExpenseTotal: roundedZaadExpenseTotal,
         netProfit,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching records:", error);

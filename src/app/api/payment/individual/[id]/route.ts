@@ -14,7 +14,7 @@ export async function GET(
 
     const records = await Records.find({
       published: true,
-      company: params.id,
+      employee: params.id,
     })
       .populate(PAYMENT_POPULATE_FIELDS)
       .sort({ createdAt: -1 });
@@ -34,14 +34,15 @@ export async function GET(
       );
     }
 
-    const transformedData = records.map(mapRecordListItem);
+    const transformedData = records
+      .filter((record: any) => record?.employee?.entityType === "individual")
+      .map(mapRecordListItem);
 
-    const allRecords = await Records.find({
-      published: true,
-      company: params.id,
-    });
+    const individualRecords = records.filter(
+      (record: any) => record?.employee?.entityType === "individual"
+    );
 
-    const totalIncome = allRecords.reduce(
+    const totalIncome = individualRecords.reduce(
       (acc, record) =>
         acc +
         (record.type === "income" && record.method !== "liability"
@@ -49,7 +50,7 @@ export async function GET(
           : 0),
       0
     );
-    const totalExpense = allRecords.reduce(
+    const totalExpense = individualRecords.reduce(
       (acc, record) =>
         acc +
         (record.type === "expense" ? record.amount : 0) +
@@ -57,7 +58,7 @@ export async function GET(
       0
     );
     const balance = totalIncome - totalExpense;
-    const totalTransactions = allRecords.length;
+    const totalTransactions = individualRecords.length;
 
     return Response.json(
       {

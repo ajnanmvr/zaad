@@ -1,4 +1,8 @@
 export type TAccountsData = {
+  summary?: {
+    income?: Record<string, number>;
+    expense?: Record<string, number>;
+  };
   expenseCount: number;
   totalExpenseAmount: number;
   incomeCount: number;
