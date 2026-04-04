@@ -8,6 +8,19 @@ export async function POST(request: NextRequest) {
   try {
     await connect();
     const reqBody = await request.json();
+    const hasEntityId = Boolean(reqBody?.entityId);
+    const hasEntityType = Boolean(reqBody?.entityType);
+
+    if (hasEntityId !== hasEntityType) {
+      return Response.json(
+        {
+          message:
+            "Connected invoices must include both entityId and entityType, or neither for detached invoices.",
+        },
+        { status: 400 }
+      );
+    }
+
     const data = await Invoice.create(reqBody);
     return Response.json(
       { message: "Created new payment invoice", data },
@@ -27,9 +40,14 @@ export async function GET(request: NextRequest) {
 
     // Extract the single search parameter
     const search = searchParams.get("search");
+    const entityId = searchParams.get("entityId");
 
     // Build the query object
     const query: any = { published: true };
+    if (entityId) {
+      query.entityId = entityId;
+    }
+
     if (search) {
       const formattedDate = formatDate(new Date(search));
       const numericInvoiceNo = Number(search);
@@ -78,6 +96,8 @@ export async function GET(request: NextRequest) {
         return {
           id: invoice._id,
           client: invoice.client,
+          entityId: invoice.entityId || null,
+          entityType: invoice.entityType || null,
           purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
           amount: invoice.items.reduce(

@@ -7,6 +7,8 @@ export type TInvoiceData = {
   trn: string;
   createdBy: string;
   client: string;
+  entityId?: string | null;
+  entityType?: "company" | "employee" | "individual" | null;
   date: string;
   validTo: string;
   items: TInvoiceItemsData[];

@@ -1,7 +1,9 @@
 "use client"
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
+import { TBaseData } from "@/types/types";
 import axios from "axios";
+import { debounce } from "lodash";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,24 +15,57 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const { user } = useUserContext();
 
     const [isEditMode, setisEditMode] = useState(false);
+    const [connectionMode, setConnectionMode] = useState<"detached" | "connected">("connected");
+    const [selectedEntityType, setSelectedEntityType] = useState<"company" | "employee" | "individual" | "">("");
+    const [entitySearchValue, setEntitySearchValue] = useState("");
+    const [entitySuggestions, setEntitySuggestions] = useState<TBaseData[]>([]);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
         invoiceNo: 1,
         quotation: "false",
         showBalance: "show",
+        entityId: null,
+        entityType: null,
         items: []
     });
+
+    const fetchEntitySuggestions = async (inputValue: string, type: string) => {
+        try {
+            if (!inputValue || !type) {
+                setEntitySuggestions([]);
+                return;
+            }
+            const response = await axios.get<TBaseData[]>(`/api/${type}/search/${inputValue}`);
+            setEntitySuggestions(response.data || []);
+        } catch (error) {
+            console.error("Error fetching entity suggestions:", error);
+            setEntitySuggestions([]);
+        }
+    };
+
+    const debouncedEntitySearch = debounce((input: string, type: string) => {
+        fetchEntitySuggestions(input, type);
+    }, 300);
 
     const fetchData = async () => {
         try {
             if (edit) {
                 const { data } = await axios.get(`/api/invoice/${edit}?editmode`);
                 setInvoiceData(data);
+                if (data?.entityId && data?.entityType) {
+                    setConnectionMode("connected");
+                    setSelectedEntityType(data.entityType);
+                    setEntitySearchValue(data.client || "");
+                } else {
+                    setConnectionMode("detached");
+                    setSelectedEntityType("");
+                    setEntitySearchValue("");
+                }
                 setisEditMode(true)
             } else {
                 const { data } = await axios.get(`/api/invoice/prev`);
-                setInvoiceData({ ...invoiceData, title: data?.title, invoiceNo: +data?.invoiceNo + 1, suffix: data?.suffix })
+                setInvoiceData((prev: any) => ({ ...prev, title: data?.title, invoiceNo: +data?.invoiceNo + 1, suffix: data?.suffix }))
             }
         } catch (error) {
             console.log(error);
@@ -43,12 +78,21 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const handleSubmit = async (e: any) => {
         e.preventDefault()
         try {
+            if (connectionMode === "connected" && (!invoiceData?.entityId || !invoiceData?.entityType)) {
+                alert("Please select an entity to connect this invoice.");
+                return;
+            }
+
+            const payload = connectionMode === "connected"
+                ? invoiceData
+                : { ...invoiceData, entityId: null, entityType: null };
+
             if (isEditMode) {
-                await axios.put(`/api/invoice/${edit}`, invoiceData);
+                await axios.put(`/api/invoice/${edit}`, payload);
                 router.push(`/accounts/invoice/${edit}`);
             }
             else {
-                await axios.post("/api/invoice", invoiceData);
+                await axios.post("/api/invoice", payload);
                 router.push(`/accounts/invoice`);
             }
         } catch (error) {
@@ -84,6 +128,26 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
             [e.target.name]: e.target.value
         })
     }
+
+    const handleEntitySearchChange = (e: any) => {
+        const value = e.target.value;
+        setEntitySearchValue(value);
+        setInvoiceData((prev: any) => ({ ...prev, client: value, entityId: null }));
+        if (selectedEntityType) {
+            debouncedEntitySearch(value, selectedEntityType);
+        }
+    };
+
+    const handleEntitySelection = (selected: TBaseData) => {
+        setEntitySearchValue(selected.name);
+        setInvoiceData((prev: any) => ({
+            ...prev,
+            client: selected.name,
+            entityId: selected._id,
+            entityType: selectedEntityType,
+        }));
+        setEntitySuggestions([]);
+    };
 
     const breadCrumb = isEditMode ? "Edit Invoice" : "Create Invoice"
     
@@ -163,6 +227,88 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                                        <div>
+                                            <label className={labelClass}>Client Type</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={connectionMode === "detached" ? "detached" : selectedEntityType}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value as "detached" | "company" | "employee" | "individual";
+
+                                                        if (value === "detached") {
+                                                            setConnectionMode("detached");
+                                                            setSelectedEntityType("");
+                                                            setEntitySearchValue("");
+                                                            setEntitySuggestions([]);
+                                                            setInvoiceData((prev: any) => ({
+                                                                ...prev,
+                                                                entityId: null,
+                                                                entityType: null,
+                                                            }));
+                                                            return;
+                                                        }
+
+                                                        setConnectionMode("connected");
+                                                        setSelectedEntityType(value);
+                                                        setEntitySearchValue("");
+                                                        setEntitySuggestions([]);
+                                                        setInvoiceData((prev: any) => ({
+                                                            ...prev,
+                                                            entityId: null,
+                                                            entityType: value,
+                                                            client: "",
+                                                        }));
+                                                    }}
+                                                    className={inputClass}
+                                                >
+                                                    <option value="" disabled>Select client type</option>
+                                                    <option value="employee">Employee</option>
+                                                    <option value="company">Company</option>
+                                                    <option value="individual">Individual</option>
+                                                    <option value="detached">Detached</option>
+                                                </select>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                                    <FiChevronDown />
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {connectionMode === "detached" && (
+                                            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                                                Warning: This invoice is detached and will not be linked to any entity profile.
+                                            </div>
+                                        )}
+
+                                        {connectionMode === "connected" && (
+                                            <div className="mt-4">
+                                                <label className={labelClass}>Select Entity</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={entitySearchValue}
+                                                        onChange={handleEntitySearchChange}
+                                                        placeholder="Search and select an entity"
+                                                        className={inputClass}
+                                                    />
+                                                    {entitySuggestions.length > 0 && (
+                                                        <ul className="absolute z-20 mt-2 max-h-52 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                                                            {entitySuggestions.map((suggestion) => (
+                                                                <li
+                                                                    key={suggestion._id}
+                                                                    onClick={() => handleEntitySelection(suggestion)}
+                                                                    className="cursor-pointer px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                                >
+                                                                    {suggestion.name}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <label className={labelClass}>Client Name</label>
                                         <div className="relative">
@@ -174,27 +320,30 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                 name="client"
                                                 onChange={handleChange}
                                                 value={invoiceData?.client || ''}
+                                                disabled={connectionMode === "connected"}
                                                 placeholder="Enter client name"
                                                 className={clsx(inputClass, "pl-11")}
                                             />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className={labelClass}>Location</label>
-                                        <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                                <FiMapPin />
-                                            </span>
-                                            <input
-                                                type="text"
-                                                name="location"
-                                                value={invoiceData?.location || ''}
-                                                onChange={handleChange}
-                                                placeholder="Enter client location"
-                                                className={clsx(inputClass, "pl-11")}
-                                            />
+                                    {connectionMode === "detached" && (
+                                        <div>
+                                            <label className={labelClass}>Location</label>
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                    <FiMapPin />
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    name="location"
+                                                    value={invoiceData?.location || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="Enter client location"
+                                                    className={clsx(inputClass, "pl-11")}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>

@@ -217,13 +217,12 @@ export default function EntitySectionPage({
   });
 
   const { data: invoicesRes } = useQuery<any>({
-    queryKey: ["entity-invoices", entityType, id, entityRes?.data?.name],
+    queryKey: ["entity-invoices", entityType, id],
     queryFn: async () => {
-      const name = entityRes?.data?.name || "";
-      const { data } = await axios.get(`/api/invoice?page=0&search=${encodeURIComponent(name)}`);
+      const { data } = await axios.get(`/api/invoice?page=0&entityId=${encodeURIComponent(id as string)}`);
       return data;
     },
-    enabled: section === "invoices" && Boolean(entityRes?.data?.name),
+    enabled: section === "invoices" && Boolean(id),
   });
 
   const { data: employeesByCompanyRes } = useQuery<{ data: TEntityListItem[]; pagination: TPagination }>({

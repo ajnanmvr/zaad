@@ -20,6 +20,19 @@ export async function PUT(
   await connect();
   const { id } = params;
   const reqBody = await request.json();
+
+  const hasEntityId = Boolean(reqBody?.entityId);
+  const hasEntityType = Boolean(reqBody?.entityType);
+  if (hasEntityId !== hasEntityType) {
+    return Response.json(
+      {
+        message:
+          "Connected invoices must include both entityId and entityType, or neither for detached invoices.",
+      },
+      { status: 400 }
+    );
+  }
+
   await Invoice.findByIdAndUpdate(id, reqBody);
   return Response.json(
     { message: "data updated successfully" },
@@ -38,6 +51,8 @@ export async function GET(
     const res = await Invoice.findById(params.id).populate("createdBy");
     const {
       client,
+      entityId,
+      entityType,
       title,
       suffix,
       invoiceNo,
@@ -62,6 +77,8 @@ export async function GET(
       purpose,
       location,
       client,
+      entityId,
+      entityType,
       title,
       trn,
       quotation,
