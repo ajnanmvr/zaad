@@ -22,6 +22,12 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
   const [selectedOption, setSelectedOption] = useState<EntityType | "">("");
   const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState("");
+  const [selectedEntitySummary, setSelectedEntitySummary] = useState<{
+    id: string;
+    name: string;
+    color?: string;
+    type: string;
+  } | null>(null);
   const [documentTemplateOptions, setDocumentTemplateOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -40,6 +46,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
     setSelectedOption("");
     setSearchSuggestions([]);
     setSearchValue("");
+    setSelectedEntitySummary(null);
     setFormData({
       entity: "",
       documentTemplate: "",
@@ -87,6 +94,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.target.value);
+    setSelectedEntitySummary(null);
     setFormData((prev) => ({ ...prev, entity: "" }));
     if (selectedOption) {
       debounceSearch(event.target.value, selectedOption);
@@ -95,6 +103,12 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
 
   const handleEntitySelection = (selected: TBaseData) => {
     setSearchValue(selected.name);
+    setSelectedEntitySummary({
+      id: selected._id || "",
+      name: selected.name,
+      color: selected.color,
+      type: selected.entityType || selectedOption,
+    });
     setFormData((prev) => ({ ...prev, entity: selected._id || "" }));
     setSearchSuggestions([]);
   };
@@ -181,6 +195,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
                   onChange={(event) => {
                     setSelectedOption(event.target.value as EntityType | "");
                     setSearchValue("");
+                    setSelectedEntitySummary(null);
                     setFormData((prev) => ({ ...prev, entity: "" }));
                     setSearchSuggestions([]);
                   }}
@@ -239,6 +254,16 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
                     </li>
                   ))}
                 </ul>
+                </div>
+              )}
+
+              {selectedEntitySummary && formData.entity && (
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-900/10">
+                  <EntityAvatar name={selectedEntitySummary.name} color={selectedEntitySummary.color} size="sm" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedEntitySummary.name}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-300">{selectedEntitySummary.type}</p>
+                  </div>
                 </div>
               )}
             </div>

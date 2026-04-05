@@ -312,7 +312,7 @@ const ExpiryDocumentsPage = () => {
               className="inline-flex w-fit items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
             >
               <FiPlus className="text-lg" />
-              Add Document
+              Add Expiry Document
             </button>
           </div>
         </div>
