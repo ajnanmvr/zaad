@@ -27,6 +27,12 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "payments.read",
     "payments.write",
   ],
+  tasks: [
+    "tasks.read",
+    "tasks.manage",
+    "tasks.complete",
+    "tasks.notifications.read",
+  ],
 };
 
 export const ALL_PERMISSIONS = Array.from(

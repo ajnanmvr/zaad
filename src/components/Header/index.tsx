@@ -3,6 +3,7 @@ import Image from "next/image";
 import { FiGrid, FiMenu } from "react-icons/fi";
 
 import DarkModeSwitcher from "./DarkModeSwitcher";
+import DropdownNotification from "./DropdownNotification";
 import DropdownUser from "./DropdownUser";
 
 const Header = (props: {
@@ -52,6 +53,7 @@ const Header = (props: {
         <div className="flex items-center gap-3 sm:gap-5">
           <ul className="flex items-center gap-2 sm:gap-4">
             <DarkModeSwitcher />
+            <DropdownNotification />
           </ul>
           <div className="hidden h-8 w-px bg-slate-200 dark:bg-slate-800 sm:block"></div>
           <DropdownUser />

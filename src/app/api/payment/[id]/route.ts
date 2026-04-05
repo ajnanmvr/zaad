@@ -1,4 +1,5 @@
 import Records from "@/models/records";
+import TaskNotification from "@/models/taskNotifications";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
@@ -63,6 +64,72 @@ function areValuesEqual(a: any, b: any) {
   return JSON.stringify(normalizeForCompare(a)) === JSON.stringify(normalizeForCompare(b));
 }
 
+async function resolveLinkedRecordIds(record: any, includeArchived = false) {
+  if (!record?._id) {
+    return [];
+  }
+
+  const recordId = String(record._id);
+  const status = String(record.status || "").toLowerCase();
+  const linkedIds = new Set<string>([recordId]);
+  const publicationFilter = includeArchived ? {} : { published: true };
+
+  if (status === "self deposit") {
+    const partners = await Records.find({
+      ...publicationFilter,
+      status: "Self Deposit",
+      self: "Zaad (Self Deposit)",
+      createdBy: record.createdBy,
+      suffix: record.suffix,
+      amount: record.amount,
+      _id: { $ne: record._id },
+    }).select("_id");
+
+    partners.forEach((partner) => linkedIds.add(String(partner._id)));
+    return Array.from(linkedIds);
+  }
+
+  if (status === "profit") {
+    const recordNumber = Number(record.number);
+
+    if (record.type === "income" && String(record.method || "").toLowerCase() !== "service fee") {
+      const partner = await Records.findOne({
+        ...publicationFilter,
+        status: "Profit",
+        createdBy: record.createdBy,
+        type: "expense",
+        method: "service fee",
+        serviceFee: record.amount,
+        amount: 0,
+        number: Number.isFinite(recordNumber) ? recordNumber + 1 : undefined,
+        _id: { $ne: record._id },
+      }).select("_id");
+
+      if (partner) {
+        linkedIds.add(String(partner._id));
+      }
+    }
+
+    if (record.type === "expense" && String(record.method || "").toLowerCase() === "service fee") {
+      const partner = await Records.findOne({
+        ...publicationFilter,
+        status: "Profit",
+        createdBy: record.createdBy,
+        type: "income",
+        amount: record.serviceFee,
+        number: Number.isFinite(recordNumber) ? recordNumber - 1 : undefined,
+        _id: { $ne: record._id },
+      }).select("_id");
+
+      if (partner) {
+        linkedIds.add(String(partner._id));
+      }
+    }
+  }
+
+  return Array.from(linkedIds);
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -70,21 +137,35 @@ export async function DELETE(
   await connect();
   const principal = await requirePermission(request, "payments.write");
   const { id } = params;
-  await Records.findByIdAndUpdate(id, {
-    published: false,
-    deletedAt: new Date(),
-    deletedBy: principal.userId,
-    $push: {
-      activityLog: {
-        action: "delete",
-        at: new Date(),
-        by: principal.userId,
-        byUsername: principal.username,
-        byFullname: principal.fullname,
-        details: "Transaction moved to bin",
+  const record = await Records.findById(id);
+
+  if (!record) {
+    return Response.json({ error: "Record not found" }, { status: 404 });
+  }
+
+  const linkedIds = await resolveLinkedRecordIds(record);
+
+  await Records.updateMany(
+    { _id: { $in: linkedIds } },
+    {
+      published: false,
+      deletedAt: new Date(),
+      deletedBy: principal.userId,
+      $push: {
+        activityLog: {
+          action: "delete",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details:
+            linkedIds.length > 1
+              ? "Linked transaction pair moved to bin"
+              : "Transaction moved to bin",
+        },
       },
-    },
-  });
+    }
+  );
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
@@ -176,6 +257,19 @@ export async function PUT(
       { new: true }
     );
 
+    const creatorId = existingRecord.createdBy?.toString?.();
+    if (data && creatorId && creatorId !== principal.userId) {
+      await TaskNotification.create({
+        user: creatorId,
+        type: "payment_edited",
+        title: "Payment record edited",
+        message: `${principal.fullname || principal.username || "A user"} changed ${editedFields.length} field${editedFields.length === 1 ? "" : "s"} on ${(existingRecord as any).suffix || ""}${(existingRecord as any).number || ""}.`,
+        createdBy: principal.userId,
+        entityType: "payment",
+        entityId: data._id,
+      });
+    }
+
     return Response.json({ message: "data updated", data }, { status: 200 });
   } catch (error: any) {
     return Response.json(
@@ -203,8 +297,16 @@ export async function PATCH(
     return Response.json({ error: "Unsupported action" }, { status: 400 });
   }
 
-  const data = await Records.findByIdAndUpdate(
-    id,
+  const record = await Records.findById(id);
+
+  if (!record) {
+    return Response.json({ error: "Record not found" }, { status: 404 });
+  }
+
+  const linkedIds = await resolveLinkedRecordIds(record, true);
+
+  const data = await Records.updateMany(
+    { _id: { $in: linkedIds } },
     {
       published: true,
       deletedAt: null,
@@ -216,16 +318,14 @@ export async function PATCH(
           by: principal.userId,
           byUsername: principal.username,
           byFullname: principal.fullname,
-          details: "Transaction recovered from bin",
+          details:
+            linkedIds.length > 1
+              ? "Linked transaction pair recovered from bin"
+              : "Transaction recovered from bin",
         },
       },
-    },
-    { new: true }
+    }
   );
-
-  if (!data) {
-    return Response.json({ error: "Record not found" }, { status: 404 });
-  }
 
   return Response.json({ message: "Record recovered", data }, { status: 200 });
 }

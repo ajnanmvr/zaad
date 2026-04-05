@@ -3,6 +3,7 @@ import { redis } from "@/db/redis";
 import { ServiceError } from "./serviceError";
 import { NextRequest } from "next/server";
 import { logUserActivity } from "@/helpers/userActivityLogger";
+import { ALL_PERMISSIONS } from "@/auth/permissionCatalog";
 
 const CACHE_TTL_SECONDS = 5 * 60;
 
@@ -14,6 +15,10 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
   const normalizedRole = (roleName || "").toLowerCase();
   if (!normalizedRole) {
     return [];
+  }
+
+  if (["superadmin", "super_admin", "super-admin", "super admin"].includes(normalizedRole)) {
+    return ALL_PERMISSIONS;
   }
 
   const cacheKey = getRoleCacheKey(normalizedRole);

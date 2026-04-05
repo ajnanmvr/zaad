@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import {
   FiAlertCircle,
+  FiX,
   FiPlus,
   FiTrash2,
 } from "react-icons/fi";
@@ -124,6 +125,21 @@ function TypePlatformManager({
     return getPaymentMethodIcon(iconName);
   };
 
+  const openAddModal = () => {
+    setValue("");
+    setSelectedColor("");
+    setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+    setColorPickerKey((prev) => prev + 1);
+    setShowAddForm(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddForm(false);
+    setValue("");
+    setSelectedColor("");
+    setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+  };
+
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -215,7 +231,7 @@ function TypePlatformManager({
         </div>
         <button
           type="button"
-          onClick={() => setShowAddForm((prev) => !prev)}
+          onClick={openAddModal}
           className={clsx(
             "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition",
             accentClasses.button,
@@ -227,75 +243,106 @@ function TypePlatformManager({
       </div>
 
       {showAddForm && (
-        <form
-          onSubmit={handleAdd}
-          className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
-        >
-          <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-            {inputLabel}
-          </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder={inputPlaceholder}
-              className={clsx(
-                "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-                accentClasses.focus,
-              )}
-            />
-            <button
-              type="submit"
-              disabled={isAdding}
-              className={clsx(
-                "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60",
-                accentClasses.button,
-              )}
-            >
-              {isAdding ? "Adding..." : "Save"}
-            </button>
-          </div>
-
-          {(type === "document" || type === "payment") && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60">
-              <ColorPicker
-                key={colorPickerKey}
-                selectedColor={selectedColor}
-                onChange={(color) => setSelectedColor(color || "")}
-                label={type === "document" ? "Template Color" : "Method Color"}
-                allowAutoAssign
-              />
-            </div>
-          )}
-
-          {type === "payment" && (
-            <div className="mt-4">
-              <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Payment Icon
-              </p>
-              <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
-                {PAYMENT_METHOD_ICON_OPTIONS.map(
-                  ({ value: iconValue, label, Icon }) => (
-                  <button
-                    key={iconValue}
-                    type="button"
-                    onClick={() => setSelectedIcon(iconValue)}
-                    className={clsx(
-                      "inline-flex h-11 w-11 items-center justify-center rounded-lg border text-sm font-semibold transition",
-                      selectedIcon === iconValue
-                        ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-300"
-                        : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
-                    )}
-                    title={label}
-                  >
-                    <Icon className="text-lg" />
-                  </button>
-                ))}
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-10 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className={clsx("inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider", accentClasses.badge)}>
+                  <FiPlus /> Add {title.slice(0, -1)}
+                </p>
+                <h3 className="mt-3 text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                  Add {title.slice(0, -1)}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Create a new {title.slice(0, -1).toLowerCase()} and publish it for use across the app.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={closeAddModal}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <FiX />
+              </button>
             </div>
-          )}
-        </form>
+
+            <form onSubmit={handleAdd} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  {inputLabel}
+                </label>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(event) => setValue(event.target.value)}
+                  placeholder={inputPlaceholder}
+                  className={clsx(
+                    "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+                    accentClasses.focus,
+                  )}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeAddModal}
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdding}
+                  className={clsx(
+                    "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60",
+                    accentClasses.button,
+                  )}
+                >
+                  {isAdding ? "Adding..." : "Save"}
+                </button>
+              </div>
+
+              {(type === "document" || type === "payment") && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                  <ColorPicker
+                    key={colorPickerKey}
+                    selectedColor={selectedColor}
+                    onChange={(color) => setSelectedColor(color || "")}
+                    label={type === "document" ? "Template Color" : "Method Color"}
+                    allowAutoAssign
+                  />
+                </div>
+              )}
+
+              {type === "payment" && (
+                <div>
+                  <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Payment Icon
+                  </p>
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
+                    {PAYMENT_METHOD_ICON_OPTIONS.map(({ value: iconValue, label, Icon }) => (
+                      <button
+                        key={iconValue}
+                        type="button"
+                        onClick={() => setSelectedIcon(iconValue)}
+                        className={clsx(
+                          "inline-flex h-11 w-11 items-center justify-center rounded-lg border text-sm font-semibold transition",
+                          selectedIcon === iconValue
+                            ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-300"
+                            : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+                        )}
+                        title={label}
+                      >
+                        <Icon className="text-lg" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
       )}
 
       {isLoading ? (

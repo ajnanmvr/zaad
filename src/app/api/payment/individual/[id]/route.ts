@@ -45,7 +45,7 @@ export async function GET(
     const totalIncome = individualRecords.reduce(
       (acc, record) =>
         acc +
-        (record.type === "income" && record.method !== "liability"
+        (record.type === "income" && !String(record.status || "").toLowerCase().includes("liability")
           ? record.amount
           : 0),
       0
