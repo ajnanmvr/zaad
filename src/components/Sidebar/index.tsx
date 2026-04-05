@@ -430,7 +430,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
-              {can("roles.manage") && (
+              {(can("roles.manage") || can("settings.read")) && (
                 <li>
                   <NavItem
                     href="/settings/roles"

@@ -1,388 +1,431 @@
-"use client"
-import { useState } from "react";
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import Link from "next/link";
-import { formatDate } from "@/utils/dateUtils";
-import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiUserCheck, FiUserX, FiShield, FiUser } from "react-icons/fi";
 import clsx from "clsx";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  FiArchive,
+  FiEdit2,
+  FiPlus,
+  FiRefreshCw,
+  FiSearch,
+  FiShield,
+  FiTrash2,
+  FiUser,
+  FiUsers,
+} from "react-icons/fi";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
 import ConfirmationModal from "../Modals/ConfirmationModal";
+import { formatDate } from "@/utils/dateUtils";
 
 interface User {
-    _id: string;
-    username: string;
-    fullname: string;
-    role: string;
-    createdAt: string;
-    updatedAt: string;
-    deletedAt?: string;
-    published?: boolean;
+  _id: string;
+  username: string;
+  fullname: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  published?: boolean;
 }
 
 interface Pagination {
-    currentPage: number;
-    totalPages: number;
-    totalUsers: number;
-    hasMore: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalUsers: number;
+  hasMore: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 const UsersList = () => {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(0);
-    const [showDeleted, setShowDeleted] = useState(false);
-    const [confirmState, setConfirmState] = useState<{
-        action: "delete" | "reactivate";
-        userId: string;
-        username: string;
-    } | null>(null);
-    const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    action: "delete" | "reactivate";
+    userId: string;
+    username: string;
+  } | null>(null);
 
-    const { data, isLoading } = useQuery({
-        queryKey: ["users", currentPage, searchTerm, showDeleted],
-        queryFn: async () => {
-            const params = new URLSearchParams({
-                page: currentPage.toString(),
-                limit: "10",
-            });
+  const queryClient = useQueryClient();
 
-            if (searchTerm) {
-                params.append("search", searchTerm);
-            }
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["users", currentPage, searchTerm, showDeleted],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: PAGE_SIZE.toString(),
+      });
 
-            if (showDeleted) {
-                params.append("deleted", "true");
-            }
+      if (searchTerm.trim()) {
+        params.append("search", searchTerm.trim());
+      }
 
-            const { data } = await axios.get(`/api/users?${params}`);
-            return data as { users: User[]; pagination: Pagination };
-        },
-        placeholderData: keepPreviousData,
+      if (showDeleted) {
+        params.append("deleted", "true");
+      }
+
+      const { data } = await axios.get(`/api/users?${params.toString()}`);
+      return data as { users: User[]; pagination: Pagination };
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const usersData = data?.users;
+  const users = useMemo(() => usersData || [], [usersData]);
+  const pagination =
+    data?.pagination ||
+    ({
+      currentPage: 0,
+      totalPages: 0,
+      totalUsers: 0,
+      hasMore: false,
+    } as Pagination);
+
+  const roleDistribution = useMemo(() => {
+    const counts = new Map<string, number>();
+    users.forEach((item) => {
+      counts.set(item.role, (counts.get(item.role) || 0) + 1);
     });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [users]);
 
-    const users = data?.users || [];
-    const pagination = data?.pagination || {
-        currentPage: 0,
-        totalPages: 0,
-        totalUsers: 0,
-        hasMore: false,
-    };
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => axios.delete(`/api/users/${userId}`),
+    onSuccess: () => {
+      toast.success("User archived successfully");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to archive user");
+    },
+  });
 
-    const deleteMutation = useMutation({
-        mutationFn: (userId: string) => axios.delete(`/api/users/${userId}`),
-        onSuccess: () => {
-            toast.success("User deleted successfully");
-            queryClient.invalidateQueries({ queryKey: ["users"] });
-        },
-        onError: (error: any) => {
-            const errorMessage = error.response?.data?.error || "Failed to delete user";
-            toast.error(errorMessage);
-        },
-    });
+  const reactivateMutation = useMutation({
+    mutationFn: (userId: string) => axios.put(`/api/users/${userId}/reactivate`),
+    onSuccess: () => {
+      toast.success("User reactivated successfully");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to reactivate user");
+    },
+  });
 
-    const reactivateMutation = useMutation({
-        mutationFn: (userId: string) => axios.put(`/api/users/${userId}/reactivate`),
-        onSuccess: () => {
-            toast.success("User reactivated successfully");
-            queryClient.invalidateQueries({ queryKey: ["users"] });
-        },
-        onError: (error: any) => {
-            const errorMessage = error.response?.data?.error || "Failed to reactivate user";
-            toast.error(errorMessage);
-        },
-    });
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(0);
+  };
 
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setSearchTerm(value);
-        setCurrentPage(0);
-    };
+  const handleTabChange = (deleted: boolean) => {
+    setShowDeleted(deleted);
+    setCurrentPage(0);
+  };
 
-    const handleTabChange = (deleted: boolean) => {
-        setShowDeleted(deleted);
-        setCurrentPage(0);
-        setSearchTerm("");
-    };
+  const confirmAction = () => {
+    if (!confirmState) return;
 
-    const handleDelete = async (userId: string, username: string) => {
-        setConfirmState({ action: "delete", userId, username });
-    };
+    if (confirmState.action === "delete") {
+      deleteMutation.mutate(confirmState.userId);
+    } else {
+      reactivateMutation.mutate(confirmState.userId);
+    }
 
-    const handleReactivate = async (userId: string, username: string) => {
-        setConfirmState({ action: "reactivate", userId, username });
-    };
+    setConfirmState(null);
+  };
 
-    const confirmAction = () => {
-        if (!confirmState) return;
+  const goToPage = (page: number) => {
+    if (page < 0 || page >= pagination.totalPages) return;
+    setCurrentPage(page);
+  };
 
-        if (confirmState.action === "delete") {
-            deleteMutation.mutate(confirmState.userId);
-        } else {
-            reactivateMutation.mutate(confirmState.userId);
+  const startRow = pagination.totalUsers === 0 ? 0 : currentPage * PAGE_SIZE + 1;
+  const endRow = Math.min((currentPage + 1) * PAGE_SIZE, pagination.totalUsers);
+
+  return (
+    <div className="space-y-6">
+      <ConfirmationModal
+        isOpen={Boolean(confirmState)}
+        title={confirmState?.action === "delete" ? "Archive User" : "Reactivate User"}
+        message={
+          confirmState?.action === "delete"
+            ? `Archive user "${confirmState?.username}"?`
+            : `Reactivate user "${confirmState?.username}"?`
         }
-        setConfirmState(null);
-    };
+        confirmLabel={confirmState?.action === "delete" ? "Archive" : "Reactivate"}
+        cancelLabel="Cancel"
+        variant={confirmState?.action === "delete" ? "warning" : "primary"}
+        isLoading={deleteMutation.isPending || reactivateMutation.isPending}
+        onCancel={() => setConfirmState(null)}
+        onConfirm={confirmAction}
+      />
 
-    const goToPage = (page: number) => {
-        if (page >= 0 && page < pagination.totalPages) {
-            setCurrentPage(page);
-        }
-    };
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
 
-    return (
-        <div className="space-y-6">
-            <ConfirmationModal
-                isOpen={Boolean(confirmState)}
-                title={confirmState?.action === "delete" ? "Archive User" : "Reactivate User"}
-                message={
-                    confirmState?.action === "delete"
-                        ? `Are you sure you want to archive user "${confirmState?.username}"? The user can be reactivated later.`
-                        : `Are you sure you want to reactivate user "${confirmState?.username}"?`
-                }
-                confirmLabel={confirmState?.action === "delete" ? "Archive" : "Reactivate"}
-                cancelLabel="Cancel"
-                variant={confirmState?.action === "delete" ? "warning" : "primary"}
-                isLoading={deleteMutation.isPending || reactivateMutation.isPending}
-                onCancel={() => setConfirmState(null)}
-                onConfirm={confirmAction}
-            />
-            
-            {/* Header & Controls */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <FiShield className="text-emerald-500" /> User Directory
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Manage all platform users, their roles, and system access.
-                    </p>
-                </div>
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <FiUsers />
+              Administration
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+              System Users
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+              Manage user access, role assignments, and account lifecycle.
+            </p>
+          </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <FiSearch />
-                        </span>
-                        <input
-                            type="text"
-                            placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={handleSearch}
-                            className="w-full sm:w-64 rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        />
-                    </div>
-                    {!showDeleted && (
-                        <Link
-                            href="/users/add"
-                            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30"
-                        >
-                            <FiPlus className="text-lg" />
-                            Add User
-                        </Link>
-                    )}
-                </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:min-w-[520px]">
+            <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Visible Users</p>
+              <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{users.length}</p>
             </div>
-
-            {/* Main Card */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
-                
-                {/* Tabs */}
-                <div className="border-b border-slate-200 bg-slate-50/50 px-6 pt-4 dark:border-slate-800 dark:bg-slate-800/50">
-                    <nav className="flex space-x-6">
-                        <button
-                            onClick={() => handleTabChange(false)}
-                            className={clsx(
-                                "flex items-center gap-2 border-b-2 pb-4 text-sm font-semibold transition-colors",
-                                !showDeleted 
-                                    ? "border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400" 
-                                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                            )}
-                        >
-                            <FiUserCheck className="text-lg" /> Active Users
-                            {!showDeleted && pagination.totalUsers > 0 && (
-                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                    {pagination.totalUsers}
-                                </span>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => handleTabChange(true)}
-                            className={clsx(
-                                "flex items-center gap-2 border-b-2 pb-4 text-sm font-semibold transition-colors",
-                                showDeleted 
-                                    ? "border-rose-500 text-rose-600 dark:border-rose-400 dark:text-rose-400" 
-                                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                            )}
-                        >
-                            <FiUserX className="text-lg" /> Deleted
-                            {showDeleted && pagination.totalUsers > 0 && (
-                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
-                                    {pagination.totalUsers}
-                                </span>
-                            )}
-                        </button>
-                    </nav>
-                </div>
-
-                {/* Table */}
-                <div className="w-full overflow-x-auto custom-scrollbar">
-                    <table className="w-full whitespace-nowrap text-left text-sm">
-                        <thead>
-                            <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-1/4">User Profile</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-1/4">Full Name</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-[15%]">Role</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 w-[15%]">{showDeleted ? "Deleted On" : "Date Created"}</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right w-[10%]">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                            {isLoading && users.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                        <div className="flex flex-col items-center justify-center gap-3">
-                                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-500 border-t-transparent"></div>
-                                            <p className="font-medium">Loading directory...</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : users.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                        <div className="flex flex-col items-center justify-center gap-3">
-                                            <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
-                                                <FiUser className="text-3xl text-slate-400" />
-                                            </div>
-                                            <p className="text-base font-medium text-slate-700 dark:text-slate-300">
-                                                {searchTerm ? `No users matching "${searchTerm}"` : `No ${showDeleted ? 'deleted' : 'active'} users found`}
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                users.map((user) => (
-                                    <tr 
-                                        key={user._id} 
-                                        className={clsx(
-                                            "group transition-colors",
-                                            showDeleted ? "bg-slate-50/50 dark:bg-slate-900/30 opacity-80" : "hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
-                                        )}
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                                                    <span className="font-bold uppercase tracking-wider">{user.username.charAt(0)}{user.username.charAt(1)}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="block font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">{user.username}</span>
-                                                    {showDeleted && (
-                                                        <span className="mt-0.5 inline-flex items-center rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400">
-                                                            Archived
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400 truncate">
-                                            {user.fullname || "—"}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={clsx(
-                                                "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold capitalize ring-1 ring-inset",
-                                                "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                            )}>
-                                                {user.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
-                                            {showDeleted 
-                                                ? (user.deletedAt ? formatDate(user.deletedAt) : "N/A") 
-                                                : formatDate(user.createdAt)
-                                            }
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {showDeleted ? (
-                                                    <button
-                                                        onClick={() => handleReactivate(user._id, user.username)}
-                                                        className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                                                        title="Reactivate User"
-                                                    >
-                                                        <FiRefreshCw className="text-sm" /> Reactivate
-                                                    </button>
-                                                ) : (
-                                                    <div className="flex gap-2">
-                                                        <Link
-                                                            href={`/users/${user._id}/edit`}
-                                                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-                                                            title="Edit Details"
-                                                        >
-                                                            <FiEdit2 className="text-lg" />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDelete(user._id, user.username)}
-                                                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
-                                                            title="Delete / Archive"
-                                                        >
-                                                            <FiTrash2 className="text-lg" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/30">
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Showing <span className="font-bold text-slate-900 dark:text-white">{currentPage * 10 + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min((currentPage + 1) * 10, pagination.totalUsers)}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination.totalUsers}</span> users
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => goToPage(currentPage - 1)}
-                                disabled={currentPage === 0}
-                                className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                            >
-                                Prev
-                            </button>
-                            <div className="hidden sm:flex gap-1">
-                                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                                    const pageNum = Math.max(0, Math.min(pagination.totalPages - 5, currentPage - 2)) + i;
-                                    return (
-                                        <button
-                                            key={pageNum}
-                                            onClick={() => goToPage(pageNum)}
-                                            className={clsx(
-                                                "min-w-[32px] rounded-xl px-2 py-1.5 text-sm font-semibold shadow-sm transition-colors",
-                                                pageNum === currentPage
-                                                    ? "bg-emerald-600 text-white"
-                                                    : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                                            )}
-                                        >
-                                            {pageNum + 1}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <button
-                                onClick={() => goToPage(currentPage + 1)}
-                                disabled={currentPage >= pagination.totalPages - 1}
-                                className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                )}
+            <div className="rounded-2xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/70">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Results</p>
+              <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">{pagination.totalUsers}</p>
             </div>
+            <div className="rounded-2xl border border-cyan-200/80 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/70">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Current View</p>
+              <p className="mt-1 text-sm font-black text-cyan-600 dark:text-cyan-400">
+                {showDeleted ? "Archived Users" : "Active Users"}
+              </p>
+            </div>
+          </div>
         </div>
-    );
+      </section>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+              <FiUsers className="text-emerald-500" />
+              User Directory
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage user access, role assignments, and account lifecycle.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchTerm}
+                onChange={handleSearch}
+                placeholder="Search by username or name"
+                className="w-72 rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-900"
+              />
+            </div>
+            {!showDeleted ? (
+              <Link
+                href="/users/add"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                <FiPlus />
+                Add User
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-xl border border-slate-200 p-1 dark:border-slate-700">
+            <button
+              onClick={() => handleTabChange(false)}
+              className={clsx(
+                "rounded-lg px-3 py-1.5 text-sm font-semibold",
+                !showDeleted
+                  ? "bg-emerald-600 text-white"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+              )}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => handleTabChange(true)}
+              className={clsx(
+                "rounded-lg px-3 py-1.5 text-sm font-semibold",
+                showDeleted
+                  ? "bg-rose-600 text-white"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+              )}
+            >
+              Archived
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {roleDistribution.slice(0, 4).map(([role, count]) => (
+              <span
+                key={role}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold capitalize text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                <FiShield className="text-[11px]" />
+                {role}: {count}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800/60">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">User</th>
+                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Full Name</th>
+                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Role</th>
+                <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                  {showDeleted ? "Archived On" : "Created On"}
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && users.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                    <div className="inline-flex items-center gap-2">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Loading users...
+                    </div>
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+                      <FiUser className="text-3xl text-slate-400" />
+                      <p>
+                        {searchTerm
+                          ? `No users match "${searchTerm}"`
+                          : `No ${showDeleted ? "archived" : "active"} users found.`}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                users.map((item) => (
+                  <tr
+                    key={item._id}
+                    className="border-t border-slate-200 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/40"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-xs font-black uppercase text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                          {(item.username || "US").slice(0, 2)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{item.username}</p>
+                          {showDeleted ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+                              <FiArchive className="text-[10px]" />
+                              archived
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{item.fullname || "-"}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-700 ring-1 ring-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300">
+                        {item.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {showDeleted ? formatDate(item.deletedAt || "") : formatDate(item.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {showDeleted ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirmState({
+                                action: "reactivate",
+                                userId: item._id,
+                                username: item.username,
+                              })
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:text-emerald-300"
+                          >
+                            <FiRefreshCw />
+                            Reactivate
+                          </button>
+                        ) : (
+                          <>
+                            <Link
+                              href={`/users/${item._id}/edit`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold dark:border-slate-700"
+                            >
+                              <FiEdit2 />
+                              Edit
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setConfirmState({
+                                  action: "delete",
+                                  userId: item._id,
+                                  username: item.username,
+                                })
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-rose-300 px-2.5 py-1.5 text-xs font-semibold text-rose-700 dark:border-rose-700 dark:text-rose-300"
+                            >
+                              <FiTrash2 />
+                              Archive
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            Showing {startRow} to {endRow} of {pagination.totalUsers}
+            {isFetching ? " (updating...)" : ""}
+          </p>
+
+          <div className="inline-flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold disabled:opacity-50 dark:border-slate-700"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-slate-500">
+              Page {pagination.currentPage + 1} / {Math.max(1, pagination.totalPages)}
+            </span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={!pagination.hasMore}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold disabled:opacity-50 dark:border-slate-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default UsersList;

@@ -1,9 +1,9 @@
 export const PERMISSION_GROUPS: Record<string, string[]> = {
-  administration: [
+  security: [
     "admin.access",
-    "roles.manage",
     "settings.read",
     "settings.write",
+    "roles.manage",
   ],
   users: [
     "users.read",
@@ -11,6 +11,8 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "users.update",
     "users.delete",
     "users.reactivate",
+  ],
+  audit: [
     "users.activity.read",
   ],
   entities: [
@@ -27,4 +29,6 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
   ],
 };
 
-export const ALL_PERMISSIONS = Object.values(PERMISSION_GROUPS).flat();
+export const ALL_PERMISSIONS = Array.from(
+  new Set(Object.values(PERMISSION_GROUPS).flat()),
+);

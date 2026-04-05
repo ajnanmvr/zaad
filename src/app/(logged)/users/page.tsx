@@ -29,8 +29,8 @@ const UsersPage = () => {
 
     return (
         <>
-            <Breadcrumb pageName="Users" />
-            <div className="flex flex-col gap-10">
+            <Breadcrumb pageName="System Users" />
+            <div className="flex flex-col gap-6">
                 <UsersList />
             </div>
         </>

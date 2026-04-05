@@ -1,125 +1,236 @@
-"use client"
-import React from "react";
+"use client";
+
+import Link from "next/link";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import {
+  FiActivity,
+  FiBriefcase,
+  FiClock,
+  FiKey,
+  FiShield,
+  FiUser,
+} from "react-icons/fi";
+
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import ChangePassword from "@/components/Forms/ChangePassword";
 import SessionManager from "@/components/Settings/SessionManager";
 import { useUserContext } from "@/contexts/UserContext";
-import Link from "next/link";
-import { FiUser, FiShield, FiBriefcase, FiPackage } from "react-icons/fi";
+
+type ActivityItem = {
+  _id: string;
+  action: string;
+  targetUser?: { username?: string };
+  performedBy?: { username?: string };
+  createdAt: string;
+};
+
+type ActivityResponse = {
+  activities: ActivityItem[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalActivities: number;
+    hasMore: boolean;
+  };
+};
+
+const formatAction = (action: string) => action.replace(/_/g, " ");
 
 const SettingsPage = () => {
-    const { user } = useUserContext();
+  const { user } = useUserContext();
 
-    return (
-        <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-            <Breadcrumb pageName="Account Settings" />
+  const canViewRoles =
+    Array.isArray(user?.permissions) &&
+    (user.permissions.includes("settings.read") ||
+      user.permissions.includes("roles.manage"));
+  const canViewPermissions =
+    Array.isArray(user?.permissions) && user.permissions.includes("settings.read");
+  const canViewTemplates =
+    Array.isArray(user?.permissions) && user.permissions.includes("entities.write");
+  const canViewAudit =
+    Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read");
 
-            <div className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12">
-                <div className="flex flex-col gap-8 xl:col-span-5">
-                    {/* User Information Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
-                        <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex items-center gap-3">
-                            <FiUser className="text-xl text-emerald-500" />
-                            <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                                Profile Information
-                            </h3>
-                        </div>
-                        <div className="p-6 sm:p-8">
-                            <div className="flex items-center gap-5 mb-8">
-                                <div className="h-16 w-16 flex items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500 ring-1 ring-emerald-100 dark:bg-emerald-500/10 dark:ring-emerald-500/20">
-                                    <FiUser className="text-3xl opacity-80" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white capitalize">
-                                        {user?.fullname || user?.username || "Loading..."}
-                                    </h4>
-                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize flex items-center gap-1.5 mt-1">
-                                        <FiBriefcase className="opacity-70" /> {user?.role || "User"}
-                                    </p>
-                                </div>
-                            </div>
+  const activitiesQuery = useQuery({
+    queryKey: ["my-activity", user?._id],
+    queryFn: async () => {
+      const { data } = await axios.get(
+        `/api/users/activity?userId=${encodeURIComponent(user?._id || "")}&limit=8`,
+      );
+      return data as ActivityResponse;
+    },
+    enabled: Boolean(user?._id) && canViewAudit,
+  });
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                        Username
-                                    </label>
-                                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 cursor-not-allowed">
-                                        {user?.username || "..."}
-                                    </div>
-                                </div>
-                                
-                                {user?.fullname && (
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                            Full Name
-                                        </label>
-                                        <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 cursor-not-allowed">
-                                            {user.fullname}
-                                        </div>
-                                    </div>
-                                )}
+  const activities = useMemo(
+    () => activitiesQuery.data?.activities || [],
+    [activitiesQuery.data?.activities],
+  );
 
-                                <div>
-                                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                        Account Role
-                                    </label>
-                                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 capitalize cursor-not-allowed flex items-center justify-between">
-                                        {user?.role || "..."}
-                                        <FiShield className="text-emerald-500" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+      <Breadcrumb pageName="My Profile" />
 
-                <div className="flex flex-col gap-8 xl:col-span-7">
-                    {/* Change Password Component */}
-                    <ChangePassword />
-                    <SessionManager />
-                    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-                        <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Security Console</h3>
-                        <div className="flex flex-wrap gap-3">
-                            {Array.isArray(user?.permissions) && user.permissions.includes("roles.manage") && (
-                                <Link
-                                    href="/settings/roles"
-                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                                >
-                                    Manage Roles
-                                </Link>
-                            )}
-                            {Array.isArray(user?.permissions) && user.permissions.includes("settings.read") && (
-                                <Link
-                                    href="/settings/permissions"
-                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                                >
-                                    Permission Matrix
-                                </Link>
-                            )}
-                            {Array.isArray(user?.permissions) && user.permissions.includes("entities.write") && (
-                                <Link
-                                    href="/settings/document-types"
-                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 flex items-center gap-2"
-                                >
-                                    <FiPackage className="text-base" />
-                                    Manage Types & Platforms
-                                </Link>
-                            )}
-                            {Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read") && (
-                                <Link
-                                    href="/users/activity"
-                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                                >
-                                    View Activity Audit
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <section className="relative mt-6 overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-sky-300/20 blur-3xl" />
+        <div className="relative z-10">
+          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <FiUser />
+            Account Hub
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+            My Profile & Security
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+            Manage profile context, monitor activity, and secure your account sessions.
+          </p>
         </div>
-    );
+      </section>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <section className="xl:col-span-5 space-y-6">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-emerald-500/15 blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-sky-500/10 blur-2xl" />
+
+            <div className="relative">
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+                  <FiUser className="text-3xl" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                    {user?.fullname || user?.username || "Loading"}
+                  </h2>
+                  <p className="mt-1 inline-flex items-center gap-2 text-sm text-slate-500">
+                    <FiBriefcase />
+                    {user?.role || "User"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Username</p>
+                  <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">{user?.username || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Role</p>
+                  <p className="mt-1 inline-flex items-center gap-2 font-semibold capitalize text-slate-800 dark:text-slate-200">
+                    <FiShield className="text-emerald-500" />
+                    {user?.role || "-"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Granted Permissions</p>
+                  <p className="mt-1 font-semibold text-slate-800 dark:text-slate-200">
+                    {Array.isArray(user?.permissions) ? user.permissions.length : 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+            <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Security Shortcuts</h3>
+            <div className="flex flex-wrap gap-2">
+              {canViewRoles ? (
+                <Link
+                  href="/settings/roles"
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Role Management
+                </Link>
+              ) : null}
+              {canViewPermissions ? (
+                <Link
+                  href="/settings/permissions"
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Permission Matrix
+                </Link>
+              ) : null}
+              {canViewTemplates ? (
+                <Link
+                  href="/settings/document-types"
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Templates & Platforms
+                </Link>
+              ) : null}
+              {canViewAudit ? (
+                <Link
+                  href="/users/activity"
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Activity Audit
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="xl:col-span-7 space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="mb-4 flex items-center gap-2">
+              <FiActivity className="text-emerald-500" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">My Activities</h3>
+            </div>
+
+            {!canViewAudit ? (
+              <p className="text-sm text-slate-500">You do not have permission to view activity logs.</p>
+            ) : activitiesQuery.isLoading ? (
+              <div className="flex items-center gap-3 text-sm text-slate-500">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Loading activity...
+              </div>
+            ) : activities.length === 0 ? (
+              <p className="text-sm text-slate-500">No activity found for your account.</p>
+            ) : (
+              <div className="space-y-2">
+                {activities.map((activity) => (
+                  <div
+                    key={activity._id}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60"
+                  >
+                    <div>
+                      <p className="font-semibold capitalize text-slate-800 dark:text-slate-200">
+                        {formatAction(activity.action)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Target: {activity.targetUser?.username || "n/a"} | Actor: {activity.performedBy?.username || "n/a"}
+                      </p>
+                    </div>
+                    <p className="inline-flex items-center gap-1 text-xs text-slate-500">
+                      <FiClock />
+                      {new Date(activity.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ChangePassword />
+          <SessionManager />
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+            <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
+              <FiKey className="text-emerald-500" />
+              Account Safety Tips
+            </h3>
+            <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+              <li>Use a strong unique password and update it periodically.</li>
+              <li>Review active sessions and revoke devices you do not recognize.</li>
+              <li>Report unexpected role or permission changes immediately.</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 };
 
 export default SettingsPage;
