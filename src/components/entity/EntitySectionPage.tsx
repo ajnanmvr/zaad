@@ -273,8 +273,14 @@ export default function EntitySectionPage({
   const entity = overviewRes?.data.entity;
   const counts = overviewRes?.data.counts;
   const details = entityRes?.data;
-  const documents = useMemo(() => entityRes?.data?.documents || [], [entityRes?.data?.documents]);
-  const credentials = useMemo(() => entityRes?.data?.credentials || [], [entityRes?.data?.credentials]);
+  const documents = useMemo(
+    () => entityRes?.data?.documents || [],
+    [entityRes?.data?.documents],
+  );
+  const credentials = useMemo(
+    () => entityRes?.data?.credentials || [],
+    [entityRes?.data?.credentials],
+  );
   const entityName = entityRes?.data?.name || entity?.name || "Entity";
   const avatarInitials = initialsFromName(entity?.name || details?.name);
   const avatarColor = resolveAvatarColorWithFallback(
@@ -641,292 +647,1155 @@ export default function EntitySectionPage({
               : "grid-cols-1",
           )}
         >
-          <SectionCard
-            title={
-              section === "employees" ||
-              section === "records" ||
-              section === "invoices"
-                ? undefined
-                : sectionTitle
-            }
-            description={
-              section === "employees" ||
-              section === "records" ||
-              section === "invoices"
-                ? undefined
-                : sectionDescription(section)
-            }
-          >
-            {isSectionLoading && (
-              <div className="flex justify-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent" />
-              </div>
-            )}
-
-            {!isSectionLoading && section === "details" && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                <ProfileField label="Name" value={entityRes?.data?.name} />
-                <ProfileField label="Email" value={entityRes?.data?.email} />
-                <ProfileField label="Phone" value={entityRes?.data?.phone1} />
-                <ProfileField label="Phone 2" value={entityRes?.data?.phone2} />
-
-                {entityType === "company" && (
-                  <>
-                    <ProfileField
-                      label="License No"
-                      value={entityRes?.data?.licenseNo}
-                    />
-                    <ProfileField
-                      label="Company Type"
-                      value={entityRes?.data?.companyType}
-                    />
-                    <ProfileField
-                      label="Emirates"
-                      value={entityRes?.data?.emirates}
-                    />
-                    <ProfileField
-                      label="Transaction No"
-                      value={entityRes?.data?.transactionNo}
-                    />
-                    <ProfileField
-                      label="Mainland"
-                      value={entityRes?.data?.isMainland}
-                    />
-                  </>
-                )}
-
-                {entityType === "employee" && (
-                  <>
-                    <ProfileField
-                      label="Company"
-                      value={entityRes?.data?.company?.name}
-                    />
-                    <ProfileField
-                      label="Emirates ID"
-                      value={entityRes?.data?.emiratesId}
-                    />
-                    <ProfileField
-                      label="Nationality"
-                      value={entityRes?.data?.nationality}
-                    />
-                    <ProfileField
-                      label="Designation"
-                      value={entityRes?.data?.designation}
-                    />
-                  </>
-                )}
-
-                {entityType === "individual" && (
-                  <>
-                    <ProfileField
-                      label="Emirates ID"
-                      value={entityRes?.data?.emiratesId}
-                    />
-                    <ProfileField
-                      label="Nationality"
-                      value={entityRes?.data?.nationality}
-                    />
-                    <ProfileField
-                      label="Designation"
-                      value={entityRes?.data?.designation}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-
-            {!isSectionLoading && section === "documents" && (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <select
-                    value={documentSort}
-                    onChange={(event) =>
-                      setDocumentSort(
-                        event.target.value as
-                          | "expiry-asc"
-                          | "expiry-desc"
-                          | "name-asc",
-                      )
-                    }
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    <option value="expiry-asc">Sort: Expiry nearest</option>
-                    <option value="expiry-desc">Sort: Expiry latest</option>
-                    <option value="name-asc">Sort: Name A-Z</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddDocument((prev) => {
-                        const next = !prev;
-                        if (!next) {
-                          setEditingDocumentId(null);
-                          setDocumentDraft({
-                            documentTemplate: "",
-                            issueDate: "",
-                            expiryDate: "",
-                            notes: "",
-                          });
-                        }
-                        return next;
-                      });
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                  >
-                    <FiPlus />
-                    {showAddDocument
-                      ? "Cancel"
-                      : editingDocumentId
-                        ? "Edit Document"
-                        : "Add Document"}
-                  </button>
+          {section === "employees" ||
+          section === "records" ||
+          section === "invoices" ? (
+            <>
+              {isSectionLoading && (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent" />
                 </div>
+              )}
 
-                {showAddDocument && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Document
-                        </label>
-                        <select
-                          value={documentDraft.documentTemplate}
-                          onChange={(event) =>
-                            setDocumentDraft((prev) => ({
-                              ...prev,
-                              documentTemplate: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        >
-                          <option value="">Select document</option>
-                          {documentOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.name || "Unnamed document"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Issue Date
-                        </label>
-                        <input
-                          type="date"
-                          value={documentDraft.issueDate}
-                          onChange={(event) =>
-                            setDocumentDraft((prev) => ({
-                              ...prev,
-                              issueDate: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Expiry Date
-                        </label>
-                        <input
-                          type="date"
-                          value={documentDraft.expiryDate}
-                          onChange={(event) =>
-                            setDocumentDraft((prev) => ({
-                              ...prev,
-                              expiryDate: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Notes
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={documentDraft.notes}
-                          onChange={(event) =>
-                            setDocumentDraft((prev) => ({
-                              ...prev,
-                              notes: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleAddDocument}
-                        disabled={isAddingDocument}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isAddingDocument ? "Saving..." : "Save Document"}
-                      </button>
-                    </div>
-                  </div>
+              {!isSectionLoading &&
+                section === "employees" &&
+                entityType === "company" && (
+                  <EmployeeList
+                    employees={employeesByCompanyRes?.data}
+                    pagination={employeesByCompanyRes?.pagination}
+                    onPageChange={setEmployeePage}
+                    pageSize={employeePageSize}
+                    onPageSizeChange={(size) => {
+                      setEmployeePageSize(size);
+                      setEmployeePage(1);
+                    }}
+                    addEntityHref={`/employee/register/${id}`}
+                    addEntityLabel="Add Employee"
+                  />
                 )}
 
-                {documents.length === 0 ? (
-                  <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
-                    <FiFileText className="text-3xl opacity-30" />
-                    <p>No physical documents recorded for this entity.</p>
+              {!isSectionLoading && section === "records" && (
+                <TransactionList
+                  type={entityType === "individual" ? "self" : entityType}
+                  id={id}
+                  embedded
+                  lockEntityType={entityType}
+                  lockEntityId={id}
+                  lockEntityName={entityName}
+                />
+              )}
+
+              {!isSectionLoading && section === "invoices" && (
+                <InvoiceList entityId={id} embedded />
+              )}
+            </>
+          ) : (
+            <SectionCard
+              title={sectionTitle}
+              description={sectionDescription(section)}
+            >
+              {isSectionLoading && (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent" />
+                </div>
+              )}
+
+              {!isSectionLoading && section === "details" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ProfileField label="Name" value={entityRes?.data?.name} />
+                  <ProfileField label="Email" value={entityRes?.data?.email} />
+                  <ProfileField label="Phone" value={entityRes?.data?.phone1} />
+                  <ProfileField
+                    label="Phone 2"
+                    value={entityRes?.data?.phone2}
+                  />
+
+                  {entityType === "company" && (
+                    <>
+                      <ProfileField
+                        label="License No"
+                        value={entityRes?.data?.licenseNo}
+                      />
+                      <ProfileField
+                        label="Company Type"
+                        value={entityRes?.data?.companyType}
+                      />
+                      <ProfileField
+                        label="Emirates"
+                        value={entityRes?.data?.emirates}
+                      />
+                      <ProfileField
+                        label="Transaction No"
+                        value={entityRes?.data?.transactionNo}
+                      />
+                      <ProfileField
+                        label="Mainland"
+                        value={entityRes?.data?.isMainland}
+                      />
+                    </>
+                  )}
+
+                  {entityType === "employee" && (
+                    <>
+                      <ProfileField
+                        label="Company"
+                        value={entityRes?.data?.company?.name}
+                      />
+                      <ProfileField
+                        label="Emirates ID"
+                        value={entityRes?.data?.emiratesId}
+                      />
+                      <ProfileField
+                        label="Nationality"
+                        value={entityRes?.data?.nationality}
+                      />
+                      <ProfileField
+                        label="Designation"
+                        value={entityRes?.data?.designation}
+                      />
+                    </>
+                  )}
+
+                  {entityType === "individual" && (
+                    <>
+                      <ProfileField
+                        label="Emirates ID"
+                        value={entityRes?.data?.emiratesId}
+                      />
+                      <ProfileField
+                        label="Nationality"
+                        value={entityRes?.data?.nationality}
+                      />
+                      <ProfileField
+                        label="Designation"
+                        value={entityRes?.data?.designation}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!isSectionLoading && section === "documents" && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <select
+                      value={documentSort}
+                      onChange={(event) =>
+                        setDocumentSort(
+                          event.target.value as
+                            | "expiry-asc"
+                            | "expiry-desc"
+                            | "name-asc",
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="expiry-asc">Sort: Expiry nearest</option>
+                      <option value="expiry-desc">Sort: Expiry latest</option>
+                      <option value="name-asc">Sort: Name A-Z</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddDocument((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingDocumentId(null);
+                            setDocumentDraft({
+                              documentTemplate: "",
+                              issueDate: "",
+                              expiryDate: "",
+                              notes: "",
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                    >
+                      <FiPlus />
+                      {showAddDocument
+                        ? "Cancel"
+                        : editingDocumentId
+                          ? "Edit Document"
+                          : "Add Document"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-                    {sortedDocuments.map((doc, index) => {
-                      const isArchived = Boolean(doc.archived);
-                      const status = calculateStatus(doc.expiryDate || "");
-                      return (
-                        <div
-                          key={doc._id}
-                          className={clsx(
-                            "p-4",
-                            index !== sortedDocuments.length - 1 &&
-                              "border-b border-slate-200 dark:border-slate-700",
-                          )}
+
+                  {showAddDocument && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Document
+                          </label>
+                          <select
+                            value={documentDraft.documentTemplate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                documentTemplate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          >
+                            <option value="">Select document</option>
+                            {documentOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.name || "Unnamed document"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Issue Date
+                          </label>
+                          <input
+                            type="date"
+                            value={documentDraft.issueDate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                issueDate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Expiry Date
+                          </label>
+                          <input
+                            type="date"
+                            value={documentDraft.expiryDate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                expiryDate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Notes
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={documentDraft.notes}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                notes: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddDocument}
+                          disabled={isAddingDocument}
+                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                            <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              <FiFileText className="text-slate-400" />
-                              {doc.name || "Untitled document"}
-                            </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                              Issue: {formatDate(doc.issueDate)}
-                            </p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                              Expiry: {formatDate(doc.expiryDate)}
-                            </p>
-                          </div>
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span
-                              className={clsx(
-                                "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
-                                isArchived
-                                  ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
-                                  : status === "valid"
-                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                    : status === "expired"
-                                      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                                      : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                          {isAddingDocument ? "Saving..." : "Save Document"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {documents.length === 0 ? (
+                    <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                      <FiFileText className="text-3xl opacity-30" />
+                      <p>No physical documents recorded for this entity.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+                      {sortedDocuments.map((doc, index) => {
+                        const isArchived = Boolean(doc.archived);
+                        const status = calculateStatus(doc.expiryDate || "");
+                        return (
+                          <div
+                            key={doc._id}
+                            className={clsx(
+                              "p-4",
+                              index !== sortedDocuments.length - 1 &&
+                                "border-b border-slate-200 dark:border-slate-700",
+                            )}
+                          >
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                <FiFileText className="text-slate-400" />
+                                {doc.name || "Untitled document"}
+                              </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Issue: {formatDate(doc.issueDate)}
+                              </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Expiry: {formatDate(doc.expiryDate)}
+                              </p>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span
+                                className={clsx(
+                                  "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
+                                  isArchived
+                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
+                                    : status === "valid"
+                                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                      : status === "expired"
+                                        ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                )}
+                              >
+                                {isArchived ? "archived" : status}
+                              </span>
+                              {!isArchived && (
+                                <button
+                                  type="button"
+                                  onClick={() => startRenew(doc)}
+                                  className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                >
+                                  Renew
+                                </button>
                               )}
-                            >
-                              {isArchived ? "archived" : status}
-                            </span>
-                            {!isArchived && (
                               <button
                                 type="button"
-                                onClick={() => startRenew(doc)}
-                                className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                onClick={() => startEditDocument(doc)}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
                               >
-                                Renew
+                                <FiEdit2 />
+                                Edit
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteDocument(doc._id)}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
+                                  deleteDocumentConfirmId === doc._id
+                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                )}
+                              >
+                                <FiTrash2 />
+                                Delete
+                              </button>
+                            </div>
+                            {hasValue(doc.notes) && (
+                              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                                {doc.notes}
+                              </p>
                             )}
+                            {hasValue(doc.archiveNotes) && (
+                              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                Archive reason: {doc.archiveNotes}
+                              </p>
+                            )}
+                            {renewingDocId === doc._id && (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <input
+                                  type="date"
+                                  value={renewExpiryDate}
+                                  onChange={(event) =>
+                                    setRenewExpiryDate(event.target.value)
+                                  }
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => submitRenew(doc)}
+                                  disabled={isRenewingDoc}
+                                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                                >
+                                  {isRenewingDoc ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRenewingDocId(null)}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isSectionLoading && section === "credentials" && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <select
+                      value={credentialSort}
+                      onChange={(event) =>
+                        setCredentialSort(
+                          event.target.value as
+                            | "platform-asc"
+                            | "platform-desc"
+                            | "username-asc",
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="platform-asc">Sort: Platform A-Z</option>
+                      <option value="platform-desc">Sort: Platform Z-A</option>
+                      <option value="username-asc">Sort: Username A-Z</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddCredential((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingCredentialId(null);
+                            setCredentialDraft({
+                              credentialTemplate: "",
+                              username: "",
+                              password: "",
+                              notes: "",
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-700/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                    >
+                      <FiPlus />
+                      {showAddCredential
+                        ? "Cancel"
+                        : editingCredentialId
+                          ? "Edit Credential"
+                          : "Add Credential"}
+                    </button>
+                  </div>
+
+                  {showAddCredential && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Platform
+                          </label>
+                          <select
+                            value={credentialDraft.credentialTemplate}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                credentialTemplate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          >
+                            <option value="">Select platform</option>
+                            {credentialOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.platform || "Unnamed platform"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Username
+                          </label>
+                          <input
+                            type="text"
+                            value={credentialDraft.username}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                username: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Password
+                          </label>
+                          <input
+                            type="text"
+                            value={credentialDraft.password}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                password: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Notes
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={credentialDraft.notes}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                notes: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddCredential}
+                          disabled={isAddingCredential}
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isAddingCredential ? "Saving..." : "Save Credential"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {credentials.length === 0 ? (
+                    <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                      <FiLock className="text-3xl opacity-30" />
+                      <p>No credentials recorded for this entity.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+                      {sortedCredentials.map((item, index) => {
+                        const isVisible = visibleCredentialIds.includes(
+                          item._id,
+                        );
+                        const plainSecret =
+                          item.credential || item.password || "";
+
+                        return (
+                          <div
+                            key={item._id}
+                            className={clsx(
+                              "p-4",
+                              index !== sortedCredentials.length - 1 &&
+                                "border-b border-slate-200 dark:border-slate-700",
+                            )}
+                          >
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                <FiLayers className="text-slate-400" />
+                                Platform: {item.platform || "Unknown platform"}
+                              </p>
+                              <p className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <FiUser className="text-slate-400" />
+                                Username: {item.username || "-"}
+                              </p>
+                              <div className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 sm:col-span-2">
+                                <FiLock className="text-slate-400" />
+                                <span>
+                                  Password:{" "}
+                                  {plainSecret
+                                    ? isVisible
+                                      ? plainSecret
+                                      : "******"
+                                    : "-"}
+                                </span>
+                                {plainSecret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setVisibleCredentialIds((prev) =>
+                                        prev.includes(item._id)
+                                          ? prev.filter((id) => id !== item._id)
+                                          : [...prev, item._id],
+                                      );
+                                    }}
+                                    className="rounded-md border border-slate-300 p-1 text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                    title={
+                                      isVisible
+                                        ? "Hide password"
+                                        : "Show password"
+                                    }
+                                  >
+                                    {isVisible ? <FiEyeOff /> : <FiEye />}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => startEditCredential(item)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                                  title="Edit credential"
+                                >
+                                  <FiEdit2 />
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteCredential(item._id)}
+                                  className={clsx(
+                                    "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
+                                    deleteCredentialConfirmId === item._id
+                                      ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                      : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                  )}
+                                  title="Delete credential"
+                                >
+                                  <FiTrash2 />
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            {hasValue(item.notes) && (
+                              <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <FiMessageSquare className="text-slate-400" />
+                                {item.notes}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isSectionLoading && section === "handovers" && (
+                <HandoverList
+                  entityId={id}
+                  entityName={entityName}
+                  entityType={entityType}
+                  compact
+                />
+              )}
+
+              {!isSectionLoading && section === "details" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ProfileField label="Name" value={entityRes?.data?.name} />
+                  <ProfileField label="Email" value={entityRes?.data?.email} />
+                  <ProfileField label="Phone" value={entityRes?.data?.phone1} />
+                  <ProfileField
+                    label="Phone 2"
+                    value={entityRes?.data?.phone2}
+                  />
+
+                  {entityType === "company" && (
+                    <>
+                      <ProfileField
+                        label="License No"
+                        value={entityRes?.data?.licenseNo}
+                      />
+                      <ProfileField
+                        label="Company Type"
+                        value={entityRes?.data?.companyType}
+                      />
+                      <ProfileField
+                        label="Emirates"
+                        value={entityRes?.data?.emirates}
+                      />
+                      <ProfileField
+                        label="Transaction No"
+                        value={entityRes?.data?.transactionNo}
+                      />
+                      <ProfileField
+                        label="Mainland"
+                        value={entityRes?.data?.isMainland}
+                      />
+                    </>
+                  )}
+
+                  {entityType === "employee" && (
+                    <>
+                      <ProfileField
+                        label="Company"
+                        value={entityRes?.data?.company?.name}
+                      />
+                      <ProfileField
+                        label="Emirates ID"
+                        value={entityRes?.data?.emiratesId}
+                      />
+                      <ProfileField
+                        label="Nationality"
+                        value={entityRes?.data?.nationality}
+                      />
+                      <ProfileField
+                        label="Designation"
+                        value={entityRes?.data?.designation}
+                      />
+                    </>
+                  )}
+
+                  {entityType === "individual" && (
+                    <>
+                      <ProfileField
+                        label="Emirates ID"
+                        value={entityRes?.data?.emiratesId}
+                      />
+                      <ProfileField
+                        label="Nationality"
+                        value={entityRes?.data?.nationality}
+                      />
+                      <ProfileField
+                        label="Designation"
+                        value={entityRes?.data?.designation}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!isSectionLoading && section === "documents" && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <select
+                      value={documentSort}
+                      onChange={(event) =>
+                        setDocumentSort(
+                          event.target.value as
+                            | "expiry-asc"
+                            | "expiry-desc"
+                            | "name-asc",
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="expiry-asc">Sort: Expiry nearest</option>
+                      <option value="expiry-desc">Sort: Expiry latest</option>
+                      <option value="name-asc">Sort: Name A-Z</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddDocument((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingDocumentId(null);
+                            setDocumentDraft({
+                              documentTemplate: "",
+                              issueDate: "",
+                              expiryDate: "",
+                              notes: "",
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                    >
+                      <FiPlus />
+                      {showAddDocument
+                        ? "Cancel"
+                        : editingDocumentId
+                          ? "Edit Document"
+                          : "Add Document"}
+                    </button>
+                  </div>
+
+                  {showAddDocument && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Document
+                          </label>
+                          <select
+                            value={documentDraft.documentTemplate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                documentTemplate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          >
+                            <option value="">Select document</option>
+                            {documentOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.name || "Unnamed document"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Issue Date
+                          </label>
+                          <input
+                            type="date"
+                            value={documentDraft.issueDate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                issueDate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Expiry Date
+                          </label>
+                          <input
+                            type="date"
+                            value={documentDraft.expiryDate}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                expiryDate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Notes
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={documentDraft.notes}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                notes: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddDocument}
+                          disabled={isAddingDocument}
+                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isAddingDocument ? "Saving..." : "Save Document"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {documents.length === 0 ? (
+                    <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                      <FiFileText className="text-3xl opacity-30" />
+                      <p>No physical documents recorded for this entity.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+                      {sortedDocuments.map((doc, index) => {
+                        const isArchived = Boolean(doc.archived);
+                        const status = calculateStatus(doc.expiryDate || "");
+                        return (
+                          <div
+                            key={doc._id}
+                            className={clsx(
+                              "p-4",
+                              index !== sortedDocuments.length - 1 &&
+                                "border-b border-slate-200 dark:border-slate-700",
+                            )}
+                          >
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                <FiFileText className="text-slate-400" />
+                                {doc.name || "Untitled document"}
+                              </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Issue: {formatDate(doc.issueDate)}
+                              </p>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Expiry: {formatDate(doc.expiryDate)}
+                              </p>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span
+                                className={clsx(
+                                  "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
+                                  isArchived
+                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
+                                    : status === "valid"
+                                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                      : status === "expired"
+                                        ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                )}
+                              >
+                                {isArchived ? "archived" : status}
+                              </span>
+                              {!isArchived && (
+                                <button
+                                  type="button"
+                                  onClick={() => startRenew(doc)}
+                                  className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                >
+                                  Renew
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => startEditDocument(doc)}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                              >
+                                <FiEdit2 />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteDocument(doc._id)}
+                                className={clsx(
+                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
+                                  deleteDocumentConfirmId === doc._id
+                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
+                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                )}
+                              >
+                                <FiTrash2 />
+                                Delete
+                              </button>
+                            </div>
+                            {hasValue(doc.notes) && (
+                              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                                {doc.notes}
+                              </p>
+                            )}
+                            {hasValue(doc.archiveNotes) && (
+                              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                Archive reason: {doc.archiveNotes}
+                              </p>
+                            )}
+                            {renewingDocId === doc._id && (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <input
+                                  type="date"
+                                  value={renewExpiryDate}
+                                  onChange={(event) =>
+                                    setRenewExpiryDate(event.target.value)
+                                  }
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => submitRenew(doc)}
+                                  disabled={isRenewingDoc}
+                                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                                >
+                                  {isRenewingDoc ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRenewingDocId(null)}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isSectionLoading && section === "credentials" && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <select
+                      value={credentialSort}
+                      onChange={(event) =>
+                        setCredentialSort(
+                          event.target.value as
+                            | "platform-asc"
+                            | "platform-desc"
+                            | "username-asc",
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="platform-asc">Sort: Platform A-Z</option>
+                      <option value="platform-desc">Sort: Platform Z-A</option>
+                      <option value="username-asc">Sort: Username A-Z</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddCredential((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setEditingCredentialId(null);
+                            setCredentialDraft({
+                              credentialTemplate: "",
+                              username: "",
+                              password: "",
+                              notes: "",
+                            });
+                          }
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-700/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                    >
+                      <FiPlus />
+                      {showAddCredential
+                        ? "Cancel"
+                        : editingCredentialId
+                          ? "Edit Credential"
+                          : "Add Credential"}
+                    </button>
+                  </div>
+
+                  {showAddCredential && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Platform
+                          </label>
+                          <select
+                            value={credentialDraft.credentialTemplate}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                credentialTemplate: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          >
+                            <option value="">Select platform</option>
+                            {credentialOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.platform || "Unnamed platform"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Username
+                          </label>
+                          <input
+                            type="text"
+                            value={credentialDraft.username}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                username: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Password
+                          </label>
+                          <input
+                            type="text"
+                            value={credentialDraft.password}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                password: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Notes
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={credentialDraft.notes}
+                            onChange={(event) =>
+                              setCredentialDraft((prev) => ({
+                                ...prev,
+                                notes: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddCredential}
+                          disabled={isAddingCredential}
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isAddingCredential ? "Saving..." : "Save Credential"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {credentials.length === 0 ? (
+                    <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                      <FiLock className="text-3xl opacity-30" />
+                      <p>No credentials recorded for this entity.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sortedCredentials.map((item) => (
+                        <div
+                          key={item._id}
+                          className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 p-4 dark:border-slate-700 dark:bg-slate-800/20"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                                <FiLock className="text-slate-400" />
+                                {item.platform || "Untitled"}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {item.username}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 text-slate-400">
+                              {visibleCredentialIds.includes(item._id) ? (
+                                <FiEye
+                                  className="cursor-pointer text-slate-600 dark:text-slate-300"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    setVisibleCredentialIds((prev) =>
+                                      prev.filter((id) => id !== item._id),
+                                    );
+                                  }}
+                                />
+                              ) : (
+                                <FiEyeOff
+                                  className="cursor-pointer text-slate-400"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    setVisibleCredentialIds((prev) => [
+                                      ...prev,
+                                      item._id,
+                                    ]);
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <p className="mt-2 break-all text-xs text-slate-600 dark:text-slate-300">
+                            {visibleCredentialIds.includes(item._id)
+                              ? item.password
+                              : "••••••••••••••"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => startEditDocument(doc)}
+                              onClick={() => startEditCredential(item)}
                               className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
                             >
                               <FiEdit2 />
@@ -934,281 +1803,18 @@ export default function EntitySectionPage({
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteDocument(doc._id)}
+                              onClick={() => deleteCredential(item._id)}
                               className={clsx(
                                 "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
-                                deleteDocumentConfirmId === doc._id
+                                deleteCredentialConfirmId === item._id
                                   ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
                                   : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
                               )}
+                              title="Delete credential"
                             >
                               <FiTrash2 />
                               Delete
                             </button>
-                          </div>
-                          {hasValue(doc.notes) && (
-                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                              {doc.notes}
-                            </p>
-                          )}
-                          {hasValue(doc.archiveNotes) && (
-                            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                              Archive reason: {doc.archiveNotes}
-                            </p>
-                          )}
-                          {renewingDocId === doc._id && (
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <input
-                                type="date"
-                                value={renewExpiryDate}
-                                onChange={(event) =>
-                                  setRenewExpiryDate(event.target.value)
-                                }
-                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => submitRenew(doc)}
-                                disabled={isRenewingDoc}
-                                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                              >
-                                {isRenewingDoc ? "Saving..." : "Save"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRenewingDocId(null)}
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!isSectionLoading && section === "credentials" && (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <select
-                    value={credentialSort}
-                    onChange={(event) =>
-                      setCredentialSort(
-                        event.target.value as
-                          | "platform-asc"
-                          | "platform-desc"
-                          | "username-asc",
-                      )
-                    }
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    <option value="platform-asc">Sort: Platform A-Z</option>
-                    <option value="platform-desc">Sort: Platform Z-A</option>
-                    <option value="username-asc">Sort: Username A-Z</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddCredential((prev) => {
-                        const next = !prev;
-                        if (!next) {
-                          setEditingCredentialId(null);
-                          setCredentialDraft({
-                            credentialTemplate: "",
-                            username: "",
-                            password: "",
-                            notes: "",
-                          });
-                        }
-                        return next;
-                      });
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-700/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
-                  >
-                    <FiPlus />
-                    {showAddCredential
-                      ? "Cancel"
-                      : editingCredentialId
-                        ? "Edit Credential"
-                        : "Add Credential"}
-                  </button>
-                </div>
-
-                {showAddCredential && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Platform
-                        </label>
-                        <select
-                          value={credentialDraft.credentialTemplate}
-                          onChange={(event) =>
-                            setCredentialDraft((prev) => ({
-                              ...prev,
-                              credentialTemplate: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        >
-                          <option value="">Select platform</option>
-                          {credentialOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.platform || "Unnamed platform"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={credentialDraft.username}
-                          onChange={(event) =>
-                            setCredentialDraft((prev) => ({
-                              ...prev,
-                              username: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Password
-                        </label>
-                        <input
-                          type="text"
-                          value={credentialDraft.password}
-                          onChange={(event) =>
-                            setCredentialDraft((prev) => ({
-                              ...prev,
-                              password: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          Notes
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={credentialDraft.notes}
-                          onChange={(event) =>
-                            setCredentialDraft((prev) => ({
-                              ...prev,
-                              notes: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleAddCredential}
-                        disabled={isAddingCredential}
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isAddingCredential ? "Saving..." : "Save Credential"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {credentials.length === 0 ? (
-                  <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
-                    <FiLock className="text-3xl opacity-30" />
-                    <p>No credentials recorded for this entity.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-                    {sortedCredentials.map((item, index) => {
-                      const isVisible = visibleCredentialIds.includes(item._id);
-                      const plainSecret =
-                        item.credential || item.password || "";
-
-                      return (
-                        <div
-                          key={item._id}
-                          className={clsx(
-                            "p-4",
-                            index !== sortedCredentials.length - 1 &&
-                              "border-b border-slate-200 dark:border-slate-700",
-                          )}
-                        >
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              <FiLayers className="text-slate-400" />
-                              Platform: {item.platform || "Unknown platform"}
-                            </p>
-                            <p className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                              <FiUser className="text-slate-400" />
-                              Username: {item.username || "-"}
-                            </p>
-                            <div className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 sm:col-span-2">
-                              <FiLock className="text-slate-400" />
-                              <span>
-                                Password:{" "}
-                                {plainSecret
-                                  ? isVisible
-                                    ? plainSecret
-                                    : "******"
-                                  : "-"}
-                              </span>
-                              {plainSecret && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setVisibleCredentialIds((prev) =>
-                                      prev.includes(item._id)
-                                        ? prev.filter((id) => id !== item._id)
-                                        : [...prev, item._id],
-                                    );
-                                  }}
-                                  className="rounded-md border border-slate-300 p-1 text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                  title={
-                                    isVisible
-                                      ? "Hide password"
-                                      : "Show password"
-                                  }
-                                >
-                                  {isVisible ? <FiEyeOff /> : <FiEye />}
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => startEditCredential(item)}
-                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
-                                title="Edit credential"
-                              >
-                                <FiEdit2 />
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteCredential(item._id)}
-                                className={clsx(
-                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
-                                  deleteCredentialConfirmId === item._id
-                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
-                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
-                                )}
-                                title="Delete credential"
-                              >
-                                <FiTrash2 />
-                                Delete
-                              </button>
-                            </div>
                           </div>
                           {hasValue(item.notes) && (
                             <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -1217,50 +1823,13 @@ export default function EntitySectionPage({
                             </p>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!isSectionLoading && section === "handovers" && (
-              <HandoverList
-                entityId={id}
-                entityName={entityName}
-                entityType={entityType}
-                compact
-              />
-            )}
-
-            {!isSectionLoading && section === "employees" && entityType === "company" && (
-              <EmployeeList
-                employees={employeesByCompanyRes?.data}
-                pagination={employeesByCompanyRes?.pagination}
-                onPageChange={setEmployeePage}
-                pageSize={employeePageSize}
-                onPageSizeChange={(size) => {
-                  setEmployeePageSize(size);
-                  setEmployeePage(1);
-                }}
-              />
-            )}
-
-            {!isSectionLoading && section === "records" && (
-              <TransactionList
-                type={entityType === "individual" ? "self" : entityType}
-                id={id}
-                embedded
-                lockEntityType={entityType}
-                lockEntityId={id}
-                lockEntityName={entityName}
-              />
-            )}
-
-            {!isSectionLoading && section === "invoices" && (
-              <InvoiceList entityId={id} embedded />
-            )}
-          </SectionCard>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
           {showOverviewSidebar && (
             <aside className="space-y-6 xl:sticky xl:top-6 self-start">
@@ -1287,17 +1856,6 @@ export default function EntitySectionPage({
                       {sectionTitle}
                     </p>
                   </div>
-                  {section === "documents" && (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-                        Latest expiry
-                      </p>
-                      <p className="mt-1 inline-flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                        <FiCalendar className="text-slate-400" />
-                        {formatDate(documents[0]?.expiryDate)}
-                      </p>
-                    </div>
-                  )}
                   {hasValue(
                     entityRes?.data?.phone1 || entityRes?.data?.phone2,
                   ) && (
