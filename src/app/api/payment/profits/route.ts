@@ -4,97 +4,76 @@ import Records from "@/models/records";
 import { NextRequest } from "next/server";
 import { filterData } from "@/utils/filterData";
 import { requirePermission } from "@/auth/guards";
+import { Types } from "mongoose";
 
 export const dynamic = "force-dynamic";
 
 type BalanceEntity = {
-  _id?: string;
+  _id: Types.ObjectId;
   name: string;
   entityType?: "company" | "employee" | "individual";
 };
 
-type BalanceRecord = {
-  company?: { toString: () => string } | string;
-  employee?: { toString: () => string } | string;
-  type: string;
-  amount: number;
-  serviceFee?: number;
-  published?: boolean;
+type AggregatedBalance = {
+  _id: {
+    entityId: Types.ObjectId;
+    refKind: "company" | "employee";
+  };
+  incomeTotal: number;
+  expenseTotal: number;
+  serviceFee: number;
+  balance: number;
+  lastActivityAt?: Date;
 };
 
-function buildRecordsByKey(
-  records: BalanceRecord[],
-  key: "company" | "employee"
-) {
-  const map = new Map<string, BalanceRecord[]>();
-  for (const record of records) {
-    const value = record[key];
-    if (!value) continue;
-    const id = value.toString();
-    const existing = map.get(id) || [];
-    existing.push(record);
-    map.set(id, existing);
-  }
-  return map;
-}
-
 function aggregateEntityBalances(
-  entities: BalanceEntity[],
-  recordsByEntityId: Map<string, BalanceRecord[]>
+  rows: Array<{
+    entityId: string;
+    entityName: string;
+    balance: number;
+    serviceFee: number;
+    lastActivityAt?: string | Date | null;
+  }>
 ) {
   const over0balance: Array<{
-    id?: string;
+    id?: string | Types.ObjectId;
     name: string;
     balance: number;
     serviceFee: number;
+    lastActivityAt?: string | Date | null;
   }> = [];
   const under0balance: Array<{
-    id?: string;
+    id?: string | Types.ObjectId;
     name: string;
     balance: number;
-    serviceFee?: number;
+    serviceFee: number;
+    lastActivityAt?: string | Date | null;
   }> = [];
 
   let totalProfitAll = 0;
   let totalToGive = 0;
   let totalToGet = 0;
 
-  for (const entity of entities) {
-    const entityId = entity._id?.toString();
-    if (!entityId) continue;
-
-    const entityRecords = recordsByEntityId.get(entityId) || [];
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-    let serviceFee = 0;
-
-    for (const record of entityRecords) {
-      if (record.type === "income") {
-        incomeTotal += record.amount;
-      }
-      if (record.type === "expense") {
-        const fee = record.serviceFee ?? 0;
-        expenseTotal += record.amount + fee;
-        serviceFee += fee;
-      }
-    }
-
-    const balance = incomeTotal - expenseTotal;
+  for (const row of rows) {
+    const balance = row.balance;
+    const serviceFee = row.serviceFee;
     if (balance > 0) {
       over0balance.push({
-        id: entity._id,
-        name: entity.name,
+        id: row.entityId,
+        name: row.entityName,
         balance,
         serviceFee,
+        lastActivityAt: row.lastActivityAt,
       });
       totalProfitAll += serviceFee;
       totalToGive += balance;
     } else if (balance < 0) {
       under0balance.push({
-        id: entity._id,
-        name: entity.name,
+        id: row.entityId,
+        name: row.entityName,
         balance,
         serviceFee,
+        lastActivityAt: row.lastActivityAt,
       });
       totalToGet += balance;
     }
@@ -119,24 +98,111 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const filter = filterData(searchParams, true);
-    const [entities, allRecords]: [BalanceEntity[], BalanceRecord[]] = await Promise.all([
-      Entity.find({ published: true }).select("_id name entityType"),
-      Records.find(filter),
+    const groupedBalances = await Records.aggregate<AggregatedBalance>([
+      { $match: filter },
+      {
+        $project: {
+          type: 1,
+          amount: { $ifNull: ["$amount", 0] },
+          serviceFee: { $ifNull: ["$serviceFee", 0] },
+          createdAt: 1,
+          entityRef: { $ifNull: ["$company", "$employee"] },
+          refKind: {
+            $cond: [{ $ifNull: ["$company", false] }, "company", "employee"],
+          },
+        },
+      },
+      { $match: { entityRef: { $ne: null } } },
+      {
+        $group: {
+          _id: { entityId: "$entityRef", refKind: "$refKind" },
+          incomeTotal: {
+            $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
+          },
+          expenseTotal: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", "expense"] },
+                { $add: ["$amount", "$serviceFee"] },
+                0,
+              ],
+            },
+          },
+          serviceFee: {
+            $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$serviceFee", 0] },
+          },
+          lastActivityAt: { $max: "$createdAt" },
+        },
+      },
+      {
+        $addFields: {
+          balance: { $subtract: ["$incomeTotal", "$expenseTotal"] },
+        },
+      },
     ]);
 
-    const companies = entities.filter((entity) => entity.entityType === "company");
-    const employees = entities.filter((entity) => entity.entityType === "employee");
-    const individuals = entities.filter((entity) => entity.entityType === "individual");
+    if (!groupedBalances.length) {
+      return Response.json(
+        {
+          over0balanceCompanies: [],
+          under0balanceCompanies: [],
+          totalProfitAllCompanies: 0,
+          totalToGiveCompanies: 0,
+          totalToGetCompanies: 0,
+          over0balanceEmployees: [],
+          under0balanceEmployees: [],
+          totalProfitAllEmployees: 0,
+          totalToGiveEmployees: 0,
+          totalToGetEmployees: 0,
+          over0balanceIndividuals: [],
+          under0balanceIndividuals: [],
+          totalProfitAllIndividuals: 0,
+          totalToGiveIndividuals: 0,
+          totalToGetIndividuals: 0,
+          profit: 0,
+          totalToGive: 0,
+          totalToGet: 0,
+        },
+        { status: 200 }
+      );
+    }
 
-    const companyRecords = allRecords.filter(
-      (record) => record.company && record.published
-    );
-    const employeeRecords = allRecords.filter(
-      (record) => record.employee && record.published
-    );
+    const ids = groupedBalances.map((row) => row._id.entityId);
+    const entities = await Entity.find({
+      _id: { $in: ids },
+      published: true,
+      entityType: { $in: ["company", "employee", "individual"] },
+    })
+      .select("_id name entityType")
+      .lean<BalanceEntity[]>();
 
-    const companyRecordsById = buildRecordsByKey(companyRecords, "company");
-    const employeeRecordsById = buildRecordsByKey(employeeRecords, "employee");
+    const entityById = new Map(entities.map((entity) => [entity._id.toString(), entity]));
+
+    const companyRows: Array<{ entityId: string; entityName: string; balance: number; serviceFee: number }> = [];
+    const employeeRows: Array<{ entityId: string; entityName: string; balance: number; serviceFee: number; lastActivityAt?: string | Date | null }> = [];
+    const individualRows: Array<{ entityId: string; entityName: string; balance: number; serviceFee: number; lastActivityAt?: string | Date | null }> = [];
+
+    for (const row of groupedBalances) {
+      const entityId = row._id.entityId.toString();
+      const entity = entityById.get(entityId);
+      if (!entity) continue;
+
+      const payload = {
+        entityId,
+        entityName: entity.name,
+        balance: row.balance,
+        serviceFee: row.serviceFee,
+        lastActivityAt: row.lastActivityAt,
+      };
+
+      if (entity.entityType === "company") {
+        companyRows.push(payload);
+      } else if (entity.entityType === "employee") {
+        employeeRows.push(payload);
+      } else if (entity.entityType === "individual") {
+        individualRows.push(payload);
+      }
+    }
 
     const {
       over0balance: over0balanceCompanies,
@@ -144,7 +210,7 @@ export async function GET(request: NextRequest) {
       totalProfitAll: totalProfitAllCompanies,
       totalToGive: totalToGiveCompanies,
       totalToGet: totalToGetCompanies,
-    } = aggregateEntityBalances(companies, companyRecordsById);
+    } = aggregateEntityBalances(companyRows);
 
     const {
       over0balance: over0balanceEmployees,
@@ -152,7 +218,7 @@ export async function GET(request: NextRequest) {
       totalProfitAll: totalProfitAllEmployees,
       totalToGive: totalToGiveEmployees,
       totalToGet: totalToGetEmployees,
-    } = aggregateEntityBalances(employees, employeeRecordsById);
+    } = aggregateEntityBalances(employeeRows);
 
     const {
       over0balance: over0balanceIndividuals,
@@ -160,7 +226,7 @@ export async function GET(request: NextRequest) {
       totalProfitAll: totalProfitAllIndividuals,
       totalToGive: totalToGiveIndividuals,
       totalToGet: totalToGetIndividuals,
-    } = aggregateEntityBalances(individuals, employeeRecordsById);
+    } = aggregateEntityBalances(individualRows);
 
     const profit =
       totalProfitAllEmployees + totalProfitAllCompanies + totalProfitAllIndividuals;

@@ -9,6 +9,7 @@ import {
   FiBriefcase,
   FiChevronRight,
   FiClock,
+  FiCreditCard,
   FiFileText,
   FiFolderPlus,
   FiHome,
@@ -376,6 +377,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   icon={<FiTrendingDown />}
                   label="Liability"
                   active={pathname === "/accounts/transactions/liability"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/accounts/transactions/credit-debit"
+                  icon={<FiCreditCard />}
+                  label="Credit / Debit"
+                  active={pathname === "/accounts/transactions/credit-debit"}
                 />
               </li>
               <li>
