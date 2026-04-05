@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
 import { FiEye, FiEyeOff, FiUserPlus, FiUserCheck, FiLock, FiUser, FiHash } from "react-icons/fi";
 import clsx from "clsx";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 interface AddUserProps {
     editUserId?: string;
@@ -26,6 +27,9 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     const router = useRouter();
     const { user: currentUser } = useUserContext();
     const [isLoading, setIsLoading] = useState(false);
+    const [confirmContext, setConfirmContext] = useState<
+        null | "create-admin" | "promote-admin" | "edit-admin"
+    >(null);
     const [showPassword, setShowPassword] = useState(false);
     const [targetUserData, setTargetUserData] = useState(initialData);
     const [roles, setRoles] = useState<RoleOption[]>([]);
@@ -138,53 +142,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         return true;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) return;
-
-        // Additional confirmation for sensitive admin operations
-        const targetIsAdmin = Boolean(
-            targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
-        );
-        const selectedIsAdmin = Boolean(
-            roles.find((role) => role.name === formData.role)?.permissions?.includes("admin.access")
-        );
-
-        const isCreatingAdmin = !isEditMode && selectedIsAdmin;
-        const isChangingToAdmin = isEditMode && !targetIsAdmin && selectedIsAdmin;
-        const isEditingAdmin = isEditingOtherAdmin;
-
-        if (isCreatingAdmin) {
-            const confirmAdminCreation = confirm(
-                `⚠️ CREATING NEW ADMIN ROLE ⚠️\n\nYou are about to create an ADMIN account: "${formData.username}"\n\nAre you sure you want to proceed?`
-            );
-            if (!confirmAdminCreation) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        if (isChangingToAdmin) {
-            const confirmPromotion = confirm(
-                `⚠️ PROMOTING TO ADMIN ROLE ⚠️\n\nYou are about to promote "${formData.username}" from ${targetUserData?.role} to ${formData.role}.\n\nThis will grant administrative privileges.\n\nAre you sure you want to proceed?`
-            );
-            if (!confirmPromotion) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        if (isEditingAdmin) {
-            const confirmAdminEdit = confirm(
-                `⚠️ EDITING ADMIN ACCOUNT ⚠️\n\nYou are about to modify another ADMIN account: "${targetUserData?.username}"\n\nThis is a sensitive operation. Are you sure you want to proceed?`
-            );
-            if (!confirmAdminEdit) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
+    const executeSubmit = async () => {
         setIsLoading(true);
 
         try {
@@ -217,6 +175,49 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         }
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        const targetIsAdmin = Boolean(
+            targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
+        );
+        const selectedIsAdmin = Boolean(
+            roles.find((role) => role.name === formData.role)?.permissions?.includes("admin.access")
+        );
+
+        const isCreatingAdmin = !isEditMode && selectedIsAdmin;
+        const isChangingToAdmin = isEditMode && !targetIsAdmin && selectedIsAdmin;
+        const isEditingAdmin = isEditingOtherAdmin;
+
+        if (isCreatingAdmin) {
+            setConfirmContext("create-admin");
+            return;
+        }
+
+        if (isChangingToAdmin) {
+            setConfirmContext("promote-admin");
+            return;
+        }
+
+        if (isEditingAdmin) {
+            setConfirmContext("edit-admin");
+            return;
+        }
+
+        await executeSubmit();
+    };
+
+    const confirmMessage =
+        confirmContext === "create-admin"
+            ? `You are about to create an ADMIN account: "${formData.username}".`
+            : confirmContext === "promote-admin"
+                ? `You are about to promote "${formData.username}" from ${targetUserData?.role} to ${formData.role}.`
+                : confirmContext === "edit-admin"
+                    ? `You are about to modify another ADMIN account: "${targetUserData?.username}".`
+                    : "";
+
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
@@ -227,6 +228,21 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
 
     return (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+            <ConfirmationModal
+                isOpen={Boolean(confirmContext)}
+                title="Sensitive Admin Operation"
+                message={`${confirmMessage} This action affects administrative access. Continue?`}
+                confirmLabel="Proceed"
+                cancelLabel="Cancel"
+                variant="warning"
+                isLoading={isLoading}
+                onCancel={() => setConfirmContext(null)}
+                onConfirm={() => {
+                    setConfirmContext(null);
+                    void executeSubmit();
+                }}
+            />
+
             {/* Header */}
             <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">

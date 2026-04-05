@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
 import clsx from "clsx";
 import EntityAvatar from "../common/EntityAvatar";
+import toast from "react-hot-toast";
 
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
@@ -92,7 +93,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         e.preventDefault()
         try {
             if (connectionMode === "connected" && (!invoiceData?.entityId || !invoiceData?.entityType)) {
-                alert("Please select an entity to connect this invoice.");
+                toast.error("Please select an entity to connect this invoice.");
                 return;
             }
 

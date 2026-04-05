@@ -23,6 +23,8 @@ import AddHandoverModal from "@/components/Modals/AddHandoverModal";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import EntityAvatar from "@/components/common/EntityAvatar";
+import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import InputPromptModal from "@/components/Modals/InputPromptModal";
 
 function getEntityHref(entityId?: string, entityType?: string) {
   if (!entityId || !entityType) {
@@ -42,6 +44,7 @@ const HandoverPage = () => {
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [returnModal, setReturnModal] = useState<{ id: string; note: string } | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<
@@ -100,6 +103,28 @@ const HandoverPage = () => {
           queryClient.invalidateQueries({ queryKey: ["handovers"] });
         }}
         onCancel={() => setShowAddForm(false)}
+      />
+
+      <InputPromptModal
+        isOpen={Boolean(returnModal)}
+        title="Return Document"
+        message="Add a return note (optional)"
+        value={returnModal?.note || ""}
+        placeholder="Reason, condition, or handover context"
+        confirmLabel="Mark Returned"
+        onChange={(value) => {
+          setReturnModal((prev) => (prev ? { ...prev, note: value } : prev));
+        }}
+        onCancel={() => setReturnModal(null)}
+        onConfirm={() => {
+          if (!returnModal) return;
+          returnMutation.mutate({
+            id: returnModal.id,
+            returnNote: returnModal.note.trim() || undefined,
+          });
+          setReturnModal(null);
+        }}
+        isLoading={returnMutation.isPending}
       />
 
       <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-5 shadow-sm dark:border-cyan-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20 sm:p-6">
@@ -282,13 +307,10 @@ const HandoverPage = () => {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.receivedBy?.username ? (
-                            <span title={item.receivedBy.fullname || item.receivedBy.username}>
-                              {item.receivedBy.username}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
+                          <UsernameWithIcon
+                            username={item.receivedBy?.username}
+                            fullname={item.receivedBy?.fullname}
+                          />
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {item.returnedAt ? (
@@ -318,8 +340,7 @@ const HandoverPage = () => {
                                 <button
                                   title="Mark as Returned"
                                   onClick={() => {
-                                    const returnNote = window.prompt("Add return note (optional):", item.returnNote || "") || "";
-                                    returnMutation.mutate({ id: item.id, returnNote: returnNote.trim() || undefined });
+                                    setReturnModal({ id: item.id, note: item.returnNote || "" });
                                   }}
                                   className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10"
                                 >

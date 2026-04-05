@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { formatDateTime } from "@/utils/dateUtils";
 import { FiArrowLeft, FiEye, FiRefreshCw, FiRotateCcw, FiSearch, FiTrash2 } from "react-icons/fi";
+import UsernameWithIcon from "@/components/common/UsernameWithIcon";
 
 type TBinResponse = {
   records: TRecordList[];
@@ -144,11 +145,10 @@ const TransactionBinPage = () => {
                       {record.deletedAt ? formatDateTime(record.deletedAt) : "-"}
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                      {record.deletedBy ? (
-                        <span title={record.deletedByFullname || record.deletedBy}>{record.deletedBy}</span>
-                      ) : (
-                        "-"
-                      )}
+                      <UsernameWithIcon
+                        username={record.deletedBy}
+                        fullname={record.deletedByFullname}
+                      />
                     </td>
                     <td className="px-4 py-4 text-center">
                       <div className="inline-flex items-center gap-2">

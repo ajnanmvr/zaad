@@ -30,6 +30,7 @@ import calculateStatus from "@/utils/calculateStatus";
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import HandoverList from "../HandoverList";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
@@ -174,6 +175,7 @@ export default function EntitySectionPage({
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
+  const [showDeleteEntityConfirm, setShowDeleteEntityConfirm] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(
     null,
   );
@@ -554,11 +556,7 @@ export default function EntitySectionPage({
     }
   };
 
-  const handleDeleteEntity = async () => {
-    if (!confirm(`Delete this ${entityType}?`)) {
-      return;
-    }
-
+  const performDeleteEntity = async () => {
     try {
       setIsDeletingEntity(true);
       await axios.delete(`/api/${entityType}/${id}`);
@@ -570,6 +568,10 @@ export default function EntitySectionPage({
     } finally {
       setIsDeletingEntity(false);
     }
+  };
+
+  const handleDeleteEntity = async () => {
+    setShowDeleteEntityConfirm(true);
   };
 
   const needsEntityData =
@@ -605,6 +607,25 @@ export default function EntitySectionPage({
   return (
     <>
       <Breadcrumb pageName={`${entityName} / ${sectionTitle}`} />
+
+      <ConfirmationModal
+        isOpen={showDeleteEntityConfirm}
+        title="Delete Entity"
+        message={`Delete this ${entityType}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeletingEntity}
+        onCancel={() => {
+          if (!isDeletingEntity) {
+            setShowDeleteEntityConfirm(false);
+          }
+        }}
+        onConfirm={() => {
+          setShowDeleteEntityConfirm(false);
+          void performDeleteEntity();
+        }}
+      />
 
       <div className="space-y-6">
         <EntityProfileHeader

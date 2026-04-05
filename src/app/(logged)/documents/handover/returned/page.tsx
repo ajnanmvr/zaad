@@ -13,6 +13,7 @@ import { FiArrowLeft, FiCheckCircle, FiClock, FiFileText, FiSearch, FiTrash2 } f
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import EntityAvatar from "@/components/common/EntityAvatar";
+import UsernameWithIcon from "@/components/common/UsernameWithIcon";
 
 function getEntityHref(entityId?: string, entityType?: string) {
   if (!entityId || !entityType) {
@@ -213,25 +214,19 @@ const ReturnedHandoverPage = () => {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.receivedBy?.username ? (
-                            <span title={item.receivedBy.fullname || item.receivedBy.username}>
-                              {item.receivedBy.username}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
+                          <UsernameWithIcon
+                            username={item.receivedBy?.username}
+                            fullname={item.receivedBy?.fullname}
+                          />
                         </td>
                         <td className="px-4 py-4 text-sm text-emerald-700 dark:text-emerald-300">
                           {item.returnedAt ? formatDateTime(item.returnedAt.toString()) : "-"}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.returnedBy?.username ? (
-                            <span title={item.returnedBy.fullname || item.returnedBy.username}>
-                              {item.returnedBy.username}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
+                          <UsernameWithIcon
+                            username={item.returnedBy?.username}
+                            fullname={item.returnedBy?.fullname}
+                          />
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                           {item.receiveNote || item.remarks || "-"}

@@ -9,6 +9,9 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
 import AddHandoverModal from "./Modals/AddHandoverModal";
+import UsernameWithIcon from "./common/UsernameWithIcon";
+import ConfirmationModal from "./Modals/ConfirmationModal";
+import InputPromptModal from "./Modals/InputPromptModal";
 
 interface HandoverListProps {
   entityId: string;
@@ -19,6 +22,8 @@ interface HandoverListProps {
 
 const HandoverList = ({ entityId, entityName, entityType, compact = false }: HandoverListProps) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [returnModal, setReturnModal] = useState<{ id: string; note: string } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<TPaginatedResponse<TPhysicalHandover>>({
@@ -46,6 +51,12 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
   const rows = data?.data || [];
   const returnedCount = rows.filter((item) => Boolean(item.returnedAt)).length;
   const pendingCount = rows.length - returnedCount;
+
+  const confirmDelete = () => {
+    if (!deleteConfirmId) return;
+    deleteMutation.mutate(deleteConfirmId);
+    setDeleteConfirmId(null);
+  };
 
   return (
     <div
@@ -111,6 +122,44 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
         initialEntity={{ id: entityId, name: entityName, type: entityType }}
       />
 
+      <InputPromptModal
+        isOpen={Boolean(returnModal)}
+        title="Return Document"
+        message="Add a return note (optional)"
+        value={returnModal?.note || ""}
+        placeholder="Reason, condition, or handover context"
+        confirmLabel="Mark Returned"
+        onChange={(value) => {
+          setReturnModal((prev) => (prev ? { ...prev, note: value } : prev));
+        }}
+        onCancel={() => setReturnModal(null)}
+        onConfirm={() => {
+          if (!returnModal) return;
+          returnMutation.mutate({
+            id: returnModal.id,
+            returnNote: returnModal.note.trim() || undefined,
+          });
+          setReturnModal(null);
+        }}
+        isLoading={returnMutation.isPending}
+      />
+
+      <ConfirmationModal
+        isOpen={Boolean(deleteConfirmId)}
+        title="Delete Handover Record"
+        message="Are you sure you want to delete this handover record?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onCancel={() => {
+          if (!deleteMutation.isPending) {
+            setDeleteConfirmId(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+      />
+
       <div
         className={
           compact
@@ -158,13 +207,10 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                       </div>
                     </td>
                     <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
-                      {item.receivedBy?.username ? (
-                        <span title={item.receivedBy.fullname || item.receivedBy.username}>
-                          {item.receivedBy.username}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
+                      <UsernameWithIcon
+                        username={item.receivedBy?.username}
+                        fullname={item.receivedBy?.fullname}
+                      />
                     </td>
                     <td className="px-4 py-4 text-xs font-medium">
                       {item.returnedAt ? (
@@ -182,13 +228,10 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                       )}
                     </td>
                     <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
-                      {item.returnedBy?.username ? (
-                        <span title={item.returnedBy.fullname || item.returnedBy.username}>
-                          {item.returnedBy.username}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
+                      <UsernameWithIcon
+                        username={item.returnedBy?.username}
+                        fullname={item.returnedBy?.fullname}
+                      />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
@@ -196,8 +239,7 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                           <button
                             title="Mark Returned"
                             onClick={() => {
-                              const returnNote = window.prompt("Add return note (optional):", item.returnNote || "") || "";
-                              returnMutation.mutate({ id: item.id, returnNote: returnNote.trim() || undefined });
+                              setReturnModal({ id: item.id, note: item.returnNote || "" });
                             }}
                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
                           >
@@ -206,11 +248,7 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                         )}
                         <button
                           title="Delete Record"
-                          onClick={() => {
-                            if (confirm("Are you sure you want to delete this record?")) {
-                              deleteMutation.mutate(item.id);
-                            }
-                          }}
+                          onClick={() => setDeleteConfirmId(item.id)}
                           className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                         >
                           <FiTrash2 className="text-lg" />

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import clsx from "clsx";
 import PaymentMethodBadge from "@/components/common/PaymentMethodBadge";
+import UsernameWithIcon from "@/components/common/UsernameWithIcon";
 import {
   FiActivity,
   FiArrowLeft,
@@ -240,12 +241,13 @@ const TransactionDetailsPage = () => {
 
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
                     <span className="inline-flex items-center gap-1.5 text-slate-500" title={getDefinition("createdBy")}><FiUser className="text-slate-400" /> Created By</span>
-                    <span
-                      title={`${record.creatorFullname || record.creator || "Unknown"} - ${getDefinition("createdBy")}`}
-                      className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                    >
-                      {record.creator || "Unknown"}
-                    </span>
+                    <UsernameWithIcon
+                      username={record.creator}
+                      fullname={record.creatorFullname}
+                      fallback="Unknown"
+                      className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                      iconClassName="text-amber-600 dark:text-amber-300"
+                    />
                   </div>
 
                   {record.status && (
@@ -307,12 +309,13 @@ const TransactionDetailsPage = () => {
 
                             <p className="text-sm text-slate-700 dark:text-slate-300">
                               By{" "}
-                              <span
-                                title={`${entry.byFullname || entry.byUsername || "Unknown"} - System user responsible for this activity event.`}
-                                className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                              >
-                                {entry.byUsername || "Unknown"}
-                              </span>
+                              <UsernameWithIcon
+                                username={entry.byUsername}
+                                fullname={entry.byFullname}
+                                fallback="Unknown"
+                                className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                                iconClassName="text-amber-600 dark:text-amber-300"
+                              />
                             </p>
 
                             {entry.details && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{entry.details}</p>}

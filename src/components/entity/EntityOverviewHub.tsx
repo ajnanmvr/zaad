@@ -28,6 +28,7 @@ import { toast } from "react-hot-toast";
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import HandoverList from "../HandoverList";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import {
   EntityProfileHeader,
   EntityProfileSkeleton,
@@ -139,6 +140,7 @@ export default function EntityOverviewHub({
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
+  const [showDeleteEntityConfirm, setShowDeleteEntityConfirm] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [editingCredentialId, setEditingCredentialId] = useState<string | null>(null);
   const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<string | null>(null);
@@ -446,11 +448,7 @@ export default function EntityOverviewHub({
     companyName,
   );
 
-  const handleDeleteEntity = async () => {
-    if (!confirm(`Delete this ${entityType}?`)) {
-      return;
-    }
-
+  const performDeleteEntity = async () => {
     try {
       setIsDeletingEntity(true);
       await axios.delete(`/api/${entityType}/${id}`);
@@ -464,9 +462,32 @@ export default function EntityOverviewHub({
     }
   };
 
+  const handleDeleteEntity = async () => {
+    setShowDeleteEntityConfirm(true);
+  };
+
   return (
     <>
       <Breadcrumb pageName={entity ? entity.name : `${entityType} profile`} />
+
+      <ConfirmationModal
+        isOpen={showDeleteEntityConfirm}
+        title="Delete Entity"
+        message={`Delete this ${entityType}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeletingEntity}
+        onCancel={() => {
+          if (!isDeletingEntity) {
+            setShowDeleteEntityConfirm(false);
+          }
+        }}
+        onConfirm={() => {
+          setShowDeleteEntityConfirm(false);
+          void performDeleteEntity();
+        }}
+      />
 
       {isLoading ? (
         <EntityProfileSkeleton entityType={entityType} />

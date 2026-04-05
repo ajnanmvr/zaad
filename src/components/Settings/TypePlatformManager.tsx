@@ -11,6 +11,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import ColorPicker from "@/components/Forms/ColorPicker";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import {
   getPaymentMethodIcon,
   PAYMENT_METHOD_ICON_OPTIONS,
@@ -67,6 +68,7 @@ function TypePlatformManager({
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmUnpublishId, setConfirmUnpublishId] = useState<string | null>(null);
 
   const queryKey = [
     type === "document"
@@ -162,12 +164,6 @@ function TypePlatformManager({
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !window.confirm(`Unpublish this ${title.slice(0, -1).toLowerCase()}?`)
-    ) {
-      return;
-    }
-
     setDeletingId(id);
     try {
       await axios.delete("/api/templates", {
@@ -187,6 +183,27 @@ function TypePlatformManager({
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:p-8">
+      <ConfirmationModal
+        isOpen={Boolean(confirmUnpublishId)}
+        title="Unpublish Template"
+        message={`Unpublish this ${title.slice(0, -1).toLowerCase()}? Existing records using it will keep working.`}
+        confirmLabel="Unpublish"
+        cancelLabel="Cancel"
+        variant="warning"
+        isLoading={Boolean(deletingId)}
+        onCancel={() => {
+          if (!deletingId) {
+            setConfirmUnpublishId(null);
+          }
+        }}
+        onConfirm={() => {
+          if (confirmUnpublishId) {
+            void handleDelete(confirmUnpublishId);
+          }
+          setConfirmUnpublishId(null);
+        }}
+      />
+
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -349,7 +366,7 @@ function TypePlatformManager({
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => setConfirmUnpublishId(item.id)}
                   disabled={deletingId === item.id}
                   className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-slate-700"
                   title="Unpublish"

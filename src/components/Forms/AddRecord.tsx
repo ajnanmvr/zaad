@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { FiChevronDown, FiUserPlus, FiBriefcase, FiDollarSign, FiFileText, FiHash, FiCheckCircle } from "react-icons/fi";
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
+import toast from "react-hot-toast";
 
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
@@ -207,16 +208,16 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     e.preventDefault();
     switch (true) {
       case !recordData.company && !recordData.employee && !recordData.self:
-        alert("Please select a client from any type");
+        toast.error("Please select a client from any type");
         return;
       case !recordData.particular:
-        alert("Please fill in the particular.");
+        toast.error("Please fill in the particular.");
         return;
       case !recordData.method:
-        alert("Please select a payment method.");
+        toast.error("Please select a payment method.");
         return;
       case !recordData.number:
-        alert("Please enter a transaction number.");
+        toast.error("Please enter a transaction number.");
         return;
       default:
         break;
@@ -234,7 +235,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       router.push("/accounts/transactions");
     } catch (error: any) {
       const message = error?.response?.data?.error || error?.response?.data?.message || "Failed to save transaction record";
-      alert(message);
+      toast.error(message);
       console.log(error);
     }
   };

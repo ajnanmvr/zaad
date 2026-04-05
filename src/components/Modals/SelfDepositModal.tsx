@@ -3,6 +3,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { FiArrowRight, FiRefreshCw, FiX } from 'react-icons/fi';
 import PaymentMethodBadge from '../common/PaymentMethodBadge';
+import toast from 'react-hot-toast';
 
 type TData = {
     from: string,
@@ -63,10 +64,10 @@ const SelfDepositModal = ({ isOpen, cancel }: {
         e.preventDefault();
         switch (true) {
             case +data.amount < 1:
-                alert("The amount should not be 0 or less");
+                toast.error("The amount should not be 0 or less");
                 return;
             case data.from === data.to:
-                alert("Please select different from and to methods");
+                toast.error("Please select different from and to methods");
                 return;
             default:
                 break;

@@ -7,6 +7,7 @@ import { formatDate } from "@/utils/dateUtils";
 import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiUserCheck, FiUserX, FiShield, FiUser } from "react-icons/fi";
 import clsx from "clsx";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import ConfirmationModal from "../Modals/ConfirmationModal";
 
 interface User {
     _id: string;
@@ -30,6 +31,11 @@ const UsersList = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(0);
     const [showDeleted, setShowDeleted] = useState(false);
+    const [confirmState, setConfirmState] = useState<{
+        action: "delete" | "reactivate";
+        userId: string;
+        username: string;
+    } | null>(null);
     const queryClient = useQueryClient();
 
     const { data, isLoading } = useQuery({
@@ -99,35 +105,22 @@ const UsersList = () => {
     };
 
     const handleDelete = async (userId: string, username: string) => {
-        const confirmationMessage = `Are you sure you want to delete user "${username}"? The user will be moved to the deleted users section and can be reactivated later.`;
-
-        if (!confirm(confirmationMessage)) {
-            return;
-        }
-
-        try {
-            await axios.delete(`/api/users/${userId}`);
-            toast.success("User deleted successfully");
-            deleteMutation.mutate(userId);
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to delete user";
-            toast.error(errorMessage);
-        }
+        setConfirmState({ action: "delete", userId, username });
     };
 
     const handleReactivate = async (userId: string, username: string) => {
-        const confirmationMessage = `Are you sure you want to reactivate user "${username}"?`;
+        setConfirmState({ action: "reactivate", userId, username });
+    };
 
-        if (!confirm(confirmationMessage)) {
-            return;
-        }
+    const confirmAction = () => {
+        if (!confirmState) return;
 
-        try {
-            reactivateMutation.mutate(userId);
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.error || "Failed to reactivate user";
-            toast.error(errorMessage);
+        if (confirmState.action === "delete") {
+            deleteMutation.mutate(confirmState.userId);
+        } else {
+            reactivateMutation.mutate(confirmState.userId);
         }
+        setConfirmState(null);
     };
 
     const goToPage = (page: number) => {
@@ -138,6 +131,21 @@ const UsersList = () => {
 
     return (
         <div className="space-y-6">
+            <ConfirmationModal
+                isOpen={Boolean(confirmState)}
+                title={confirmState?.action === "delete" ? "Archive User" : "Reactivate User"}
+                message={
+                    confirmState?.action === "delete"
+                        ? `Are you sure you want to archive user "${confirmState?.username}"? The user can be reactivated later.`
+                        : `Are you sure you want to reactivate user "${confirmState?.username}"?`
+                }
+                confirmLabel={confirmState?.action === "delete" ? "Archive" : "Reactivate"}
+                cancelLabel="Cancel"
+                variant={confirmState?.action === "delete" ? "warning" : "primary"}
+                isLoading={deleteMutation.isPending || reactivateMutation.isPending}
+                onCancel={() => setConfirmState(null)}
+                onConfirm={confirmAction}
+            />
             
             {/* Header & Controls */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

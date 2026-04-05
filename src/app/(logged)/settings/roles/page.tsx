@@ -7,6 +7,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 type RoleView = {
   name: string;
@@ -27,6 +28,7 @@ const RolesPage = () => {
   const [description, setDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [editingRoleName, setEditingRoleName] = useState<string | null>(null);
+  const [deleteRoleName, setDeleteRoleName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const canManageRoles =
@@ -67,7 +69,7 @@ const RolesPage = () => {
     setSelectedPermissions((prev) =>
       prev.includes(permission)
         ? prev.filter((item) => item !== permission)
-        : [...prev, permission]
+        : [...prev, permission],
     );
   };
 
@@ -107,13 +109,11 @@ const RolesPage = () => {
     setSelectedPermissions(role.permissions);
   };
 
-  const handleDelete = async (roleName: string) => {
-    if (!confirm(`Delete role ${roleName}?`)) {
-      return;
-    }
-
-    await axios.delete(`/api/roles/${encodeURIComponent(roleName)}`);
+  const performDelete = async () => {
+    if (!deleteRoleName) return;
+    await axios.delete(`/api/roles/${encodeURIComponent(deleteRoleName)}`);
     await queryClient.invalidateQueries({ queryKey: ["roles-list"] });
+    setDeleteRoleName(null);
   };
 
   if (!user || !canManageRoles) {
@@ -129,6 +129,20 @@ const RolesPage = () => {
   return (
     <>
       <Breadcrumb pageName="Role Management" />
+
+      <ConfirmationModal
+        isOpen={Boolean(deleteRoleName)}
+        title="Delete Role"
+        message={`Delete role ${deleteRoleName}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => setDeleteRoleName(null)}
+        onConfirm={() => {
+          void performDelete();
+        }}
+      />
+
       <div className="mb-4">
         <Link
           href="/settings/permissions"
@@ -232,7 +246,7 @@ const RolesPage = () => {
                     </button>
                     <button
                       className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50 dark:border-red-700 dark:text-red-400"
-                      onClick={() => handleDelete(role.name)}
+                      onClick={() => setDeleteRoleName(role.name)}
                       disabled={Boolean(role.isSystem)}
                     >
                       Delete
