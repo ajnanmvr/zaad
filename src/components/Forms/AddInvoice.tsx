@@ -20,6 +20,12 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const [selectedEntityType, setSelectedEntityType] = useState<"company" | "employee" | "individual" | "">("");
     const [entitySearchValue, setEntitySearchValue] = useState("");
     const [entitySuggestions, setEntitySuggestions] = useState<TBaseData[]>([]);
+    const [selectedEntitySummary, setSelectedEntitySummary] = useState<{
+        id: string;
+        name: string;
+        color?: string;
+        type: "company" | "employee" | "individual";
+    } | null>(null);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
@@ -58,10 +64,16 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                     setConnectionMode("connected");
                     setSelectedEntityType(data.entityType);
                     setEntitySearchValue(data.client || "");
+                    setSelectedEntitySummary({
+                        id: data.entityId,
+                        name: data.client || "Selected Entity",
+                        type: data.entityType,
+                    });
                 } else {
                     setConnectionMode("detached");
                     setSelectedEntityType("");
                     setEntitySearchValue("");
+                    setSelectedEntitySummary(null);
                 }
                 setisEditMode(true)
             } else {
@@ -133,6 +145,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const handleEntitySearchChange = (e: any) => {
         const value = e.target.value;
         setEntitySearchValue(value);
+        setSelectedEntitySummary(null);
         setInvoiceData((prev: any) => ({ ...prev, client: value, entityId: null }));
         if (selectedEntityType) {
             debouncedEntitySearch(value, selectedEntityType);
@@ -141,6 +154,14 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const handleEntitySelection = (selected: TBaseData) => {
         setEntitySearchValue(selected.name);
+        if (selectedEntityType) {
+            setSelectedEntitySummary({
+                id: selected._id,
+                name: selected.name,
+                color: selected.color,
+                type: selectedEntityType,
+            });
+        }
         setInvoiceData((prev: any) => ({
             ...prev,
             client: selected.name,
@@ -241,6 +262,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                             setConnectionMode("detached");
                                                             setSelectedEntityType("");
                                                             setEntitySearchValue("");
+                                                            setSelectedEntitySummary(null);
                                                             setEntitySuggestions([]);
                                                             setInvoiceData((prev: any) => ({
                                                                 ...prev,
@@ -253,6 +275,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                         setConnectionMode("connected");
                                                         setSelectedEntityType(value);
                                                         setEntitySearchValue("");
+                                                        setSelectedEntitySummary(null);
                                                         setEntitySuggestions([]);
                                                         setInvoiceData((prev: any) => ({
                                                             ...prev,
@@ -314,6 +337,16 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                         </ul>
                                                     )}
                                                 </div>
+
+                                                {selectedEntitySummary && invoiceData?.entityId && (
+                                                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-900/10">
+                                                        <EntityAvatar name={selectedEntitySummary.name} color={selectedEntitySummary.color} size="sm" />
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedEntitySummary.name}</p>
+                                                            <p className="text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-300">{selectedEntitySummary.type}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

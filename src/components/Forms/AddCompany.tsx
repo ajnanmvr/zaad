@@ -2,12 +2,12 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { FiTrash2, FiPlus, FiBriefcase, FiLock, FiFileText } from "react-icons/fi";
-import clsx from "clsx";
+import { FiBriefcase } from "react-icons/fi";
 import ColorPicker from "./ColorPicker";
 
 const AddCompany = ({ edit }: { edit?: string | string[] }) => {

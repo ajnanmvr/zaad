@@ -25,6 +25,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const [selectedMethod, setSelectedMethod] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
+  const [selectedEntitySummary, setSelectedEntitySummary] = useState<{
+    id: string;
+    name: string;
+    color?: string;
+    type: string;
+  } | null>(null);
   const [clientFee, setClientFee] = useState<string>("");
   const [balance, setBalance] = useState(0);
   const [clientType, setClientType] = useState("");
@@ -41,12 +47,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   useEffect(() => {
     if (selectedOption === "self")
-      setRecordData({
-        ...recordData,
+      setRecordData((prev) => ({
+        ...prev,
         self: "zaad",
         company: undefined,
         employee: undefined,
-      });
+      }));
   }, [selectedOption]);
 
   useEffect(() => {
@@ -57,6 +63,11 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setSearchValue(lockEntityName || "");
     setSearchSuggestions([]);
     setClientType(nextClientType);
+    setSelectedEntitySummary({
+      id: lockEntityId,
+      name: lockEntityName || lockEntityId,
+      type: nextClientType,
+    });
 
     setRecordData((prev) => ({
       ...prev,
@@ -65,7 +76,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       self: lockEntityType === "self" ? "zaad" : undefined,
     }));
 
-    fetchBalance(lockEntityId);
+    fetchBalance(lockEntityId, nextClientType);
   }, [isLockedEntity, lockEntityType, lockEntityId, lockEntityName]);
 
   useEffect(() => {
@@ -105,14 +116,17 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   const handleInputChange = (e: any) => {
     setSearchValue(e.target.value);
+    setSelectedEntitySummary(null);
     const inputName = e.target.name;
     debounceSearch(e.target.value, inputName);
   };
 
-  const fetchBalance = async (Id?: string) => {
+  const fetchBalance = async (Id?: string, entityType?: string) => {
     try {
+      const targetClientType = entityType || clientType;
+      if (!targetClientType || !Id) return;
       const response = await axios.get<{ balance: number }>(
-        `/api/${clientType}/balance/${Id}`
+        `/api/${targetClientType}/balance/${Id}`
       );
       setBalance(response.data.balance);
     } catch (error) {
@@ -126,11 +140,11 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         const { data } = await axios.get<{ number: number; suffix: string }>(
           "/api/payment/prev"
         );
-        setRecordData({
-          ...recordData,
+        setRecordData((prev) => ({
+          ...prev,
           number: +data?.number + 1,
           suffix: data?.suffix,
-        });
+        }));
       } else {
         const { data } = await axios.get(`/api/payment/${id}`);
         setRecordData(data);
@@ -147,6 +161,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   const handleCompanySelection = (selected: TBaseData) => {
     setSearchValue(selected.name);
+    setSelectedEntitySummary({
+      id: selected._id,
+      name: selected.name,
+      color: selected.color,
+      type: "company",
+    });
     setRecordData({
       ...recordData,
       employee: undefined,
@@ -159,6 +179,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   const handleEntitySelection = (selected: TBaseData) => {
     setSearchValue(selected.name);
+    setSelectedEntitySummary({
+      id: selected._id,
+      name: selected.name,
+      color: selected.color,
+      type: selectedOption,
+    });
     setRecordData({
       ...recordData,
       company: undefined,
@@ -285,6 +311,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                           const value = e.target.value;
                           setSelectedOption(value);
                           setSearchValue("");
+                          setSelectedEntitySummary(null);
                           setSearchSuggestions([]);
                           setRecordData((prev) => ({
                             ...prev,
@@ -400,6 +427,19 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                           ))}
                         </ul>
                       )}
+                    </div>
+                  )}
+
+                  {selectedEntitySummary && (
+                    <div>
+                      <label className={labelClass}>Selected Entity</label>
+                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-900/10">
+                        <EntityAvatar name={selectedEntitySummary.name} color={selectedEntitySummary.color} size="sm" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedEntitySummary.name}</p>
+                          <p className="text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-300">{selectedEntitySummary.type}</p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

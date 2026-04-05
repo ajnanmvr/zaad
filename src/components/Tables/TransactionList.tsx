@@ -4,7 +4,7 @@ import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
@@ -22,7 +22,8 @@ import {
   FiEye,
   FiX,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiSearch
 } from "react-icons/fi";
 
 const baseData = {
@@ -189,6 +190,7 @@ const TransactionList = ({
   const [records, setRecords] = useState<TRecordList[]>([]);
   const [recordsWithBalance, setRecordsWithBalance] = useState<(TRecordList & { runningBalance?: number })[]>([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const query = generateQuery(filter);
 
@@ -232,6 +234,27 @@ const TransactionList = ({
       }
     }
   }, [paymentData, type]);
+
+  const visibleRecords = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (!normalizedSearch) return recordsWithBalance;
+
+    return recordsWithBalance.filter((record) => {
+      const haystack = [
+        `${record?.suffix || ""}${record?.number || ""}`,
+        record?.client?.name || "",
+        record?.client?.type || "",
+        record?.particular || "",
+        record?.method || "",
+        record?.status || "",
+        record?.amount || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [recordsWithBalance, searchTerm]);
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
@@ -558,11 +581,20 @@ const TransactionList = ({
 
               <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                {recordsWithBalance.length} Records
+                {visibleRecords.length} Records
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
+            <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search transactions..."
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+              />
+            </div>
             <button
               onClick={() => setFilterOpen(true)}
               className={clsx(
@@ -619,14 +651,14 @@ const TransactionList = ({
                      <SkeletonList />
                    </td>
                 </tr>
-              ) : recordsWithBalance.length === 0 ? (
+              ) : visibleRecords.length === 0 ? (
                 <tr>
                   <td colSpan={type ? 7 : 6} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     No transactions found.
                   </td>
                 </tr>
               ) : (
-                recordsWithBalance.map((record, key) => (
+                visibleRecords.map((record, key) => (
                   (() => {
                     const transactionVisual = getTransactionVisual(record);
 

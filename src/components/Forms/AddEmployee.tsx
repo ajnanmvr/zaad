@@ -29,6 +29,11 @@ const AddEmployee = ({
     const entityApiBase = individualMode ? "/api/individual" : "/api/employee";
     const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
     const [searchValue, setSearchValue] = useState<string>("");
+    const [selectedCompanySummary, setSelectedCompanySummary] = useState<{
+        id: string;
+        name: string;
+        color?: string;
+    } | null>(null);
     const [isEditMode, setisEditMode] = useState(false);
     const [employeeData, setEmployeeData] = useState<any>({
         name: "", company: "", documents: [], password: []
@@ -60,7 +65,12 @@ const AddEmployee = ({
 
     useEffect(() => {
         if (company) {
-            setEmployeeData((prev: any) => ({ ...prev, company }))
+            const companyId = Array.isArray(company) ? company[0] : company;
+            setEmployeeData((prev: any) => ({ ...prev, company: companyId }))
+            setSelectedCompanySummary({
+                id: companyId,
+                name: companyId,
+            });
         }
     }, [company])
 
@@ -79,6 +89,11 @@ const AddEmployee = ({
             setEmployeeData(data || { name: "", company: "", documents: [], password: [] })
             if (data?.company?.name) {
                 setSearchValue(data.company.name)
+                setSelectedCompanySummary({
+                    id: data.company._id || data.company.id || "",
+                    name: data.company.name,
+                    color: data.company.color,
+                });
             }
         }
     }, [hasEditId, data])
@@ -147,12 +162,19 @@ const AddEmployee = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchValue(e.target.value)
+        setSelectedCompanySummary(null);
+        setEmployeeData((prev: any) => ({ ...prev, company: "" }));
         const inputName = e.target.name;
         debounceSearch(e.target.value, inputName);
     };
 
     const handleCompanySelection = (selected: TBaseData) => {
         setSearchValue(selected.name)
+        setSelectedCompanySummary({
+            id: selected._id,
+            name: selected.name,
+            color: selected.color,
+        });
         setEmployeeData({ ...employeeData, company: selected._id });
         setSearchSuggestions([])
     };
@@ -337,6 +359,16 @@ const AddEmployee = ({
                                                     </li>
                                                 ))}
                                             </ul>
+                                        </div>
+                                    )}
+
+                                    {selectedCompanySummary && (
+                                        <div className="mt-3 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-900/10">
+                                            <EntityAvatar name={selectedCompanySummary.name} color={selectedCompanySummary.color} size="sm" />
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedCompanySummary.name}</p>
+                                                <p className="text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Company</p>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

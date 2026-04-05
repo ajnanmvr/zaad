@@ -31,6 +31,12 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<TBaseData[]>([]);
   const [searchValue, setSearchValue] = useState<string>("");
+  const [selectedEntitySummary, setSelectedEntitySummary] = useState<{
+    id: string;
+    name: string;
+    color?: string;
+    type: string;
+  } | null>(null);
   const [entityListLimit, setEntityListLimit] = useState<number>(8);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +51,11 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
     if (isOpen && initialEntity) {
       setSelectedOption(initialEntity.type);
       setSearchValue(initialEntity.name);
+      setSelectedEntitySummary({
+        id: initialEntity.id,
+        name: initialEntity.name,
+        type: initialEntity.type,
+      });
       setEntityListLimit(8);
       setFormData((prev) => ({
         ...prev,
@@ -53,6 +64,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
     } else if (isOpen) {
       setSelectedOption("");
       setSearchValue("");
+      setSelectedEntitySummary(null);
       setEntityListLimit(8);
       setSearchSuggestions([]);
       setFormData({
@@ -88,12 +100,19 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
 
   const handleSearchChange = (e: any) => {
     setSearchValue(e.target.value);
+    setSelectedEntitySummary(null);
     setFormData((prev) => ({ ...prev, entity: "" }));
     debounceSearch(e.target.value, selectedOption);
   };
 
   const handleEntitySelection = (selected: TBaseData) => {
     setSearchValue(selected.name);
+    setSelectedEntitySummary({
+      id: selected._id || "",
+      name: selected.name,
+      color: selected.color,
+      type: selected.entityType || selectedOption,
+    });
     setFormData({
       ...formData,
       entity: selected._id || "",
@@ -246,6 +265,16 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {selectedEntitySummary && formData.entity && (
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3 dark:border-cyan-900/40 dark:bg-cyan-900/10">
+                  <EntityAvatar name={selectedEntitySummary.name} color={selectedEntitySummary.color} size="sm" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{selectedEntitySummary.name}</p>
+                    <p className="text-[11px] uppercase tracking-wider text-cyan-700 dark:text-cyan-300">{selectedEntitySummary.type}</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
