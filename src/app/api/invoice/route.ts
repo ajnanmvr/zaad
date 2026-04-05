@@ -1,5 +1,6 @@
 import connect from "@/db/mongo";
 import Invoice from "@/models/invoice";
+import Entity from "@/models/entities";
 import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
@@ -90,14 +91,32 @@ export async function GET(request: NextRequest) {
     }
 
     const hasMore = invoice.length > contentPerSection;
-    const transformedData = invoice
-      .slice(0, contentPerSection)
-      .map((invoice) => {
+    const pageRows = invoice.slice(0, contentPerSection);
+
+    const entityIds = pageRows
+      .map((row) => row.entityId)
+      .filter((value): value is any => Boolean(value));
+
+    const entities = entityIds.length
+      ? await Entity.find({ _id: { $in: entityIds } }).select("_id name color").lean()
+      : [];
+
+    const entityMap = entities.reduce<Record<string, { name?: string; color?: string }>>((acc, entity: any) => {
+      acc[String(entity._id)] = { name: entity.name, color: entity.color };
+      return acc;
+    }, {});
+
+    const transformedData = pageRows.map((invoice) => {
+        const entityKey = invoice.entityId ? String(invoice.entityId) : "";
+        const entityMeta = entityKey ? entityMap[entityKey] : undefined;
+
         return {
           id: invoice._id,
           client: invoice.client,
           entityId: invoice.entityId || null,
           entityType: invoice.entityType || null,
+          entityColor: entityMeta?.color || null,
+          entityName: entityMeta?.name || invoice.client || null,
           purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
           amount: invoice.items.reduce(

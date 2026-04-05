@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
       "tasks.notifications.read",
       "tasks.read",
       "tasks.manage",
+      "payments.read",
+      "payments.write",
     ]);
 
     const params = request.nextUrl.searchParams;

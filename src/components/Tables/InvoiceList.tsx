@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import SkeletonList from "../common/SkeletonList";
+import EntityAvatar from "../common/EntityAvatar";
 
 const InvoiceList = ({ entityId, embedded = false }: { entityId?: string; embedded?: boolean } = {}) => {
   const queryClient = useQueryClient();
@@ -190,7 +191,14 @@ const InvoiceList = ({ entityId, embedded = false }: { entityId?: string; embedd
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold capitalize text-slate-800 dark:text-slate-200">{record?.client}</div>
+                        <div className="flex items-center gap-3">
+                          <EntityAvatar
+                            name={record?.entityName || record?.client || "Unknown"}
+                            color={record?.entityColor || undefined}
+                            size="sm"
+                          />
+                          <div className="font-semibold capitalize text-slate-800 dark:text-slate-200">{record?.client}</div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{record?.purpose}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{record?.date || "N/A"}</td>

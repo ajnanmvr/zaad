@@ -642,6 +642,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                           <option value="Advance">Advance</option>
                           <option value="Credit">Credit (Income)</option>
                           <option value="Ready Cash">Ready Cash</option>
+                          <option value="liability">Liability Payment</option>
                           <option value="Profit">Instant Profit</option>
                         </>
                       )}

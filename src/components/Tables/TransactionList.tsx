@@ -3,26 +3,23 @@ import { TRecordList } from "@/types/records";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import ConfirmationModal from "../Modals/ConfirmationModal";
 import { useEffect, useMemo, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
-import SelfDepositModal from "../Modals/SelfDepositModal";
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
 import { 
   FiFilter, 
   FiArrowUpRight, 
   FiArrowDownLeft, 
+  FiArrowRight,
   FiPlus, 
   FiInfo, 
   FiTrash2, 
-  FiEye,
   FiX,
   FiChevronLeft,
   FiChevronRight,
@@ -91,7 +88,7 @@ const getTransactionVisual = (record: TRecordList) => {
     particular.includes("money received as exchange");
 
   const isInstantProfit = status === "profit";
-  const isLiability = record?.method === "liability" || status.includes("liability");
+  const isLiability = status.includes("liability");
   const isOfficeExpense = status.includes("office expense") || particular.includes("office expense");
   const isCompanyExpense =
     isSelf &&
@@ -184,15 +181,10 @@ const TransactionList = ({
   lockEntityId?: string;
   lockEntityName?: string;
 }) => {
-  const queryClient = useQueryClient();
   const { user } = useUserContext();
   const isAdmin = ["admin", "superadmin"].includes((user?.role || "").toLowerCase());
 
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
-  const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
@@ -258,7 +250,7 @@ const TransactionList = ({
           const amount = parseFloat(record.amount) || 0;
           const serviceFee = parseFloat(record.serviceFee) || 0;
 
-          if (record.type === "income" && record.method !== "liability") {
+          if (record.type === "income" && !(record.status || "").toLowerCase().includes("liability")) {
             runningBalance -= amount;
           } else if (record.type === "expense") {
             runningBalance += amount + serviceFee;
@@ -294,52 +286,6 @@ const TransactionList = ({
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
-  };
-
-  const handleDelete = (id: string) => {
-    setSelectedRecordId(id);
-    setIsConfirmationOpen(true);
-  };
-  const confirmDelete = async () => {
-    setIsConfirmationOpen(false);
-    setIsSecondConfirmationOpen(true);
-  };
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => {
-      return axios.delete(`/api/payment/${id}`);
-    },
-    onMutate: () => {
-      toast.loading("Deleting payment record...");
-    },
-    onSuccess: () => {
-      toast.dismiss();
-      toast.success("Record deleted successfully");
-      setSelectedRecordId(null);
-      setIsConfirmationOpen(false);
-      setIsSecondConfirmationOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["payment"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["profits"] });
-    },
-    onError: () => {
-      toast.dismiss();
-      toast.error("Failed to delete record");
-    }
-  });
-
-  const secondConfirmDelete = async () => {
-    if (!selectedRecordId) {
-      setIsSecondConfirmationOpen(false);
-      return;
-    }
-    deleteMutation.mutate(selectedRecordId);
-    setIsSecondConfirmationOpen(false);
-  };
-
-  const cancelAction = () => {
-    setSelectedRecordId(null);
-    setIsConfirmationOpen(false);
-    setIsSecondConfirmationOpen(false);
   };
 
   const handleFilter = () => {
@@ -393,24 +339,6 @@ const TransactionList = ({
 
       {/* Main Table Card */}
       <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
-        
-        <ConfirmationModal
-          isOpen={isConfirmationOpen}
-          message="Are you sure you want to delete this payment record?"
-          onConfirm={confirmDelete}
-          onCancel={cancelAction}
-        />
-        <ConfirmationModal
-          isOpen={isSecondConfirmationOpen}
-          message="Are you really sure you want to delete this payment record? It will be moved to bin and can be recovered by admin."
-          onConfirm={secondConfirmDelete}
-          onCancel={cancelAction}
-        />
-        <SelfDepositModal
-          isOpen={isSelfOpen}
-          cancel={() => setSelfOpen(false)}
-        />
-
         {/* Filter Modal Overlay */}
         {isFilterOpen && (
           <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
@@ -560,20 +488,12 @@ const TransactionList = ({
             >
               <FiFilter /> Filter
             </button>
-            <button
-              onClick={() => setSelfOpen(true)}
+            <Link
+              href="/accounts/transactions/self-deposit"
               className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
             >
               <FiArrowDownLeft /> Self Deposit
-            </button>
-            {currentType !== "self-deposit" && (
-              <Link
-                href="/accounts/transactions/self-deposit"
-                className="flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/20"
-              >
-                <FiInfo /> Self Deposit Tracker
-              </Link>
-            )}
+            </Link>
             <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
             <Link
               href={incomeHref}
@@ -644,7 +564,7 @@ const TransactionList = ({
                         </span>
                         {record?.edited && (
                           <span className="inline-flex w-fit items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400">
-                            Edited
+                            Edited{typeof record.editedFieldsCount === "number" && record.editedFieldsCount > 0 ? ` · ${record.editedFieldsCount} change${record.editedFieldsCount === 1 ? "" : "s"}` : ""}
                           </span>
                         )}
                       </div>
@@ -652,7 +572,7 @@ const TransactionList = ({
                     
                     <td className="py-4 px-4 align-top">
                       <div className="flex items-start gap-3">
-                        <EntityAvatar name={record?.client?.name || "Unknown"} size="sm" />
+                        <EntityAvatar name={record?.client?.name || "Unknown"} color={record?.client?.color} size="sm" />
                         <Link
                           href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
                           className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
@@ -669,12 +589,14 @@ const TransactionList = ({
 
                     <td className="py-4 px-4 align-top">
                       <div className="flex flex-col items-start gap-1">
-                        <PaymentMethodBadge
-                          label={paymentMethodMap[record?.method || ""]?.label || record?.method || "Unknown"}
-                          color={paymentMethodMap[record?.method || ""]?.color}
-                          icon={paymentMethodMap[record?.method || ""]?.icon}
-                          size="sm"
-                        />
+                        <div className="flex items-center gap-2">
+                          <PaymentMethodBadge
+                            label={paymentMethodMap[record?.method || ""]?.label || record?.method || "Unknown"}
+                            color={paymentMethodMap[record?.method || ""]?.color}
+                            icon={paymentMethodMap[record?.method || ""]?.icon}
+                            size="sm"
+                          />
+                        </div>
                         {renderBadge(transactionVisual.label, transactionVisual.badgeClass)}
                       </div>
                     </td>
@@ -712,29 +634,13 @@ const TransactionList = ({
 
                     <td className="py-4 pr-4 pl-2 align-top text-center">
                        <div className="flex items-center justify-center space-x-2">
-                          {!type && !id && (
-                            <Link
-                              title="View Client Context"
-                              href={`/accounts/transactions/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "self"}`}
-                              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-800/80 dark:hover:text-emerald-400"
-                            >
-                              <FiArrowUpRight className="text-lg" />
-                            </Link>
-                          )}
                           <Link
-                            title="View Transaction Details"
+                            title="Open Transaction Details"
                             href={`/accounts/transactions/details/${record?.id}`}
                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
                           >
-                            <FiEye className="text-lg" />
+                            <FiArrowRight className="text-lg" />
                           </Link>
-                          <button
-                            title="Delete Record"
-                            onClick={() => handleDelete(record?.id || "")}
-                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                          >
-                            <FiTrash2 className="text-lg" />
-                          </button>
                        </div>
                     </td>
                     </tr>
@@ -750,7 +656,7 @@ const TransactionList = ({
       
       {/* Pagination Container */}
       {!isLoading && (
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-6 dark:border-slate-800">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
           <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
             Showing page <span className="font-semibold text-slate-800 dark:text-white">{pageNumber + 1}</span>
           </p>
@@ -758,14 +664,14 @@ const TransactionList = ({
             <button
               onClick={() => handlePageChange(pageNumber - 1)}
               disabled={pageNumber === 0 || isLoading}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
             >
               <FiChevronLeft /> Previous
             </button>
             <button
               onClick={() => handlePageChange(pageNumber + 1)}
               disabled={isLoading || !hasMore || !recordsWithBalance.length}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
             >
               Next <FiChevronRight />
             </button>

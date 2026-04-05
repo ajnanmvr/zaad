@@ -31,7 +31,7 @@ const PaymentMethodBadge = ({
   const iconKey = (icon || "card") as TPaymentTemplateIcon;
   const Icon = getPaymentMethodIcon(iconKey);
 
-  const shellClass = size === "sm" ? "h-6 w-6 text-xs" : "h-7 w-7 text-xs";
+  const shellClass = size === "sm" ? "gap-1.5 px-2.5 py-1 text-xs" : "gap-2 px-3 py-1.5 text-sm";
   const iconWrapClass = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   const iconClass = size === "sm" ? "text-[10px]" : "text-[11px]";
 
@@ -48,7 +48,7 @@ const PaymentMethodBadge = ({
   return (
     <span
       className={clsx(
-        "inline-flex items-center justify-center rounded-lg border font-semibold capitalize",
+        "inline-flex items-center rounded-lg border font-semibold capitalize whitespace-nowrap",
         shellClass,
         !normalizedColor &&
           "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -71,6 +71,7 @@ const PaymentMethodBadge = ({
       >
         <Icon className={iconClass} />
       </span>
+      <span className="max-w-[10rem] truncate">{label}</span>
     </span>
   );
 };

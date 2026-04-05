@@ -5,12 +5,14 @@ import { TRecordList } from "@/types/records";
 import axios from "axios";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import clsx from "clsx";
 import PaymentMethodBadge from "@/components/common/PaymentMethodBadge";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   FiActivity,
   FiArrowLeft,
@@ -29,6 +31,7 @@ import {
   FiTrendingDown,
   FiTrendingUp,
   FiUser,
+  FiTrash2,
 } from "react-icons/fi";
 
 const renderBadge = (status: string | undefined, colorClass: string) => (
@@ -82,6 +85,8 @@ const getClientHref = (record?: TRecordList) => {
 
 const TransactionDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [showGuide, setShowGuide] = useState(false);
 
   const { data: paymentMethodOptions = [] } = useQuery<Array<{ value: string; label: string; color?: string; icon?: string }>>({
@@ -113,6 +118,24 @@ const TransactionDetailsPage = () => {
 
   const record = data?.record;
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await axios.delete(`/api/payment/${id}`);
+    },
+    onSuccess: async () => {
+      toast.success("Transaction moved to bin");
+      await queryClient.invalidateQueries({ queryKey: ["payment-bin"] });
+      await queryClient.invalidateQueries({ queryKey: ["payment"] });
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await queryClient.invalidateQueries({ queryKey: ["profits"] });
+      router.push("/accounts/transactions/bin");
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || error?.response?.data?.message || "Failed to delete transaction";
+      toast.error(message);
+    },
+  });
+
   return (
     <>
       <Breadcrumb pageName="Transaction Details" />
@@ -135,13 +158,40 @@ const TransactionDetailsPage = () => {
             </p>
           </div>
 
-          <Link
-            href="/accounts/transactions"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <FiArrowLeft className="text-base" />
-            Back to Transactions
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href="/accounts/transactions"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <FiArrowLeft className="text-base" />
+              Back
+            </Link>
+            <Link
+              href={getClientHref(record)}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              <FiExternalLink /> View Client
+            </Link>
+            <Link
+              href={`/accounts/transactions/edit/${record?.type}/${record?.id}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+            >
+              <FiEdit3 /> Edit Record
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                const recordLabel = `${record?.suffix || ""}${record?.number || ""}`.trim() || "this transaction";
+                if (window.confirm(`Move ${recordLabel} to the bin?`)) {
+                  deleteMutation.mutate();
+                }
+              }}
+              disabled={deleteMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+            >
+              <FiTrash2 /> Delete Record
+            </button>
+          </div>
         </div>
       </section>
 
@@ -265,20 +315,6 @@ const TransactionDetailsPage = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 pt-2">
-                  <Link
-                    href={getClientHref(record)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    <FiExternalLink /> View Client
-                  </Link>
-                  <Link
-                    href={`/accounts/transactions/edit/${record.type}/${record.id}`}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                  >
-                    <FiEdit3 /> Edit Record
-                  </Link>
-                </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-700 dark:bg-slate-800/30 lg:col-span-2">

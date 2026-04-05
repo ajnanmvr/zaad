@@ -14,6 +14,8 @@ export async function PATCH(
       "tasks.notifications.read",
       "tasks.read",
       "tasks.manage",
+      "payments.read",
+      "payments.write",
     ]);
 
     const notification = await TaskNotification.findOne({

@@ -11,13 +11,12 @@ const TaskNotificationSchema = new mongoose.Schema(
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "tasks",
-      required: true,
       index: true,
     },
     type: {
       type: String,
-      enum: ["assigned", "updated", "completed"],
-      default: "assigned",
+      required: true,
+      index: true,
     },
     title: {
       type: String,
@@ -38,6 +37,13 @@ const TaskNotificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
       required: true,
+    },
+    entityType: {
+      type: String,
+      trim: true,
+    },
+    entityId: {
+      type: mongoose.Schema.Types.ObjectId,
     },
   },
   {

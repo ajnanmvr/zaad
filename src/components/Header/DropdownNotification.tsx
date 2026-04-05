@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserContext } from "@/contexts/UserContext";
 
 type TaskNotification = {
   _id: string;
-  type: "assigned" | "updated" | "completed";
+  type: string;
   title: string;
   message: string;
   isRead: boolean;
@@ -18,6 +19,8 @@ type TaskNotification = {
     title?: string;
     status?: string;
   };
+  entityType?: string;
+  entityId?: string;
 };
 
 type NotificationResponse = {
@@ -27,6 +30,7 @@ type NotificationResponse = {
 
 const DropdownNotification = () => {
   const { user } = useUserContext();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -37,7 +41,29 @@ const DropdownNotification = () => {
     Array.isArray(user?.permissions) &&
     (user.permissions.includes("tasks.notifications.read") ||
       user.permissions.includes("tasks.read") ||
-      user.permissions.includes("tasks.manage"));
+      user.permissions.includes("tasks.manage") ||
+      user.permissions.includes("payments.read") ||
+      user.permissions.includes("payments.write"));
+
+  const canReadTasks =
+    Array.isArray(user?.permissions) &&
+    (user.permissions.includes("tasks.read") || user.permissions.includes("tasks.manage"));
+
+  const getNotificationHref = (item: TaskNotification) => {
+    if (item.entityType === "payment" && item.entityId) {
+      return `/accounts/transactions/details/${item.entityId}`;
+    }
+
+    if (item.entityType === "company" || item.entityType === "employee" || item.entityType === "individual") {
+      return `/${item.entityType}/${item.entityId}`;
+    }
+
+    if (item.task?._id || item.type === "assigned" || item.type === "updated" || item.type === "completed") {
+      return "/tasks";
+    }
+
+    return canReadTasks ? "/tasks" : "/accounts/transactions";
+  };
 
   const query = useQuery({
     queryKey: ["task-notifications", canReadNotifications],
@@ -139,7 +165,7 @@ const DropdownNotification = () => {
         }`}
       >
         <div className="flex items-center justify-between px-4.5 py-3">
-          <h5 className="text-sm font-medium text-bodydark2">Task Notifications</h5>
+          <h5 className="text-sm font-medium text-bodydark2">Notifications</h5>
           {unreadCount > 0 ? (
             <button
               type="button"
@@ -157,35 +183,43 @@ const DropdownNotification = () => {
               No new notifications.
             </li>
           ) : (
-            notifications.map((item) => (
-              <li key={item._id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!item.isRead) {
-                      readMutation.mutate(item._id);
-                    }
-                  }}
-                  className="flex w-full flex-col gap-1.5 border-t border-stroke px-4.5 py-3 text-left hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
-                >
-                  <p className="text-sm">
-                    <span className="text-black dark:text-white">{item.title}</span>
-                    {item.message ? ` - ${item.message}` : ""}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {new Date(item.createdAt).toLocaleString()}
-                  </p>
-                </button>
-              </li>
-            ))
+            notifications.map((item) => {
+              const href = getNotificationHref(item);
+
+              return (
+                <li key={item._id}>
+                  <Link
+                    href={href}
+                    onClick={() => {
+                      if (!item.isRead) {
+                        readMutation.mutate(item._id);
+                      }
+                      setDropdownOpen(false);
+                      router.push(href);
+                    }}
+                    className={`flex w-full flex-col gap-1.5 border-t border-stroke px-4.5 py-3 text-left hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4 ${
+                      item.isRead ? "opacity-80" : ""
+                    }`}
+                  >
+                    <p className="text-sm">
+                      <span className="text-black dark:text-white">{item.title}</span>
+                      {item.message ? ` - ${item.message}` : ""}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </p>
+                  </Link>
+                </li>
+              );
+            })
           )}
         </ul>
 
         <Link
-          href="/tasks"
+          href={canReadTasks ? "/tasks" : "/accounts/transactions"}
           className="border-t border-stroke px-4.5 py-3 text-center text-sm font-medium text-primary dark:border-strokedark"
         >
-          Open My Tasks
+          {canReadTasks ? "Open My Tasks" : "Open Transactions"}
         </Link>
       </div>
     </li>

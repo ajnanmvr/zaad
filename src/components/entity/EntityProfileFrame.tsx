@@ -304,6 +304,7 @@ export function EntityProfileTabs({
             const sectionKey = link.label.toLowerCase() as EntitySectionKey;
             const count = sectionCounts?.[sectionKey] || 0;
             const showCount =
+              sectionKey !== "details" &&
               sectionKey !== "records" &&
               sectionKey !== "invoices" &&
               count > 0;

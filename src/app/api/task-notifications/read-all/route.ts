@@ -11,6 +11,8 @@ export async function PATCH(request: NextRequest) {
       "tasks.notifications.read",
       "tasks.read",
       "tasks.manage",
+      "payments.read",
+      "payments.write",
     ]);
 
     await TaskNotification.updateMany(

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     await requirePermission(request, "payments.read");
     const records = await Records.find({
       published: true,
-      $or: [{ method: "liability" }, { status: "liability" }],
+      status: { $regex: /^liability$/i },
     })
       .populate(PAYMENT_POPULATE_FIELDS)
       .sort({ createdAt: -1 });
