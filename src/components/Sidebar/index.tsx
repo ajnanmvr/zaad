@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  FiCalendar,
   FiBookOpen,
   FiBriefcase,
+  FiCheckCircle,
   FiRepeat,
   FiChevronRight,
   FiClock,
@@ -158,6 +160,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Workspace" />
             <ul className="space-y-1.5">
+              {(can("tasks.read") || can("tasks.complete") || can("tasks.manage")) && (
+                <li>
+                  <NavItem
+                    href="/tasks"
+                    icon={<FiCalendar />}
+                    label="My Tasks"
+                    active={pathname === "/tasks"}
+                  />
+                </li>
+              )}
               <li>
                 <NavItem
                   href="/"
@@ -420,6 +432,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Administration" />
             <ul className="space-y-1.5">
+              {can("tasks.manage") && (
+                <li>
+                  <NavItem
+                    href="/tasks/manage"
+                    icon={<FiCheckCircle />}
+                    label="Task Management"
+                    active={pathname === "/tasks/manage"}
+                  />
+                </li>
+              )}
               {can("users.read") && (
                 <li>
                   <NavItem

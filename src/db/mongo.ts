@@ -11,6 +11,8 @@ const ensureModelsLoaded = () => {
         require('../models/users');
         require('../models/userSessions');
         require('../models/roles');
+        require('../models/tasks');
+        require('../models/taskNotifications');
     } catch (error) {
         console.warn('Warning: Could not preload models:', error);
     }
