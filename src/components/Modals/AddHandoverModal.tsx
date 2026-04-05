@@ -43,7 +43,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
   const [formData, setFormData] = useState({
     entity: "",
     documentName: "",
-    remarks: "",
+    receiveNote: "",
     receivedAt: new Date().toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm
   });
 
@@ -70,7 +70,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
       setFormData({
         entity: "",
         documentName: "",
-        remarks: "",
+        receiveNote: "",
         receivedAt: new Date().toISOString().slice(0, 16),
       });
     }
@@ -317,17 +317,17 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
             </div>
 
             <div>
-              <label className={labelClass}>Remarks</label>
+              <label className={labelClass}>Receive Note</label>
               <div className="relative">
                 <span className="absolute left-4 top-4 text-slate-400">
                   <FiInfo />
                 </span>
                 <textarea
-                  name="remarks"
+                  name="receiveNote"
                   rows={3}
-                  value={formData.remarks}
+                  value={formData.receiveNote}
                   onChange={handleChange}
-                  placeholder="Notes..."
+                  placeholder="Add receive note..."
                   className={clsx(inputClass, "resize-none pl-11 pt-3")}
                 ></textarea>
               </div>

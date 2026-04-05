@@ -33,7 +33,7 @@ const EditUserPage = () => {
     }
   }, [user, canReadUsers, canUpdateUsers, router]);
 
-  const { data: userData, isLoading } = useQuery({
+  const { data: userData, isLoading, isError, error } = useQuery<UserData>({
     queryKey: ["user-edit", userId],
     queryFn: async () => {
       const { data } = await axios.get(`/api/users/${userId}`);
@@ -41,12 +41,15 @@ const EditUserPage = () => {
     },
     enabled: Boolean(user && canReadUsers && canUpdateUsers && userId),
     retry: false,
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.error || "Failed to fetch user";
-      toast.error(errorMessage);
-      router.push("/users");
-    },
   });
+
+  useEffect(() => {
+    if (!isError) return;
+    const typedError = error as any;
+    const errorMessage = typedError?.response?.data?.error || "Failed to fetch user";
+    toast.error(errorMessage);
+    router.push("/users");
+  }, [isError, error, router]);
 
   if (!user || !canReadUsers || !canUpdateUsers) {
     return (

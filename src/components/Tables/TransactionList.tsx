@@ -9,9 +9,12 @@ import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import SelfDepositModal from "../Modals/SelfDepositModal";
+import EntityAvatar from "../common/EntityAvatar";
+import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
+import { useUserContext } from "@/contexts/UserContext";
 import { 
   FiFilter, 
   FiArrowUpRight, 
@@ -25,6 +28,13 @@ import {
   FiChevronRight,
   FiSearch
 } from "react-icons/fi";
+
+type TPaymentMethodOption = {
+  value: string;
+  label: string;
+  color?: string;
+  icon?: string;
+};
 
 const baseData = {
   t: "",
@@ -175,13 +185,13 @@ const TransactionList = ({
   lockEntityName?: string;
 }) => {
   const queryClient = useQueryClient();
+  const { user } = useUserContext();
+  const isAdmin = ["admin", "superadmin"].includes((user?.role || "").toLowerCase());
 
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
@@ -193,15 +203,41 @@ const TransactionList = ({
   const [searchTerm, setSearchTerm] = useState("");
 
   const query = generateQuery(filter);
+  const currentType = Array.isArray(type) ? type[0] : type;
 
   const { data: paymentData, isLoading } = useQuery({
     queryKey: ["payment", pageNumber, type, id, filter],
     queryFn: async () => {
-      const res = await axios.get(`/api/payment${type ? ("/" + (type === "self" ? type : (type + "/" + id))) : ""}?page=${pageNumber + query}`);
+      const routeSegment = currentType
+        ? currentType === "self" || currentType === "self-deposit"
+          ? `/${currentType}`
+          : `/${currentType}/${id}`
+        : "";
+      const res = await axios.get(`/api/payment${routeSegment}?page=${pageNumber}${query}`);
       return res.data;
     },
     placeholderData: keepPreviousData,
   });
+
+  const { data: paymentMethodOptions = [] } = useQuery<TPaymentMethodOption[]>({
+    queryKey: ["payment-method-templates"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/templates", { params: { type: "payment" } });
+      return (data?.options || []).map((item: any) => ({
+        value: item.method,
+        label: item.label || item.method,
+        color: item.color,
+        icon: item.icon,
+      }));
+    },
+  });
+
+  const paymentMethodMap = useMemo(() => {
+    return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>((acc, item) => {
+      acc[item.value] = item;
+      return acc;
+    }, {});
+  }, [paymentMethodOptions]);
 
   useEffect(() => {
     if (paymentData) {
@@ -264,10 +300,6 @@ const TransactionList = ({
     setSelectedRecordId(id);
     setIsConfirmationOpen(true);
   };
-  const handleInfo = (record: TRecordList) => {
-    setSelectedRecord(record);
-    setIsInfoOpen(true);
-  };
   const confirmDelete = async () => {
     setIsConfirmationOpen(false);
     setIsSecondConfirmationOpen(true);
@@ -308,7 +340,6 @@ const TransactionList = ({
     setSelectedRecordId(null);
     setIsConfirmationOpen(false);
     setIsSecondConfirmationOpen(false);
-    setIsInfoOpen(false);
   };
 
   const handleFilter = () => {
@@ -371,7 +402,7 @@ const TransactionList = ({
         />
         <ConfirmationModal
           isOpen={isSecondConfirmationOpen}
-          message="Are you really sure you want to delete this payment record? This action cannot be undone."
+          message="Are you really sure you want to delete this payment record? It will be moved to bin and can be recovered by admin."
           onConfirm={secondConfirmDelete}
           onCancel={cancelAction}
         />
@@ -420,10 +451,11 @@ const TransactionList = ({
                     className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
                     <option value="">All Methods</option>
-                    <option value="cash">Cash</option>
-                    <option value="bank">Bank</option>
-                    <option value="tasdeed">Tasdeed</option>
-                    <option value="swiper">Swiper</option>
+                    {paymentMethodOptions.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -459,102 +491,6 @@ const TransactionList = ({
           </div>
         )}
 
-        {/* View Details Info Modal Overlay */}
-        {isInfoOpen && selectedRecord && (
-          <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-             <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 relative">
-                <button onClick={cancelAction} className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                  <FiX className="text-xl" />
-                </button>
-                
-                <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                  <FiInfo className="text-emerald-500" />
-                  Payment Details
-                </h3>
-
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {selectedRecord.number && (
-                      <div className="flex justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Transaction ID</span>
-                        <span className="font-medium text-slate-900 dark:text-white uppercase">{selectedRecord.suffix + selectedRecord.number}</span>
-                      </div>
-                    )}
-                    {selectedRecord.client && (
-                      <>
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                          <span className="text-sm text-slate-500 dark:text-slate-400">Client Name</span>
-                          <span className="font-medium text-slate-900 dark:text-white capitalize">{selectedRecord.client.name}</span>
-                        </div>
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                          <span className="text-sm text-slate-500 dark:text-slate-400">Client Type</span>
-                          <span className="font-medium text-slate-900 dark:text-white capitalize">{selectedRecord.client.type}</span>
-                        </div>
-                      </>
-                    )}
-                    {selectedRecord.particular && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Particular</span>
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400 capitalize">{selectedRecord.particular}</span>
-                      </div>
-                    )}
-                    {selectedRecord.type && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Type</span>
-                        {renderBadge(selectedRecord.type, selectedRecord.type === "income" ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20" : "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/20")}
-                      </div>
-                    )}
-                    {selectedRecord.method && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Method</span>
-                        <span className="font-medium text-slate-900 dark:text-white capitalize">{selectedRecord.method}</span>
-                      </div>
-                    )}
-                    {selectedRecord.date && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Date</span>
-                        <span className="font-medium text-slate-900 dark:text-white">
-                          {formatDateTime(selectedRecord.createdAt || selectedRecord.dateTime || null)} ({formatRelativeDate(selectedRecord.createdAt || selectedRecord.dateTime || null)})
-                        </span>
-                      </div>
-                    )}
-                    {selectedRecord.status && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
-                        {renderBadge(selectedRecord.status, "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700")}
-                      </div>
-                    )}
-                    {selectedRecord.creator && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Creator</span>
-                        <span className="font-medium text-slate-900 dark:text-white capitalize">{selectedRecord.creator}</span>
-                      </div>
-                    )}
-                    {selectedRecord.amount && (
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 dark:border-slate-800">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">Amount</span>
-                        <span className="font-bold text-slate-900 dark:text-white">{selectedRecord.amount} AED</span>
-                      </div>
-                    )}
-                </div>
-
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  <Link
-                    href={`/${selectedRecord?.client?.type}/${selectedRecord?.client?.id}`}
-                    className="flex justify-center items-center rounded-xl bg-slate-100 px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    View Client
-                  </Link>
-                  <Link
-                    href={`/accounts/transactions/edit/${selectedRecord?.type}/${selectedRecord.id}`}
-                    className="flex justify-center items-center rounded-xl bg-emerald-50 px-4 py-2.5 font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                  >
-                    Edit Record
-                  </Link>
-                </div>
-            </div>
-          </div>
-        )}
-
         <div
           className={clsx(
             "border-b border-slate-200/80 p-6 dark:border-slate-800 sm:p-7",
@@ -577,6 +513,24 @@ const TransactionList = ({
                 <p className="text-xs text-slate-500 dark:text-slate-500">
                   {filter.m || filter.t ? `Filtered by: ${filter.t} ${filter.m}` : "All recent transactions"}
                 </p>
+                {(filter.m || filter.t) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {filter.t && (
+                      <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {filter.t}
+                      </span>
+                    )}
+                    {filter.m && (
+                      <PaymentMethodBadge
+                        label={paymentMethodMap[filter.m]?.label || filter.m}
+                        color={paymentMethodMap[filter.m]?.color}
+                        icon={paymentMethodMap[filter.m]?.icon}
+                        size="sm"
+                        muted
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
@@ -612,6 +566,14 @@ const TransactionList = ({
             >
               <FiArrowDownLeft /> Self Deposit
             </button>
+            {currentType !== "self-deposit" && (
+              <Link
+                href="/accounts/transactions/self-deposit"
+                className="flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/20"
+              >
+                <FiInfo /> Self Deposit Tracker
+              </Link>
+            )}
             <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
             <Link
               href={incomeHref}
@@ -625,6 +587,14 @@ const TransactionList = ({
             >
               <FiPlus /> Expense
             </Link>
+            {isAdmin && (
+              <Link
+                href="/accounts/transactions/bin"
+                className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+              >
+                <FiTrash2 /> Bin
+              </Link>
+            )}
             </div>
           </div>
         </div>
@@ -681,24 +651,30 @@ const TransactionList = ({
                     </td>
                     
                     <td className="py-4 px-4 align-top">
-                      <Link
-                        href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
-                        className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
-                      >
-                        <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
-                          {record?.client?.name || "Unknown"}
-                        </p>
-                        <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
-                          {record?.particular}
-                        </p>
-                      </Link>
+                      <div className="flex items-start gap-3">
+                        <EntityAvatar name={record?.client?.name || "Unknown"} size="sm" />
+                        <Link
+                          href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
+                          className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
+                        >
+                          <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
+                            {record?.client?.name || "Unknown"}
+                          </p>
+                          <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
+                            {record?.particular}
+                          </p>
+                        </Link>
+                      </div>
                     </td>
 
                     <td className="py-4 px-4 align-top">
                       <div className="flex flex-col items-start gap-1">
-                        <span className="font-medium text-slate-700 dark:text-slate-300 capitalize text-sm">
-                          {record?.method}
-                        </span>
+                        <PaymentMethodBadge
+                          label={paymentMethodMap[record?.method || ""]?.label || record?.method || "Unknown"}
+                          color={paymentMethodMap[record?.method || ""]?.color}
+                          icon={paymentMethodMap[record?.method || ""]?.icon}
+                          size="sm"
+                        />
                         {renderBadge(transactionVisual.label, transactionVisual.badgeClass)}
                       </div>
                     </td>
@@ -745,13 +721,13 @@ const TransactionList = ({
                               <FiArrowUpRight className="text-lg" />
                             </Link>
                           )}
-                          <button
+                          <Link
                             title="View Transaction Details"
-                            onClick={() => handleInfo(record)}
+                            href={`/accounts/transactions/details/${record?.id}`}
                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
                           >
                             <FiEye className="text-lg" />
-                          </button>
+                          </Link>
                           <button
                             title="Delete Record"
                             onClick={() => handleDelete(record?.id || "")}

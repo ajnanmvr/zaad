@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-// Import referenced models to ensure they're available
 import "./companies";
 import "./employees";
 import "./users";
@@ -20,7 +19,6 @@ const RecordSchema = new Schema(
     method: {
       type: String,
       required: [true, "Please provide a payment method"],
-      enum: ["bank", "cash", "tasdeed", "swiper", "service fee", "liability"],
     },
     type: {
       type: String,
@@ -49,10 +47,43 @@ const RecordSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    deletedAt: Date,
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "users",
+    },
+    activityLog: [
+      {
+        action: {
+          type: String,
+          enum: ["create", "update", "delete", "recover"],
+          required: true,
+        },
+        at: {
+          type: Date,
+          default: Date.now,
+        },
+        by: {
+          type: Schema.Types.ObjectId,
+          ref: "users",
+        },
+        byUsername: String,
+        byFullname: String,
+        details: String,
+        previousValues: {
+          type: Schema.Types.Mixed,
+          default: undefined,
+        },
+        newValues: {
+          type: Schema.Types.Mixed,
+          default: undefined,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Records =

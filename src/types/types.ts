@@ -155,9 +155,18 @@ export type TPhysicalHandover = {
   receivedAt: string | Date;
   returnedAt?: string | Date;
   status: "received" | "returned";
+  receiveNote?: string;
+  returnNote?: string;
+  // Backward compatibility for older records.
   remarks?: string;
   receivedBy?: {
     id: string;
+    username?: string;
+    fullname: string;
+  };
+  returnedBy?: {
+    id: string;
+    username?: string;
     fullname: string;
   };
   createdAt?: string;

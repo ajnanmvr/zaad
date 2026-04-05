@@ -73,10 +73,11 @@ export const fetchHandovers = async (
   page: number = PAGINATION.DEFAULT_PAGE,
   limit: number = PAGINATION.LIMITS.ENTITY_LIST,
   search?: string,
-  entityId?: string
+  entityId?: string,
+  status?: "pending" | "returned" | "all"
 ) => {
   const { data } = await axios.get(
-    `/api/documents/handover?page=${page}&limit=${limit}${search ? `&search=${search}` : ""}${entityId ? `&entityId=${entityId}` : ""}`
+    `/api/documents/handover?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ""}${entityId ? `&entityId=${entityId}` : ""}${status ? `&status=${status}` : ""}`
   );
   return data;
 };

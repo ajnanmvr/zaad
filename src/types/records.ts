@@ -24,6 +24,7 @@ export type TRecordDataWithCreatedAt = TRecordData & {
 
 export type TRecordList = TRecordBase & {
   creator: string;
+  creatorFullname?: string;
   id: string;
   client: {
     name: string;
@@ -35,4 +36,16 @@ export type TRecordList = TRecordBase & {
   createdAt?: string;
   remarks: string;
   edited?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  deletedByFullname?: string;
+  activityLog?: {
+    action: "create" | "update" | "delete" | "recover";
+    at: string;
+    byUsername?: string;
+    byFullname?: string;
+    details?: string;
+    previousValues?: Record<string, any>;
+    newValues?: Record<string, any>;
+  }[];
 };

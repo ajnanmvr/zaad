@@ -153,6 +153,9 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     };
 
     const handleEntitySelection = (selected: TBaseData) => {
+        if (!selected._id) {
+            return;
+        }
         setEntitySearchValue(selected.name);
         if (selectedEntityType) {
             setSelectedEntitySummary({

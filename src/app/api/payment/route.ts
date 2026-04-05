@@ -10,9 +10,22 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    const principal = await requirePermission(request, "payments.write");
     const reqBody = await request.json();
-    const data = await Records.create(reqBody);
+    const data = await Records.create({
+      ...reqBody,
+      createdBy: principal.userId,
+      activityLog: [
+        {
+          action: "create",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Transaction created",
+        },
+      ],
+    });
     return Response.json(
       { message: "Created new payment record", data },
       { status: HttpStatusCode.Created },

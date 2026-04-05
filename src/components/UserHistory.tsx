@@ -101,7 +101,9 @@ const getActionTitle = (action: string) => {
 };
 
 const getActionDescription = (activity: UserActivity) => {
-    const { action, previousValues, newValues } = activity;
+    const { action } = activity;
+    const previousValues = activity.previousValues || {};
+    const newValues = activity.newValues || {};
 
     switch (action) {
         case "create":
@@ -120,7 +122,7 @@ const getActionDescription = (activity: UserActivity) => {
         case "password_change":
             return "Security credentials were updated";
         case "role_change":
-            return `Role transitioned from "${previousValues.role}" to "${newValues.role}"`;
+            return `Role transitioned from "${previousValues.role || "unspecified"}" to "${newValues.role || "unspecified"}"`;
         case "reactivate":
             return "User access was fully restored";
         default:

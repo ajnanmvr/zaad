@@ -21,6 +21,7 @@ export class AuthError extends Error {
 export type AuthPrincipal = {
   userId: string;
   username: string;
+  fullname?: string;
   role: AppRole;
   permissions: AppPermission[];
 };
@@ -41,7 +42,7 @@ async function buildPrincipal(request: NextRequest): Promise<AuthPrincipal> {
   }
 
   const user = await User.findOne({ _id: userId, published: true }).select(
-    "username role"
+    "username fullname role"
   );
 
   if (!user) {
@@ -54,6 +55,7 @@ async function buildPrincipal(request: NextRequest): Promise<AuthPrincipal> {
   return {
     userId: user._id.toString(),
     username: user.username,
+    fullname: user.fullname,
     role,
     permissions,
   };

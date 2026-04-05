@@ -10,6 +10,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiUserPlus, FiBriefcase, FiDollarSign, FiFileText, FiHash, FiCheckCircle } from "react-icons/fi";
 import EntityAvatar from "../common/EntityAvatar";
+import PaymentMethodBadge from "../common/PaymentMethodBadge";
 
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
@@ -34,6 +35,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const [clientFee, setClientFee] = useState<string>("");
   const [balance, setBalance] = useState(0);
   const [clientType, setClientType] = useState("");
+  const [paymentMethodOptions, setPaymentMethodOptions] = useState<Array<{ value: string; label: string; color?: string; icon?: string }>>([]);
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
     type,
@@ -160,6 +162,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   };
 
   const handleCompanySelection = (selected: TBaseData) => {
+    if (!selected._id) {
+      return;
+    }
     setSearchValue(selected.name);
     setSelectedEntitySummary({
       id: selected._id,
@@ -178,6 +183,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   };
 
   const handleEntitySelection = (selected: TBaseData) => {
+    if (!selected._id) {
+      return;
+    }
     setSearchValue(selected.name);
     setSelectedEntitySummary({
       id: selected._id,
@@ -224,7 +232,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         await axios.put(`/api/payment/${id}`, recordData);
       }
       router.push("/accounts/transactions");
-    } catch (error) {
+    } catch (error: any) {
+      const message = error?.response?.data?.error || error?.response?.data?.message || "Failed to save transaction record";
+      alert(message);
       console.log(error);
     }
   };
@@ -236,6 +246,20 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   useEffect(() => {
     fetchPrev();
+    void axios
+      .get("/api/templates", { params: { type: "payment" } })
+      .then((response) => {
+        const options = (response.data?.options || []).map((item: any) => ({
+          value: item.method,
+          label: item.label || item.method,
+          color: item.color,
+          icon: item.icon,
+        }));
+        setPaymentMethodOptions(options);
+      })
+      .catch((error) => {
+        console.error("Error fetching payment method templates:", error);
+      });
   }, []);
 
   const inputClass = "w-full appearance-none rounded-2xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
@@ -244,6 +268,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const themeColor = type === "income" ? "emerald" : "rose";
   const themeBorder = type === "income" ? "border-emerald-500/50 hover:border-emerald-500 ring-emerald-500/20" : "border-rose-500/50 hover:border-rose-500 ring-rose-500/20";
   const buttonBg = type === "income" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30" : "bg-rose-600 hover:bg-rose-700 shadow-rose-500/30";
+  const selectedMethodMeta = paymentMethodOptions.find((method) => method.value === selectedMethod);
 
   return (
     <>
@@ -529,17 +554,26 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       className={inputClass}
                     >
                       <option value="" disabled>Select Method</option>
-                      <option value="bank">Bank</option>
-                      <option value="cash">Cash</option>
-                      <option value="tasdeed">Tasdeed</option>
-                      <option value="swiper">Swiper</option>
-                      {type === "income" && <option value="liability">Liability</option>}
-                      {type === "expense" && <option value="service fee">Service Fee</option>}
+                      {paymentMethodOptions.map((method) => (
+                        <option key={method.value} value={method.value}>
+                          {method.label}
+                        </option>
+                      ))}
                     </select>
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <FiChevronDown />
                     </span>
                   </div>
+                  {selectedMethod && (
+                    <div className="mt-2">
+                      <PaymentMethodBadge
+                        label={selectedMethodMeta?.label || selectedMethod}
+                        color={selectedMethodMeta?.color}
+                        icon={selectedMethodMeta?.icon}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>

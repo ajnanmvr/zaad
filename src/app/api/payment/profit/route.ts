@@ -6,16 +6,47 @@ import { NextRequest } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    const principal = await requirePermission(request, "payments.write");
     const reqBody = await request.json();
-    await Records.create(reqBody);
+    await Records.create({
+      ...reqBody,
+      createdBy: principal.userId,
+      activityLog: [
+        {
+          action: "create",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Instant profit transaction created",
+        },
+      ],
+    });
     let { amount, number, type, method, ...rest } = reqBody;
     const serviceFee = amount;
     amount = 0;
     type = "expense";
     method = "service fee";
     number = +number + 1;
-    await Records.create({ serviceFee, amount, type, method, number, ...rest });
+    await Records.create({
+      serviceFee,
+      amount,
+      type,
+      method,
+      number,
+      ...rest,
+      createdBy: principal.userId,
+      activityLog: [
+        {
+          action: "create",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Service-fee mirror transaction created",
+        },
+      ],
+    });
 
     return Response.json(
       { message: "Created new payment instant profit record" },

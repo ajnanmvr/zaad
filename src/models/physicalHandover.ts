@@ -7,8 +7,11 @@ export interface IPhysicalHandover extends Document {
   receivedAt: Date;
   returnedAt?: Date;
   status: "received" | "returned";
+  receiveNote?: string;
+  returnNote?: string;
   remarks?: string;
   receivedBy?: mongoose.Types.ObjectId;
+  returnedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,10 +40,17 @@ const PhysicalHandoverSchema = new Schema<IPhysicalHandover>(
       enum: ["received", "returned"],
       default: "received",
     },
-    remarks: {
+    receiveNote: {
+      type: String,
+    },
+    returnNote: {
       type: String,
     },
     receivedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "users",
+    },
+    returnedBy: {
       type: Schema.Types.ObjectId,
       ref: "users",
     },

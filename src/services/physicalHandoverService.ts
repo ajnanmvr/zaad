@@ -15,7 +15,13 @@ export async function createHandover(data: any) {
   return PhysicalHandover.create(data);
 }
 
-export async function listHandovers(page: number, limit: number, search?: string, entityId?: string) {
+export async function listHandovers(
+  page: number,
+  limit: number,
+  search?: string,
+  entityId?: string,
+  status?: "pending" | "returned" | "all"
+) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
   
   let query: any = {};
@@ -25,11 +31,17 @@ export async function listHandovers(page: number, limit: number, search?: string
   if (entityId) {
     query.entity = entityId;
   }
+  if (status === "pending") {
+    query.status = "received";
+  } else if (status === "returned") {
+    query.status = "returned";
+  }
 
   const [handovers, total] = await Promise.all([
     PhysicalHandover.find(query)
       .populate("entity", "name entityType color")
-      .populate("receivedBy", "fullname")
+      .populate("receivedBy", "username fullname")
+      .populate("returnedBy", "username fullname")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
@@ -49,10 +61,18 @@ export async function listHandovers(page: number, limit: number, search?: string
       receivedAt: h.receivedAt,
       returnedAt: h.returnedAt,
       status: h.status,
+      receiveNote: h.receiveNote || h.remarks,
+      returnNote: h.returnNote,
       remarks: h.remarks,
       receivedBy: h.receivedBy ? {
         id: h.receivedBy._id,
+        username: h.receivedBy.username,
         fullname: h.receivedBy.fullname,
+      } : undefined,
+      returnedBy: h.returnedBy ? {
+        id: h.returnedBy._id,
+        username: h.returnedBy.username,
+        fullname: h.returnedBy.fullname,
       } : undefined,
       createdAt: h.createdAt,
       updatedAt: h.updatedAt,
@@ -70,13 +90,14 @@ export async function updateHandover(id: string, data: any) {
   return PhysicalHandover.findByIdAndUpdate(id, data, { new: true });
 }
 
-export async function returnHandover(id: string, remarks?: string) {
+export async function returnHandover(id: string, returnedBy: string, returnNote?: string) {
   return PhysicalHandover.findByIdAndUpdate(
     id,
     {
       status: "returned",
       returnedAt: new Date(),
-      ...(remarks && { remarks }),
+      returnedBy,
+      ...(returnNote && { returnNote }),
     },
     { new: true }
   );

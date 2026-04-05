@@ -7,6 +7,7 @@ import Image from "next/image";
 import {
   FiBookOpen,
   FiBriefcase,
+  FiRepeat,
   FiChevronRight,
   FiClock,
   FiCreditCard,
@@ -284,6 +285,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
                     pathname.startsWith("/settings/credential-platforms") ||
+                    pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/templates")
                   }
                 >
@@ -296,6 +298,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           pathname.startsWith(
                             "/settings/credential-platforms",
                           ) ||
+                          pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/templates")
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
@@ -331,6 +334,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={
                                 pathname === "/settings/credential-platforms"
                               }
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/payment-methods"
+                              icon={<FiCreditCard />}
+                              label="Payment Methods"
+                              active={pathname === "/settings/payment-methods"}
                             />
                           </li>
                         </ul>
@@ -369,6 +380,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   icon={<FiBookOpen />}
                   label="Company Records"
                   active={pathname === "/accounts/transactions/self"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/accounts/transactions/self-deposit"
+                  icon={<FiRepeat />}
+                  label="Self Deposit"
+                  active={pathname === "/accounts/transactions/self-deposit"}
                 />
               </li>
               <li>

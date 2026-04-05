@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     const data = await createHandover({
       entity: reqBody.entity,
       documentName: reqBody.documentName,
-      remarks: reqBody.remarks,
+      receiveNote: reqBody.receiveNote || reqBody.remarks,
+      // Keep remarks for backward compatibility in existing views/data.
+      remarks: reqBody.receiveNote || reqBody.remarks,
       receivedAt: reqBody.receivedAt || new Date(),
       status: "received",
       receivedBy: principal.userId,
@@ -48,8 +50,12 @@ export async function GET(request: NextRequest) {
     );
     const search = request.nextUrl.searchParams.get("search") || undefined;
     const entityId = request.nextUrl.searchParams.get("entityId") || undefined;
+    const rawStatus = request.nextUrl.searchParams.get("status");
+    const status = rawStatus === "pending" || rawStatus === "returned" || rawStatus === "all"
+      ? rawStatus
+      : undefined;
     
-    const response = await listHandovers(page, limit, search, entityId);
+    const response = await listHandovers(page, limit, search, entityId, status);
 
     return Response.json(response, { status: 200 });
   } catch (error: any) {

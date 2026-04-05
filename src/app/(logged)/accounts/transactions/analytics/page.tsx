@@ -117,6 +117,17 @@ export default function AccountsDashboard() {
   const disableApply = rangeInvalid || yearInvalid || monthInvalid;
 
   const methodRows = useMemo(() => {
+    const providedBreakdown = accountsData?.methodBreakdown || [];
+    if (providedBreakdown.length > 0) {
+      return providedBreakdown.map((row) => ({
+        key: row.method,
+        method: toTitleCase(row.method),
+        income: row.income,
+        expense: row.expense,
+        balance: row.balance,
+      }));
+    }
+
     const incomeSummary = accountsData?.summary?.income || {};
     const expenseSummary = accountsData?.summary?.expense || {};
 
@@ -125,35 +136,7 @@ export default function AccountsDashboard() {
       ...Object.keys(expenseSummary),
     ]);
 
-    // Keep legacy methods visible if summary is absent/partial.
-    if (summaryMethods.size === 0) {
-      return [
-        {
-          key: "cash",
-          method: "Cash",
-          income: accountsData?.CashIncome ?? 0,
-          expense: accountsData?.CashExpense ?? 0,
-        },
-        {
-          key: "bank",
-          method: "Bank",
-          income: accountsData?.BankIncome ?? 0,
-          expense: accountsData?.BankExpense ?? 0,
-        },
-        {
-          key: "tasdeed",
-          method: "Tasdeed",
-          income: accountsData?.TasdeedIncome ?? 0,
-          expense: accountsData?.TasdeedExpense ?? 0,
-        },
-        {
-          key: "swiper",
-          method: "Swiper",
-          income: accountsData?.SwiperIncome ?? 0,
-          expense: accountsData?.SwiperExpense ?? 0,
-        },
-      ].map((row) => ({ ...row, balance: row.income - row.expense }));
-    }
+    if (summaryMethods.size === 0) return [];
 
     const preferredOrder = ["cash", "bank", "tasdeed", "swiper"];
     const orderedMethods = Array.from(summaryMethods).sort((a, b) => {

@@ -169,6 +169,9 @@ const AddEmployee = ({
     };
 
     const handleCompanySelection = (selected: TBaseData) => {
+        if (!selected._id) {
+            return;
+        }
         setSearchValue(selected.name)
         setSelectedCompanySummary({
             id: selected._id,

@@ -27,7 +27,8 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
   });
 
   const returnMutation = useMutation({
-    mutationFn: (id: string) => axios.patch(`/api/documents/handover/${id}`, { action: "return" }),
+    mutationFn: ({ id, returnNote }: { id: string; returnNote?: string }) =>
+      axios.patch(`/api/documents/handover/${id}`, { action: "return", returnNote }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handovers"] });
       toast.success("Document marked as returned");
@@ -133,7 +134,9 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                 <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:border-slate-800">
                   <th className="pb-3 pl-4 pt-3">Document</th>
                   <th className="px-4 pb-3 pt-3">Received Date</th>
+                  <th className="px-4 pb-3 pt-3">Received By</th>
                   <th className="px-4 pb-3 pt-3">Returned Status</th>
+                  <th className="px-4 pb-3 pt-3">Returned By</th>
                   <th className="px-4 pb-3 pt-3 text-center">Actions</th>
                 </tr>
               </thead>
@@ -143,7 +146,9 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                     <td className="py-4 pl-4 text-sm">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-700 dark:text-slate-200">{item.documentName}</span>
-                        {item.remarks && <span className="mt-1 text-xs text-slate-400">{item.remarks}</span>}
+                        {(item.receiveNote || item.remarks) && (
+                          <span className="mt-1 text-xs text-slate-400">{item.receiveNote || item.remarks}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -151,6 +156,15 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                         <FiClock className="opacity-50" />
                         {formatDateTime(item.receivedAt?.toString())}
                       </div>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
+                      {item.receivedBy?.username ? (
+                        <span title={item.receivedBy.fullname || item.receivedBy.username}>
+                          {item.receivedBy.username}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                     <td className="px-4 py-4 text-xs font-medium">
                       {item.returnedAt ? (
@@ -167,12 +181,24 @@ const HandoverList = ({ entityId, entityName, entityType, compact = false }: Han
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">
+                      {item.returnedBy?.username ? (
+                        <span title={item.returnedBy.fullname || item.returnedBy.username}>
+                          {item.returnedBy.username}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
                         {item.status !== "returned" && (
                           <button
                             title="Mark Returned"
-                            onClick={() => returnMutation.mutate(item.id)}
+                            onClick={() => {
+                              const returnNote = window.prompt("Add return note (optional):", item.returnNote || "") || "";
+                              returnMutation.mutate({ id: item.id, returnNote: returnNote.trim() || undefined });
+                            }}
                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
                           >
                             <FiRotateCcw className="text-lg" />

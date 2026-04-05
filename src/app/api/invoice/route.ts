@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       const formattedDate = formatDate(new Date(search));
       const numericInvoiceNo = Number(search);
-      const orConditions = [
+      const orConditions: any[] = [
         { client: { $regex: search, $options: "i" } },
         { purpose: { $regex: search, $options: "i" } },
         { date: { $regex: search, $options: "i" } },

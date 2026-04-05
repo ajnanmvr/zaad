@@ -1,7 +1,8 @@
 import { useUserContext } from '@/contexts/UserContext';
 import axios from 'axios';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiArrowRight, FiRefreshCw, FiX } from 'react-icons/fi';
+import PaymentMethodBadge from '../common/PaymentMethodBadge';
 
 type TData = {
     from: string,
@@ -15,9 +16,10 @@ const SelfDepositModal = ({ isOpen, cancel }: {
     cancel: () => void;
 }) => {
     const { user } = useUserContext();
+    const [paymentMethods, setPaymentMethods] = useState<Array<{ value: string; label: string; color?: string; icon?: string }>>([]);
     const initData = {
-        from: "cash",
-        to: "bank",
+        from: "",
+        to: "",
         amount: "",
         createdBy: user?._id,
     }
@@ -25,13 +27,32 @@ const SelfDepositModal = ({ isOpen, cancel }: {
         ...initData,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const fromMethod = paymentMethods.find((method) => method.value === data.from);
+    const toMethod = paymentMethods.find((method) => method.value === data.to);
 
-    const paymentMethods = [
-        { value: 'bank', label: 'Bank' },
-        { value: 'cash', label: 'Cash' },
-        { value: 'tasdeed', label: 'Tasdeed' },
-        { value: 'swiper', label: 'Swiper' },
-    ];
+    useEffect(() => {
+        void axios
+            .get('/api/templates', { params: { type: 'payment' } })
+            .then((response) => {
+                const options = (response.data?.options || []).map((item: any) => ({
+                    value: item.method,
+                    label: item.label || item.method,
+                    color: item.color,
+                    icon: item.icon,
+                }));
+                setPaymentMethods(options);
+                if (options.length > 0) {
+                    setData((prev) => ({
+                        ...prev,
+                        from: prev.from || options[0].value,
+                        to: prev.to || (options[1]?.value || options[0].value),
+                    }));
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching payment method templates:', error);
+            });
+    }, []);
 
     const resetAndClose = () => {
         setData(initData);
@@ -106,12 +127,23 @@ const SelfDepositModal = ({ isOpen, cancel }: {
                                 }}
                                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                             >
+                                {paymentMethods.length === 0 && <option value="">No methods configured</option>}
                                 {paymentMethods.map((method) => (
                                     <option key={method.value} value={method.value}>
                                         {method.label}
                                     </option>
                                 ))}
                             </select>
+                            {data.from && (
+                                <div className="mt-2">
+                                    <PaymentMethodBadge
+                                        label={fromMethod?.label || data.from}
+                                        color={fromMethod?.color}
+                                        icon={fromMethod?.icon}
+                                        size="sm"
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center justify-center pb-1 text-emerald-600 dark:text-emerald-400">
@@ -130,17 +162,53 @@ const SelfDepositModal = ({ isOpen, cancel }: {
                                 }}
                                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                             >
+                                {paymentMethods.length === 0 && <option value="">No methods configured</option>}
                                 {paymentMethods.map((method) => (
                                     <option key={method.value} value={method.value}>
                                         {method.label}
                                     </option>
                                 ))}
                             </select>
+                            {data.to && (
+                                <div className="mt-2">
+                                    <PaymentMethodBadge
+                                        label={toMethod?.label || data.to}
+                                        color={toMethod?.color}
+                                        icon={toMethod?.icon}
+                                        size="sm"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
-                        Transfer summary: <span className="font-semibold capitalize">{data.from}</span> to <span className="font-semibold capitalize">{data.to}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span>Transfer summary:</span>
+                            {data.from ? (
+                                <PaymentMethodBadge
+                                    label={fromMethod?.label || data.from}
+                                    color={fromMethod?.color}
+                                    icon={fromMethod?.icon}
+                                    size="sm"
+                                    muted
+                                />
+                            ) : (
+                                <span className="font-semibold">-</span>
+                            )}
+                            <span>to</span>
+                            {data.to ? (
+                                <PaymentMethodBadge
+                                    label={toMethod?.label || data.to}
+                                    color={toMethod?.color}
+                                    icon={toMethod?.icon}
+                                    size="sm"
+                                    muted
+                                />
+                            ) : (
+                                <span className="font-semibold">-</span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

@@ -5,21 +5,11 @@ import { fetchHandovers } from "@/libs/queries";
 import { TPhysicalHandover, TPaginatedResponse } from "@/types/types";
 import formatDateTime from "@/utils/formatDateTime";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
-import {
-  FiArrowRightCircle,
-  FiCheckCircle,
-  FiClock,
-  FiFileText,
-  FiPlus,
-  FiRotateCcw,
-  FiSearch,
-  FiTrash2,
-} from "react-icons/fi";
-import AddHandoverModal from "@/components/Modals/AddHandoverModal";
+import { FiArrowLeft, FiCheckCircle, FiClock, FiFileText, FiSearch, FiTrash2 } from "react-icons/fi";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import EntityAvatar from "@/components/common/EntityAvatar";
@@ -36,33 +26,22 @@ function getEntityHref(entityId?: string, entityType?: string) {
   return null;
 }
 
-const HandoverPage = () => {
+const ReturnedHandoverPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const [search, setSearch] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<
     TPaginatedResponse<TPhysicalHandover>
   >({
-    queryKey: ["handovers", "pending", page, limit, search],
-    queryFn: () => fetchHandovers(page, limit, search, undefined, "pending"),
-  });
-
-  const returnMutation = useMutation({
-    mutationFn: ({ id, returnNote }: { id: string; returnNote?: string }) =>
-      axios.patch(`/api/documents/handover/${id}`, { action: "return", returnNote }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["handovers"] });
-      toast.success("Document marked as returned");
-    },
-    onError: () => toast.error("Failed to update status"),
+    queryKey: ["handovers", "returned", page, limit, search],
+    queryFn: () => fetchHandovers(page, limit, search, undefined, "returned"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => 
+    mutationFn: (id: string) =>
       axios.delete(`/api/documents/handover/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["handovers"] });
@@ -75,76 +54,42 @@ const HandoverPage = () => {
   const rows = data?.data || [];
   const pagination = data?.pagination;
 
-  const handoverStats = useMemo(() => {
-    return rows.reduce(
-      (acc, item) => {
-        if (item.status === "returned") {
-          acc.returned += 1;
-        } else {
-          acc.pending += 1;
-        }
-        return acc;
-      },
-      { returned: 0, pending: 0 }
-    );
-  }, [rows]);
-
   return (
     <>
-      <Breadcrumb pageName="Physical Document Handover" />
+      <Breadcrumb pageName="Returned Physical Documents" />
 
-      <AddHandoverModal
-        isOpen={showAddForm}
-        onSuccess={() => {
-          setShowAddForm(false);
-          queryClient.invalidateQueries({ queryKey: ["handovers"] });
-        }}
-        onCancel={() => setShowAddForm(false)}
-      />
-
-      <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-5 shadow-sm dark:border-cyan-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20 sm:p-6">
-        <div className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-cyan-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-8 h-52 w-52 rounded-full bg-emerald-300/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-8 h-52 w-52 rounded-full bg-cyan-300/20 blur-3xl" />
 
         <div className="relative flex items-center justify-between gap-3">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-cyan-100/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
-              <FiArrowRightCircle />
-              Submission Tracker
+            <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-100/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <FiCheckCircle />
+              Returned Tracker
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Physical Document Handover
+              Returned Document List
             </h2>
           </div>
 
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-          >
-            <FiPlus className="text-lg" />
-            Record Submission
-          </button>
           <Link
-            href="/documents/handover/returned"
+            href="/documents/handover"
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <FiCheckCircle className="text-base" />
-            Returned List
+            <FiArrowLeft className="text-base" />
+            Pending List
           </Link>
         </div>
 
-        <div className="relative mt-6 grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="relative mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Records</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Returned Records</p>
             <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{rows.length}</p>
           </div>
-          <div className="rounded-2xl border border-amber-200/80 bg-white/80 p-4 dark:border-amber-800/40 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Pending</p>
-            <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">{handoverStats.pending}</p>
-          </div>
           <div className="rounded-2xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Returned</p>
-            <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">{handoverStats.returned}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status</p>
+            <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">Returned</p>
           </div>
           <div className="rounded-2xl border border-cyan-200/80 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/70">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Current Page</p>
@@ -157,7 +102,7 @@ const HandoverPage = () => {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
             <FiFileText className="text-slate-500" />
-            Handover Records
+            Returned Handover Records
           </h3>
 
           <div className="relative w-full max-w-md">
@@ -205,7 +150,7 @@ const HandoverPage = () => {
             <div className="py-10 text-center flex flex-col items-center gap-3">
               <FiFileText className="text-4xl text-slate-300" />
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                No document submissions recorded yet.
+                No returned records found.
               </p>
             </div>
           ) : (
@@ -218,16 +163,16 @@ const HandoverPage = () => {
                     <th className="px-4 pb-3">Received Date</th>
                     <th className="px-4 pb-3">Received By</th>
                     <th className="px-4 pb-3">Return Date</th>
-                    <th className="px-4 pb-3">Status</th>
+                    <th className="px-4 pb-3">Returned By</th>
+                    <th className="px-4 pb-3">Receive Note</th>
+                    <th className="px-4 pb-3">Return Note</th>
                     <th className="px-4 pb-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((item) => {
-                    const status = item.status;
                     const entityName = item.entity?.name || "Unknown";
                     const entityHref = getEntityHref(item.entity?.id, item.entity?.type);
-                    const isReturned = status === "returned";
 
                     return (
                       <tr
@@ -258,27 +203,13 @@ const HandoverPage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                              {item.documentName}
-                            </span>
-                            {(item.receiveNote || item.remarks) && (
-                              <span className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                                {item.receiveNote || item.remarks}
-                              </span>
-                            )}
-                            {item.returnNote && (
-                              <span className="text-xs text-emerald-500 mt-0.5 line-clamp-1">
-                                Return: {item.returnNote}
-                              </span>
-                            )}
-                          </div>
+                        <td className="px-4 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {item.documentName}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
                           <div className="flex items-center gap-2">
-                             <FiClock className="text-slate-400" />
-                             {formatDateTime(item.receivedAt?.toString())}
+                            <FiClock className="text-slate-400" />
+                            {formatDateTime(item.receivedAt?.toString())}
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
@@ -290,70 +221,53 @@ const HandoverPage = () => {
                             "-"
                           )}
                         </td>
+                        <td className="px-4 py-4 text-sm text-emerald-700 dark:text-emerald-300">
+                          {item.returnedAt ? formatDateTime(item.returnedAt.toString()) : "-"}
+                        </td>
                         <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {item.returnedAt ? (
-                            <div className="flex items-center gap-2">
-                               <FiCheckCircle className="text-emerald-500" />
-                               {formatDateTime(item.returnedAt.toString())}
-                            </div>
+                          {item.returnedBy?.username ? (
+                            <span title={item.returnedBy.fullname || item.returnedBy.username}>
+                              {item.returnedBy.username}
+                            </span>
                           ) : (
-                            <span className="italic text-slate-400">Pending</span>
+                            "-"
                           )}
                         </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={clsx(
-                              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
-                              isReturned
-                                ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20"
-                                : "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20",
-                            )}
-                          >
-                            {status}
-                          </span>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                          {item.receiveNote || item.remarks || "-"}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                          {item.returnNote || "-"}
                         </td>
                         <td className="px-4 py-4">
-                           <div className="flex items-center justify-center gap-2">
-                              {!isReturned && (
-                                <button
-                                  title="Mark as Returned"
-                                  onClick={() => {
-                                    const returnNote = window.prompt("Add return note (optional):", item.returnNote || "") || "";
-                                    returnMutation.mutate({ id: item.id, returnNote: returnNote.trim() || undefined });
-                                  }}
-                                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10"
-                                >
-                                  <FiRotateCcw className="text-lg" />
-                                </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              title={deleteConfirmId === item.id ? "Click again to permanently delete" : "Delete Record"}
+                              onClick={() => {
+                                if (deleteConfirmId === item.id) {
+                                  deleteMutation.mutate(item.id);
+                                } else {
+                                  setDeleteConfirmId(item.id);
+                                  toast.error("Click delete again to confirm");
+                                }
+                              }}
+                              className={clsx(
+                                "rounded-lg p-2 transition-colors",
+                                deleteConfirmId === item.id
+                                  ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                  : "text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10",
                               )}
-                              <button
-                                title={deleteConfirmId === item.id ? "Click again to permanently delete" : "Delete Record"}
-                                onClick={() => {
-                                  if (deleteConfirmId === item.id) {
-                                    deleteMutation.mutate(item.id);
-                                  } else {
-                                    setDeleteConfirmId(item.id);
-                                    toast.error("Click delete again to confirm");
-                                  }
-                                }}
-                                className={clsx(
-                                  "rounded-lg p-2 transition-colors",
-                                  deleteConfirmId === item.id
-                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                                    : "text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10",
-                                )}
-                              >
-                                <FiTrash2 className="text-lg" />
-                              </button>
-                           </div>
+                            >
+                              <FiTrash2 className="text-lg" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              
-              {/* Pagination */}
+
               {pagination && pagination.totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 px-2 pb-1 pt-4 dark:border-slate-800">
                   <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -387,4 +301,4 @@ const HandoverPage = () => {
   );
 };
 
-export default HandoverPage;
+export default ReturnedHandoverPage;

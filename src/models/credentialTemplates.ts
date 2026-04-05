@@ -7,6 +7,10 @@ const CredentialTemplateSchema = new Schema(
       required: true,
       trim: true,
     },
+    published: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true, collection: "credentialTemplates" }
 );

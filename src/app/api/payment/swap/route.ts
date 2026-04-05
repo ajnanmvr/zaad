@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
-    const { amount, createdBy, to, from } = await request.json();
+    const principal = await requirePermission(request, "payments.write");
+    const { amount, to, from } = await request.json();
     let { suffix, number } = await Records.findOne({
       published: true,
     })
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     let newSuffix = suffix || "",
       newNumber = number || 0;
     await Records.create({
-      createdBy,
+      createdBy: principal.userId,
       type: "expense",
       amount,
       suffix: newSuffix,
@@ -27,9 +27,19 @@ export async function POST(request: NextRequest) {
       self: "Zaad (Self Deposit)",
       status: "Self Deposit",
       method: from,
+      activityLog: [
+        {
+          action: "create",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Self transfer out transaction created",
+        },
+      ],
     });
     await Records.create({
-      createdBy,
+      createdBy: principal.userId,
       type: "income",
       amount,
       suffix: newSuffix,
@@ -38,6 +48,16 @@ export async function POST(request: NextRequest) {
       self: "Zaad (Self Deposit)",
       status: "Self Deposit",
       method: to,
+      activityLog: [
+        {
+          action: "create",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Self transfer in transaction created",
+        },
+      ],
     });
     return Response.json(
       { message: "Self Deposit Completed Successfully" },

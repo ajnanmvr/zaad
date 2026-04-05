@@ -9,13 +9,13 @@ export async function PATCH(
 ) {
   try {
     await connect();
-    await requirePermission(request, "entities.write");
+    const principal = await requirePermission(request, "entities.write");
     const reqBody = await request.json();
     const { id } = params;
 
     let data;
     if (reqBody.action === "return") {
-      data = await returnHandover(id, reqBody.remarks);
+      data = await returnHandover(id, principal.userId, reqBody.returnNote || reqBody.remarks);
     } else {
       data = await updateHandover(id, reqBody);
     }

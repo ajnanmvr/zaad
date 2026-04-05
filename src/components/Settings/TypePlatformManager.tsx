@@ -5,14 +5,32 @@ import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-import { FiAlertCircle, FiPlus, FiTrash2 } from "react-icons/fi";
+import {
+  FiAlertCircle,
+  FiPlus,
+  FiTrash2,
+} from "react-icons/fi";
+import ColorPicker from "@/components/Forms/ColorPicker";
+import {
+  getPaymentMethodIcon,
+  PAYMENT_METHOD_ICON_OPTIONS,
+} from "@/config/paymentMethodIcons";
+import {
+  DEFAULT_PAYMENT_TEMPLATE_ICON,
+  TPaymentTemplateIcon,
+} from "@/config/templateVisuals";
 
-type ManagerType = "document" | "credential";
+type ManagerType = "document" | "credential" | "payment";
 
 type ItemOption = {
   id: string;
   name?: string;
   platform?: string;
+  method?: string;
+  color?: string;
+  icon?: TPaymentTemplateIcon;
+  published?: boolean;
+  unpublished?: boolean;
   createdAt?: string;
   usageCount?: number;
 };
@@ -25,7 +43,7 @@ type TypePlatformManagerProps = {
   inputLabel: string;
   inputPlaceholder: string;
   usageLabel: string;
-  accent: "emerald" | "blue";
+  accent: "emerald" | "blue" | "amber";
 };
 
 function TypePlatformManager({
@@ -41,11 +59,22 @@ function TypePlatformManager({
   const queryClient = useQueryClient();
 
   const [value, setValue] = useState("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedIcon, setSelectedIcon] = useState<TPaymentTemplateIcon>(
+    DEFAULT_PAYMENT_TEMPLATE_ICON,
+  );
+  const [colorPickerKey, setColorPickerKey] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const queryKey = [type === "document" ? "document-types" : "credential-platforms"];
+  const queryKey = [
+    type === "document"
+      ? "document-types"
+      : type === "credential"
+        ? "credential-platforms"
+        : "payment-methods",
+  ];
 
   const { data: items = [], isLoading } = useQuery<ItemOption[]>({
     queryKey,
@@ -60,18 +89,38 @@ function TypePlatformManager({
       ? {
           button: "bg-emerald-600 hover:bg-emerald-700",
           focus: "focus:border-emerald-500 focus:ring-emerald-500/20",
-          badge: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+          badge:
+            "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
           icon: "text-emerald-500",
         }
       : {
           button: "bg-blue-600 hover:bg-blue-700",
           focus: "focus:border-blue-500 focus:ring-blue-500/20",
-          badge: "bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30",
+          badge:
+            "bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30",
           icon: "text-blue-500",
         };
 
+  if (accent === "amber") {
+    Object.assign(accentClasses, {
+      button: "bg-amber-600 hover:bg-amber-700",
+      focus: "focus:border-amber-500 focus:ring-amber-500/20",
+      badge:
+        "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
+      icon: "text-amber-500",
+    });
+  }
+
   const itemName = (item: ItemOption) =>
-    type === "document" ? item.name || "Untitled" : item.platform || "Untitled";
+    type === "document"
+      ? item.name || "Untitled"
+      : type === "credential"
+        ? item.platform || "Untitled"
+        : item.method || "Untitled";
+
+  const getPaymentIcon = (iconName?: TPaymentTemplateIcon) => {
+    return getPaymentMethodIcon(iconName);
+  };
 
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault();
@@ -85,23 +134,37 @@ function TypePlatformManager({
     try {
       await axios.post("/api/templates", {
         type,
-        ...(type === "document" ? { name: value.trim() } : { platform: value.trim() }),
+        ...(type === "document" || type === "payment"
+          ? { color: selectedColor || undefined }
+          : {}),
+        ...(type === "document"
+          ? { name: value.trim() }
+          : type === "credential"
+            ? { platform: value.trim() }
+            : { method: value.trim(), icon: selectedIcon }),
       });
 
       toast.success(`${title.slice(0, -1)} added successfully`);
       setValue("");
+      setSelectedColor("");
+      setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+      setColorPickerKey((prev) => prev + 1);
       setShowAddForm(false);
       await queryClient.invalidateQueries({ queryKey });
     } catch (error: any) {
       const message = error?.response?.data?.message;
-      toast.error(message || `Failed to add ${title.slice(0, -1).toLowerCase()}`);
+      toast.error(
+        message || `Failed to add ${title.slice(0, -1).toLowerCase()}`,
+      );
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(`Delete this ${title.slice(0, -1).toLowerCase()}?`)) {
+    if (
+      !window.confirm(`Unpublish this ${title.slice(0, -1).toLowerCase()}?`)
+    ) {
       return;
     }
 
@@ -110,11 +173,13 @@ function TypePlatformManager({
       await axios.delete("/api/templates", {
         params: { id, type },
       });
-      toast.success(`${title.slice(0, -1)} deleted successfully`);
+      toast.success(`${title.slice(0, -1)} unpublished successfully`);
       await queryClient.invalidateQueries({ queryKey });
     } catch (error: any) {
       const message = error?.response?.data?.message;
-      toast.error(message || `Failed to delete ${title.slice(0, -1).toLowerCase()}`);
+      toast.error(
+        message || `Failed to unpublish ${title.slice(0, -1).toLowerCase()}`,
+      );
     } finally {
       setDeletingId(null);
     }
@@ -127,14 +192,16 @@ function TypePlatformManager({
           <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
             {title}
           </h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {subtitle}
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setShowAddForm((prev) => !prev)}
           className={clsx(
             "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition",
-            accentClasses.button
+            accentClasses.button,
           )}
         >
           <FiPlus />
@@ -143,7 +210,10 @@ function TypePlatformManager({
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleAdd} className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <form
+          onSubmit={handleAdd}
+          className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
+        >
           <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
             {inputLabel}
           </label>
@@ -155,7 +225,7 @@ function TypePlatformManager({
               placeholder={inputPlaceholder}
               className={clsx(
                 "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-                accentClasses.focus
+                accentClasses.focus,
               )}
             />
             <button
@@ -163,21 +233,64 @@ function TypePlatformManager({
               disabled={isAdding}
               className={clsx(
                 "inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60",
-                accentClasses.button
+                accentClasses.button,
               )}
             >
               {isAdding ? "Adding..." : "Save"}
             </button>
           </div>
+
+          {(type === "document" || type === "payment") && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60">
+              <ColorPicker
+                key={colorPickerKey}
+                selectedColor={selectedColor}
+                onChange={(color) => setSelectedColor(color || "")}
+                label={type === "document" ? "Template Color" : "Method Color"}
+                allowAutoAssign
+              />
+            </div>
+          )}
+
+          {type === "payment" && (
+            <div className="mt-4">
+              <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Payment Icon
+              </p>
+              <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
+                {PAYMENT_METHOD_ICON_OPTIONS.map(
+                  ({ value: iconValue, label, Icon }) => (
+                  <button
+                    key={iconValue}
+                    type="button"
+                    onClick={() => setSelectedIcon(iconValue)}
+                    className={clsx(
+                      "inline-flex h-11 w-11 items-center justify-center rounded-lg border text-sm font-semibold transition",
+                      selectedIcon === iconValue
+                        ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-300"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+                    )}
+                    title={label}
+                  >
+                    <Icon className="text-lg" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       )}
 
       {isLoading ? (
-        <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">Loading...</div>
+        <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          Loading...
+        </div>
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center dark:border-slate-700 dark:bg-slate-800/40">
           <FiAlertCircle className="mx-auto mb-2 text-2xl text-slate-400" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">No items yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            No items yet.
+          </p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -187,14 +300,51 @@ function TypePlatformManager({
               className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/30 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-200">{itemName(item)}</p>
+                <p className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200">
+                  {type === "payment" &&
+                    (() => {
+                      const Icon = getPaymentIcon(item.icon);
+                      return (
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md"
+                          style={{
+                            backgroundColor: item.color
+                              ? `${item.color}1A`
+                              : undefined,
+                            color: item.color || undefined,
+                          }}
+                        >
+                          <Icon className="text-sm" />
+                        </span>
+                      );
+                    })()}
+                  {type !== "payment" && item.color && (
+                    <span
+                      className="inline-block h-3 w-3 rounded-full ring-1 ring-black/10"
+                      style={{ backgroundColor: item.color }}
+                    />
+                  )}
+                  {itemName(item)}
+                  {item.unpublished && (
+                    <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                      Unpublished
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {item.createdAt ? `Created: ${new Date(item.createdAt).toLocaleDateString()}` : ""}
+                  {item.createdAt
+                    ? `Created: ${new Date(item.createdAt).toLocaleDateString()}`
+                    : ""}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className={clsx("inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset", accentClasses.badge)}>
+                <span
+                  className={clsx(
+                    "inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ring-1 ring-inset",
+                    accentClasses.badge,
+                  )}
+                >
                   {item.usageCount || 0} {usageLabel}
                 </span>
                 <button
@@ -202,7 +352,7 @@ function TypePlatformManager({
                   onClick={() => handleDelete(item.id)}
                   disabled={deletingId === item.id}
                   className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-slate-700"
-                  title="Delete"
+                  title="Unpublish"
                 >
                   <FiTrash2 />
                 </button>

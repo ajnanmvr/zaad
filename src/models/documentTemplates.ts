@@ -7,6 +7,15 @@ const DocumentTemplateSchema = new Schema(
       required: true,
       trim: true,
     },
+    color: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    published: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true, collection: "documentTemplates" }
 );

@@ -2,7 +2,13 @@ import { format, toZonedTime } from "date-fns-tz";
 
 const DUBAI_TIME_ZONE = "Asia/Dubai";
 
-export const PAYMENT_POPULATE_FIELDS = ["createdBy", "company", "employee"];
+export const PAYMENT_POPULATE_FIELDS = [
+  "createdBy",
+  "deletedBy",
+  "activityLog.by",
+  "company",
+  "employee",
+];
 
 export function getRecordClient(record: any) {
   const company = record?.company;
@@ -15,7 +21,7 @@ export function getRecordClient(record: any) {
 
   if (employee) {
     const type = employee.entityType === "individual" ? "individual" : "employee";
-    return { name: employee.name, id: employee._id, type: type as const };
+    return { name: employee.name, id: employee._id, type };
   }
 
   if (self) {
@@ -67,6 +73,7 @@ export function mapRecordListItem(record: any) {
     amount: record.amount?.toFixed(2),
     serviceFee: record.serviceFee?.toFixed(2),
     creator: record?.createdBy?.username,
+    creatorFullname: record?.createdBy?.fullname,
     status: record.status,
     remarks: record.remarks,
     number: record.number,
@@ -75,5 +82,17 @@ export function mapRecordListItem(record: any) {
     date: relativeDate,
     dateTime,
     createdAt: record.createdAt,
+    deletedAt: record.deletedAt,
+    deletedBy: record?.deletedBy?.username,
+    deletedByFullname: record?.deletedBy?.fullname,
+    activityLog: (record?.activityLog || []).map((entry: any) => ({
+      action: entry.action,
+      at: entry.at,
+      byUsername: entry.byUsername || entry?.by?.username,
+      byFullname: entry.byFullname || entry?.by?.fullname,
+      details: entry.details,
+      previousValues: entry.previousValues,
+      newValues: entry.newValues,
+    })),
   };
 }

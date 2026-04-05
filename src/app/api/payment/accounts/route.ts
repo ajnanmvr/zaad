@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
+import PaymentTemplate from "@/models/paymentTemplates";
 import { filterData } from "@/utils/filterData";
 import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     await requirePermission(request, "payments.read");
 
     const filter = filterData(searchParams, true);
-    const aggregate = (await Records.aggregate([
+    const [aggregate, paymentTemplates] = await Promise.all([
+      Records.aggregate([
       { $match: filter },
       {
         $group: {
@@ -58,7 +60,11 @@ export async function GET(request: NextRequest): Promise<Response> {
           },
         },
       },
-    ])) as TMethodAggregateRow[];
+      ]),
+      PaymentTemplate.find({}).select("method").sort({ method: 1 }),
+    ]);
+
+    const typedAggregate = aggregate as TMethodAggregateRow[];
 
     const summary: Record<string, Record<string, number>> = {
       income: {},
@@ -70,7 +76,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     let profit = 0;
     let zaadExpenseTotal = 0;
 
-    for (const row of aggregate) {
+    for (const row of typedAggregate) {
       const type = row?._id?.type;
       const method = row?._id?.method || "unknown";
       if (!type) continue;
@@ -90,18 +96,31 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     }
 
-    const getMethodTotal = (type: "income" | "expense", method: string) =>
-      summary[type]?.[method] || 0;
+    const methodsFromSummary = Array.from(new Set([
+      ...Object.keys(summary.income || {}),
+      ...Object.keys(summary.expense || {}),
+    ]));
+    const methodsFromTemplates = paymentTemplates.map((item: any) => item.method).filter(Boolean);
+    const extraMethods = methodsFromSummary
+      .filter((method) => !methodsFromTemplates.includes(method))
+      .sort((a, b) => a.localeCompare(b));
+    const allMethods = methodsFromTemplates.concat(extraMethods);
 
-    const BankIncome = getMethodTotal("income", "bank");
-    const CashIncome = getMethodTotal("income", "cash");
-    const TasdeedIncome = getMethodTotal("income", "tasdeed");
-    const SwiperIncome = getMethodTotal("income", "swiper");
+    const methodBreakdown = allMethods.map((method) => {
+      const income = summary.income?.[method] || 0;
+      const expense = summary.expense?.[method] || 0;
+      return {
+        method,
+        income,
+        expense,
+        balance: income - expense,
+      };
+    });
 
-    const BankExpense = getMethodTotal("expense", "bank");
-    const CashExpense = getMethodTotal("expense", "cash");
-    const TasdeedExpense = getMethodTotal("expense", "tasdeed");
-    const SwiperExpense = getMethodTotal("expense", "swiper");
+    const methodBalances = methodBreakdown.reduce<Record<string, number>>((acc, row) => {
+      acc[row.method] = row.balance;
+      return acc;
+    }, {});
 
     const roundedZaadExpenseTotal = parseFloat(
       (zaadExpenseTotal || 0).toFixed(2),
@@ -112,35 +131,20 @@ export async function GET(request: NextRequest): Promise<Response> {
       (grossProfit - roundedZaadExpenseTotal).toFixed(2),
     );
 
-    const totalIncomeAmount: number =
-        BankIncome + CashIncome + TasdeedIncome + SwiperIncome,
-      totalExpenseAmount: number =
-        BankExpense + CashExpense + TasdeedExpense + SwiperExpense,
-      totalBalance: number = totalIncomeAmount - totalExpenseAmount,
-      bankBalance: number =
-        BankIncome - BankExpense + (SwiperIncome - SwiperExpense),
-      cashBalance: number = CashIncome - CashExpense,
-      tasdeedBalance: number = TasdeedIncome - TasdeedExpense;
+    const totalIncomeAmount: number = Object.values(summary.income || {}).reduce((sum, value) => sum + (value || 0), 0);
+    const totalExpenseAmount: number = Object.values(summary.expense || {}).reduce((sum, value) => sum + (value || 0), 0);
+    const totalBalance: number = totalIncomeAmount - totalExpenseAmount;
 
     return Response.json(
       {
         expenseCount,
         incomeCount,
         summary,
+        methodBreakdown,
+        methodBalances,
         totalIncomeAmount,
         totalExpenseAmount,
         totalBalance,
-        bankBalance,
-        cashBalance,
-        tasdeedBalance,
-        BankIncome,
-        CashIncome,
-        TasdeedIncome,
-        SwiperIncome,
-        BankExpense,
-        CashExpense,
-        TasdeedExpense,
-        SwiperExpense,
         profit: grossProfit,
         grossProfit,
         zaadExpenseTotal: roundedZaadExpenseTotal,
