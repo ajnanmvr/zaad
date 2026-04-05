@@ -1,11 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useParams } from "next/navigation";
-
-import EntityOverviewHub from "@/components/entity/EntityOverviewHub";
-
-export default function CompanyOverviewPage() {
-  const params = useParams<{ id: string }>();
-
-  return <EntityOverviewHub entityType="company" id={params.id} />;
+export default function CompanyPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  redirect(`/company/${params.id}/details`);
 }

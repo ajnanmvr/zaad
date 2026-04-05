@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import {
   FiClipboard,
   FiEdit2,
-  FiEye,
   FiFileText,
   FiFolder,
   FiKey,
@@ -109,11 +108,6 @@ export function formatDate(value?: string) {
 
 export function getEntitySectionLinks(entityType: EntityType, id: string): EntityProfileLink[] {
   const links: EntityProfileLink[] = [
-    {
-      href: `/${entityType}/${id}`,
-      label: "Overview",
-      active: false,
-    },
     {
       href: `/${entityType}/${id}/details`,
       label: "Details",
@@ -287,7 +281,7 @@ export function EntityProfileTabs({
   sectionCounts?: Partial<Record<EntitySectionKey, number>>;
 }) {
   const sectionIcons: Record<EntitySectionKey, ReactNode> = {
-    overview: <FiEye className="text-base" />,
+    overview: <FiClipboard className="text-base" />,
     details: <FiClipboard className="text-base" />,
     documents: <FiFolder className="text-base" />,
     credentials: <FiKey className="text-base" />,
@@ -299,10 +293,7 @@ export function EntityProfileTabs({
 
   const links = getEntitySectionLinks(entityType, id).map((link) => ({
     ...link,
-    active:
-      activeSection === "overview"
-        ? link.label === "Overview"
-        : link.label.toLowerCase() === activeSection,
+    active: link.label.toLowerCase() === activeSection,
   }));
 
   return (
