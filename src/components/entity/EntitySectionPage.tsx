@@ -728,7 +728,7 @@ export default function EntitySectionPage({
                       setEmployeePageSize(size);
                       setEmployeePage(1);
                     }}
-                    addEntityHref={`/employee/register/${id}`}
+                    addEntityHref={`/employee/register/${id}?returnTo=${encodeURIComponent(`/${entityType}/${id}/employees`)}`}
                     addEntityLabel="Add Employee"
                   />
                 )}
@@ -741,11 +741,16 @@ export default function EntitySectionPage({
                   lockEntityType={entityType}
                   lockEntityId={id}
                   lockEntityName={entityName}
+                  returnTo={`/${entityType}/${id}/records`}
                 />
               )}
 
               {!isSectionLoading && section === "invoices" && (
-                <InvoiceList entityId={id} embedded />
+                <InvoiceList 
+                  entityId={id} 
+                  embedded 
+                  returnTo={`/${entityType}/${id}/invoices`}
+                />
               )}
             </>
           ) : (

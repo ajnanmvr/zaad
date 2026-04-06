@@ -5,7 +5,7 @@ import { TBaseData } from "@/types/types";
 import axios from "axios";
 import { debounce } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
 import clsx from "clsx";
@@ -14,6 +14,8 @@ import toast from "react-hot-toast";
 
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo");
     const { user } = useUserContext();
 
     const [isEditMode, setisEditMode] = useState(false);
@@ -107,7 +109,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
             }
             else {
                 await axios.post("/api/invoice", payload);
-                router.push(`/accounts/invoice`);
+                const redirectPath = returnTo 
+                    ? decodeURIComponent(returnTo)
+                    : `/accounts/invoice`;
+                router.push(redirectPath);
             }
         } catch (error) {
             console.log(error);

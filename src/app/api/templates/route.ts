@@ -5,6 +5,7 @@ import generateEntityColor from "@/utils/generateEntityColor";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
 import PaymentTemplate from "@/models/paymentTemplates";
+import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
 import EntityDocument from "@/models/entityDocuments";
 import EntityCredential from "@/models/entityCredentials";
 import Records from "@/models/records";
@@ -144,7 +145,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [documentUsageRows, credentialUsageRows, paymentUsageRows] = await Promise.all([
+    if (type === "payment-status") {
+      const usageRows = await Records.aggregate([
+        { $match: { status: { $ne: null } } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]);
+
+      const usedStatuses = usageRows
+        .map((row: any) => (row?._id ? String(row._id) : ""))
+        .filter(Boolean);
+
+      const templates = await PaymentStatusTemplate.find({
+        $or: [{ published: { $ne: false } }, { status: { $in: usedStatuses } }],
+      })
+        .select("status color appliesTo published createdAt")
+        .sort({ status: 1 });
+
+      const usageMap = new Map<string, number>();
+      usageRows.forEach((row: any) => {
+        usageMap.set(String(row._id), row.count);
+      });
+
+      return Response.json(
+        {
+          options: templates.map((item: any) => ({
+            id: item._id.toString(),
+            label: item.status,
+            status: item.status,
+            color: item.color,
+            appliesTo: item.appliesTo || "both",
+            published: item.published !== false,
+            unpublished: item.published === false,
+            createdAt: item.createdAt,
+            usageCount: usageMap.get(item.status) || 0,
+          })),
+        },
+        { status: 200 }
+      );
+    }
+
+    const [documentUsageRows, credentialUsageRows, paymentUsageRows, paymentStatusUsageRows] = await Promise.all([
       EntityDocument.aggregate([
         { $match: { documentTemplate: { $ne: null } } },
         { $group: { _id: "$documentTemplate", count: { $sum: 1 } } },
@@ -157,11 +197,16 @@ export async function GET(request: NextRequest) {
         { $match: { method: { $ne: null } } },
         { $group: { _id: "$method", count: { $sum: 1 } } },
       ]),
+      Records.aggregate([
+        { $match: { status: { $ne: null } } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
     ]);
 
     const documentUsageMap = new Map<string, number>();
     const credentialUsageMap = new Map<string, number>();
     const paymentUsageMap = new Map<string, number>();
+    const paymentStatusUsageMap = new Map<string, number>();
 
     documentUsageRows.forEach((row: any) => {
       documentUsageMap.set(row._id.toString(), row.count);
@@ -172,8 +217,11 @@ export async function GET(request: NextRequest) {
     paymentUsageRows.forEach((row: any) => {
       paymentUsageMap.set(String(row._id), row.count);
     });
+    paymentStatusUsageRows.forEach((row: any) => {
+      paymentStatusUsageMap.set(String(row._id), row.count);
+    });
 
-    const [documentTemplates, credentialTemplates, paymentTemplates] = await Promise.all([
+    const [documentTemplates, credentialTemplates, paymentTemplates, paymentStatusTemplates] = await Promise.all([
       DocumentTemplate.find({
         $or: [
           { published: { $ne: false } },
@@ -198,6 +246,14 @@ export async function GET(request: NextRequest) {
       })
         .select("method color icon published")
         .sort({ method: 1 }),
+      PaymentStatusTemplate.find({
+        $or: [
+          { published: { $ne: false } },
+          { status: { $in: Array.from(paymentStatusUsageMap.keys()) } },
+        ],
+      })
+        .select("status color appliesTo published")
+        .sort({ status: 1 }),
     ]);
 
     return Response.json(
@@ -223,6 +279,15 @@ export async function GET(request: NextRequest) {
           method: item.method,
           color: item.color,
           icon: item.icon,
+          published: item.published !== false,
+          unpublished: item.published === false,
+        })),
+        paymentStatusOptions: paymentStatusTemplates.map((item: any) => ({
+          id: item._id.toString(),
+          label: item.status,
+          status: item.status,
+          color: item.color,
+          appliesTo: item.appliesTo || "both",
           published: item.published !== false,
           unpublished: item.published === false,
         })),
@@ -254,7 +319,8 @@ export async function POST(request: NextRequest) {
       !type ||
       (type === "document" && !name?.trim()) ||
       (type === "credential" && !platform?.trim()) ||
-      (type === "payment" && !body?.method?.trim())
+      (type === "payment" && !body?.method?.trim()) ||
+      (type === "payment-status" && !body?.status?.trim())
     ) {
       return Response.json(
         { message: "Invalid input: type and name/platform are required" },
@@ -414,6 +480,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (type === "payment-status") {
+      const statusLabel = body.status.trim();
+      const appliesTo = ["income", "expense", "both"].includes(String(body?.appliesTo || "").toLowerCase())
+        ? String(body.appliesTo).toLowerCase()
+        : "both";
+      const selectedColor = normalizeHexColor(body?.color);
+
+      const exists = await PaymentStatusTemplate.findOne({ status: statusLabel });
+      if (exists) {
+        if (exists.published === false) {
+          exists.published = true;
+          exists.appliesTo = appliesTo;
+          if (selectedColor) {
+            exists.color = selectedColor;
+          }
+          await exists.save();
+          return Response.json(
+            {
+              message: "Payment status template restored successfully",
+              template: {
+                id: exists._id.toString(),
+                status: exists.status,
+                color: exists.color,
+                appliesTo: exists.appliesTo,
+              },
+            },
+            { status: 200 }
+          );
+        }
+
+        return Response.json(
+          { message: "Payment status template already exists" },
+          { status: 409 }
+        );
+      }
+
+      const color = selectedColor
+        ? selectedColor
+        : await PaymentStatusTemplate.find({}).select("color").lean().then((rows: any[]) => {
+            const existingColors = rows.map((row) => row?.color).filter(Boolean);
+            return generateEntityColor(existingColors);
+          });
+
+      const template = await PaymentStatusTemplate.create({
+        status: statusLabel,
+        color,
+        appliesTo,
+        published: true,
+      });
+
+      return Response.json(
+        {
+          message: "Payment status template created successfully",
+          template: {
+            id: template._id.toString(),
+            status: template.status,
+            color: template.color,
+            appliesTo: template.appliesTo,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
     return Response.json(
       { message: "Invalid template type" },
       { status: 400 }
@@ -497,6 +627,24 @@ export async function DELETE(request: NextRequest) {
       }
       return Response.json(
         { message: "Payment method template unpublished successfully" },
+        { status: 200 }
+      );
+    }
+
+    if (type === "payment-status") {
+      const template = await PaymentStatusTemplate.findByIdAndUpdate(
+        templateId,
+        { published: false },
+        { new: true }
+      );
+      if (!template) {
+        return Response.json(
+          { message: "Payment status template not found" },
+          { status: 404 }
+        );
+      }
+      return Response.json(
+        { message: "Payment status template unpublished successfully" },
         { status: 200 }
       );
     }

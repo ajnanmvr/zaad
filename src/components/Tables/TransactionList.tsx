@@ -3,6 +3,7 @@ import { TRecordList } from "@/types/records";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
@@ -12,18 +13,18 @@ import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
-import { 
-  FiFilter, 
-  FiArrowUpRight, 
-  FiArrowDownLeft, 
+import {
+  FiFilter,
+  FiArrowUpRight,
+  FiArrowDownLeft,
   FiArrowRight,
-  FiPlus, 
-  FiInfo, 
-  FiTrash2, 
+  FiPlus,
+  FiInfo,
+  FiTrash2,
   FiX,
   FiChevronLeft,
   FiChevronRight,
-  FiSearch
+  FiSearch,
 } from "react-icons/fi";
 
 type TPaymentMethodOption = {
@@ -76,6 +77,59 @@ const formatTransactionListDate = (dateString: string | null | undefined) => {
   return formatRelativeDate(dateString);
 };
 
+const getEditCountText = (count: number): string => {
+  if (count === 1) return "edited once";
+  if (count === 2) return "edited twice";
+  return `edited ${count} times`;
+};
+
+const getTransactionAvatar = (record: TRecordList) => {
+  const status = (record?.status || "").toLowerCase();
+  const particular = (record?.particular || "").toLowerCase();
+  const isSelf = record?.client?.type === "self";
+
+  const isSelfTransfer =
+    status.includes("self deposit") ||
+    particular.includes("money removed from") ||
+    particular.includes("money recieved as exchange") ||
+    particular.includes("money received as exchange");
+
+  // Office expense: self client + expense type
+  const isOfficeExpense = isSelf && record?.type === "expense";
+
+  // Self-deposit: use swap icon
+  if (isSelfTransfer) {
+    return (
+      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-200 dark:bg-slate-700 shadow-inner ring-1 ring-white/20">
+        <FiArrowRight className="h-4 w-4 text-slate-600 dark:text-slate-400 rotate-45" />
+      </div>
+    );
+  }
+
+  // Office expense: use logo icon
+  if (isOfficeExpense) {
+    return (
+      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 shadow-inner ring-1 ring-white/20">
+        <Image
+          src="/images/logo/logo-icon.svg"
+          alt="Office"
+          width={20}
+          height={20}
+        />
+      </div>
+    );
+  }
+
+  // Default: use entity avatar with initials
+  return (
+    <EntityAvatar
+      name={record?.client?.name || "Unknown"}
+      color={record?.client?.color}
+      size="sm"
+    />
+  );
+};
+
 const getTransactionVisual = (record: TRecordList) => {
   const status = (record?.status || "").toLowerCase();
   const particular = (record?.particular || "").toLowerCase();
@@ -89,7 +143,8 @@ const getTransactionVisual = (record: TRecordList) => {
 
   const isInstantProfit = status === "profit";
   const isLiability = status.includes("liability");
-  const isOfficeExpense = status.includes("office expense") || particular.includes("office expense");
+  const isOfficeExpense =
+    status.includes("office expense") || particular.includes("office expense");
   const isCompanyExpense =
     isSelf &&
     record?.type === "expense" &&
@@ -173,6 +228,7 @@ const TransactionList = ({
   lockEntityType,
   lockEntityId,
   lockEntityName,
+  returnTo,
 }: {
   type?: string | string[];
   id?: string | string[];
@@ -180,9 +236,12 @@ const TransactionList = ({
   lockEntityType?: string;
   lockEntityId?: string;
   lockEntityName?: string;
+  returnTo?: string;
 }) => {
   const { user } = useUserContext();
-  const isAdmin = ["admin", "superadmin"].includes((user?.role || "").toLowerCase());
+  const isAdmin = ["admin", "superadmin"].includes(
+    (user?.role || "").toLowerCase(),
+  );
 
   const [pageNumber, setPageNumber] = useState(0);
   const [isFilterOpen, setFilterOpen] = useState(false);
@@ -190,7 +249,9 @@ const TransactionList = ({
   const [filter, setFilter] = useState({ ...baseData });
   const [hasMore, setHasMore] = useState(true);
   const [records, setRecords] = useState<TRecordList[]>([]);
-  const [recordsWithBalance, setRecordsWithBalance] = useState<(TRecordList & { runningBalance?: number })[]>([]);
+  const [recordsWithBalance, setRecordsWithBalance] = useState<
+    (TRecordList & { runningBalance?: number })[]
+  >([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -205,7 +266,9 @@ const TransactionList = ({
           ? `/${currentType}`
           : `/${currentType}/${id}`
         : "";
-      const res = await axios.get(`/api/payment${routeSegment}?page=${pageNumber}${query}`);
+      const res = await axios.get(
+        `/api/payment${routeSegment}?page=${pageNumber}${query}`,
+      );
       return res.data;
     },
     placeholderData: keepPreviousData,
@@ -214,7 +277,9 @@ const TransactionList = ({
   const { data: paymentMethodOptions = [] } = useQuery<TPaymentMethodOption[]>({
     queryKey: ["payment-method-templates"],
     queryFn: async () => {
-      const { data } = await axios.get("/api/templates", { params: { type: "payment" } });
+      const { data } = await axios.get("/api/templates", {
+        params: { type: "payment" },
+      });
       return (data?.options || []).map((item: any) => ({
         value: item.method,
         label: item.label || item.method,
@@ -225,10 +290,13 @@ const TransactionList = ({
   });
 
   const paymentMethodMap = useMemo(() => {
-    return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>((acc, item) => {
-      acc[item.value] = item;
-      return acc;
-    }, {});
+    return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>(
+      (acc, item) => {
+        acc[item.value] = item;
+        return acc;
+      },
+      {},
+    );
   }, [paymentMethodOptions]);
 
   useEffect(() => {
@@ -237,11 +305,12 @@ const TransactionList = ({
       setHasMore(paymentData.hasMore);
 
       if (type && paymentData.records?.length > 0) {
-        const { balance, totalIncome, totalExpense, totalTransactions } = paymentData;
+        const { balance, totalIncome, totalExpense, totalTransactions } =
+          paymentData;
         setCards([balance, totalIncome, totalExpense, totalTransactions]);
 
         const recordsWithRunningBalance = [...paymentData.records];
-        let runningBalance = balance; 
+        let runningBalance = balance;
 
         for (let i = 0; i < recordsWithRunningBalance.length; i++) {
           const record = recordsWithRunningBalance[i];
@@ -250,7 +319,10 @@ const TransactionList = ({
           const amount = parseFloat(record.amount) || 0;
           const serviceFee = parseFloat(record.serviceFee) || 0;
 
-          if (record.type === "income" && !(record.status || "").toLowerCase().includes("liability")) {
+          if (
+            record.type === "income" &&
+            !(record.status || "").toLowerCase().includes("liability")
+          ) {
             runningBalance -= amount;
           } else if (record.type === "expense") {
             runningBalance += amount + serviceFee;
@@ -293,44 +365,69 @@ const TransactionList = ({
     setFilterOpen(false);
     setPageNumber(0);
   };
-  
+
   const handleCancelFilter = () => {
     setFilterDummy({ ...filter });
     setFilterOpen(false);
   };
 
   const renderBadge = (status: string | undefined, colorClass: string) => (
-    <span className={clsx("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", colorClass)}>
+    <span
+      className={clsx(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+        colorClass,
+      )}
+    >
       {status}
     </span>
   );
 
   const incomeHref =
     embedded && lockEntityType && lockEntityId
-      ? `/accounts/income?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}`
+      ? `/accounts/income?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
       : "/accounts/income";
 
   const expenseHref =
     embedded && lockEntityType && lockEntityId
-      ? `/accounts/expense?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}`
+      ? `/accounts/expense?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
       : "/accounts/expense";
 
   return (
     <>
       {type && !embedded && (
         <>
-          <Breadcrumb pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`} />
+          <Breadcrumb
+            pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`}
+          />
           <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-            <CardDataStats loading={isLoading} title="Total Transactions" total={`${cards[3]}`}>
+            <CardDataStats
+              loading={isLoading}
+              title="Total Transactions"
+              total={`${cards[3]}`}
+            >
               <FiInfo className="text-xl" />
             </CardDataStats>
-            <CardDataStats loading={isLoading} title="Total Income" total={`${cards[1].toFixed(2)} AED`} color="emerald-500">
+            <CardDataStats
+              loading={isLoading}
+              title="Total Income"
+              total={`${cards[1].toFixed(2)} AED`}
+              color="emerald-500"
+            >
               <FiArrowDownLeft className="text-xl text-emerald-500" />
             </CardDataStats>
-            <CardDataStats loading={isLoading} title="Total Expense" total={`${cards[2].toFixed(2)} AED`} color="rose-500">
+            <CardDataStats
+              loading={isLoading}
+              title="Total Expense"
+              total={`${cards[2].toFixed(2)} AED`}
+              color="rose-500"
+            >
               <FiArrowUpRight className="text-xl text-rose-500" />
             </CardDataStats>
-            <CardDataStats loading={isLoading} title="Balance" total={`${cards[0].toFixed(2)} AED`}>
+            <CardDataStats
+              loading={isLoading}
+              title="Balance"
+              total={`${cards[0].toFixed(2)} AED`}
+            >
               <FiFilter className="text-xl text-emerald-500" />
             </CardDataStats>
           </div>
@@ -343,15 +440,18 @@ const TransactionList = ({
         {isFilterOpen && (
           <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
             <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 relative">
-              <button onClick={handleCancelFilter} className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <button
+                onClick={handleCancelFilter}
+                className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
                 <FiX className="text-xl" />
               </button>
-              
+
               <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <FiFilter className="text-emerald-500" />
                 Filter Transactions
               </h3>
-              
+
               <div className="mb-6 flex flex-col gap-6 sm:flex-row">
                 <div className="w-full sm:w-1/2">
                   <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -360,7 +460,9 @@ const TransactionList = ({
                   <select
                     value={filterDummy.t}
                     name="type"
-                    onChange={(e) => setFilterDummy({ ...filterDummy, t: e.target.value })}
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, t: e.target.value })
+                    }
                     className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
                     <option value="">All Types</option>
@@ -375,7 +477,9 @@ const TransactionList = ({
                   <select
                     value={filterDummy.m}
                     name="method"
-                    onChange={(e) => setFilterDummy({ ...filterDummy, m: e.target.value })}
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, m: e.target.value })
+                    }
                     className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   >
                     <option value="">All Methods</option>
@@ -437,9 +541,13 @@ const TransactionList = ({
           <div className="relative z-10 flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">Transaction History</p>
+                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">
+                  Transaction History
+                </p>
                 <p className="text-xs text-slate-500 dark:text-slate-500">
-                  {filter.m || filter.t ? `Filtered by: ${filter.t} ${filter.m}` : "All recent transactions"}
+                  {filter.m || filter.t
+                    ? `Filtered by: ${filter.t} ${filter.m}`
+                    : "All recent transactions"}
                 </p>
                 {(filter.m || filter.t) && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -468,216 +576,268 @@ const TransactionList = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
-            <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search transactions..."
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
-              />
-            </div>
-            <button
-              onClick={() => setFilterOpen(true)}
-              className={clsx(
-                "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
-                filter.m || filter.t 
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              )}
-            >
-              <FiFilter /> Filter
-            </button>
-            <Link
-              href="/accounts/transactions/self-deposit"
-              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-            >
-              <FiArrowDownLeft /> Self Deposit
-            </Link>
-            <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
-            <Link
-              href={incomeHref}
-              className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/20"
-            >
-              <FiPlus /> Income
-            </Link>
-            <Link
-              href={expenseHref}
-              className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-600 shadow-sm shadow-rose-500/20"
-            >
-              <FiPlus /> Expense
-            </Link>
-            {isAdmin && (
-              <Link
-                href="/accounts/transactions/bin"
-                className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+              <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+                <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search transactions..."
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                />
+              </div>
+              <button
+                onClick={() => setFilterOpen(true)}
+                className={clsx(
+                  "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                  filter.m || filter.t
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
+                )}
               >
-                <FiTrash2 /> Bin
+                <FiFilter /> Filter
+              </button>
+              <Link
+                href="/accounts/transactions/self-deposit"
+                className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                <FiArrowDownLeft /> Self Deposit
               </Link>
-            )}
+              <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+              <Link
+                href={incomeHref}
+                className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/20"
+              >
+                <FiPlus /> Income
+              </Link>
+              <Link
+                href={expenseHref}
+                className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-600 shadow-sm shadow-rose-500/20"
+              >
+                <FiPlus /> Expense
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/accounts/transactions/bin"
+                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+                >
+                  <FiTrash2 /> Bin
+                </Link>
+              )}
             </div>
           </div>
         </div>
 
         <div className="p-6 sm:p-7">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-          <div className="max-w-full overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
-                <th className="min-w-[120px] pb-3 pl-4">Record ID</th>
-                <th className="min-w-[200px] px-4 pb-3">Client Details</th>
-                <th className="min-w-[150px] px-4 pb-3">Method</th>
-                <th className="min-w-[150px] px-4 pb-3">Amount</th>
-                <th className="min-w-[150px] px-4 pb-3">Date/Time</th>
-                {type && <th className="min-w-[120px] px-4 pb-3">Balance</th>}
-                <th className="px-4 pb-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                   <td colSpan={type ? 7 : 6} className="py-8">
-                     <SkeletonList />
-                   </td>
-                </tr>
-              ) : visibleRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={type ? 7 : 6} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                    No transactions found.
-                  </td>
-                </tr>
-              ) : (
-                visibleRecords.map((record, key) => (
-                  (() => {
-                    const transactionVisual = getTransactionVisual(record);
-
-                    return (
-                      <tr 
-                        key={key} 
-                        className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                      >
-                    <td className="py-4 pl-4 align-top">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">
-                           {(record?.suffix || "") + (record?.number || "")}
-                        </span>
-                        {record?.edited && (
-                          <span className="inline-flex w-fit items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400">
-                            Edited{typeof record.editedFieldsCount === "number" && record.editedFieldsCount > 0 ? ` · ${record.editedFieldsCount} change${record.editedFieldsCount === 1 ? "" : "s"}` : ""}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    
-                    <td className="py-4 px-4 align-top">
-                      <div className="flex items-start gap-3">
-                        <EntityAvatar name={record?.client?.name || "Unknown"} color={record?.client?.color} size="sm" />
-                        <Link
-                          href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
-                          className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
-                        >
-                          <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
-                            {record?.client?.name || "Unknown"}
-                          </p>
-                          <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
-                            {record?.particular}
-                          </p>
-                        </Link>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4 align-top">
-                      <div className="flex flex-col items-start gap-1">
-                        <div className="flex items-center gap-2">
-                          <PaymentMethodBadge
-                            label={paymentMethodMap[record?.method || ""]?.label || record?.method || "Unknown"}
-                            color={paymentMethodMap[record?.method || ""]?.color}
-                            icon={paymentMethodMap[record?.method || ""]?.icon}
-                            size="sm"
-                          />
-                        </div>
-                        {renderBadge(transactionVisual.label, transactionVisual.badgeClass)}
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4 align-top">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className={clsx(
-                          "font-bold",
-                          transactionVisual.amountClass
-                        )}>
-                          {record?.amount} <span className="text-xs font-medium">AED</span>
-                        </span>
-                        {record?.type === "expense" && record?.serviceFee && record.serviceFee != 0 && (
-                          <span className={clsx("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400")}>
-                            <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
-                            Fee {record.serviceFee}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4 align-top text-sm text-slate-600 dark:text-slate-400">
-                      <span title={formatDateTime(record.createdAt || record.dateTime || null)}>
-                        {formatTransactionListDate(record.createdAt || record.dateTime || null)}
-                      </span>
-                    </td>
-
+            <div className="max-w-full overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                    <th className="min-w-[120px] pb-3 pl-4">Record ID</th>
+                    <th className="min-w-[200px] px-4 pb-3">Client Details</th>
+                    <th className="min-w-[150px] px-4 pb-3">Method</th>
+                    <th className="min-w-[150px] px-4 pb-3">Amount</th>
+                    <th className="min-w-[150px] px-4 pb-3">Date/Time</th>
                     {type && (
-                      <td className="py-4 px-4 align-top">
-                        <span className={clsx("font-semibold", (record.runningBalance || 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                           {record.runningBalance?.toFixed(2)} <span className="text-xs font-medium">AED</span>
-                        </span>
-                      </td>
+                      <th className="min-w-[120px] px-4 pb-3">Balance</th>
                     )}
-
-                    <td className="py-4 pr-4 pl-2 align-top text-center">
-                       <div className="flex items-center justify-center space-x-2">
-                          <Link
-                            title="Open Transaction Details"
-                            href={`/accounts/transactions/details/${record?.id}`}
-                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
-                          >
-                            <FiArrowRight className="text-lg" />
-                          </Link>
-                       </div>
-                    </td>
+                    <th className="px-4 pb-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={type ? 7 : 6} className="py-8">
+                        <SkeletonList />
+                      </td>
                     </tr>
-                    );
-                  })()
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        </div>
-      </div>
-      
-      {/* Pagination Container */}
-      {!isLoading && (
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
-          <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
-            Showing page <span className="font-semibold text-slate-800 dark:text-white">{pageNumber + 1}</span>
-          </p>
-          <div className="flex flex-1 justify-between sm:justify-end gap-3">
-            <button
-              onClick={() => handlePageChange(pageNumber - 1)}
-              disabled={pageNumber === 0 || isLoading}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-            >
-              <FiChevronLeft /> Previous
-            </button>
-            <button
-              onClick={() => handlePageChange(pageNumber + 1)}
-              disabled={isLoading || !hasMore || !recordsWithBalance.length}
-              className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-            >
-              Next <FiChevronRight />
-            </button>
+                  ) : visibleRecords.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={type ? 7 : 6}
+                        className="py-12 text-center text-slate-500 dark:text-slate-400"
+                      >
+                        No transactions found.
+                      </td>
+                    </tr>
+                  ) : (
+                    visibleRecords.map((record, key) =>
+                      (() => {
+                        const transactionVisual = getTransactionVisual(record);
+
+                        return (
+                          <tr
+                            key={key}
+                            className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                          >
+                            <td className="py-4 pl-4 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">
+                                  {(record?.suffix || "") +
+                                    (record?.number || "")}
+                                </span>
+                                {Number(record?.version || 0) > 0 && (
+                                  <span className="inline-flex w-fit items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400">
+                                    {getEditCountText(
+                                      Number(record?.version || 0),
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex items-start gap-3">
+                                {getTransactionAvatar(record)}
+                                <Link
+                                  href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
+                                  className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
+                                >
+                                  <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
+                                    {record?.client?.name || "Unknown"}
+                                  </p>
+                                  <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
+                                    {record?.particular}
+                                  </p>
+                                </Link>
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                  <PaymentMethodBadge
+                                    label={
+                                      paymentMethodMap[record?.method || ""]
+                                        ?.label ||
+                                      record?.method ||
+                                      "Unknown"
+                                    }
+                                    color={
+                                      paymentMethodMap[record?.method || ""]
+                                        ?.color
+                                    }
+                                    icon={
+                                      paymentMethodMap[record?.method || ""]
+                                        ?.icon
+                                    }
+                                    size="sm"
+                                  />
+                                </div>
+                                {renderBadge(
+                                  transactionVisual.label,
+                                  transactionVisual.badgeClass,
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex flex-col items-start gap-1">
+                                <span
+                                  className={clsx(
+                                    "font-bold",
+                                    transactionVisual.amountClass,
+                                  )}
+                                >
+                                  {record?.amount}{" "}
+                                  <span className="text-xs font-medium">
+                                    AED
+                                  </span>
+                                </span>
+                                {record?.type === "expense" &&
+                                  record?.serviceFee &&
+                                  record.serviceFee != 0 && (
+                                    <span
+                                      className={clsx(
+                                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                      )}
+                                    >
+                                      <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
+                                      Fee {record.serviceFee}
+                                    </span>
+                                  )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top text-sm text-slate-600 dark:text-slate-400">
+                              <span
+                                title={formatDateTime(
+                                  record.createdAt || record.dateTime || null,
+                                )}
+                              >
+                                {formatTransactionListDate(
+                                  record.createdAt || record.dateTime || null,
+                                )}
+                              </span>
+                            </td>
+
+                            {type && (
+                              <td className="py-4 px-4 align-top">
+                                <span
+                                  className={clsx(
+                                    "font-semibold",
+                                    (record.runningBalance || 0) >= 0
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-rose-600 dark:text-rose-400",
+                                  )}
+                                >
+                                  {record.runningBalance?.toFixed(2)}{" "}
+                                  <span className="text-xs font-medium">
+                                    AED
+                                  </span>
+                                </span>
+                              </td>
+                            )}
+
+                            <td className="py-4 pr-4 pl-2 align-top text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                                <Link
+                                  title="Open Transaction Details"
+                                  href={`/accounts/transactions/details/${record?.id}`}
+                                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
+                                >
+                                  <FiArrowRight className="text-lg" />
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })(),
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Pagination Container */}
+        {!isLoading && (
+          <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
+            <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
+              Showing page{" "}
+              <span className="font-semibold text-slate-800 dark:text-white">
+                {pageNumber + 1}
+              </span>
+            </p>
+            <div className="flex flex-1 justify-between sm:justify-end gap-3">
+              <button
+                onClick={() => handlePageChange(pageNumber - 1)}
+                disabled={pageNumber === 0 || isLoading}
+                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+              >
+                <FiChevronLeft /> Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(pageNumber + 1)}
+                disabled={isLoading || !hasMore || !recordsWithBalance.length}
+                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+              >
+                Next <FiChevronRight />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

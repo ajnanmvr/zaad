@@ -238,7 +238,7 @@ export async function PUT(
       id,
       {
         ...changedPayload,
-        edited: true,
+        $inc: { __v: 1 },
         $push: {
           activityLog: {
             action: "update",

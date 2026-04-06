@@ -298,6 +298,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     pathname.startsWith("/settings/document-types") ||
                     pathname.startsWith("/settings/credential-platforms") ||
                     pathname.startsWith("/settings/payment-methods") ||
+                    pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates")
                   }
                 >
@@ -311,6 +312,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             "/settings/credential-platforms",
                           ) ||
                           pathname.startsWith("/settings/payment-methods") ||
+                          pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates")
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
@@ -354,6 +356,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               icon={<FiCreditCard />}
                               label="Payment Methods"
                               active={pathname === "/settings/payment-methods"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/payment-statuses"
+                              icon={<FiCheckCircle />}
+                              label="Payment Statuses"
+                              active={pathname === "/settings/payment-statuses"}
                             />
                           </li>
                         </ul>

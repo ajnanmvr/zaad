@@ -22,13 +22,15 @@ import {
   TPaymentTemplateIcon,
 } from "@/config/templateVisuals";
 
-type ManagerType = "document" | "credential" | "payment";
+type ManagerType = "document" | "credential" | "payment" | "payment-status";
 
 type ItemOption = {
   id: string;
   name?: string;
   platform?: string;
   method?: string;
+  status?: string;
+  appliesTo?: "income" | "expense" | "both";
   color?: string;
   icon?: TPaymentTemplateIcon;
   published?: boolean;
@@ -76,7 +78,9 @@ function TypePlatformManager({
       ? "document-types"
       : type === "credential"
         ? "credential-platforms"
-        : "payment-methods",
+        : type === "payment"
+          ? "payment-methods"
+          : "payment-statuses",
   ];
 
   const { data: items = [], isLoading } = useQuery<ItemOption[]>({
@@ -119,7 +123,9 @@ function TypePlatformManager({
       ? item.name || "Untitled"
       : type === "credential"
         ? item.platform || "Untitled"
-        : item.method || "Untitled";
+        : type === "payment"
+          ? item.method || "Untitled"
+          : item.status || "Untitled";
 
   const getPaymentIcon = (iconName?: TPaymentTemplateIcon) => {
     return getPaymentMethodIcon(iconName);
@@ -152,14 +158,16 @@ function TypePlatformManager({
     try {
       await axios.post("/api/templates", {
         type,
-        ...(type === "document" || type === "payment"
+        ...(type === "document" || type === "payment" || type === "payment-status"
           ? { color: selectedColor || undefined }
           : {}),
         ...(type === "document"
           ? { name: value.trim() }
           : type === "credential"
             ? { platform: value.trim() }
-            : { method: value.trim(), icon: selectedIcon }),
+            : type === "payment"
+              ? { method: value.trim(), icon: selectedIcon }
+              : { status: value.trim() }),
       });
 
       toast.success(`${title.slice(0, -1)} added successfully`);
@@ -303,13 +311,13 @@ function TypePlatformManager({
                 </button>
               </div>
 
-              {(type === "document" || type === "payment") && (
+              {(type === "document" || type === "payment" || type === "payment-status") && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                   <ColorPicker
                     key={colorPickerKey}
                     selectedColor={selectedColor}
                     onChange={(color) => setSelectedColor(color || "")}
-                    label={type === "document" ? "Template Color" : "Method Color"}
+                    label={type === "document" ? "Template Color" : type === "payment" ? "Method Color" : "Status Color"}
                     allowAutoAssign
                   />
                 </div>
@@ -400,6 +408,11 @@ function TypePlatformManager({
                     ? `Created: ${new Date(item.createdAt).toLocaleDateString()}`
                     : ""}
                 </p>
+                {type === "payment-status" && item.appliesTo ? (
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Applies to: {item.appliesTo}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex items-center gap-2">

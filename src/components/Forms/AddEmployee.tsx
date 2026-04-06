@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { debounce } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiTrash2, FiPlus, FiUser, FiLock, FiFileText } from "react-icons/fi";
@@ -23,6 +23,8 @@ const AddEmployee = ({
     individualMode?: boolean;
 }) => {
     const router = useRouter()
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get("returnTo");
     const queryClient = useQueryClient();
     const editId = Array.isArray(edit) ? edit[0] : edit;
     const hasEditId = typeof editId === "string" && editId.trim().length > 0;
@@ -126,7 +128,10 @@ const AddEmployee = ({
                 if (isEditMode) {
                     router.replace(individualMode ? `/individual/${editId}` : `/employee/${editId}`);
                 } else {
-                    router.push(individualMode ? "/individual" : "/employee");
+                    const redirectPath = returnTo 
+                        ? decodeURIComponent(returnTo)
+                        : (individualMode ? "/individual" : "/employee");
+                    router.push(redirectPath);
                 }
                 toast.dismiss()
                 toast.success(individualMode ? "Individual details saved successfully!" : "Employee details saved successfully!");
@@ -269,7 +274,7 @@ const AddEmployee = ({
         : (individualMode ? "Create Individual" : "Create Employee")
     const cancelLink = isEditMode
         ? (individualMode ? `/individual/${editId}` : `/employee/${editId}`)
-        : (individualMode ? "/individual" : "/employee")
+        : (returnTo ? decodeURIComponent(returnTo) : (individualMode ? "/individual" : "/employee"))
 
     const inputClasses = "w-full rounded-2xl border border-slate-300/90 bg-white/95 px-5 py-3 text-slate-900 outline-none transition-all duration-300 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20";
     const labelClasses = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400";

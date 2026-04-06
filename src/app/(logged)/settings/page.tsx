@@ -153,12 +153,20 @@ const SettingsPage = () => {
                 </Link>
               ) : null}
               {canViewTemplates ? (
-                <Link
-                  href="/settings/document-types"
-                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                >
-                  Templates & Platforms
-                </Link>
+                <>
+                  <Link
+                    href="/settings/document-types"
+                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    Templates & Platforms
+                  </Link>
+                  <Link
+                    href="/settings/payment-statuses"
+                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    Payment Statuses
+                  </Link>
+                </>
               ) : null}
               {canViewAudit ? (
                 <Link

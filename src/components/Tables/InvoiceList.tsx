@@ -13,7 +13,7 @@ import ConfirmationModal from "../Modals/ConfirmationModal";
 import SkeletonList from "../common/SkeletonList";
 import EntityAvatar from "../common/EntityAvatar";
 
-const InvoiceList = ({ entityId, embedded = false }: { entityId?: string; embedded?: boolean } = {}) => {
+const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: string; embedded?: boolean; returnTo?: string } = {}) => {
   const queryClient = useQueryClient();
   const [invoices, setInvoices] = useState<TInvoiceList[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
@@ -137,7 +137,7 @@ const InvoiceList = ({ entityId, embedded = false }: { entityId?: string; embedd
               </div>
 
               <Link
-                href="/accounts/invoice/new"
+                href={`/accounts/invoice/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
                 className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 hover:shadow-emerald-500/30"
               >
                 <FiPlus className="text-lg transition-transform group-hover:rotate-90" />

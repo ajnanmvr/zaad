@@ -36,8 +36,7 @@ export function mapRecordListItem(record: any) {
   const now = new Date();
   const diffInMs = now.getTime() - new Date(record.createdAt).getTime();
   const diffInSeconds = Math.floor(diffInMs / 1000);
-  const latestUpdate = [...(record?.activityLog || [])].reverse().find((entry: any) => entry.action === "update");
-  const editedFieldsCount = latestUpdate?.newValues ? Object.keys(latestUpdate.newValues).length : 0;
+  const version = Number(record?.__v || 0);
 
   const relativeDate = (() => {
     if (diffInSeconds < 60) return `${Math.max(diffInSeconds, 0)} second${diffInSeconds === 1 ? "" : "s"} ago`;
@@ -80,8 +79,7 @@ export function mapRecordListItem(record: any) {
     remarks: record.remarks,
     number: record.number,
     suffix: record.suffix,
-    edited: record.edited,
-    editedFieldsCount,
+    version,
     date: relativeDate,
     dateTime,
     createdAt: record.createdAt,

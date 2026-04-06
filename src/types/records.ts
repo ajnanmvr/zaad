@@ -36,8 +36,7 @@ export type TRecordList = TRecordBase & {
   dateTime?: string;
   createdAt?: string;
   remarks: string;
-  edited?: boolean;
-  editedFieldsCount?: number;
+  version?: number;
   deletedAt?: string;
   deletedBy?: string;
   deletedByFullname?: string;
