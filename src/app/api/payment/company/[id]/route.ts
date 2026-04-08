@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
+import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
 import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../../utils";
 
@@ -12,10 +13,32 @@ export async function GET(
     await connect();
     await requirePermission(request, "payments.read");
 
-    const records = await Records.find({
+    const scopeParam = request.nextUrl.searchParams.get("recordScope");
+    const recordScope =
+      scopeParam === "employees" || scopeParam === "mixed"
+        ? scopeParam
+        : "company";
+
+    const companyId = params.id;
+    const employeeIds = await Employee.find({
       published: true,
-      company: params.id,
-    })
+      company: companyId,
+    }).distinct("_id");
+
+    const query: Record<string, any> = { published: true };
+
+    if (recordScope === "employees") {
+      query.employee = { $in: employeeIds };
+    } else if (recordScope === "mixed") {
+      query.$or = [
+        { company: companyId },
+        { employee: { $in: employeeIds } },
+      ];
+    } else {
+      query.company = companyId;
+    }
+
+    const records = await Records.find(query)
       .populate(PAYMENT_POPULATE_FIELDS)
       .sort({ createdAt: -1 });
 
@@ -29,6 +52,7 @@ export async function GET(
           totalIncome: 0,
           totalExpense: 0,
           totalTransactions: 0,
+          hasMore: false,
         },
         { status: 200 }
       );
@@ -36,10 +60,7 @@ export async function GET(
 
     const transformedData = records.map(mapRecordListItem);
 
-    const allRecords = await Records.find({
-      published: true,
-      company: params.id,
-    });
+    const allRecords = await Records.find(query);
 
     const totalIncome = allRecords.reduce(
       (acc, record) =>
@@ -67,6 +88,7 @@ export async function GET(
         totalIncome,
         totalExpense,
         totalTransactions,
+        hasMore: false,
       },
       { status: 200 }
     );

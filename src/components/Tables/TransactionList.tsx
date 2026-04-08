@@ -13,6 +13,9 @@ import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import {
   FiFilter,
   FiArrowUpRight,
@@ -25,6 +28,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiSearch,
+  FiDownload,
+  FiFileText,
 } from "react-icons/fi";
 
 type TPaymentMethodOption = {
@@ -34,10 +39,15 @@ type TPaymentMethodOption = {
   icon?: string;
 };
 
+type ExportScope = "selected" | "all";
+type ExportFormat = "csv" | "excel" | "pdf";
+
 const baseData = {
   t: "",
   m: "",
 };
+
+type CompanyRecordScope = "company" | "employees" | "mixed";
 
 const generateQuery = (filter: typeof baseData) => {
   let query = "";
@@ -238,6 +248,7 @@ const TransactionList = ({
   lockEntityName?: string;
   returnTo?: string;
 }) => {
+  const router = useRouter();
   const { user } = useUserContext();
   const isAdmin = ["admin", "superadmin"].includes(
     (user?.role || "").toLowerCase(),
@@ -254,12 +265,22 @@ const TransactionList = ({
   >([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [exportScope, setExportScope] = useState<ExportScope>("selected");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [companyRecordScope, setCompanyRecordScope] =
+    useState<CompanyRecordScope>("company");
 
   const query = generateQuery(filter);
   const currentType = Array.isArray(type) ? type[0] : type;
+  const isCompanyScopedView = currentType === "company" && Boolean(id);
+  const companyScopeQuery =
+    isCompanyScopedView && id
+      ? `&recordScope=${encodeURIComponent(companyRecordScope)}`
+      : "";
 
   const { data: paymentData, isLoading } = useQuery({
-    queryKey: ["payment", pageNumber, type, id, filter],
+    queryKey: ["payment", pageNumber, type, id, filter, companyRecordScope],
     queryFn: async () => {
       const routeSegment = currentType
         ? currentType === "self" || currentType === "self-deposit"
@@ -267,7 +288,7 @@ const TransactionList = ({
           : `/${currentType}/${id}`
         : "";
       const res = await axios.get(
-        `/api/payment${routeSegment}?page=${pageNumber}${query}`,
+        `/api/payment${routeSegment}?page=${pageNumber}${query}${companyScopeQuery}`,
       );
       return res.data;
     },
@@ -356,14 +377,189 @@ const TransactionList = ({
     });
   }, [recordsWithBalance, searchTerm]);
 
+  const selectedRecords = useMemo(
+    () =>
+      visibleRecords.filter(
+        (record) => record?.id && selectedRecordIds.includes(record.id),
+      ),
+    [selectedRecordIds, visibleRecords],
+  );
+
+  const allVisibleSelected =
+    visibleRecords.length > 0 &&
+    visibleRecords.every(
+      (record) => record?.id && selectedRecordIds.includes(record.id),
+    );
+
+  const isInnerEntityRecords =
+    embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
+
+  const toggleSelectVisible = (checked: boolean) => {
+    if (!checked) {
+      const visibleIds = new Set(visibleRecords.map((record) => record.id));
+      setSelectedRecordIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+      return;
+    }
+
+    const visibleIds = visibleRecords.map((record) => record.id);
+    setSelectedRecordIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const toggleRecordSelection = (recordId: string, checked: boolean) => {
+    if (!recordId) return;
+    setSelectedRecordIds((prev) => {
+      if (checked) {
+        return prev.includes(recordId) ? prev : [...prev, recordId];
+      }
+      return prev.filter((id) => id !== recordId);
+    });
+  };
+
+  const mapRecordsForExport = (rows: (TRecordList & { runningBalance?: number })[]) =>
+    rows.map((record) => {
+      const amount = Number(record.amount || 0);
+      const serviceFee = Number(record.serviceFee || 0);
+      return {
+        "Record ID": `${record.suffix || ""}${record.number || ""}`,
+        Client: record.client?.name || "",
+        "Client Type": record.client?.type || "",
+        Type: record.type || "",
+        Particular: record.particular || "",
+        Method: record.method || "",
+        Status: record.status || "",
+        "Amount (AED)": amount.toFixed(2),
+        "Service Fee (AED)": serviceFee.toFixed(2),
+        "Effective Total (AED)":
+          record.type === "expense"
+            ? (amount + serviceFee).toFixed(2)
+            : amount.toFixed(2),
+        Date: formatDateTime(record.createdAt || record.dateTime || null),
+      };
+    });
+
+  const handleExport = async () => {
+    const sourceRows = exportScope === "selected" ? selectedRecords : visibleRecords;
+
+    if (!sourceRows.length) {
+      toast.error(
+        exportScope === "selected"
+          ? "Select records to export"
+          : "No records available to export",
+      );
+      return;
+    }
+
+    const rows = mapRecordsForExport(sourceRows);
+    const filePrefix = `${lockEntityName || currentType || "records"}-records`;
+
+    if (exportFormat === "csv") {
+      exportRowsCsv(rows, filePrefix);
+      toast.success("CSV exported");
+      return;
+    }
+
+    if (exportFormat === "excel") {
+      exportRowsExcel(rows, filePrefix);
+      toast.success("Excel exported");
+      return;
+    }
+
+    await exportRowsPdf(rows, filePrefix);
+    toast.success("PDF exported");
+  };
+
+  const handleConvertSelectedToInvoice = async () => {
+    if (!selectedRecords.length) {
+      toast.error("Select records first");
+      return;
+    }
+
+    const expenseItems = selectedRecords
+      .filter((record) => record.type === "expense")
+      .map((record) => {
+        const amount = Number(record.amount || 0);
+        const serviceFee = Number(record.serviceFee || 0);
+        const total = amount + serviceFee;
+        return {
+          title: record.particular || `Expense ${record.suffix || ""}${record.number || ""}`,
+          desc: `${record.client?.name || "Unknown"} | ${record.method || "Unknown method"}`,
+          rate: Number(total.toFixed(2)),
+          quantity: 1,
+        };
+      });
+
+    if (!expenseItems.length) {
+      toast.error("Selected records must include at least one expense record");
+      return;
+    }
+
+    const advance = selectedRecords
+      .filter((record) => record.type === "income")
+      .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+    try {
+      const prevResponse = await axios.get("/api/invoice/prev");
+      const prevData = prevResponse.data || {};
+
+      const today = new Date();
+      const validTo = new Date(today);
+      validTo.setDate(validTo.getDate() + 30);
+
+      const payload = {
+        title: prevData.title || "Invoice",
+        suffix: prevData.suffix || "INV-",
+        invoiceNo: Number(prevData.invoiceNo || 0) + 1,
+        quotation: "false",
+        message: "",
+        trn: "",
+        createdBy: user?._id,
+        client: lockEntityName || selectedRecords[0]?.client?.name || "Client",
+        entityId: lockEntityId || null,
+        entityType:
+          lockEntityType === "company" ||
+          lockEntityType === "employee" ||
+          lockEntityType === "individual"
+            ? lockEntityType
+            : null,
+        date: today.toISOString().split("T")[0],
+        validTo: validTo.toISOString().split("T")[0],
+        items: expenseItems,
+        remarks: `Generated from ${selectedRecords.length} selected record(s)`,
+        advance: Number(advance.toFixed(2)),
+        location: "",
+        purpose: "Records to Invoice",
+        amount: 0,
+        showBalance: "show",
+        balance: 0,
+      };
+
+      const createResponse = await axios.post("/api/invoice", payload);
+      const createdId = createResponse?.data?.data?._id;
+
+      toast.success("Invoice created from selected records");
+      setSelectedRecordIds([]);
+
+      if (createdId) {
+        router.push(`/accounts/invoice/${createdId}`);
+      } else {
+        router.push("/accounts/invoice");
+      }
+    } catch (error) {
+      toast.error("Failed to create invoice from selected records");
+      console.error(error);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setPageNumber(page);
+    setSelectedRecordIds([]);
   };
 
   const handleFilter = () => {
     setFilter(filterDummy);
     setFilterOpen(false);
     setPageNumber(0);
+    setSelectedRecordIds([]);
   };
 
   const handleCancelFilter = () => {
@@ -545,12 +741,29 @@ const TransactionList = ({
                   Transaction History
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-500">
-                  {filter.m || filter.t
-                    ? `Filtered by: ${filter.t} ${filter.m}`
+                  {filter.m || filter.t || isCompanyScopedView
+                    ? `Filtered by: ${filter.t} ${filter.m} ${
+                        isCompanyScopedView
+                          ? companyRecordScope === "company"
+                            ? "Company records only"
+                            : companyRecordScope === "employees"
+                              ? "Employees in this company"
+                              : "Company and employees mixed"
+                          : ""
+                      }`
                     : "All recent transactions"}
                 </p>
-                {(filter.m || filter.t) && (
+                {(filter.m || filter.t || isCompanyScopedView) && (
                   <div className="mt-2 flex flex-wrap gap-2">
+                    {isCompanyScopedView && (
+                      <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
+                        {companyRecordScope === "company"
+                          ? "Company only"
+                          : companyRecordScope === "employees"
+                            ? "Employees only"
+                            : "Mixed"}
+                      </span>
+                    )}
                     {filter.t && (
                       <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {filter.t}
@@ -572,10 +785,60 @@ const TransactionList = ({
               <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 {visibleRecords.length} Records
+                {isInnerEntityRecords && selectedRecordIds.length > 0
+                  ? ` • ${selectedRecordIds.length} selected`
+                  : ""}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
+              {isInnerEntityRecords && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <select
+                    value={exportScope}
+                    onChange={(event) => setExportScope(event.target.value as ExportScope)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <option value="selected">Export selected</option>
+                    <option value="all">Export all (visible)</option>
+                  </select>
+                  <select
+                    value={exportFormat}
+                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                  <button
+                    onClick={handleExport}
+                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700/40 dark:bg-cyan-900/20 dark:text-cyan-300"
+                  >
+                    <FiDownload /> Export
+                  </button>
+                  <button
+                    onClick={handleConvertSelectedToInvoice}
+                    className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
+                  >
+                    <FiFileText /> To Invoice
+                  </button>
+                </div>
+              )}
+              {isCompanyScopedView && (
+                <select
+                  value={companyRecordScope}
+                  onChange={(event) => {
+                    setCompanyRecordScope(event.target.value as CompanyRecordScope);
+                    setPageNumber(0);
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="company">Company records only</option>
+                  <option value="employees">Employees in this company only</option>
+                  <option value="mixed">Both mixed</option>
+                </select>
+              )}
               <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
                 <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -633,6 +896,16 @@ const TransactionList = ({
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                    {isInnerEntityRecords && (
+                      <th className="w-[48px] pb-3 pl-4">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={(event) => toggleSelectVisible(event.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </th>
+                    )}
                     <th className="min-w-[120px] pb-3 pl-4">Record ID</th>
                     <th className="min-w-[200px] px-4 pb-3">Client Details</th>
                     <th className="min-w-[150px] px-4 pb-3">Method</th>
@@ -647,14 +920,14 @@ const TransactionList = ({
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={type ? 7 : 6} className="py-8">
+                      <td colSpan={type ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6} className="py-8">
                         <SkeletonList />
                       </td>
                     </tr>
                   ) : visibleRecords.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={type ? 7 : 6}
+                        colSpan={type ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6}
                         className="py-12 text-center text-slate-500 dark:text-slate-400"
                       >
                         No transactions found.
@@ -670,6 +943,18 @@ const TransactionList = ({
                             key={key}
                             className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                           >
+                            {isInnerEntityRecords && (
+                              <td className="py-4 pl-4 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRecordIds.includes(record.id)}
+                                  onChange={(event) =>
+                                    toggleRecordSelection(record.id, event.target.checked)
+                                  }
+                                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                />
+                              </td>
+                            )}
                             <td className="py-4 pl-4 align-top">
                               <div className="flex flex-col gap-1">
                                 <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">

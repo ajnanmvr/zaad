@@ -15,7 +15,8 @@ import {
   FiDollarSign,
   FiFileText,
   FiHash,
-  FiUserPlus
+  FiUserPlus,
+  FiCircle,
 } from "react-icons/fi";
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
@@ -57,6 +58,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       appliesTo?: "income" | "expense" | "both";
     }>
   >([]);
+  const [recordMode, setRecordMode] = useState<
+    "normal" | "liability" | "instant-profit"
+  >("normal");
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
     type,
@@ -378,11 +382,42 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     );
     const status = liabilityStatus?.value || "liability";
     setSelectedStatus(status);
+    setRecordMode("liability");
     setRecordData((prev) => ({
       ...prev,
       status,
     }));
   };
+
+  const applyInstantProfitPreset = () => {
+    const profitStatus = filteredStatusOptions.find((item) =>
+      item.value.toLowerCase().includes("profit"),
+    );
+    const status = profitStatus?.value || "Profit";
+    setSelectedStatus(status);
+    setRecordMode("instant-profit");
+    setRecordData((prev) => ({
+      ...prev,
+      status,
+    }));
+  };
+
+  const handleModeChange = (mode: "normal" | "liability" | "instant-profit") => {
+    setRecordMode(mode);
+
+    if (mode === "liability") {
+      applyLiabilityPreset();
+      return;
+    }
+
+    if (mode === "instant-profit") {
+      applyInstantProfitPreset();
+    }
+  };
+
+  const selectedStatusMeta = filteredStatusOptions.find(
+    (statusOption) => statusOption.value === selectedStatus,
+  );
 
   return (
     <>
@@ -512,14 +547,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                             Office Expense
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          onClick={applyLiabilityPreset}
-                          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
-                        >
-                          Liability
-                        </button>
                       </div>
                     </div>
 
@@ -722,6 +749,49 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       type === "expense" ? "md:col-span-2 lg:col-span-3" : ""
                     }
                   >
+                    <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Record Mode
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                          <input
+                            type="radio"
+                            name="recordMode"
+                            value="normal"
+                            checked={recordMode === "normal"}
+                            onChange={() => handleModeChange("normal")}
+                            className="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          Normal
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                          <input
+                            type="radio"
+                            name="recordMode"
+                            value="liability"
+                            checked={recordMode === "liability"}
+                            onChange={() => handleModeChange("liability")}
+                            className="h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          Make as Liability
+                        </label>
+                        {type === "income" && (
+                          <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                            <input
+                              type="radio"
+                              name="recordMode"
+                              value="instant-profit"
+                              checked={recordMode === "instant-profit"}
+                              onChange={() => handleModeChange("instant-profit")}
+                              className="h-4 w-4 border-slate-300 text-violet-600 focus:ring-violet-500"
+                            />
+                            Make as Instant Profit
+                          </label>
+                        )}
+                      </div>
+                    </div>
+
                     <label className={labelClass}>
                       Payment Status <span className="text-rose-500">*</span>
                     </label>
@@ -732,6 +802,14 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         name="payment-status"
                         onChange={(e) => {
                           setSelectedStatus(e.target.value);
+                          const normalized = e.target.value.toLowerCase();
+                          if (normalized.includes("liability")) {
+                            setRecordMode("liability");
+                          } else if (normalized.includes("profit")) {
+                            setRecordMode("instant-profit");
+                          } else {
+                            setRecordMode("normal");
+                          }
                           setRecordData({
                             ...recordData,
                             status: e.target.value,
@@ -782,6 +860,22 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         <FiChevronDown />
                       </span>
                     </div>
+                    {selectedStatusMeta && (
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800">
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white"
+                          style={{
+                            backgroundColor:
+                              selectedStatusMeta.color || "#0F766E",
+                          }}
+                        >
+                          <FiCircle className="text-[10px]" />
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          {selectedStatusMeta.label}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -305,6 +305,12 @@ export default function EntitySectionPage({
     () => new Map(credentialOptions.map((item) => [item.id, item])),
     [credentialOptions],
   );
+  const selectedDocumentTemplate = documentDraft.documentTemplate
+    ? documentTemplateMap.get(documentDraft.documentTemplate)
+    : undefined;
+  const selectedCredentialTemplate = credentialDraft.credentialTemplate
+    ? credentialTemplateMap.get(credentialDraft.credentialTemplate)
+    : undefined;
   const detailRows = useMemo(() => {
     const rows: Array<{ label: string; value: string | number | boolean }> = [];
 
@@ -879,6 +885,23 @@ export default function EntitySectionPage({
                               </option>
                             ))}
                           </select>
+                          {selectedDocumentTemplate && (
+                            <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 dark:border-emerald-900/40 dark:bg-emerald-900/20">
+                              <span
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                style={{
+                                  backgroundColor:
+                                    selectedDocumentTemplate.color ||
+                                    "#10B981",
+                                }}
+                              >
+                                <FiFileText className="text-sm" />
+                              </span>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                {selectedDocumentTemplate.name || "Unnamed document"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -1147,6 +1170,24 @@ export default function EntitySectionPage({
                               </option>
                             ))}
                           </select>
+                          {selectedCredentialTemplate && (
+                            <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-3 py-1.5 dark:border-blue-900/40 dark:bg-blue-900/20">
+                              <span
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                style={{
+                                  backgroundColor:
+                                    selectedCredentialTemplate.color ||
+                                    "#2563EB",
+                                }}
+                              >
+                                <FiLock className="text-sm" />
+                              </span>
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                {selectedCredentialTemplate.platform ||
+                                  "Unnamed platform"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
