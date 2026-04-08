@@ -129,6 +129,7 @@ export default function TaskWorkspace({
 }: {
   mode: "mine" | "manage";
 }) {
+  const isManageView = mode === "manage";
   const { user } = useUserContext();
   const queryClient = useQueryClient();
 
@@ -461,27 +462,51 @@ export default function TaskWorkspace({
         }}
       />
 
-      <section className="relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+      <section
+        className={clsx(
+          "relative overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6",
+          isManageView
+            ? "border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20"
+            : "border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-white to-violet-50 dark:border-cyan-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20",
+        )}
+      >
+        <div
+          className={clsx(
+            "pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl",
+            isManageView ? "bg-emerald-300/20" : "bg-cyan-300/20",
+          )}
+        />
+        <div
+          className={clsx(
+            "pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full blur-3xl",
+            isManageView ? "bg-cyan-300/20" : "bg-violet-300/20",
+          )}
+        />
 
         <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <p
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider",
+                isManageView
+                  ? "border-emerald-300/60 bg-emerald-100/80 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  : "border-cyan-300/60 bg-cyan-100/80 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300",
+              )}
+            >
               <FiTarget />
               Task Management
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
-              {mode === "manage" ? "Team Task Management" : "My Tasks"}
+              {isManageView ? "Team Task Management" : "My Tasks"}
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-              {mode === "manage"
+              {isManageView
                 ? "Create, assign, monitor and optimize team execution."
-                : "Track assignments, update progress, and submit completion notes."}
+                : "Track your assigned work with a lighter, focused queue view."}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[620px]">
+          <div className={clsx("grid grid-cols-2 gap-3 sm:grid-cols-4", isManageView ? "lg:min-w-[620px]" : "lg:min-w-[560px]")}> 
             <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
               <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{stats.total}</p>
@@ -502,8 +527,9 @@ export default function TaskWorkspace({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
+      {isManageView ? (
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Calendar</p>
@@ -649,9 +675,9 @@ export default function TaskWorkspace({
               </div>
             </>
           )}
-        </div>
+          </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Timeline</p>
@@ -699,8 +725,23 @@ export default function TaskWorkspace({
               })
             )}
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm dark:border-cyan-900/30 dark:bg-slate-900/50 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-500">Focus</p>
+              <h3 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100 sm:text-base">
+                Personal task queue
+              </h3>
+            </div>
+            <p className="max-w-2xl text-xs text-slate-500 dark:text-slate-400">
+              Use filters to narrow your work and keep the list centered on assignments that need your attention.
+            </p>
+          </div>
+        </section>
+      )}
 
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">
         <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">

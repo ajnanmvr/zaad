@@ -160,6 +160,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Workspace" />
             <ul className="space-y-1.5">
+              <li>
+                <NavItem
+                  href="/"
+                  icon={<FiHome />}
+                  label="Dashboard"
+                  active={pathname === "/"}
+                />
+              </li>
               {(can("tasks.read") || can("tasks.complete") || can("tasks.manage")) && (
                 <li>
                   <NavItem
@@ -170,14 +178,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
-              <li>
-                <NavItem
-                  href="/"
-                  icon={<FiHome />}
-                  label="Dashboard"
-                  active={pathname === "/"}
-                />
-              </li>
+              {can("tasks.manage") && (
+                <li>
+                  <NavItem
+                    href="/tasks/manage"
+                    icon={<FiCheckCircle />}
+                    label="Task Management"
+                    active={pathname === "/tasks/manage"}
+                  />
+                </li>
+              )}
             </ul>
           </div>
 
@@ -273,7 +283,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <SectionTitle title="Documents & Credentials" />
+            <SectionTitle title="Documents" />
             <ul className="space-y-1.5">
               <li>
                 <NavItem
@@ -291,87 +301,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/documents/handover"}
                 />
               </li>
-
-              {can("entities.write") && (
-                <SidebarLinkGroup
-                  activeCondition={
-                    pathname.startsWith("/settings/document-types") ||
-                    pathname.startsWith("/settings/credential-platforms") ||
-                    pathname.startsWith("/settings/payment-methods") ||
-                    pathname.startsWith("/settings/payment-statuses") ||
-                    pathname.startsWith("/settings/templates")
-                  }
-                >
-                  {(handleClick, open) => (
-                    <>
-                      <Link
-                        href="#"
-                        className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                          pathname.startsWith("/settings/document-types") ||
-                          pathname.startsWith(
-                            "/settings/credential-platforms",
-                          ) ||
-                          pathname.startsWith("/settings/payment-methods") ||
-                          pathname.startsWith("/settings/payment-statuses") ||
-                          pathname.startsWith("/settings/templates")
-                            ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
-                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
-                        }`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          sidebarExpanded
-                            ? handleClick()
-                            : setSidebarExpanded(true);
-                        }}
-                      >
-                        <FiLock className="text-lg opacity-80" />
-                        Types & Platforms
-                        <FiChevronRight
-                          className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
-                        />
-                      </Link>
-                      <div className={`${open ? "mt-2 block" : "hidden"}`}>
-                        <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
-                          <li>
-                            <NavItem
-                              href="/settings/document-types"
-                              icon={<FiLayers />}
-                              label="Document Types"
-                              active={pathname === "/settings/document-types"}
-                            />
-                          </li>
-                          <li>
-                            <NavItem
-                              href="/settings/credential-platforms"
-                              icon={<FiFileText />}
-                              label="Credential Platforms"
-                              active={
-                                pathname === "/settings/credential-platforms"
-                              }
-                            />
-                          </li>
-                          <li>
-                            <NavItem
-                              href="/settings/payment-methods"
-                              icon={<FiCreditCard />}
-                              label="Payment Methods"
-                              active={pathname === "/settings/payment-methods"}
-                            />
-                          </li>
-                          <li>
-                            <NavItem
-                              href="/settings/payment-statuses"
-                              icon={<FiCheckCircle />}
-                              label="Payment Statuses"
-                              active={pathname === "/settings/payment-statuses"}
-                            />
-                          </li>
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </SidebarLinkGroup>
-              )}
             </ul>
           </div>
 
@@ -440,27 +369,83 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <SectionTitle title="Administration" />
+            <SectionTitle title="Settings & Access" />
             <ul className="space-y-1.5">
-              {can("tasks.manage") && (
-                <li>
-                  <NavItem
-                    href="/tasks/manage"
-                    icon={<FiCheckCircle />}
-                    label="Task Management"
-                    active={pathname === "/tasks/manage"}
-                  />
-                </li>
-              )}
-              {can("users.read") && (
-                <li>
-                  <NavItem
-                    href="/users"
-                    icon={<FiUserPlus />}
-                    label="System Users"
-                    active={pathname.startsWith("/users")}
-                  />
-                </li>
+              {can("entities.write") && (
+                <SidebarLinkGroup
+                  activeCondition={
+                    pathname.startsWith("/settings/document-types") ||
+                    pathname.startsWith("/settings/credential-platforms") ||
+                    pathname.startsWith("/settings/payment-methods") ||
+                    pathname.startsWith("/settings/payment-statuses") ||
+                    pathname.startsWith("/settings/templates")
+                  }
+                >
+                  {(handleClick, open) => (
+                    <>
+                      <Link
+                        href="#"
+                        className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                          pathname.startsWith("/settings/document-types") ||
+                          pathname.startsWith("/settings/credential-platforms") ||
+                          pathname.startsWith("/settings/payment-methods") ||
+                          pathname.startsWith("/settings/payment-statuses") ||
+                          pathname.startsWith("/settings/templates")
+                            ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                        }`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          sidebarExpanded
+                            ? handleClick()
+                            : setSidebarExpanded(true);
+                        }}
+                      >
+                        <FiLock className="text-lg opacity-80" />
+                        Types & Platforms
+                        <FiChevronRight
+                          className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                        />
+                      </Link>
+                      <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                        <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          <li>
+                            <NavItem
+                              href="/settings/document-types"
+                              icon={<FiLayers />}
+                              label="Document Types"
+                              active={pathname === "/settings/document-types"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/credential-platforms"
+                              icon={<FiFileText />}
+                              label="Credential Platforms"
+                              active={pathname === "/settings/credential-platforms"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/payment-methods"
+                              icon={<FiCreditCard />}
+                              label="Payment Methods"
+                              active={pathname === "/settings/payment-methods"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/payment-statuses"
+                              icon={<FiCheckCircle />}
+                              label="Payment Statuses"
+                              active={pathname === "/settings/payment-statuses"}
+                            />
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </SidebarLinkGroup>
               )}
               {(can("roles.manage") || can("settings.read")) && (
                 <li>
@@ -484,6 +469,22 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               )}
             </ul>
           </div>
+
+          {can("users.read") && (
+            <div>
+              <SectionTitle title="Administration" />
+              <ul className="space-y-1.5">
+                <li>
+                  <NavItem
+                    href="/users"
+                    icon={<FiUserPlus />}
+                    label="System Users"
+                    active={pathname.startsWith("/users")}
+                  />
+                </li>
+              </ul>
+            </div>
+          )}
         </nav>
       </div>
     </aside>
