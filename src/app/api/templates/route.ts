@@ -24,6 +24,18 @@ function isValidPaymentIcon(value: string): boolean {
   return PAYMENT_TEMPLATE_ICON_KEYS.includes(value as (typeof PAYMENT_TEMPLATE_ICON_KEYS)[number]);
 }
 
+function colorFromSeed(seed: string): string {
+  const input = String(seed || "credential");
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 70% 45%)`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -96,6 +108,7 @@ export async function GET(request: NextRequest) {
             id: item._id.toString(),
             label: item.platform,
             platform: item.platform,
+            color: colorFromSeed(item.platform),
             published: item.published !== false,
             unpublished: item.published === false,
             createdAt: item.createdAt,
@@ -270,6 +283,7 @@ export async function GET(request: NextRequest) {
           id: item._id.toString(),
           label: item.platform,
           platform: item.platform,
+          color: colorFromSeed(item.platform),
           published: item.published !== false,
           unpublished: item.published === false,
         })),
@@ -661,6 +675,266 @@ export async function DELETE(request: NextRequest) {
 
     return Response.json(
       { message: getServiceErrorMessage(error, "Error deleting template") },
+      { status }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
+
+    const body = await request.json();
+    const templateId = String(body?.id || "").trim();
+    const type = String(body?.type || "").trim();
+
+    if (!templateId || !type) {
+      return Response.json(
+        { message: "Missing template id or type" },
+        { status: 400 }
+      );
+    }
+
+    if (type === "document") {
+      const name = String(body?.name || "").trim();
+      if (!name) {
+        return Response.json(
+          { message: "Document name is required" },
+          { status: 400 }
+        );
+      }
+
+      const existingByName = await DocumentTemplate.findOne({
+        name,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByName) {
+        return Response.json(
+          { message: "Document template with this name already exists" },
+          { status: 409 }
+        );
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+      const update: Record<string, unknown> = { name };
+      if (selectedColor) {
+        update.color = selectedColor;
+      }
+
+      const template = await DocumentTemplate.findByIdAndUpdate(
+        templateId,
+        update,
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Document template not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Document template updated successfully",
+          template: {
+            id: template._id.toString(),
+            name: template.name,
+            color: template.color,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (type === "credential") {
+      const platform = String(body?.platform || "").trim();
+      if (!platform) {
+        return Response.json(
+          { message: "Credential platform is required" },
+          { status: 400 }
+        );
+      }
+
+      const existingByPlatform = await CredentialTemplate.findOne({
+        platform,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByPlatform) {
+        return Response.json(
+          { message: "Credential template with this platform already exists" },
+          { status: 409 }
+        );
+      }
+
+      const template = await CredentialTemplate.findByIdAndUpdate(
+        templateId,
+        { platform },
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Credential template not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Credential template updated successfully",
+          template: {
+            id: template._id.toString(),
+            platform: template.platform,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (type === "payment") {
+      const method = String(body?.method || "").trim();
+      if (!method) {
+        return Response.json(
+          { message: "Payment method is required" },
+          { status: 400 }
+        );
+      }
+
+      const selectedIcon = String(body?.icon || DEFAULT_PAYMENT_TEMPLATE_ICON);
+      if (!isValidPaymentIcon(selectedIcon)) {
+        return Response.json(
+          { message: "Invalid payment icon" },
+          { status: 400 }
+        );
+      }
+
+      const existingByMethod = await PaymentTemplate.findOne({
+        method,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByMethod) {
+        return Response.json(
+          { message: "Payment method template already exists" },
+          { status: 409 }
+        );
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+      const update: Record<string, unknown> = {
+        method,
+        icon: selectedIcon,
+      };
+      if (selectedColor) {
+        update.color = selectedColor;
+      }
+
+      const template = await PaymentTemplate.findByIdAndUpdate(
+        templateId,
+        update,
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Payment method template not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Payment method template updated successfully",
+          template: {
+            id: template._id.toString(),
+            method: template.method,
+            color: template.color,
+            icon: template.icon,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (type === "payment-status") {
+      const statusLabel = String(body?.status || "").trim();
+      if (!statusLabel) {
+        return Response.json(
+          { message: "Payment status is required" },
+          { status: 400 }
+        );
+      }
+
+      const appliesTo = ["income", "expense", "both"].includes(
+        String(body?.appliesTo || "").toLowerCase()
+      )
+        ? String(body.appliesTo).toLowerCase()
+        : "both";
+
+      const existingByStatus = await PaymentStatusTemplate.findOne({
+        status: statusLabel,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByStatus) {
+        return Response.json(
+          { message: "Payment status template already exists" },
+          { status: 409 }
+        );
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+      const update: Record<string, unknown> = {
+        status: statusLabel,
+        appliesTo,
+      };
+      if (selectedColor) {
+        update.color = selectedColor;
+      }
+
+      const template = await PaymentStatusTemplate.findByIdAndUpdate(
+        templateId,
+        update,
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Payment status template not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Payment status template updated successfully",
+          template: {
+            id: template._id.toString(),
+            status: template.status,
+            color: template.color,
+            appliesTo: template.appliesTo,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    return Response.json(
+      { message: "Invalid template type" },
+      { status: 400 }
+    );
+  } catch (error) {
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error updating template:", error);
+    }
+
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error updating template") },
       { status }
     );
   }

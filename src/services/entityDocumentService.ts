@@ -143,7 +143,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
 
   const [documents, total] = await Promise.all([
     EntityDocument.find({ archived: { $ne: true } })
-      .populate("documentTemplate", "name")
+      .populate("documentTemplate", "name color")
       .select("entity documentTemplate issueDate expiryDate notes")
       .sort({ expiryDate: 1, createdAt: -1 })
       .skip(skip)
@@ -170,6 +170,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
       id: doc._id,
       documentTemplate: doc.documentTemplate?._id || doc.documentTemplate,
       name: doc.documentTemplate?.name || "",
+      templateColor: doc.documentTemplate?.color,
       issueDate: doc.issueDate,
       expiryDate: doc.expiryDate,
       notes: doc.notes,

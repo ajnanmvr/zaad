@@ -17,6 +17,7 @@ import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import { toast } from "react-hot-toast";
 import AddExpiryDocumentModal from "@/components/Modals/AddExpiryDocumentModal";
+import { resolveAvatarColorWithFallback } from "@/components/entity/EntityProfileFrame";
 
 function formatRelativeExpiry(daysLeft: number | null) {
   if (daysLeft === null) {
@@ -452,6 +453,10 @@ const ExpiryDocumentsPage = () => {
                     const entityId = item.entity?.id;
                     const entityHref = getEntityHref(entityId, entityType);
                     const isEditing = editingDocumentId === item.id;
+                    const documentAvatarColor = resolveAvatarColorWithFallback(
+                      item.templateColor,
+                      item.name || "Document",
+                    );
 
                     return (
                       <Fragment key={item.id}>
@@ -475,7 +480,10 @@ const ExpiryDocumentsPage = () => {
                         </td>
                         <td className="py-4 pl-4">
                           <div className="flex items-center gap-3">
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                            <span
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-white"
+                              style={{ backgroundColor: documentAvatarColor }}
+                            >
                               <FiFileText />
                             </span>
                             <div className="flex flex-col">

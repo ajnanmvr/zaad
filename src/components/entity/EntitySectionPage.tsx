@@ -97,6 +97,7 @@ type TemplateOption = {
   id: string;
   name?: string;
   platform?: string;
+  color?: string;
 };
 
 type OverviewResponse = {
@@ -296,6 +297,14 @@ export default function EntitySectionPage({
   );
   const documentOptions = documentTemplateRes?.options || [];
   const credentialOptions = credentialTemplateRes?.options || [];
+  const documentTemplateMap = useMemo(
+    () => new Map(documentOptions.map((item) => [item.id, item])),
+    [documentOptions],
+  );
+  const credentialTemplateMap = useMemo(
+    () => new Map(credentialOptions.map((item) => [item.id, item])),
+    [credentialOptions],
+  );
   const detailRows = useMemo(() => {
     const rows: Array<{ label: string; value: string | number | boolean }> = [];
 
@@ -943,6 +952,13 @@ export default function EntitySectionPage({
                       {sortedDocuments.map((doc, index) => {
                         const isArchived = Boolean(doc.archived);
                         const status = calculateStatus(doc.expiryDate || "");
+                        const templateMeta = doc.documentTemplate
+                          ? documentTemplateMap.get(doc.documentTemplate)
+                          : undefined;
+                        const docAvatarColor = resolveAvatarColorWithFallback(
+                          templateMeta?.color,
+                          templateMeta?.name || doc.name || "Document",
+                        );
                         return (
                           <div
                             key={doc._id}
@@ -954,7 +970,12 @@ export default function EntitySectionPage({
                           >
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                               <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                <FiFileText className="text-slate-400" />
+                                <span
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                  style={{ backgroundColor: docAvatarColor }}
+                                >
+                                  <FiFileText className="text-sm" />
+                                </span>
                                 {doc.name || "Untitled document"}
                               </p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -1202,6 +1223,13 @@ export default function EntitySectionPage({
                         );
                         const plainSecret =
                           item.credential || item.password || "";
+                        const templateMeta = item.credentialTemplate
+                          ? credentialTemplateMap.get(item.credentialTemplate)
+                          : undefined;
+                        const credentialAvatarColor = resolveAvatarColorWithFallback(
+                          templateMeta?.color,
+                          templateMeta?.platform || item.platform || "Credential",
+                        );
 
                         return (
                           <div
@@ -1214,7 +1242,12 @@ export default function EntitySectionPage({
                           >
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                               <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                <FiLayers className="text-slate-400" />
+                                <span
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                  style={{ backgroundColor: credentialAvatarColor }}
+                                >
+                                  <FiLock className="text-sm" />
+                                </span>
                                 Platform: {item.platform || "Unknown platform"}
                               </p>
                               <p className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

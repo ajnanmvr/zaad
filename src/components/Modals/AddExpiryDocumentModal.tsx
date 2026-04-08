@@ -28,7 +28,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
     color?: string;
     type: string;
   } | null>(null);
-  const [documentTemplateOptions, setDocumentTemplateOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [documentTemplateOptions, setDocumentTemplateOptions] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     entity: "",
@@ -156,6 +156,9 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
     "w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-800 outline-none transition focus:border-amber-500 disabled:cursor-not-allowed disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-amber-400 dark:disabled:bg-slate-800";
   const labelClass = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500";
   const visibleSuggestions = searchSuggestions.slice(0, SUGGESTION_LIMIT);
+  const selectedDocumentTemplate = documentTemplateOptions.find(
+    (option) => option.id === formData.documentTemplate,
+  );
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-10 backdrop-blur-sm">
@@ -288,6 +291,19 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
                 ))}
               </select>
             </div>
+            {selectedDocumentTemplate ? (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-1.5 dark:border-amber-900/40 dark:bg-amber-900/20">
+                <span
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                  style={{ backgroundColor: selectedDocumentTemplate.color || "#F59E0B" }}
+                >
+                  <FiFileText className="text-sm" />
+                </span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  {selectedDocumentTemplate.name || "Unnamed document"}
+                </span>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

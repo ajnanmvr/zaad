@@ -95,19 +95,23 @@ const statusBadgeMap: Record<TaskStatus, string> = {
   cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
-const priorityCalendarChipMap: Record<TaskPriority, string> = {
-  low: "border-l-slate-400 bg-slate-100/90 text-slate-700 dark:bg-slate-800/90 dark:text-slate-200",
-  medium: "border-l-sky-500 bg-sky-100/90 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200",
-  high: "border-l-amber-500 bg-amber-100/90 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200",
-  urgent: "border-l-rose-500 bg-rose-100/90 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
-};
-
 const priorityDotMap: Record<TaskPriority, string> = {
   low: "bg-slate-400",
   medium: "bg-sky-500",
   high: "bg-amber-500",
   urgent: "bg-rose-500",
 };
+
+const calendarUserDotPalette = [
+  "bg-cyan-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-fuchsia-500",
+  "bg-orange-500",
+  "bg-lime-500",
+  "bg-red-500",
+  "bg-indigo-500",
+];
 
 const calendarUserPalette = [
   "border-l-cyan-500 bg-cyan-100/90 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-200",
@@ -119,19 +123,6 @@ const calendarUserPalette = [
   "border-l-red-500 bg-red-100/90 text-red-700 dark:bg-red-900/40 dark:text-red-200",
   "border-l-indigo-500 bg-indigo-100/90 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200",
 ];
-
-function dayKeyToLocalDate(dayKey: string) {
-  const [yearRaw, monthRaw, dayRaw] = dayKey.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-    return new Date();
-  }
-
-  return new Date(year, month - 1, day);
-}
 
 export default function TaskWorkspace({
   mode,
@@ -148,7 +139,6 @@ export default function TaskWorkspace({
   const [page, setPage] = useState(0);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [showAllUsersInCalendar, setShowAllUsersInCalendar] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -251,6 +241,25 @@ export default function TaskWorkspace({
     }, {});
   }, [calendarTasks, canManage, mode, showAllUsersInCalendar]);
 
+  const calendarUserDotMap = useMemo(() => {
+    if (!(mode === "manage" && canManage && showAllUsersInCalendar)) {
+      return {} as Record<string, string>;
+    }
+
+    const uniqueIds = Array.from(
+      new Set(
+        calendarTasks
+          .map((task) => task.assignedTo?._id)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+
+    return uniqueIds.reduce<Record<string, string>>((acc, userId, index) => {
+      acc[userId] = calendarUserDotPalette[index % calendarUserDotPalette.length];
+      return acc;
+    }, {});
+  }, [calendarTasks, canManage, mode, showAllUsersInCalendar]);
+
   const calendarTasksByDay = useMemo(() => {
     return calendarTasks.reduce<Record<string, CalendarTask[]>>((acc, task) => {
       if (!task.dueDate) {
@@ -303,13 +312,6 @@ export default function TaskWorkspace({
     return legendItems;
   }, [calendarTasks, calendarUserColorMap, canManage, mode, showAllUsersInCalendar]);
 
-  const selectedDayTasks = useMemo(() => {
-    if (!selectedDay) {
-      return [] as CalendarTask[];
-    }
-    return calendarTasksByDay[selectedDay] || [];
-  }, [calendarTasksByDay, selectedDay]);
-
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((item) => item.status === "completed").length;
@@ -322,6 +324,27 @@ export default function TaskWorkspace({
     }).length;
 
     return { total, completed, inProgress, overdue };
+  }, [tasks]);
+
+  const upcomingTasks = useMemo(() => {
+    const now = Date.now();
+
+    return [...tasks]
+      .filter((task) => task.dueDate && task.status !== "completed" && task.status !== "cancelled")
+      .sort((a, b) => {
+        const aTime = new Date(a.dueDate as string).getTime();
+        const bTime = new Date(b.dueDate as string).getTime();
+
+        const aUpcomingBucket = aTime >= now ? 0 : 1;
+        const bUpcomingBucket = bTime >= now ? 0 : 1;
+
+        if (aUpcomingBucket !== bUpcomingBucket) {
+          return aUpcomingBucket - bUpcomingBucket;
+        }
+
+        return aTime - bTime;
+      })
+      .slice(0, 8);
   }, [tasks]);
 
   const createTaskMutation = useMutation({
@@ -479,200 +502,204 @@ export default function TaskWorkspace({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Calendar</p>
-            <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-slate-100">
-              Tasks Timeline by Due Date
-            </h3>
-          </div>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Calendar</p>
+              <h3 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100 sm:text-base">
+                Mini Task Calendar
+              </h3>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <FiChevronLeft />
-            </button>
-            <p className="min-w-[160px] text-center text-sm font-bold text-slate-700 dark:text-slate-200">
-              {format(viewMonth, "MMMM yyyy")}
-            </p>
-            <button
-              type="button"
-              onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <FiChevronRight />
-            </button>
-
-            {mode === "manage" && canManage ? (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setShowAllUsersInCalendar((prev) => !prev)}
-                className={clsx(
-                  "ml-1 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide",
-                  showAllUsersInCalendar
-                    ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700/60 dark:bg-cyan-900/30 dark:text-cyan-300"
-                    : "border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300",
-                )}
+                onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                {showAllUsersInCalendar ? <FiColumns /> : <FiGrid />}
-                {showAllUsersInCalendar ? "All Users" : "Only My Tasks"}
+                <FiChevronLeft />
               </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3 text-xs">
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-700">
-            <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.low)} /> Low
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-700">
-            <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.medium)} /> Medium
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-700">
-            <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.high)} /> High
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-700">
-            <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.urgent)} /> Urgent
-          </span>
-        </div>
-
-        {calendarUserLegend.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            {calendarUserLegend.map((entry) => (
-              <span
-                key={entry.userId}
-                className={clsx("inline-flex items-center rounded-full border-l-4 px-2.5 py-1 font-semibold", entry.colorClass)}
+              <p className="min-w-[140px] text-center text-xs font-bold text-slate-700 dark:text-slate-200 sm:text-sm">
+                {format(viewMonth, "MMMM yyyy")}
+              </p>
+              <button
+                type="button"
+                onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                {entry.label}
-              </span>
-            ))}
-          </div>
-        ) : null}
+                <FiChevronRight />
+              </button>
 
-        {calendarQuery.isLoading ? (
-          <div className="mt-4 rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
-            Loading calendar...
-          </div>
-        ) : (
-          <>
-            <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-              <div>Mon</div>
-              <div>Tue</div>
-              <div>Wed</div>
-              <div>Thu</div>
-              <div>Fri</div>
-              <div>Sat</div>
-              <div>Sun</div>
+              {mode === "manage" && canManage ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllUsersInCalendar((prev) => !prev)}
+                  className={clsx(
+                    "ml-1 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide",
+                    showAllUsersInCalendar
+                      ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700/60 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "border-slate-300 text-slate-600 dark:border-slate-700 dark:text-slate-300",
+                  )}
+                >
+                  {showAllUsersInCalendar ? <FiColumns /> : <FiGrid />}
+                  {showAllUsersInCalendar ? "All Users" : "Only My Tasks"}
+                </button>
+              ) : null}
             </div>
+          </div>
 
-            <div className="mt-1 grid grid-cols-7 gap-1">
-              {calendarDays.map((day) => {
-                const dayKey = format(day, "yyyy-MM-dd");
-                const dayTasks = calendarTasksByDay[dayKey] || [];
-                const muted = !isSameMonth(day, viewMonth);
-                const isToday = isSameDay(day, new Date());
-                const isSelected = selectedDay === dayKey;
+          <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-700">
+              <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.low)} /> Low
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-700">
+              <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.medium)} /> Medium
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-700">
+              <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.high)} /> High
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-700">
+              <span className={clsx("h-2 w-2 rounded-full", priorityDotMap.urgent)} /> Urgent
+            </span>
+          </div>
+
+          {calendarUserLegend.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+              {calendarUserLegend.map((entry) => (
+                <span
+                  key={entry.userId}
+                  className={clsx("inline-flex items-center rounded-full border-l-4 px-2 py-0.5 font-semibold", entry.colorClass)}
+                >
+                  {entry.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {calendarQuery.isLoading ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
+              Loading calendar...
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+                <div>Sun</div>
+              </div>
+
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {calendarDays.map((day) => {
+                  const dayKey = format(day, "yyyy-MM-dd");
+                  const dayTasks = calendarTasksByDay[dayKey] || [];
+                  const muted = !isSameMonth(day, viewMonth);
+                  const isToday = isSameDay(day, new Date());
+
+                  return (
+                    <button
+                      key={dayKey}
+                      type="button"
+                      className={clsx(
+                        "min-h-[62px] rounded-lg border p-1.5 text-left transition",
+                        muted
+                          ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
+                        isToday && "border-cyan-300 dark:border-cyan-700",
+                      )}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[11px] font-bold">{format(day, "d")}</span>
+                        {dayTasks.length > 0 ? (
+                          <span className="rounded-full bg-slate-900 px-1 py-0.5 text-[9px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
+                            {dayTasks.length}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {dayTasks.slice(0, 5).map((task) => {
+                          const userKey = task.assignedTo?._id || "unknown";
+                          const dotTone =
+                            mode === "manage" && canManage && showAllUsersInCalendar
+                              ? calendarUserDotMap[userKey] || calendarUserDotPalette[0]
+                              : priorityDotMap[task.priority];
+
+                          return (
+                            <span
+                              key={task._id}
+                              className={clsx("h-2 w-2 rounded-full", dotTone)}
+                              title={task.title}
+                            />
+                          );
+                        })}
+                        {dayTasks.length > 5 ? (
+                          <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">
+                            +{dayTasks.length - 5}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Timeline</p>
+              <h3 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100 sm:text-base">
+                Upcoming Tasks
+              </h3>
+            </div>
+            <span className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-300">
+              {upcomingTasks.length} shown
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {upcomingTasks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                No upcoming tasks in current list filters.
+              </div>
+            ) : (
+              upcomingTasks.map((task) => {
+                const dueTime = new Date(task.dueDate as string).getTime();
+                const isOverdue = dueTime < Date.now();
 
                 return (
-                  <button
-                    key={dayKey}
-                    type="button"
-                    onClick={() => setSelectedDay(dayKey)}
-                    className={clsx(
-                      "min-h-[122px] rounded-xl border p-2 text-left transition",
-                      muted
-                        ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
-                      isSelected && "ring-2 ring-cyan-300 dark:ring-cyan-700",
-                      isToday && "border-cyan-300 dark:border-cyan-700",
-                    )}
+                  <div
+                    key={task._id}
+                    className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50"
                   >
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-bold">{format(day, "d")}</span>
-                      {dayTasks.length > 0 ? (
-                        <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
-                          {dayTasks.length}
-                        </span>
-                      ) : null}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {task.title}
+                      </p>
+                      <span className={clsx("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase", priorityBadgeMap[task.priority])}>
+                        {task.priority}
+                      </span>
                     </div>
-
-                    <div className="space-y-1">
-                      {dayTasks.slice(0, 3).map((task) => {
-                        const userKey = task.assignedTo?._id || "unknown";
-                        const tone =
-                          mode === "manage" && canManage && showAllUsersInCalendar
-                            ? calendarUserColorMap[userKey] || calendarUserPalette[0]
-                            : priorityCalendarChipMap[task.priority];
-
-                        return (
-                          <div
-                            key={task._id}
-                            className={clsx(
-                              "truncate rounded-md border-l-4 px-1.5 py-1 text-[10px] font-semibold",
-                              tone,
-                            )}
-                            title={task.title}
-                          >
-                            <span className="mr-1 inline-block align-middle">
-                              <span
-                                className={clsx(
-                                  "inline-block h-1.5 w-1.5 rounded-full",
-                                  priorityDotMap[task.priority],
-                                )}
-                              />
-                            </span>
-                            {mode === "manage" && canManage && showAllUsersInCalendar
-                              ? `${task.assignedTo?.username || "user"}: ${task.title}`
-                              : task.title}
-                          </div>
-                        );
-                      })}
-                      {dayTasks.length > 3 ? (
-                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                          +{dayTasks.length - 3} more
-                        </p>
-                      ) : null}
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>{task.assignedTo?.fullname || task.assignedTo?.username || "Unassigned"}</span>
+                      <span>•</span>
+                      <span className={clsx(isOverdue && "text-rose-600 dark:text-rose-300")}>
+                        Due {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date"}
+                      </span>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedDay ? (
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
-                  {format(dayKeyToLocalDate(selectedDay), "EEEE, MMMM d, yyyy")} • {selectedDayTasks.length} task(s)
-                </h4>
-                {selectedDayTasks.length === 0 ? (
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">No tasks due on this day.</p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {selectedDayTasks.map((task) => (
-                      <div
-                        key={task._id}
-                        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/70"
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">{task.title}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Assignee: {task.assignedTo?.fullname || task.assignedTo?.username || "Unknown"}
-                          </p>
-                        </div>
-                        <span className={clsx("rounded-full px-2 py-1 text-[10px] font-semibold uppercase", priorityBadgeMap[task.priority])}>
-                          {task.priority}
-                        </span>
-                      </div>
-                    ))}
                   </div>
-                )}
-              </div>
-            ) : null}
-          </>
-        )}
+                );
+              })
+            )}
+          </div>
+        </div>
       </section>
 
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">

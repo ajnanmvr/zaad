@@ -7,6 +7,9 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import {
   FiAlertCircle,
+  FiEdit2,
+  FiFileText,
+  FiLock,
   FiX,
   FiPlus,
   FiTrash2,
@@ -67,9 +70,13 @@ function TypePlatformManager({
   const [selectedIcon, setSelectedIcon] = useState<TPaymentTemplateIcon>(
     DEFAULT_PAYMENT_TEMPLATE_ICON,
   );
+  const [selectedAppliesTo, setSelectedAppliesTo] = useState<
+    "income" | "expense" | "both"
+  >("both");
   const [colorPickerKey, setColorPickerKey] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmUnpublishId, setConfirmUnpublishId] = useState<string | null>(null);
 
@@ -132,18 +139,40 @@ function TypePlatformManager({
   };
 
   const openAddModal = () => {
+    setEditingId(null);
     setValue("");
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+    setSelectedAppliesTo("both");
+    setColorPickerKey((prev) => prev + 1);
+    setShowAddForm(true);
+  };
+
+  const openEditModal = (item: ItemOption) => {
+    setEditingId(item.id);
+    setValue(
+      type === "document"
+        ? item.name || ""
+        : type === "credential"
+          ? item.platform || ""
+          : type === "payment"
+            ? item.method || ""
+            : item.status || "",
+    );
+    setSelectedColor(item.color || "");
+    setSelectedIcon((item.icon || DEFAULT_PAYMENT_TEMPLATE_ICON) as TPaymentTemplateIcon);
+    setSelectedAppliesTo(item.appliesTo || "both");
     setColorPickerKey((prev) => prev + 1);
     setShowAddForm(true);
   };
 
   const closeAddModal = () => {
     setShowAddForm(false);
+    setEditingId(null);
     setValue("");
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+    setSelectedAppliesTo("both");
   };
 
   const handleAdd = async (event: FormEvent) => {
@@ -156,8 +185,9 @@ function TypePlatformManager({
 
     setIsAdding(true);
     try {
-      await axios.post("/api/templates", {
+      const payload = {
         type,
+        ...(editingId ? { id: editingId } : {}),
         ...(type === "document" || type === "payment" || type === "payment-status"
           ? { color: selectedColor || undefined }
           : {}),
@@ -167,13 +197,21 @@ function TypePlatformManager({
             ? { platform: value.trim() }
             : type === "payment"
               ? { method: value.trim(), icon: selectedIcon }
-              : { status: value.trim() }),
-      });
+              : { status: value.trim(), appliesTo: selectedAppliesTo }),
+      };
 
-      toast.success(`${title.slice(0, -1)} added successfully`);
+      if (editingId) {
+        await axios.put("/api/templates", payload);
+      } else {
+        await axios.post("/api/templates", payload);
+      }
+
+      toast.success(`${title.slice(0, -1)} ${editingId ? "updated" : "added"} successfully`);
       setValue("");
       setSelectedColor("");
       setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
+      setSelectedAppliesTo("both");
+      setEditingId(null);
       setColorPickerKey((prev) => prev + 1);
       setShowAddForm(false);
       await queryClient.invalidateQueries({ queryKey });
@@ -259,10 +297,12 @@ function TypePlatformManager({
                   <FiPlus /> Add {title.slice(0, -1)}
                 </p>
                 <h3 className="mt-3 text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                  Add {title.slice(0, -1)}
+                  {editingId ? "Edit" : "Add"} {title.slice(0, -1)}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Create a new {title.slice(0, -1).toLowerCase()} and publish it for use across the app.
+                  {editingId
+                    ? `Update this ${title.slice(0, -1).toLowerCase()} and save your changes.`
+                    : `Create a new ${title.slice(0, -1).toLowerCase()} and publish it for use across the app.`}
                 </p>
               </div>
               <button
@@ -307,7 +347,7 @@ function TypePlatformManager({
                     accentClasses.button,
                   )}
                 >
-                  {isAdding ? "Adding..." : "Save"}
+                  {isAdding ? (editingId ? "Saving..." : "Adding...") : "Save"}
                 </button>
               </div>
 
@@ -346,6 +386,27 @@ function TypePlatformManager({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {type === "payment-status" && (
+                <div>
+                  <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Apply Status To
+                  </p>
+                  <select
+                    value={selectedAppliesTo}
+                    onChange={(event) =>
+                      setSelectedAppliesTo(
+                        event.target.value as "income" | "expense" | "both",
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <option value="both">Both (Income + Expense)</option>
+                    <option value="income">Income Only</option>
+                    <option value="expense">Expense Only</option>
+                  </select>
                 </div>
               )}
             </form>
@@ -390,7 +451,23 @@ function TypePlatformManager({
                         </span>
                       );
                     })()}
-                  {type !== "payment" && item.color && (
+                  {type === "document" && (
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white"
+                      style={{ backgroundColor: item.color || "#F59E0B" }}
+                    >
+                      <FiFileText className="text-sm" />
+                    </span>
+                  )}
+                  {type === "credential" && (
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white"
+                      style={{ backgroundColor: item.color || "#3C50E0" }}
+                    >
+                      <FiLock className="text-sm" />
+                    </span>
+                  )}
+                  {type === "payment-status" && item.color && (
                     <span
                       className="inline-block h-3 w-3 rounded-full ring-1 ring-black/10"
                       style={{ backgroundColor: item.color }}
@@ -424,6 +501,14 @@ function TypePlatformManager({
                 >
                   {item.usageCount || 0} {usageLabel}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => openEditModal(item)}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-slate-700"
+                  title="Edit"
+                >
+                  <FiEdit2 />
+                </button>
                 <button
                   type="button"
                   onClick={() => setConfirmUnpublishId(item.id)}

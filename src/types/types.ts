@@ -99,6 +99,7 @@ export type TExpiryDocumentItem = {
   id: string;
   documentTemplate?: string;
   name?: string;
+  templateColor?: string;
   issueDate?: string;
   expiryDate?: string;
   notes?: string;
