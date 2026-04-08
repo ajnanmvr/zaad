@@ -1,7 +1,10 @@
 import AddEmployee from "@/components/Forms/AddEmployee"
+import { Suspense } from "react"
 export default function AddEmployeeInside() {
 
     return (
-        <AddEmployee />
+        <Suspense fallback={null}>
+            <AddEmployee />
+        </Suspense>
     )
 }

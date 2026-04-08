@@ -6,7 +6,7 @@ import axios from "axios";
 import { debounce } from "lodash";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
 import clsx from "clsx";
 import EntityAvatar from "../common/EntityAvatar";
@@ -58,7 +58,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         fetchEntitySuggestions(input, type);
     }, 300);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             if (edit) {
                 const { data } = await axios.get(`/api/invoice/${edit}?editmode`);
@@ -86,10 +86,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         } catch (error) {
             console.log(error);
         }
-    }
+    }, [edit]);
     useEffect(() => {
         fetchData()
-    }, [])
+    }, [fetchData])
 
     const handleSubmit = async (e: any) => {
         e.preventDefault()

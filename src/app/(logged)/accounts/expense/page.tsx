@@ -1,9 +1,12 @@
 import AddRecord from '@/components/Forms/AddRecord'
 import React from 'react'
+import { Suspense } from 'react'
 
 function expensePage() {
   return (
-    <AddRecord type="expense"/>
+    <Suspense fallback={null}>
+      <AddRecord type="expense"/>
+    </Suspense>
   )
 }
 

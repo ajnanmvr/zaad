@@ -295,8 +295,14 @@ export default function EntitySectionPage({
     entity?.company?.color || details?.company?.color,
     companyName,
   );
-  const documentOptions = documentTemplateRes?.options || [];
-  const credentialOptions = credentialTemplateRes?.options || [];
+  const documentOptions = useMemo(
+    () => documentTemplateRes?.options || [],
+    [documentTemplateRes?.options],
+  );
+  const credentialOptions = useMemo(
+    () => credentialTemplateRes?.options || [],
+    [credentialTemplateRes?.options],
+  );
   const documentTemplateMap = useMemo(
     () => new Map(documentOptions.map((item) => [item.id, item])),
     [documentOptions],

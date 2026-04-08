@@ -75,7 +75,7 @@ const HandoverPage = () => {
     onError: () => toast.error("Failed to delete record"),
   });
 
-  const rows = data?.data || [];
+  const rows = useMemo(() => data?.data || [], [data?.data]);
   const pagination = data?.pagination;
 
   const handoverStats = useMemo(() => {

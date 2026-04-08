@@ -206,7 +206,7 @@ export async function PUT(
       ...safePayload
     } = reqBody || {};
 
-    const existingRecord = await Records.findById(id).lean();
+    const existingRecord = await Records.findById(id).lean<any>();
 
     if (!existingRecord) {
       return Response.json({ error: "Record not found" }, { status: 404 });

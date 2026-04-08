@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { useRef } from "react"
 import ReactToPrint from "react-to-print"
 import { useQuery } from "@tanstack/react-query"
+import Image from "next/image"
 
 function SingleInvoice() {
   const { id }: { id: string } = useParams()
@@ -35,7 +36,14 @@ function SingleInvoice() {
         } content={() => componentRef.current} />
 
         <div className="relative" ref={componentRef}>
-          <img src="/images/invoice.jpg" alt="quotation Bg" />
+          <Image
+            src="/images/invoice.jpg"
+            alt="quotation Bg"
+            width={1400}
+            height={2000}
+            className="h-auto w-full"
+            priority
+          />
           <div className="absolute top-0 text-[#000000] flex items-center w-full mt-[35%] flex-col uppercase px-20">
 
             {invoice?.quotation !== "true" ? <>
