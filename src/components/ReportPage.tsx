@@ -1,3 +1,5 @@
+import PrintReportButton from "@/components/common/PrintReportButton";
+
 const toTitleCase = (value: string) =>
   value
     .split(/[_\s-]+/)
@@ -35,7 +37,13 @@ const ReportPage = ({ profitsData, accountsData }: { profitsData: any, accountsD
   })();
 
   return (
-    <div>
+    <div id="generic-financial-report-root">
+      <div className="mb-3 flex justify-end">
+        <PrintReportButton
+          targetId="generic-financial-report-root"
+          reportTitle="Financial Report"
+        />
+      </div>
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2">General Information</h2>
         <table className="w-full bg-white border border-gray-300">

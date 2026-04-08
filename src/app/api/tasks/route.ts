@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const priority = params.get("priority") || "";
     const assignee = params.get("assignee") || "";
     const search = params.get("search") || "";
+    const date = params.get("date") || "";
     const page = Number(params.get("page") || "0");
     const limit = Number(params.get("limit") || "20");
 
@@ -39,6 +40,23 @@ export async function GET(request: NextRequest) {
         { title: { $regex: search.trim(), $options: "i" } },
         { description: { $regex: search.trim(), $options: "i" } },
       ];
+    }
+
+    if (date) {
+      const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+      if (!isValidDate) {
+        return Response.json({ error: "Invalid date format. Use YYYY-MM-DD." }, { status: 400 });
+      }
+
+      const start = new Date(`${date}T00:00:00`);
+      if (Number.isNaN(start.getTime())) {
+        return Response.json({ error: "Invalid date provided." }, { status: 400 });
+      }
+
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+
+      query.dueDate = { $gte: start, $lt: end };
     }
 
     const [tasks, total] = await Promise.all([

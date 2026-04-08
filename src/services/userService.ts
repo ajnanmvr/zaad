@@ -10,12 +10,17 @@ type TListUsersInput = {
   limit: number;
   search: string;
   showDeleted: boolean;
+  role?: string;
+  sortBy?: "newest" | "oldest" | "username-asc" | "username-desc" | "fullname-asc" | "fullname-desc";
 };
 
 export async function listUsers(input: TListUsersInput) {
-  const { pageNumber, limit, search, showDeleted } = input;
+  const { pageNumber, limit, search, showDeleted, role, sortBy = "newest" } = input;
 
   const query: any = { published: !showDeleted };
+  if (role && role !== "all") {
+    query.role = role;
+  }
   if (search) {
     query.$or = [
       { username: { $regex: search, $options: "i" } },
@@ -23,11 +28,21 @@ export async function listUsers(input: TListUsersInput) {
     ];
   }
 
+  const sortMap: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    "username-asc": { username: 1 },
+    "username-desc": { username: -1 },
+    "fullname-asc": { fullname: 1 },
+    "fullname-desc": { fullname: -1 },
+  };
+  const sort = sortMap[sortBy] || sortMap.newest;
+
   const total = await User.countDocuments(query);
 
   const users = await User.find(query)
     .select("username fullname role createdAt updatedAt deletedAt")
-    .sort({ createdAt: -1 })
+    .sort(sort)
     .skip(pageNumber * limit)
     .limit(limit);
 

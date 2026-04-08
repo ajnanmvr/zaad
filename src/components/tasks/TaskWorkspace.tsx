@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import clsx from "clsx";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   FiAlertCircle,
   FiChevronLeft,
@@ -132,12 +133,27 @@ export default function TaskWorkspace({
   const isManageView = mode === "manage";
   const { user } = useUserContext();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const dateFromQuery = searchParams.get("date") || "";
+  const normalizedDateFromQuery = useMemo(() => {
+    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateFromQuery);
+    if (!isValidDate) {
+      return "";
+    }
+
+    const parsed = new Date(`${dateFromQuery}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? "" : dateFromQuery;
+  }, [dateFromQuery]);
 
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
   const [search, setSearch] = useState("");
   const [assignee, setAssignee] = useState("");
   const [page, setPage] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(normalizedDateFromQuery);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [showAllUsersInCalendar, setShowAllUsersInCalendar] = useState(false);
 
@@ -165,8 +181,16 @@ export default function TaskWorkspace({
       user.permissions.includes("tasks.complete") ||
       user.permissions.includes("tasks.manage"));
 
+  const todayKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  const isSelectedDateToday = selectedDate === todayKey;
+
+  useEffect(() => {
+    setSelectedDate(normalizedDateFromQuery);
+    setPage(0);
+  }, [normalizedDateFromQuery]);
+
   const tasksQuery = useQuery({
-    queryKey: ["tasks", mode, status, priority, search, assignee, page],
+    queryKey: ["tasks", mode, status, priority, search, assignee, page, selectedDate],
     queryFn: async () => {
       const params = new URLSearchParams({
         scope: mode,
@@ -176,6 +200,7 @@ export default function TaskWorkspace({
       if (status) params.set("status", status);
       if (priority) params.set("priority", priority);
       if (search.trim()) params.set("search", search.trim());
+      if (selectedDate) params.set("date", selectedDate);
       if (mode === "manage" && assignee) params.set("assignee", assignee);
 
       const { data } = await axios.get(`/api/tasks?${params.toString()}`);
@@ -438,6 +463,38 @@ export default function TaskWorkspace({
     setEditAssignee(task.assignedTo?._id || "");
   };
 
+  const updateDateInUrl = (nextDate: string | null) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (nextDate) {
+      nextParams.set("date", nextDate);
+    } else {
+      nextParams.delete("date");
+    }
+
+    const nextQuery = nextParams.toString();
+    router.push(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+  };
+
+  const selectDate = (nextDate: string) => {
+    setSelectedDate(nextDate);
+    setPage(0);
+    updateDateInUrl(nextDate);
+  };
+
+  const goRelativeDate = (delta: number) => {
+    const base = selectedDate
+      ? new Date(`${selectedDate}T00:00:00`)
+      : new Date();
+    const next = format(addDays(base, delta), "yyyy-MM-dd");
+    selectDate(next);
+  };
+
+  const clearDateFilter = () => {
+    setSelectedDate("");
+    setPage(0);
+    updateDateInUrl(null);
+  };
+
   if (!canRead) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
@@ -528,7 +585,7 @@ export default function TaskWorkspace({
       </section>
 
       {isManageView ? (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <section className={clsx("grid grid-cols-1 gap-4", !selectedDate && "xl:grid-cols-2")}>
           <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -630,13 +687,22 @@ export default function TaskWorkspace({
                     <button
                       key={dayKey}
                       type="button"
+                      onClick={() => {
+                        if (dayTasks.length > 0) {
+                          selectDate(dayKey);
+                        }
+                      }}
+                      disabled={dayTasks.length === 0}
                       className={clsx(
                         "min-h-[62px] rounded-lg border p-1.5 text-left transition",
                         muted
                           ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
                           : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
-                        isToday && "border-cyan-300 dark:border-cyan-700",
+                        isToday && "border-cyan-300 bg-cyan-50/70 dark:border-cyan-700 dark:bg-cyan-900/20",
+                        selectedDate === dayKey && "ring-2 ring-cyan-400/60 dark:ring-cyan-500/60",
+                        dayTasks.length === 0 && "cursor-default",
                       )}
+                      title={dayTasks.length > 0 ? `View tasks due on ${dayKey}` : "No tasks on this day"}
                     >
                       <div className="mb-1 flex items-center justify-between">
                         <span className="text-[11px] font-bold">{format(day, "d")}</span>
@@ -677,6 +743,7 @@ export default function TaskWorkspace({
           )}
           </div>
 
+          {!selectedDate ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -726,6 +793,7 @@ export default function TaskWorkspace({
             )}
           </div>
           </div>
+          ) : null}
         </section>
       ) : (
         <section className="rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm dark:border-cyan-900/30 dark:bg-slate-900/50 sm:p-5">
@@ -744,6 +812,54 @@ export default function TaskWorkspace({
       )}
 
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-6">
+        {selectedDate ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-200 bg-cyan-50/70 p-3 dark:border-cyan-900/30 dark:bg-cyan-900/20">
+            <div className="flex items-center gap-2 text-sm font-semibold text-cyan-800 dark:text-cyan-200">
+              Showing tasks due on {new Date(`${selectedDate}T00:00:00`).toLocaleDateString()}
+              {isSelectedDateToday ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  Today
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => goRelativeDate(-1)}
+                className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-900/30"
+              >
+                <FiChevronLeft /> Previous Day
+              </button>
+              <button
+                type="button"
+                onClick={() => goRelativeDate(1)}
+                className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-900/30"
+              >
+                Next Day <FiChevronRight />
+              </button>
+              <button
+                type="button"
+                onClick={() => selectDate(todayKey)}
+                className={clsx(
+                  "inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-semibold",
+                  isSelectedDateToday
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    : "border-cyan-300 bg-white text-cyan-700 hover:bg-cyan-100 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-900/30",
+                )}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={clearDateFilter}
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <div className="relative xl:col-span-2">
             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

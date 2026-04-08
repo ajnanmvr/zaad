@@ -18,6 +18,7 @@ import {
   FiUser,
   FiUsers,
 } from "react-icons/fi";
+import PrintReportButton from "@/components/common/PrintReportButton";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -120,7 +121,7 @@ export default function Home() {
   };
 
   return (
-    <div className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">
+    <div id="financial-report-root" className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">
       <section className="relative overflow-hidden rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 shadow-sm dark:border-cyan-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 md:p-7">
         <div className="pointer-events-none absolute -left-20 -top-16 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-emerald-300/25 blur-3xl" />
@@ -139,6 +140,10 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <PrintReportButton
+              targetId="financial-report-root"
+              reportTitle="Financial Report"
+            />
             <Link
               href="/tasks"
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"

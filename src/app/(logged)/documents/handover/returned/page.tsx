@@ -14,6 +14,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import PrintReportButton from "@/components/common/PrintReportButton";
 
 function getEntityHref(entityId?: string, entityType?: string) {
   if (!entityId || !entityType) {
@@ -56,7 +57,7 @@ const ReturnedHandoverPage = () => {
   const pagination = data?.pagination;
 
   return (
-    <>
+    <div id="returned-handover-report-root">
       <Breadcrumb pageName="Returned Physical Documents" />
 
       <section className="relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
@@ -105,6 +106,11 @@ const ReturnedHandoverPage = () => {
             <FiFileText className="text-slate-500" />
             Returned Handover Records
           </h3>
+
+          <PrintReportButton
+            targetId="returned-handover-report-root"
+            reportTitle="Returned Handover Report"
+          />
 
           <div className="relative w-full max-w-md">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -292,7 +298,7 @@ const ReturnedHandoverPage = () => {
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 };
 

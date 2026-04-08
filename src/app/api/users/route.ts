@@ -19,12 +19,22 @@ export async function GET(request: NextRequest) {
         );
         const search = searchParams.get("search") || "";
         const showDeleted = searchParams.get("deleted") === "true";
+        const role = searchParams.get("role") || "all";
+        const sortBy = (searchParams.get("sortBy") || "newest") as
+            | "newest"
+            | "oldest"
+            | "username-asc"
+            | "username-desc"
+            | "fullname-asc"
+            | "fullname-desc";
 
         const result = await listUsers({
             pageNumber,
             limit,
             search,
             showDeleted,
+            role,
+            sortBy,
         });
 
         return Response.json(result, { status: 200 });

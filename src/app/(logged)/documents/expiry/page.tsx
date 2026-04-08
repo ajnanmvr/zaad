@@ -18,6 +18,7 @@ import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTab
 import { toast } from "react-hot-toast";
 import AddExpiryDocumentModal from "@/components/Modals/AddExpiryDocumentModal";
 import { resolveAvatarColorWithFallback } from "@/components/entity/EntityProfileFrame";
+import PrintReportButton from "@/components/common/PrintReportButton";
 
 function formatRelativeExpiry(daysLeft: number | null) {
   if (daysLeft === null) {
@@ -265,7 +266,7 @@ const ExpiryDocumentsPage = () => {
   };
 
   return (
-    <>
+    <div id="expiry-documents-report-root">
       <Breadcrumb pageName="Expiry Documents" />
 
       <AddExpiryDocumentModal
@@ -363,6 +364,11 @@ const ExpiryDocumentsPage = () => {
             <FiFileText className="text-slate-500" />
             {isDocumentFiltered ? `Expiry Documents List - ${activeDocumentLabel}` : "Expiry Documents List"}
           </h3>
+
+          <PrintReportButton
+            targetId="expiry-documents-report-root"
+            reportTitle="Expiry Documents Report"
+          />
 
           <div className="flex items-center gap-2">
             <FiCalendar className="text-slate-400" />
@@ -720,7 +726,7 @@ const ExpiryDocumentsPage = () => {
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 };
 

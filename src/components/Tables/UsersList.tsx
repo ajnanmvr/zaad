@@ -24,7 +24,9 @@ import {
 } from "@tanstack/react-query";
 
 import ConfirmationModal from "../Modals/ConfirmationModal";
+import ExportActionsMenu from "../common/ExportActionsMenu";
 import { formatDate } from "@/utils/dateUtils";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 interface User {
   _id: string;
@@ -44,11 +46,21 @@ interface Pagination {
   hasMore: boolean;
 }
 
-const PAGE_SIZE = 10;
+type UserSort =
+  | "newest"
+  | "oldest"
+  | "username-asc"
+  | "username-desc"
+  | "fullname-asc"
+  | "fullname-desc";
 
 const UsersList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<UserSort>("newest");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [confirmState, setConfirmState] = useState<{
     action: "delete" | "reactivate";
@@ -59,15 +71,20 @@ const UsersList = () => {
   const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["users", currentPage, searchTerm, showDeleted],
+    queryKey: ["users", currentPage, pageSize, searchTerm, showDeleted, roleFilter, sortBy],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: PAGE_SIZE.toString(),
+        limit: pageSize.toString(),
+        sortBy,
       });
 
       if (searchTerm.trim()) {
         params.append("search", searchTerm.trim());
+      }
+
+      if (roleFilter !== "all") {
+        params.append("role", roleFilter);
       }
 
       if (showDeleted) {
@@ -80,8 +97,7 @@ const UsersList = () => {
     placeholderData: keepPreviousData,
   });
 
-  const usersData = data?.users;
-  const users = useMemo(() => usersData || [], [usersData]);
+  const users = useMemo(() => data?.users || [], [data?.users]);
   const pagination =
     data?.pagination ||
     ({
@@ -98,6 +114,14 @@ const UsersList = () => {
     });
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [users]);
+
+  const uniqueRoles = useMemo(
+    () => Array.from(new Set(users.map((item) => item.role))).sort((a, b) => a.localeCompare(b)),
+    [users],
+  );
+
+  const allSelected = users.length > 0 && users.every((item) => selectedUserIds.includes(item._id));
+  const selectedRows = users.filter((item) => selectedUserIds.includes(item._id));
 
   const deleteMutation = useMutation({
     mutationFn: (userId: string) => axios.delete(`/api/users/${userId}`),
@@ -124,11 +148,31 @@ const UsersList = () => {
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
     setCurrentPage(0);
+    setSelectedUserIds([]);
   };
 
   const handleTabChange = (deleted: boolean) => {
     setShowDeleted(deleted);
     setCurrentPage(0);
+    setSelectedUserIds([]);
+  };
+
+  const handlePageSizeChange = (value: number) => {
+    setPageSize(value);
+    setCurrentPage(0);
+    setSelectedUserIds([]);
+  };
+
+  const handleRoleChange = (value: string) => {
+    setRoleFilter(value);
+    setCurrentPage(0);
+    setSelectedUserIds([]);
+  };
+
+  const handleSortChange = (value: UserSort) => {
+    setSortBy(value);
+    setCurrentPage(0);
+    setSelectedUserIds([]);
   };
 
   const confirmAction = () => {
@@ -146,10 +190,43 @@ const UsersList = () => {
   const goToPage = (page: number) => {
     if (page < 0 || page >= pagination.totalPages) return;
     setCurrentPage(page);
+    setSelectedUserIds([]);
   };
 
-  const startRow = pagination.totalUsers === 0 ? 0 : currentPage * PAGE_SIZE + 1;
-  const endRow = Math.min((currentPage + 1) * PAGE_SIZE, pagination.totalUsers);
+  const startRow = pagination.totalUsers === 0 ? 0 : currentPage * pageSize + 1;
+  const endRow = Math.min((currentPage + 1) * pageSize, pagination.totalUsers);
+
+  const mapExportRows = (rows: User[]) =>
+    rows.map((item) => ({
+      Username: item.username,
+      FullName: item.fullname || "",
+      Role: item.role,
+      Status: showDeleted ? "archived" : "active",
+      CreatedAt: formatDate(item.createdAt),
+      ArchivedAt: showDeleted ? formatDate(item.deletedAt || "") : "",
+    }));
+
+  const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
+    const sourceRows = mode === "selected" ? selectedRows : users;
+    const rows = mapExportRows(sourceRows);
+
+    if (!rows.length) {
+      toast.error(mode === "selected" ? "Select users first" : "No users to export");
+      return;
+    }
+
+    const fileName = showDeleted ? "users-archived" : "users-active";
+
+    if (format === "csv") {
+      exportRowsCsv(rows, fileName);
+    } else if (format === "excel") {
+      exportRowsExcel(rows, fileName);
+    } else {
+      await exportRowsPdf(rows, fileName);
+    }
+
+    toast.success(`${mode === "selected" ? "Selected" : "Visible"} users exported as ${format.toUpperCase()}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -279,10 +356,72 @@ const UsersList = () => {
           </div>
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+          <select
+            value={pageSize}
+            onChange={(event) => handlePageSizeChange(Number(event.target.value))}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            title="Rows per page"
+          >
+            {[10, 20, 30, 50].map((size) => (
+              <option key={size} value={size}>
+                Show {size}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(event) => handleSortChange(event.target.value as UserSort)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            title="Sort users"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="username-asc">Username A-Z</option>
+            <option value="username-desc">Username Z-A</option>
+            <option value="fullname-asc">Full Name A-Z</option>
+            <option value="fullname-desc">Full Name Z-A</option>
+          </select>
+
+          <select
+            value={roleFilter}
+            onChange={(event) => handleRoleChange(event.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            title="Filter by role"
+          >
+            <option value="all">All Roles</option>
+            {uniqueRoles.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+
+          <div className="ml-auto">
+            <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
+          </div>
+        </div>
+
         <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/60">
               <tr>
+                <th className="w-[44px] px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all users"
+                    checked={allSelected}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setSelectedUserIds(users.map((item) => item._id));
+                      } else {
+                        setSelectedUserIds([]);
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </th>
                 <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">User</th>
                 <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Full Name</th>
                 <th className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Role</th>
@@ -295,7 +434,7 @@ const UsersList = () => {
             <tbody>
               {isLoading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                     <div className="inline-flex items-center gap-2">
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                       Loading users...
@@ -304,7 +443,7 @@ const UsersList = () => {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                     <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
                       <FiUser className="text-3xl text-slate-400" />
                       <p>
@@ -321,6 +460,21 @@ const UsersList = () => {
                     key={item._id}
                     className="border-t border-slate-200 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/40"
                   >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${item.username}`}
+                        checked={selectedUserIds.includes(item._id)}
+                        onChange={(event) => {
+                          setSelectedUserIds((prev) =>
+                            event.target.checked
+                              ? Array.from(new Set([...prev, item._id]))
+                              : prev.filter((id) => id !== item._id),
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-xs font-black uppercase text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">

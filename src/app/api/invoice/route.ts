@@ -36,8 +36,9 @@ export async function GET(request: NextRequest) {
   try {
     await connect();
     const searchParams = request.nextUrl.searchParams;
-    const pageNumber = searchParams.get("page") || 0;
-    const contentPerSection = 10;
+    const pageNumber = Number(searchParams.get("page") || 0);
+    const limit = Math.max(Number(searchParams.get("limit") || 10), 1);
+    const sortBy = searchParams.get("sortBy") || "newest";
 
     // Extract the single search parameter
     const search = searchParams.get("search");
@@ -71,11 +72,22 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    const total = await Invoice.countDocuments(query);
+
+    const sortOptions: Record<string, Record<string, 1 | -1>> = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      "client-asc": { client: 1 },
+      "client-desc": { client: -1 },
+      "invoice-asc": { invoiceNo: 1 },
+      "invoice-desc": { invoiceNo: -1 },
+    };
+
     const invoice = await Invoice.find(query)
       .populate("createdBy")
-      .skip(+pageNumber * contentPerSection)
-      .limit(contentPerSection + 1)
-      .sort({ createdAt: -1 });
+      .skip(pageNumber * limit)
+      .limit(limit + 1)
+      .sort(sortOptions[sortBy] || sortOptions.newest);
 
     if (!invoice || invoice.length === 0) {
       return Response.json(
@@ -85,13 +97,19 @@ export async function GET(request: NextRequest) {
           hasMore: false,
           invoices: [],
           records: [],
+          pagination: {
+            currentPage: pageNumber,
+            totalPages: 0,
+            totalInvoices: 0,
+            hasMore: false,
+          },
         },
         { status: 200 }
       );
     }
 
-    const hasMore = invoice.length > contentPerSection;
-    const pageRows = invoice.slice(0, contentPerSection);
+    const hasMore = invoice.length > limit;
+    const pageRows = invoice.slice(0, limit);
 
     const entityIds = pageRows
       .map((row) => row.entityId)
@@ -128,7 +146,19 @@ export async function GET(request: NextRequest) {
         };
       });
     return Response.json(
-      { hasMore, count: transformedData.length, invoices: transformedData, records: transformedData },
+      {
+        hasMore,
+        count: transformedData.length,
+        total,
+        invoices: transformedData,
+        records: transformedData,
+        pagination: {
+          currentPage: pageNumber,
+          totalPages: Math.ceil(total / limit),
+          totalInvoices: total,
+          hasMore,
+        },
+      },
       { status: 200 }
     );
   } catch (error) {

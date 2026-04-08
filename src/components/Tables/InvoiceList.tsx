@@ -12,6 +12,17 @@ import toast from "react-hot-toast";
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import SkeletonList from "../common/SkeletonList";
 import EntityAvatar from "../common/EntityAvatar";
+import ExportActionsMenu from "../common/ExportActionsMenu";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+
+type InvoiceSort = "newest" | "oldest" | "client-asc" | "client-desc" | "invoice-asc" | "invoice-desc";
+
+type InvoicePagination = {
+  currentPage: number;
+  totalPages: number;
+  totalInvoices: number;
+  hasMore: boolean;
+};
 
 const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: string; embedded?: boolean; returnTo?: string } = {}) => {
   const queryClient = useQueryClient();
@@ -19,14 +30,22 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<InvoiceSort>("newest");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["invoices", pageNumber, searchQuery, entityId],
+    queryKey: ["invoices", pageNumber, pageSize, sortBy, searchQuery, entityId],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(pageNumber), search: searchQuery || "" });
+      const params = new URLSearchParams({
+        page: String(pageNumber),
+        limit: String(pageSize),
+        sortBy,
+        search: searchQuery || "",
+      });
       if (entityId) params.set("entityId", entityId);
       const response = await axios.get(`/api/invoice?${params.toString()}`);
       return response.data;
@@ -37,9 +56,16 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
   useEffect(() => {
     if (data) {
       setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
-      setHasMore(Boolean(data.hasMore));
+      setHasMore(Boolean(data.pagination?.hasMore ?? data.hasMore));
     }
   }, [data]);
+
+  const pagination: InvoicePagination = data?.pagination || {
+    currentPage: pageNumber,
+    totalPages: 0,
+    totalInvoices: data?.count || 0,
+    hasMore,
+  };
 
   const totalAmount = useMemo(
     () => invoices.reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
@@ -69,7 +95,39 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
     (window as any).searchDebounceTimeout = setTimeout(() => {
       setSearchQuery(value);
       setPageNumber(0);
+      setSelectedInvoiceIds([]);
     }, 1000);
+  };
+
+  const allSelected = invoices.length > 0 && invoices.every((record) => selectedInvoiceIds.includes(record.id));
+  const selectedRows = invoices.filter((record) => selectedInvoiceIds.includes(record.id));
+
+  const mapExportRows = (rows: TInvoiceList[]) =>
+    rows.map((row) => ({
+      InvoiceNo: row.invoiceNo,
+      Client: row.client,
+      Purpose: row.purpose,
+      Date: row.date,
+      Amount: Number(row.amount || 0).toFixed(2),
+    }));
+
+  const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
+    const sourceRows = mode === "selected" ? selectedRows : invoices;
+    const rows = mapExportRows(sourceRows);
+    if (!rows.length) {
+      toast.error(mode === "selected" ? "Select invoices first" : "No invoices to export");
+      return;
+    }
+
+    if (format === "csv") {
+      exportRowsCsv(rows, "invoices");
+    } else if (format === "excel") {
+      exportRowsExcel(rows, "invoices");
+    } else {
+      await exportRowsPdf(rows, "invoices");
+    }
+
+    toast.success(`${mode === "selected" ? "Selected" : "Visible"} invoices exported as ${format.toUpperCase()}`);
   };
 
   return (
@@ -128,6 +186,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                       setSearchInput("");
                       setSearchQuery("");
                       setPageNumber(0);
+                        setSelectedInvoiceIds([]);
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                   >
@@ -135,6 +194,43 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                   </button>
                 )}
               </div>
+
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPageNumber(0);
+                  setSelectedInvoiceIds([]);
+                }}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                title="Rows per page"
+              >
+                {[10, 20, 30, 50].map((size) => (
+                  <option key={size} value={size}>
+                    Show {size}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(event) => {
+                  setSortBy(event.target.value as InvoiceSort);
+                  setPageNumber(0);
+                  setSelectedInvoiceIds([]);
+                }}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                title="Sort invoices"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="client-asc">Client A-Z</option>
+                <option value="client-desc">Client Z-A</option>
+                <option value="invoice-asc">Invoice Number Asc</option>
+                <option value="invoice-desc">Invoice Number Desc</option>
+              </select>
+
+              <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
 
               <Link
                 href={`/accounts/invoice/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
@@ -155,6 +251,21 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <table className="w-full whitespace-nowrap text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                  <th className="w-[44px] px-6 py-4">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all invoices"
+                      checked={allSelected}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          setSelectedInvoiceIds(invoices.map((record) => record.id));
+                        } else {
+                          setSelectedInvoiceIds([]);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Invoice No</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Client</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Purpose</th>
@@ -166,13 +277,13 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={7} className="p-0">
                       <SkeletonList />
                     </td>
                   </tr>
                 ) : invoices.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="rounded-full bg-slate-100 p-3 dark:bg-slate-800">
                           <FiFileText className="text-2xl text-slate-400" />
@@ -185,6 +296,21 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 ) : (
                   invoices.map((record) => (
                     <tr key={record.id} className="group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${record.invoiceNo}`}
+                          checked={selectedInvoiceIds.includes(record.id)}
+                          onChange={(event) => {
+                            setSelectedInvoiceIds((prev) =>
+                              event.target.checked
+                                ? Array.from(new Set([...prev, record.id]))
+                                : prev.filter((id) => id !== record.id),
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                           {record?.invoiceNo || "N/A"}
@@ -243,11 +369,16 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Showing Page <span className="font-bold text-slate-800 dark:text-slate-200">{pageNumber + 1}</span>
+            Showing page <span className="font-bold text-slate-800 dark:text-slate-200">{pagination.currentPage + 1}</span>
+            {" "}of <span className="font-bold text-slate-800 dark:text-slate-200">{Math.max(1, pagination.totalPages)}</span>
+            {" "}({pagination.totalInvoices} total)
           </p>
           <div className="inline-flex items-center gap-2">
             <button
-              onClick={() => setPageNumber((prev) => Math.max(prev - 1, 0))}
+              onClick={() => {
+                setPageNumber((prev) => Math.max(prev - 1, 0));
+                setSelectedInvoiceIds([]);
+              }}
               disabled={pageNumber === 0 || isLoading}
               className={clsx(
                 "flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-all",
@@ -259,7 +390,10 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
               <FiChevronLeft /> Back
             </button>
             <button
-              onClick={() => setPageNumber((prev) => prev + 1)}
+              onClick={() => {
+                setPageNumber((prev) => prev + 1);
+                setSelectedInvoiceIds([]);
+              }}
               disabled={isLoading || !hasMore || invoices.length === 0}
               className={clsx(
                 "flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-all",
