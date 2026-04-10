@@ -1,10 +1,20 @@
-import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import Individual from "@/models/individuals";
 import EntityDocument from "@/models/entityDocuments";
 import { PAGINATION } from "@/config/pagination";
 import generateEntityColor from "@/utils/generateEntityColor";
 import calculateStatus from "@/utils/calculateStatus";
+import {
+  buildCompanyListQuery,
+  countCompanies,
+  createCompany,
+  findCompanies,
+  findCompanyById,
+  findPublishedCompanyColors,
+  getCompanySort,
+  softDeleteCompanyById,
+  updateCompanyById,
+} from "@/repositories/companyRepository";
 
 type EntityPayload = {
   documents?: any[];
@@ -68,15 +78,10 @@ export function splitEntityPayload(payload: EntityPayload) {
 
 export async function createCompanyEntity(entityData: any) {
   if (!entityData.color) {
-    // Fetch all existing company colors to avoid duplicates
-    const existingColors = await Company.find({ published: true })
-      .select("color")
-      .lean()
-      .then((docs) => docs.map((doc: any) => doc.color).filter(Boolean));
-    
+    const existingColors = await findPublishedCompanyColors();
     entityData.color = generateEntityColor(existingColors);
   }
-  return Company.create(entityData);
+  return createCompany(entityData);
 }
 
 export async function createEmployeeOrIndividualEntity(entityData: any, entityType?: string) {
@@ -100,7 +105,7 @@ export async function createEmployeeOrIndividualEntity(entityData: any, entityTy
 }
 
 export async function updateCompanyEntity(entityId: string, entityData: any) {
-  return Company.findByIdAndUpdate(entityId, entityData);
+  return updateCompanyById(entityId, entityData);
 }
 
 export async function updateEmployeeEntity(entityId: string, entityData: any) {
@@ -108,7 +113,7 @@ export async function updateEmployeeEntity(entityId: string, entityData: any) {
 }
 
 export async function softDeleteCompanyEntity(entityId: string) {
-  return Company.findByIdAndUpdate(entityId, { published: false });
+  return softDeleteCompanyById(entityId);
 }
 
 export async function softDeleteEmployeeEntity(entityId: string) {
@@ -116,7 +121,7 @@ export async function softDeleteEmployeeEntity(entityId: string) {
 }
 
 export async function getCompanyEntityById(entityId: string) {
-  return Company.findById(entityId);
+  return findCompanyById(entityId);
 }
 
 export async function getEmployeeEntityById(entityId: string, populateCompany = false) {
@@ -141,37 +146,15 @@ export async function listCompanyEntities(
   options?: TListCompanyEntitiesOptions
 ) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query: any = { published: true, entityType: "company" };
-
-  if (options?.search) {
-    query.name = { $regex: options.search, $options: "i" };
-  }
-
-  if (options?.createdWithinDays && options.createdWithinDays > 0) {
-    const sinceDate = new Date();
-    sinceDate.setDate(sinceDate.getDate() - options.createdWithinDays);
-    query.createdAt = { $gte: sinceDate };
-  }
-
-  const sortConfigByOption: Record<TCompanySort, Record<string, 1 | -1>> = {
-    newest: { createdAt: -1 },
-    oldest: { createdAt: 1 },
-    "name-asc": { name: 1 },
-    "name-desc": { name: -1 },
-  };
-
-  const sortBy = options?.sortBy && sortConfigByOption[options.sortBy]
-    ? options.sortBy
-    : "newest";
-  const sortConfig = sortConfigByOption[sortBy];
+  const query = buildCompanyListQuery({
+    search: options?.search,
+    createdWithinDays: options?.createdWithinDays,
+  });
+  const sortConfig = getCompanySort(options?.sortBy);
 
   const [companies, total] = await Promise.all([
-    Company.find(query)
-      .select("name createdAt color")
-      .sort(sortConfig)
-      .skip(skip)
-      .limit(normalizedLimit),
-    Company.countDocuments(query),
+    findCompanies(query, sortConfig, skip, normalizedLimit),
+    countCompanies(query),
   ]);
 
   const companyIds = companies.map((company: any) => company._id.toString());

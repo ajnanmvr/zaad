@@ -1,8 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import { NextRequest } from "next/server";
-import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../../utils";
+import { getPaymentRecordDetails } from "@/services/paymentService";
 
 export async function GET(
   request: NextRequest,
@@ -12,11 +11,11 @@ export async function GET(
   await requirePermission(request, "payments.read");
 
   const { id } = params;
-  const record = await Records.findById(id).populate(PAYMENT_POPULATE_FIELDS);
+  const response = await getPaymentRecordDetails(id);
 
-  if (!record) {
+  if (!response) {
     return Response.json({ error: "Record not found" }, { status: 404 });
   }
 
-  return Response.json({ record: mapRecordListItem(record) }, { status: 200 });
+  return Response.json(response, { status: 200 });
 }

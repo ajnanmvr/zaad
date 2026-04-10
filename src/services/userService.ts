@@ -1,9 +1,23 @@
-import User from "@/models/users";
 import bcryptjs from "bcryptjs";
 import { logUserActivity, getUserActivityHistory } from "@/helpers/userActivityLogger";
 import { NextRequest } from "next/server";
 import { ServiceError } from "./serviceError";
 import { getPermissionsForRole, roleExists } from "./roleService";
+import {
+  buildUserListQuery,
+  countUsers,
+  createUser as createUserRecord,
+  findActiveUserById,
+  findActiveUserByUsername,
+  findActiveUserByUsernameExcludingId,
+  findDeletedUserById,
+  findUserById,
+  findUsers,
+  getUserSort,
+  reactivateUserById,
+  softDeleteUserById,
+  updateUserById,
+} from "@/repositories/userRepository";
 
 type TListUsersInput = {
   pageNumber: number;
@@ -17,34 +31,12 @@ type TListUsersInput = {
 export async function listUsers(input: TListUsersInput) {
   const { pageNumber, limit, search, showDeleted, role, sortBy = "newest" } = input;
 
-  const query: any = { published: !showDeleted };
-  if (role && role !== "all") {
-    query.role = role;
-  }
-  if (search) {
-    query.$or = [
-      { username: { $regex: search, $options: "i" } },
-      { fullname: { $regex: search, $options: "i" } },
-    ];
-  }
+  const query = buildUserListQuery({ search, showDeleted, role });
+  const sort = getUserSort(sortBy);
 
-  const sortMap: Record<string, Record<string, 1 | -1>> = {
-    newest: { createdAt: -1 },
-    oldest: { createdAt: 1 },
-    "username-asc": { username: 1 },
-    "username-desc": { username: -1 },
-    "fullname-asc": { fullname: 1 },
-    "fullname-desc": { fullname: -1 },
-  };
-  const sort = sortMap[sortBy] || sortMap.newest;
+  const total = await countUsers(query);
 
-  const total = await User.countDocuments(query);
-
-  const users = await User.find(query)
-    .select("username fullname role createdAt updatedAt deletedAt")
-    .sort(sort)
-    .skip(pageNumber * limit)
-    .limit(limit);
+  const users = await findUsers(query, sort, pageNumber * limit, limit);
 
   return {
     users,
@@ -82,7 +74,7 @@ export async function createUser(input: TCreateUserInput) {
     throw new ServiceError("Password must be at least 6 characters long", 400);
   }
 
-  const existingUser = await User.findOne({ username, published: true });
+  const existingUser = await findActiveUserByUsername(username);
   if (existingUser) {
     throw new ServiceError("Username already exists", 400);
   }
@@ -90,14 +82,12 @@ export async function createUser(input: TCreateUserInput) {
   const salt = await bcryptjs.genSalt(10);
   const hashedPassword = await bcryptjs.hash(password, salt);
 
-  const newUser = new User({
+  const savedUser = await createUserRecord({
     username,
     password: hashedPassword,
     role,
     fullname: fullname || "",
   });
-
-  const savedUser = await newUser.save();
 
   await logUserActivity({
     targetUserId: savedUser._id.toString(),
@@ -121,9 +111,7 @@ export async function createUser(input: TCreateUserInput) {
 }
 
 export async function getUserById(id: string) {
-  const user = await User.findById(id).select(
-    "username fullname role createdAt updatedAt published deletedAt"
-  );
+  const user = await findUserById(id);
 
   if (!user) {
     throw new ServiceError("User not found", 404);
@@ -145,7 +133,7 @@ type TUpdateUserInput = {
 export async function updateUser(input: TUpdateUserInput) {
   const { id, currentUserId, username, fullname, role, password, request } = input;
 
-  const existingUser = await User.findOne({ _id: id, published: true });
+  const existingUser = await findActiveUserById(id);
   if (!existingUser) {
     throw new ServiceError("User not found", 404);
   }
@@ -185,11 +173,7 @@ export async function updateUser(input: TUpdateUserInput) {
   }
 
   if (username && username !== existingUser.username) {
-    const usernameExists = await User.findOne({
-      username,
-      published: true,
-      _id: { $ne: id },
-    });
+    const usernameExists = await findActiveUserByUsernameExcludingId(username, id);
 
     if (usernameExists) {
       throw new ServiceError("Username already exists", 400);
@@ -236,9 +220,7 @@ export async function updateUser(input: TUpdateUserInput) {
     newValues.passwordChanged = true;
   }
 
-  const updatedUser = await User.findByIdAndUpdate(id, updateData, {
-    new: true,
-  }).select("username fullname role createdAt updatedAt");
+  const updatedUser = await updateUserById(id, updateData);
 
   if (Object.keys(previousValues).length > 0) {
     const action = password
@@ -273,15 +255,12 @@ export async function softDeleteUser(input: TSoftDeleteUserInput) {
     throw new ServiceError("You cannot delete your own account", 400);
   }
 
-  const user = await User.findOne({ _id: id, published: true });
+  const user = await findActiveUserById(id);
   if (!user) {
     throw new ServiceError("User not found", 404);
   }
 
-  await User.findByIdAndUpdate(id, {
-    published: false,
-    deletedAt: new Date(),
-  });
+  await softDeleteUserById(id);
 
   await logUserActivity({
     targetUserId: id,
@@ -303,19 +282,13 @@ type TReactivateUserInput = {
 export async function reactivateUser(input: TReactivateUserInput) {
   const { id, currentUserId, request } = input;
 
-  const user = await User.findOne({ _id: id, published: false }).select(
-    "username fullname role createdAt"
-  );
+  const user = await findDeletedUserById(id);
 
   if (!user) {
     throw new ServiceError("Deleted user not found", 404);
   }
 
-  const existingActiveUser = await User.findOne({
-    username: user.username,
-    published: true,
-    _id: { $ne: id },
-  });
+  const existingActiveUser = await findActiveUserByUsernameExcludingId(user.username, id);
 
   if (existingActiveUser) {
     throw new ServiceError(
@@ -324,10 +297,7 @@ export async function reactivateUser(input: TReactivateUserInput) {
     );
   }
 
-  await User.findByIdAndUpdate(id, {
-    published: true,
-    deletedAt: null,
-  });
+  await reactivateUserById(id);
 
   await logUserActivity({
     targetUserId: id,

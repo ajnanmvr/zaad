@@ -1,16 +1,9 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import { NextRequest } from "next/server";
-import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../utils";
+import { isAdminRole, listPaymentBin } from "@/services/paymentService";
 
-const CONTENT_PER_SECTION = 25;
 export const dynamic = "force-dynamic";
-
-function isAdminRole(role?: string) {
-  const normalized = (role || "").toLowerCase();
-  return normalized === "admin" || normalized === "superadmin";
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,31 +17,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = Number(searchParams.get("page") || 0);
     const search = (searchParams.get("search") || "").trim();
-
-    const query: Record<string, any> = { published: false };
-    if (search) {
-      query.$or = [
-        { particular: { $regex: search, $options: "i" } },
-        { invoiceNo: { $regex: search, $options: "i" } },
-        { suffix: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const records = await Records.find(query)
-      .populate(PAYMENT_POPULATE_FIELDS)
-      .sort({ deletedAt: -1, updatedAt: -1 })
-      .skip(pageNumber * CONTENT_PER_SECTION)
-      .limit(CONTENT_PER_SECTION + 1);
-
-    const hasMore = records.length > CONTENT_PER_SECTION;
-    const transformedData = records.slice(0, CONTENT_PER_SECTION).map(mapRecordListItem);
+    const response = await listPaymentBin({ pageNumber, search });
 
     return Response.json(
-      {
-        count: transformedData.length,
-        hasMore,
-        records: transformedData,
-      },
+      response,
       { status: 200 }
     );
   } catch (error: any) {

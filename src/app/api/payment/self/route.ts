@@ -1,8 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import { NextRequest } from "next/server";
-import { mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "../utils";
+import { listSelfPayments } from "@/services/paymentService";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,70 +9,10 @@ export async function GET(request: NextRequest) {
     await requirePermission(request, "payments.read");
 
     const searchParams = request.nextUrl.searchParams;
-    const pageNumber = searchParams.get("page") || 0;
-    const contentPerSection = 10;
+    const pageNumber = Number(searchParams.get("page") || 0);
+    const response = await listSelfPayments(pageNumber);
 
-    const records = await Records.find({
-      published: true,
-      self: "zaad",
-    })
-      .populate(PAYMENT_POPULATE_FIELDS)
-      .skip(+pageNumber * contentPerSection)
-      .limit(contentPerSection + 1)
-      .sort({ createdAt: -1 });
-
-    if (!records || records.length === 0) {
-      return Response.json(
-        {
-          message: "No records found",
-          count: 0,
-          hasMore: false,
-          records: [],
-          balance: 0,
-          totalIncome: 0,
-          totalExpense: 0,
-          totalTransactions: 0,
-        },
-        { status: 200 }
-      );
-    }
-
-    const hasMore = records.length > contentPerSection;
-    const transformedData = records
-      .slice(0, contentPerSection)
-      .map(mapRecordListItem);
-
-    const allRecords = await Records.find({
-      published: true,
-      self: "zaad",
-    });
-
-    const totalIncome = allRecords.reduce(
-      (acc, record) => acc + (record.type === "income" ? record.amount : 0),
-      0
-    );
-    const totalExpense = allRecords.reduce(
-      (acc, record) =>
-        acc +
-        (record.type === "expense" ? record.amount : 0) +
-        (record.serviceFee || 0),
-      0
-    );
-    const balance = totalIncome - totalExpense;
-    const totalTransactions = allRecords.length;
-
-    return Response.json(
-      {
-        count: transformedData.length,
-        hasMore,
-        records: transformedData,
-        balance,
-        totalIncome,
-        totalExpense,
-        totalTransactions,
-      },
-      { status: 200 }
-    );
+    return Response.json(response, { status: 200 });
   } catch (error) {
     return Response.json(
       { error: "An unexpected error occurred", details: error },
