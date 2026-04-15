@@ -158,8 +158,8 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
 }
 
 function buildTotals(records: any[]) {
-  const totalIncome = records.reduce(
-    (acc, record) =>
+  const totalIncome = records.reduce<number>(
+    (acc: number, record: any) =>
       acc +
       (record.type === "income" && !normalizeStatus(record.status).includes("liability")
         ? record.amount
@@ -167,8 +167,8 @@ function buildTotals(records: any[]) {
     0
   );
 
-  const totalExpense = records.reduce(
-    (acc, record) => acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
+  const totalExpense = records.reduce<number>(
+    (acc: number, record: any) => acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
     0
   );
 
@@ -184,6 +184,12 @@ type SelfDepositTransfer = {
   id: string;
   expense?: ReturnType<typeof mapRecordListItem>;
   income?: ReturnType<typeof mapRecordListItem>;
+};
+
+type PaymentTotalRecord = {
+  type?: string;
+  amount?: number;
+  serviceFee?: number;
 };
 
 function canPairRecords(expense: any, income: any) {
@@ -400,7 +406,7 @@ export async function listSelfPayments(pageNumber: number) {
 
   const hasMore = records.length > contentPerSection;
   const transformedData = records.slice(0, contentPerSection).map(mapRecordListItem);
-  const allRecords = await findRecords(query);
+  const allRecords = (await findRecords(query)) as PaymentTotalRecord[];
   const totals = buildTotals(allRecords);
 
   return {
@@ -448,15 +454,15 @@ export async function listSelfDepositPayments(input: {
   const start = input.pageNumber * contentPerSection;
   const transformedData = groupedTransfers.slice(start, start + contentPerSection);
   const hasMore = groupedTransfers.length > start + contentPerSection;
-  const allRecords = await findRecords(query);
+  const allRecords = (await findRecords(query)) as PaymentTotalRecord[];
 
-  const totalIncome = allRecords.reduce(
-    (acc, record) => acc + (record.type === "income" ? record.amount : 0),
+  const totalIncome = allRecords.reduce<number>(
+    (acc: number, record: any) => acc + (record.type === "income" ? record.amount : 0),
     0
   );
 
-  const totalExpense = allRecords.reduce(
-    (acc, record) =>
+  const totalExpense = allRecords.reduce<number>(
+    (acc: number, record: any) =>
       acc + (record.type === "expense" ? record.amount : 0) + (record.serviceFee || 0),
     0
   );
@@ -526,7 +532,7 @@ export async function listLiabilitySummary() {
     message: "Records retrieved successfully",
     count: records.length,
     records: transformedData,
-    amount: transformedData.reduce((acc, data: any) => acc + data.netAmount, 0),
+    amount: transformedData.reduce<number>((acc: number, data: any) => acc + data.netAmount, 0),
   };
 }
 
@@ -1201,7 +1207,7 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
       message: `${principal.fullname || principal.username || "A user"} changed ${editedFields.length} field${editedFields.length === 1 ? "" : "s"} on ${(existingRecord as any).suffix || ""}${(existingRecord as any).number || ""}.`,
       createdBy: principal.userId,
       entityType: "payment",
-      entityId: data._id,
+      entityId: id,
     });
   }
 

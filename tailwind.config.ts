@@ -225,7 +225,7 @@ const config: Config = {
         "21/9": "21 / 9",
       },
       backgroundImage: {
-        video: "url('../images/video/video.png')",
+        invoice: "url('/images/invoice/bg.png')",
       },
       content: {
         "icon-copy": 'url("../images/icon/icon-copy-alt.svg")',
