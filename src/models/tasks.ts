@@ -50,6 +50,24 @@ const TaskSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    linkedTargets: [
+      {
+        targetType: {
+          type: String,
+          trim: true,
+          lowercase: true,
+        },
+        targetId: {
+          type: String,
+          trim: true,
+        },
+        targetLabel: {
+          type: String,
+          trim: true,
+          default: "",
+        },
+      },
+    ],
     published: {
       type: Boolean,
       default: true,
@@ -63,6 +81,7 @@ const TaskSchema = new mongoose.Schema(
 
 TaskSchema.index({ assignedTo: 1, status: 1, dueDate: 1, createdAt: -1 });
 TaskSchema.index({ assignedBy: 1, status: 1, createdAt: -1 });
+TaskSchema.index({ "linkedTargets.targetType": 1, "linkedTargets.targetId": 1, createdAt: -1 });
 
 const Task = mongoose.models.tasks || mongoose.model("tasks", TaskSchema);
 

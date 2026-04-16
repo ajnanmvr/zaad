@@ -11,6 +11,7 @@ import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import clsx from "clsx";
 import PaymentMethodBadge from "@/components/common/PaymentMethodBadge";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -194,6 +195,15 @@ const TransactionDetailsPage = () => {
           </div>
         </div>
       </section>
+
+      {id ? (
+        <RelatedTasksPanel
+          className="mt-6"
+          targetType="record"
+          targetId={id}
+          targetLabel={`${record?.suffix || ""}${record?.number || ""}`.trim() || undefined}
+        />
+      ) : null}
 
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
         {isLoading ? (

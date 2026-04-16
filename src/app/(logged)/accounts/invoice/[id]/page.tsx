@@ -7,6 +7,7 @@ import { useRef } from "react";
 import ReactToPrint from "react-to-print";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
+import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
 
 function SingleInvoice() {
   const { id }: { id: string } = useParams();
@@ -29,6 +30,15 @@ function SingleInvoice() {
         </div>
       ) : (
         <>
+          {id ? (
+            <RelatedTasksPanel
+              className="mb-4"
+              targetType="invoice"
+              targetId={id}
+              targetLabel={invoice?.invoiceNo ? String(invoice.invoiceNo) : undefined}
+            />
+          ) : null}
+
           {invoice?.remarks && (
             <p className="border-yellow-600 border rounded-xl px-3 py-2 mb-2 flex items-center">
               <span className="bg-yellow-600 text-white font-bold px-2 rounded-md inline mr-2 text-xs">

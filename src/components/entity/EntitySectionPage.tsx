@@ -34,6 +34,7 @@ import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
+import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
 import { TEntityListItem, TPagination } from "@/types/types";
 
 import {
@@ -717,6 +718,12 @@ export default function EntitySectionPage({
             records: counts?.records || 0,
             invoices: counts?.invoices || 0,
           }}
+        />
+
+        <RelatedTasksPanel
+          targetType={entityType}
+          targetId={id}
+          targetLabel={entityName}
         />
 
         <div

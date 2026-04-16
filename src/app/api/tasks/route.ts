@@ -5,6 +5,36 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
 
+function parseLinkedTargets(raw: unknown) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const dedupe = new Set<string>();
+
+  return raw
+    .map((item) => {
+      const targetType = String((item as any)?.targetType || "")
+        .trim()
+        .toLowerCase();
+      const targetId = String((item as any)?.targetId || "").trim();
+      const targetLabel = String((item as any)?.targetLabel || "").trim();
+
+      if (!targetType || !targetId) {
+        return null;
+      }
+
+      const key = `${targetType}:${targetId}`;
+      if (dedupe.has(key)) {
+        return null;
+      }
+      dedupe.add(key);
+
+      return { targetType, targetId, targetLabel };
+    })
+    .filter(Boolean);
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -23,14 +53,38 @@ export async function GET(request: NextRequest) {
     const date = params.get("date") || "";
     const page = Number(params.get("page") || "0");
     const limit = Number(params.get("limit") || "20");
+    const linkType = String(params.get("linkType") || "")
+      .trim()
+      .toLowerCase();
+    const linkId = String(params.get("linkId") || "").trim();
 
     const query: Record<string, any> = { published: true };
 
     const canManage = principal.permissions.includes("tasks.manage");
-    if (scope === "mine" || !canManage) {
+    if (scope === "mine" || (!canManage && scope !== "related")) {
       query.assignedTo = principal.userId;
     } else if (assignee) {
       query.assignedTo = assignee;
+    }
+
+    if (scope === "related") {
+      if (!canManage) {
+        query.assignedTo = principal.userId;
+      }
+
+      if (!linkType || !linkId) {
+        return Response.json(
+          { error: "linkType and linkId are required for related scope" },
+          { status: 400 },
+        );
+      }
+
+      query.linkedTargets = {
+        $elemMatch: {
+          targetType: linkType,
+          targetId: linkId,
+        },
+      };
     }
 
     if (status) query.status = status;
@@ -100,12 +154,18 @@ export async function POST(request: NextRequest) {
       priority,
       dueDate,
       assignedTo,
+      linkedTargets,
     }: {
       title?: string;
       description?: string;
       priority?: "low" | "medium" | "high" | "urgent";
       dueDate?: string | null;
       assignedTo?: string;
+      linkedTargets?: Array<{
+        targetType?: string;
+        targetId?: string;
+        targetLabel?: string;
+      }>;
     } = await request.json();
 
     if (!title?.trim()) {
@@ -116,6 +176,8 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Assignee is required" }, { status: 400 });
     }
 
+    const normalizedLinks = parseLinkedTargets(linkedTargets);
+
     const task = await Task.create({
       title: title.trim(),
       description: (description || "").trim(),
@@ -124,6 +186,7 @@ export async function POST(request: NextRequest) {
       assignedTo,
       assignedBy: principal.userId,
       status: "todo",
+      linkedTargets: normalizedLinks,
       published: true,
     });
 

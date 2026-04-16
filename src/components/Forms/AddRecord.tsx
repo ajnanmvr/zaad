@@ -21,6 +21,8 @@ import {
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
 
+type TEntitySearchType = "company" | "employee" | "individual";
+
 const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const router = useRouter();
   const { id } = useParams();
@@ -44,6 +46,8 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     color?: string;
     type: string;
   } | null>(null);
+  const [searchEntityType, setSearchEntityType] =
+    useState<TEntitySearchType | "">("");
   const [clientFee, setClientFee] = useState<string>("");
   const [balance, setBalance] = useState(0);
   const [clientType, setClientType] = useState("");
@@ -108,6 +112,13 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
           ? "self"
           : lockEntityType;
     setSelectedOption(nextClientType);
+    if (
+      lockEntityType === "company" ||
+      lockEntityType === "employee" ||
+      lockEntityType === "individual"
+    ) {
+      setSearchEntityType(lockEntityType);
+    }
     setSearchValue(lockEntityName || "");
     setSearchSuggestions([]);
     setClientType(nextClientType);
@@ -150,45 +161,66 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setRecordData({ ...recordData, serviceFee: newServiceFee });
   };
 
-  const fetchsearchSuggestions = async (inputValue: string) => {
+  const fetchsearchSuggestions = async (
+    inputValue: string,
+    entityType: TEntitySearchType | "",
+  ) => {
     try {
-      if (inputValue.length === 0) {
+      if (inputValue.length === 0 || !entityType) {
         setSearchSuggestions([]);
         return;
       }
 
-      const [companiesRes, employeesRes, individualsRes] = await Promise.all([
-        axios.get<TBaseData[]>(`/api/company/search/${inputValue}`),
-        axios.get<TBaseData[]>(`/api/employee/search/${inputValue}`),
-        axios.get<TBaseData[]>(`/api/individual/search/${inputValue}`),
-      ]);
+      const response = await axios.get<TBaseData[]>(
+        `/api/${entityType}/search/${inputValue}`,
+      );
 
-      const companies = (companiesRes.data || []).map((item) => ({
+      const scopedResults = (response.data || []).map((item) => ({
         ...item,
-        entityType: "company" as const,
-      }));
-      const employees = (employeesRes.data || []).map((item) => ({
-        ...item,
-        entityType: "employee" as const,
-      }));
-      const individuals = (individualsRes.data || []).map((item) => ({
-        ...item,
-        entityType: "individual" as const,
+        entityType,
       }));
 
-      setSearchSuggestions([...companies, ...employees, ...individuals]);
+      setSearchSuggestions(scopedResults);
     } catch (error) {
       console.error("Error fetching entity suggestions:", error);
       setSearchSuggestions([]);
     }
   };
 
-  const debounceSearch = debounce((input: string) => {
-    fetchsearchSuggestions(input);
-  }, 300);
+  const debounceSearch = debounce(
+    (input: string, entityType: TEntitySearchType | "") => {
+      fetchsearchSuggestions(input, entityType);
+    },
+    300,
+  );
+
+  const handleEntityTypeChange = (entityType: TEntitySearchType | "") => {
+    if (isLockedEntity) return;
+
+    setSearchEntityType(entityType);
+    setSelectedOption(entityType);
+    setClientType(entityType);
+    setSearchValue("");
+    setSearchSuggestions([]);
+    setSelectedEntitySummary(null);
+    setBalance(0);
+    setRecordData((prev) => ({
+      ...prev,
+      company: undefined,
+      employee: undefined,
+      self: undefined,
+    }));
+  };
 
   const handleInputChange = (e: any) => {
-    setSearchValue(e.target.value);
+    const nextSearch = e.target.value;
+    setSearchValue(nextSearch);
+
+    if (!searchEntityType) {
+      setSearchSuggestions([]);
+      return;
+    }
+
     setSelectedEntitySummary(null);
     setRecordData((prev) => ({
       ...prev,
@@ -196,7 +228,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       employee: undefined,
       self: undefined,
     }));
-    debounceSearch(e.target.value);
+    debounceSearch(nextSearch, searchEntityType);
   };
 
   const fetchPrev = useCallback(
@@ -359,8 +391,10 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   const applyOfficeExpensePreset = () => {
     setSelectedOption("self");
+    setSearchEntityType("");
     setClientType("self");
     setSearchValue("ZAAD Self");
+    setSearchSuggestions([]);
     setSelectedEntitySummary({ id: "self", name: "ZAAD Self", type: "self" });
     const officeStatus = filteredStatusOptions.find((item) =>
       item.value.toLowerCase().includes("office"),
@@ -493,7 +527,31 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       <label className={labelClass}>
                         Entity <span className="text-rose-500">*</span>
                       </label>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto]">
+                        <div className="relative z-20">
+                          <select
+                            title="entity type"
+                            value={searchEntityType}
+                            onChange={(e) =>
+                              handleEntityTypeChange(
+                                e.target.value as TEntitySearchType | "",
+                              )
+                            }
+                            disabled={isLockedEntity}
+                            className={inputClass}
+                          >
+                            <option value="" disabled>
+                              Select entity type
+                            </option>
+                            <option value="company">Company</option>
+                            <option value="employee">Employee</option>
+                            <option value="individual">Individual</option>
+                          </select>
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <FiChevronDown />
+                          </span>
+                        </div>
+
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                             <FiUserPlus />
@@ -504,8 +562,12 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                             onChange={handleInputChange}
                             value={searchValue}
                             autoComplete="off"
-                            disabled={isLockedEntity}
-                            placeholder="Search company, employee, or individual..."
+                            disabled={isLockedEntity || !searchEntityType}
+                            placeholder={
+                              searchEntityType
+                                ? `Search ${searchEntityType}...`
+                                : "Select entity type first"
+                            }
                             className={clsx(inputClass, "pl-11")}
                           />
 

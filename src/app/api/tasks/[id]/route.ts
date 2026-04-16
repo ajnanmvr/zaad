@@ -5,6 +5,36 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
 
+function parseLinkedTargets(raw: unknown) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const dedupe = new Set<string>();
+
+  return raw
+    .map((item) => {
+      const targetType = String((item as any)?.targetType || "")
+        .trim()
+        .toLowerCase();
+      const targetId = String((item as any)?.targetId || "").trim();
+      const targetLabel = String((item as any)?.targetLabel || "").trim();
+
+      if (!targetType || !targetId) {
+        return null;
+      }
+
+      const key = `${targetType}:${targetId}`;
+      if (dedupe.has(key)) {
+        return null;
+      }
+      dedupe.add(key);
+
+      return { targetType, targetId, targetLabel };
+    })
+    .filter(Boolean);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
@@ -75,6 +105,9 @@ export async function PUT(
       if (body.assignedTo !== undefined) update.assignedTo = body.assignedTo;
       if (body.dueDate !== undefined) update.dueDate = body.dueDate ? new Date(body.dueDate) : null;
       if (body.completionNote !== undefined) update.completionNote = String(body.completionNote || "");
+      if (body.linkedTargets !== undefined) {
+        update.linkedTargets = parseLinkedTargets(body.linkedTargets);
+      }
 
       if (body.status === "completed") {
         update.completedAt = new Date();

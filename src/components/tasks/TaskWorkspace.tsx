@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import clsx from "clsx";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +32,7 @@ import {
   FiTarget,
   FiUser,
   FiUsers,
+  FiX,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
@@ -40,6 +41,25 @@ import { useUserContext } from "@/contexts/UserContext";
 
 type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
+
+type LinkedTargetType =
+  | "company"
+  | "employee"
+  | "individual"
+  | "document"
+  | "credential"
+  | "handover"
+  | "record"
+  | "liability"
+  | "invoice"
+  | "payment"
+  | "other";
+
+type LinkedTarget = {
+  targetType: LinkedTargetType | "";
+  targetId: string;
+  targetLabel?: string;
+};
 
 type TaskItem = {
   _id: string;
@@ -52,6 +72,11 @@ type TaskItem = {
   completedAt?: string | null;
   assignedTo: { _id: string; username: string; fullname?: string; role?: string };
   assignedBy: { _id: string; username: string; fullname?: string; role?: string };
+  linkedTargets?: Array<{
+    targetType: string;
+    targetId: string;
+    targetLabel?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 };
@@ -163,12 +188,14 @@ export default function TaskWorkspace({
   const [newPriority, setNewPriority] = useState<TaskPriority>("medium");
   const [newDueDate, setNewDueDate] = useState("");
   const [newAssignedTo, setNewAssignedTo] = useState("");
+  const [newLinkedTargets, setNewLinkedTargets] = useState<LinkedTarget[]>([]);
 
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<TaskStatus>("todo");
   const [editPriority, setEditPriority] = useState<TaskPriority>("medium");
   const [editDueDate, setEditDueDate] = useState("");
   const [editAssignee, setEditAssignee] = useState("");
+  const [editLinkedTargets, setEditLinkedTargets] = useState<LinkedTarget[]>([]);
   const [completeTaskId, setCompleteTaskId] = useState<string | null>(null);
   const [completionNote, setCompletionNote] = useState("");
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
@@ -183,6 +210,42 @@ export default function TaskWorkspace({
 
   const todayKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
   const isSelectedDateToday = selectedDate === todayKey;
+
+  const prefLinkType = String(searchParams.get("linkType") || "")
+    .trim()
+    .toLowerCase();
+  const prefLinkId = String(searchParams.get("linkId") || "").trim();
+  const prefLinkLabel = String(searchParams.get("linkLabel") || "").trim();
+
+  useEffect(() => {
+    if (!(mode === "manage" && canManage)) {
+      return;
+    }
+
+    if (!prefLinkType || !prefLinkId) {
+      return;
+    }
+
+    setShowCreate(true);
+    setNewLinkedTargets((prev) => {
+      if (
+        prev.some(
+          (item) => item.targetType === prefLinkType && item.targetId === prefLinkId,
+        )
+      ) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          targetType: prefLinkType as LinkedTargetType,
+          targetId: prefLinkId,
+          targetLabel: prefLinkLabel,
+        },
+      ];
+    });
+  }, [canManage, mode, prefLinkId, prefLinkLabel, prefLinkType]);
 
   useEffect(() => {
     setSelectedDate(normalizedDateFromQuery);
@@ -373,6 +436,67 @@ export default function TaskWorkspace({
       .slice(0, 8);
   }, [tasks]);
 
+  const targetTypeOptions: Array<{ value: LinkedTargetType; label: string }> = [
+    { value: "company", label: "Company" },
+    { value: "employee", label: "Employee" },
+    { value: "individual", label: "Individual" },
+    { value: "document", label: "Document" },
+    { value: "credential", label: "Credential" },
+    { value: "handover", label: "Document Handover" },
+    { value: "record", label: "Record" },
+    { value: "liability", label: "Liability" },
+    { value: "invoice", label: "Invoice" },
+    { value: "payment", label: "Payment" },
+    { value: "other", label: "Other" },
+  ];
+
+  const normalizeLinkedTargets = (targets: LinkedTarget[]) => {
+    const seen = new Set<string>();
+
+    return targets
+      .map((item) => {
+        const targetType = String(item.targetType || "").trim().toLowerCase();
+        const targetId = String(item.targetId || "").trim();
+        const targetLabel = String(item.targetLabel || "").trim();
+        if (!targetType || !targetId) {
+          return null;
+        }
+
+        const key = `${targetType}:${targetId}`;
+        if (seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
+
+        return { targetType, targetId, targetLabel };
+      })
+      .filter(Boolean);
+  };
+
+  const addLinkedTargetRow = (
+    setter: Dispatch<SetStateAction<LinkedTarget[]>>,
+  ) => {
+    setter((prev) => [...prev, { targetType: "", targetId: "", targetLabel: "" }]);
+  };
+
+  const removeLinkedTargetRow = (
+    setter: Dispatch<SetStateAction<LinkedTarget[]>>,
+    index: number,
+  ) => {
+    setter((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const updateLinkedTargetRow = (
+    setter: Dispatch<SetStateAction<LinkedTarget[]>>,
+    index: number,
+    field: keyof LinkedTarget,
+    value: string,
+  ) => {
+    setter((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)),
+    );
+  };
+
   const createTaskMutation = useMutation({
     mutationFn: () =>
       axios.post("/api/tasks", {
@@ -381,6 +505,7 @@ export default function TaskWorkspace({
         priority: newPriority,
         dueDate: newDueDate || null,
         assignedTo: newAssignedTo,
+        linkedTargets: normalizeLinkedTargets(newLinkedTargets),
       }),
     onSuccess: () => {
       toast.success("Task created and assigned");
@@ -390,6 +515,7 @@ export default function TaskWorkspace({
       setNewPriority("medium");
       setNewDueDate("");
       setNewAssignedTo("");
+      setNewLinkedTargets([]);
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task-notifications"] });
     },
@@ -405,6 +531,7 @@ export default function TaskWorkspace({
         priority: editPriority,
         dueDate: editDueDate || null,
         assignedTo: editAssignee || undefined,
+        linkedTargets: normalizeLinkedTargets(editLinkedTargets),
       }),
     onSuccess: () => {
       toast.success("Task updated");
@@ -461,6 +588,13 @@ export default function TaskWorkspace({
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : "");
     setEditAssignee(task.assignedTo?._id || "");
+    setEditLinkedTargets(
+      (task.linkedTargets || []).map((item) => ({
+        targetType: (item.targetType || "") as LinkedTargetType,
+        targetId: item.targetId || "",
+        targetLabel: item.targetLabel || "",
+      })),
+    );
   };
 
   const updateDateInUrl = (nextDate: string | null) => {
@@ -987,6 +1121,90 @@ export default function TaskWorkspace({
                 className="md:col-span-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-900"
                 rows={3}
               />
+
+              <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Linked Data Targets
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => addLinkedTargetRow(setNewLinkedTargets)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-700 dark:text-emerald-300"
+                  >
+                    <FiPlus /> Add Link
+                  </button>
+                </div>
+
+                {newLinkedTargets.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No linked data yet. Add one or more model links (company, employee, document, invoice, etc.).
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {newLinkedTargets.map((item, index) => (
+                      <div key={`new-link-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                        <select
+                          value={item.targetType}
+                          onChange={(event) =>
+                            updateLinkedTargetRow(
+                              setNewLinkedTargets,
+                              index,
+                              "targetType",
+                              event.target.value,
+                            )
+                          }
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                        >
+                          <option value="">Type</option>
+                          {targetTypeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          value={item.targetId}
+                          onChange={(event) =>
+                            updateLinkedTargetRow(
+                              setNewLinkedTargets,
+                              index,
+                              "targetId",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Target ID"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                        />
+
+                        <input
+                          value={item.targetLabel || ""}
+                          onChange={(event) =>
+                            updateLinkedTargetRow(
+                              setNewLinkedTargets,
+                              index,
+                              "targetLabel",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Optional label"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeLinkedTargetRow(setNewLinkedTargets, index)}
+                          className="inline-flex items-center justify-center rounded-lg border border-rose-300 px-2 py-2 text-rose-700 dark:border-rose-700 dark:text-rose-300"
+                          title="Remove linked target"
+                        >
+                          <FiX />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="mt-3 flex justify-end">
               <button
@@ -1063,6 +1281,20 @@ export default function TaskWorkspace({
                       </span>
                     ) : null}
                   </div>
+
+                  {task.linkedTargets && task.linkedTargets.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      {task.linkedTargets.map((link, idx) => (
+                        <span
+                          key={`${task._id}-link-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 font-semibold text-cyan-700 dark:border-cyan-800/50 dark:bg-cyan-900/20 dark:text-cyan-300"
+                        >
+                          <FiTarget className="text-[11px]" />
+                          {link.targetType}:{link.targetLabel || link.targetId}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {task.completionNote ? (
                     <p className="mt-2 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -1145,6 +1377,92 @@ export default function TaskWorkspace({
                           </option>
                         ))}
                       </select>
+
+                      <div className="md:col-span-2 rounded-lg border border-slate-200 bg-white/90 p-2 dark:border-slate-700 dark:bg-slate-900/60">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Linked Data Targets
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => addLinkedTargetRow(setEditLinkedTargets)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-700 dark:text-emerald-300"
+                          >
+                            <FiPlus /> Add Link
+                          </button>
+                        </div>
+
+                        {editLinkedTargets.length === 0 ? (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">No linked targets.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {editLinkedTargets.map((item, index) => (
+                              <div
+                                key={`edit-link-${index}`}
+                                className="grid grid-cols-1 gap-2 md:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                              >
+                                <select
+                                  value={item.targetType}
+                                  onChange={(event) =>
+                                    updateLinkedTargetRow(
+                                      setEditLinkedTargets,
+                                      index,
+                                      "targetType",
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                                >
+                                  <option value="">Type</option>
+                                  {targetTypeOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <input
+                                  value={item.targetId}
+                                  onChange={(event) =>
+                                    updateLinkedTargetRow(
+                                      setEditLinkedTargets,
+                                      index,
+                                      "targetId",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Target ID"
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                                />
+
+                                <input
+                                  value={item.targetLabel || ""}
+                                  onChange={(event) =>
+                                    updateLinkedTargetRow(
+                                      setEditLinkedTargets,
+                                      index,
+                                      "targetLabel",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Optional label"
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeLinkedTargetRow(setEditLinkedTargets, index)
+                                  }
+                                  className="inline-flex items-center justify-center rounded-lg border border-rose-300 px-2 py-2 text-rose-700 dark:border-rose-700 dark:text-rose-300"
+                                >
+                                  <FiX />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
                       <div className="md:col-span-2 flex gap-2 justify-end">
                         <button
