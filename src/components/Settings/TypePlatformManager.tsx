@@ -24,6 +24,13 @@ import {
   DEFAULT_PAYMENT_TEMPLATE_ICON,
   TPaymentTemplateIcon,
 } from "@/config/templateVisuals";
+import {
+  DOCUMENT_CATEGORY_OPTIONS,
+  getDocumentCategoryIcon,
+  getDocumentCategoryLabel,
+  normalizeDocumentCategory,
+  TDocumentCategory,
+} from "@/config/documentCategoryVisuals";
 
 type ManagerType = "document" | "credential" | "payment" | "payment-status";
 
@@ -35,6 +42,7 @@ type ItemOption = {
   status?: string;
   appliesTo?: "income" | "expense" | "both";
   color?: string;
+  category?: TDocumentCategory;
   icon?: TPaymentTemplateIcon;
   published?: boolean;
   unpublished?: boolean;
@@ -73,6 +81,7 @@ function TypePlatformManager({
   const [selectedAppliesTo, setSelectedAppliesTo] = useState<
     "income" | "expense" | "both"
   >("both");
+  const [selectedDocumentCategory, setSelectedDocumentCategory] = useState<TDocumentCategory>("other");
   const [colorPickerKey, setColorPickerKey] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -144,6 +153,7 @@ function TypePlatformManager({
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
     setSelectedAppliesTo("both");
+    setSelectedDocumentCategory("other");
     setColorPickerKey((prev) => prev + 1);
     setShowAddForm(true);
   };
@@ -162,6 +172,7 @@ function TypePlatformManager({
     setSelectedColor(item.color || "");
     setSelectedIcon((item.icon || DEFAULT_PAYMENT_TEMPLATE_ICON) as TPaymentTemplateIcon);
     setSelectedAppliesTo(item.appliesTo || "both");
+    setSelectedDocumentCategory(normalizeDocumentCategory(item.category));
     setColorPickerKey((prev) => prev + 1);
     setShowAddForm(true);
   };
@@ -173,6 +184,7 @@ function TypePlatformManager({
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
     setSelectedAppliesTo("both");
+    setSelectedDocumentCategory("other");
   };
 
   const handleAdd = async (event: FormEvent) => {
@@ -192,7 +204,7 @@ function TypePlatformManager({
           ? { color: selectedColor || undefined }
           : {}),
         ...(type === "document"
-          ? { name: value.trim() }
+          ? { name: value.trim(), category: selectedDocumentCategory }
           : type === "credential"
             ? { platform: value.trim() }
             : type === "payment"
@@ -211,6 +223,7 @@ function TypePlatformManager({
       setSelectedColor("");
       setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
       setSelectedAppliesTo("both");
+      setSelectedDocumentCategory("other");
       setEditingId(null);
       setColorPickerKey((prev) => prev + 1);
       setShowAddForm(false);
@@ -409,6 +422,29 @@ function TypePlatformManager({
                   </select>
                 </div>
               )}
+
+              {type === "document" && (
+                <div>
+                  <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Category
+                  </p>
+                  <select
+                    value={selectedDocumentCategory}
+                    onChange={(event) =>
+                      setSelectedDocumentCategory(
+                        normalizeDocumentCategory(event.target.value),
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    {DOCUMENT_CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -427,7 +463,9 @@ function TypePlatformManager({
         </div>
       ) : (
         <div className="space-y-2.5">
-          {items.map((item) => (
+          {items.map((item) => {
+            const DocumentIcon = getDocumentCategoryIcon(item.category);
+            return (
             <div
               key={item.id}
               className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/30 sm:flex-row sm:items-center sm:justify-between"
@@ -456,7 +494,7 @@ function TypePlatformManager({
                       className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white"
                       style={{ backgroundColor: item.color || "#F59E0B" }}
                     >
-                      <FiFileText className="text-sm" />
+                      <DocumentIcon className="text-sm" />
                     </span>
                   )}
                   {type === "credential" && (
@@ -490,6 +528,11 @@ function TypePlatformManager({
                     Applies to: {item.appliesTo}
                   </p>
                 ) : null}
+                {type === "document" ? (
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Category: {getDocumentCategoryLabel(item.category)}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex items-center gap-2">
@@ -520,7 +563,8 @@ function TypePlatformManager({
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -6,12 +6,13 @@ import { PAGINATION } from "@/config/pagination";
 import { fetchArchivedDocuments } from "@/libs/queries";
 import { TExpiryDocumentItem, TPaginatedResponse } from "@/types/types";
 import formatDate from "@/utils/formatDate";
+import { getDocumentCategoryIcon } from "@/config/documentCategoryVisuals";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { FiArchive, FiArrowLeft, FiCornerUpLeft, FiFileText } from "react-icons/fi";
+import { FiArchive, FiArrowLeft, FiCornerUpLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 
 function getEntityHref(entityId?: string, entityType?: string) {
@@ -130,6 +131,7 @@ const ArchivedDocumentsPage = () => {
                     const entityType = item.entity?.entityType || "unknown";
                     const entityId = item.entity?.id;
                     const entityHref = getEntityHref(entityId, entityType);
+                    const DocumentIcon = getDocumentCategoryIcon(item.templateCategory);
 
                     return (
                       <tr
@@ -139,7 +141,7 @@ const ArchivedDocumentsPage = () => {
                         <td className="py-4 pl-4">
                           <div className="flex items-center gap-3">
                             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300">
-                              <FiFileText />
+                              <DocumentIcon />
                             </span>
                             <div className="flex flex-col">
                               <span className="text-sm font-bold text-slate-900 dark:text-slate-100">

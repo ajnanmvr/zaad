@@ -36,6 +36,13 @@ import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
 import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
 import { TEntityListItem, TPagination } from "@/types/types";
+import ExportActionsMenu from "@/components/common/ExportActionsMenu";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+import {
+  getDocumentCategoryIcon,
+  getDocumentCategoryLabel,
+  normalizeDocumentCategory,
+} from "@/config/documentCategoryVisuals";
 
 import {
   EntityProfileHeader,
@@ -75,6 +82,7 @@ type EntityDetailResponse = {
       _id: string;
       documentTemplate?: string;
       name?: string;
+      templateCategory?: "visa" | "license" | "other";
       issueDate?: string;
       expiryDate?: string;
       notes?: string;
@@ -99,6 +107,7 @@ type TemplateOption = {
   name?: string;
   platform?: string;
   color?: string;
+  category?: "visa" | "license" | "other";
 };
 
 type OverviewResponse = {
@@ -315,6 +324,13 @@ export default function EntitySectionPage({
   const selectedDocumentTemplate = documentDraft.documentTemplate
     ? documentTemplateMap.get(documentDraft.documentTemplate)
     : undefined;
+  const selectedDocumentTemplateCategory = normalizeDocumentCategory(
+    selectedDocumentTemplate?.category,
+  );
+  const selectedDocumentTemplateIcon = getDocumentCategoryIcon(
+    selectedDocumentTemplateCategory,
+  );
+  const SelectedDocumentTemplateIcon = selectedDocumentTemplateIcon;
   const selectedCredentialTemplate = credentialDraft.credentialTemplate
     ? credentialTemplateMap.get(credentialDraft.credentialTemplate)
     : undefined;
@@ -393,6 +409,48 @@ export default function EntitySectionPage({
       (a.platform || "").localeCompare(b.platform || ""),
     );
   }, [credentials, credentialSort]);
+
+  const exportDocumentRows = async (
+    format: "csv" | "excel" | "pdf",
+    mode: "selected" | "all",
+  ) => {
+    const sourceRows = sortedDocuments;
+    if (!sourceRows.length) {
+      toast.error("No documents to export");
+      return;
+    }
+
+    const rowsForExport = sourceRows.map((doc) => {
+      const templateMeta = doc.documentTemplate
+        ? documentTemplateMap.get(doc.documentTemplate)
+        : undefined;
+      const category = normalizeDocumentCategory(
+        doc.templateCategory || templateMeta?.category,
+      );
+
+      return {
+        DocumentName: doc.name || templateMeta?.name || "Untitled document",
+        Category: getDocumentCategoryLabel(category),
+        IssueDate: formatDate(doc.issueDate),
+        ExpiryDate: formatDate(doc.expiryDate),
+        Status: doc.archived
+          ? "archived"
+          : calculateStatus(doc.expiryDate || ""),
+        Notes: doc.notes || "",
+      };
+    });
+
+    if (format === "csv") {
+      exportRowsCsv(rowsForExport, `${entityName}-documents`);
+    } else if (format === "excel") {
+      exportRowsExcel(rowsForExport, `${entityName}-documents`);
+    } else {
+      await exportRowsPdf(rowsForExport, `${entityName}-documents`);
+    }
+
+    const scopeLabel = mode === "selected" ? "Selected" : "All";
+    toast.success(`${scopeLabel} documents exported as ${format.toUpperCase()}`);
+  };
 
   const startRenew = (
     doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number],
@@ -830,6 +888,7 @@ export default function EntitySectionPage({
               {!isSectionLoading && section === "documents" && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-end gap-2">
+                    <ExportActionsMenu onExport={exportDocumentRows} />
                     <select
                       value={documentSort}
                       onChange={(event) =>
@@ -908,10 +967,13 @@ export default function EntitySectionPage({
                                     "#10B981",
                                 }}
                               >
-                                <FiFileText className="text-sm" />
+                                <SelectedDocumentTemplateIcon className="text-sm" />
                               </span>
                               <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                                 {selectedDocumentTemplate.name || "Unnamed document"}
+                              </span>
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                {getDocumentCategoryLabel(selectedDocumentTemplateCategory)}
                               </span>
                             </div>
                           )}
@@ -991,6 +1053,10 @@ export default function EntitySectionPage({
                         const templateMeta = doc.documentTemplate
                           ? documentTemplateMap.get(doc.documentTemplate)
                           : undefined;
+                        const templateCategory = normalizeDocumentCategory(
+                          doc.templateCategory || templateMeta?.category,
+                        );
+                        const DocumentIcon = getDocumentCategoryIcon(templateCategory);
                         const docAvatarColor = resolveAvatarColorWithFallback(
                           templateMeta?.color,
                           templateMeta?.name || doc.name || "Document",
@@ -1010,9 +1076,12 @@ export default function EntitySectionPage({
                                   className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
                                   style={{ backgroundColor: docAvatarColor }}
                                 >
-                                  <FiFileText className="text-sm" />
+                                  <DocumentIcon className="text-sm" />
                                 </span>
                                 {doc.name || "Untitled document"}
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
+                                  {getDocumentCategoryLabel(templateCategory)}
+                                </span>
                               </p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">
                                 Issue: {formatDate(doc.issueDate)}

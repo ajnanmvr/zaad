@@ -3,6 +3,7 @@ import Entity from "@/models/entities";
 import DocumentTemplate from "@/models/documentTemplates";
 import calculateStatus from "@/utils/calculateStatus";
 import { PAGINATION } from "@/config/pagination";
+import { normalizeDocumentCategory } from "@/config/documentCategoryVisuals";
 
 type DocumentInput = {
   documentTemplate?: string;
@@ -50,13 +51,14 @@ export async function replaceEntityDocuments(entityId: string, documents: Docume
 
 export async function listEntityDocuments(entityId: string) {
   const rows = await EntityDocument.find({ entity: entityId })
-    .populate("documentTemplate", "name")
+    .populate("documentTemplate", "name category")
     .select("documentTemplate issueDate expiryDate notes archived archiveNotes archivedAt");
 
   return rows.map((row: any) => ({
     _id: row._id,
     documentTemplate: row.documentTemplate?._id || row.documentTemplate,
     name: row.documentTemplate?.name || "",
+    templateCategory: normalizeDocumentCategory(row.documentTemplate?.category),
     issueDate: row.issueDate,
     expiryDate: row.expiryDate,
     notes: row.notes,
@@ -143,7 +145,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
 
   const [documents, total] = await Promise.all([
     EntityDocument.find({ archived: { $ne: true } })
-      .populate("documentTemplate", "name color")
+      .populate("documentTemplate", "name color category")
       .select("entity documentTemplate issueDate expiryDate notes")
       .sort({ expiryDate: 1, createdAt: -1 })
       .skip(skip)
@@ -171,6 +173,7 @@ export async function listExpiryDocuments(page: number, limit: number) {
       documentTemplate: doc.documentTemplate?._id || doc.documentTemplate,
       name: doc.documentTemplate?.name || "",
       templateColor: doc.documentTemplate?.color,
+      templateCategory: normalizeDocumentCategory(doc.documentTemplate?.category),
       issueDate: doc.issueDate,
       expiryDate: doc.expiryDate,
       notes: doc.notes,
@@ -206,7 +209,7 @@ export async function listArchivedDocuments(page: number, limit: number) {
 
   const [documents, total] = await Promise.all([
     EntityDocument.find({ archived: true })
-      .populate("documentTemplate", "name")
+      .populate("documentTemplate", "name category")
       .select("entity documentTemplate issueDate expiryDate notes archiveNotes archivedAt")
       .sort({ archivedAt: -1, updatedAt: -1 })
       .skip(skip)
@@ -233,6 +236,7 @@ export async function listArchivedDocuments(page: number, limit: number) {
       id: doc._id,
       documentTemplate: doc.documentTemplate?._id || doc.documentTemplate,
       name: doc.documentTemplate?.name || "",
+      templateCategory: normalizeDocumentCategory(doc.documentTemplate?.category),
       issueDate: doc.issueDate,
       expiryDate: doc.expiryDate,
       notes: doc.notes,
@@ -262,10 +266,11 @@ export async function listArchivedDocuments(page: number, limit: number) {
 }
 
 export async function listDocumentTemplateOptions() {
-  const rows = await DocumentTemplate.find({}).select("name").sort({ name: 1 });
+  const rows = await DocumentTemplate.find({}).select("name category").sort({ name: 1 });
   return rows.map((row: any) => ({
     id: row._id.toString(),
     label: row.name,
     name: row.name,
+    category: normalizeDocumentCategory(row.category),
   }));
 }

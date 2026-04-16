@@ -12,6 +12,13 @@ const DocumentTemplateSchema = new Schema(
       trim: true,
       uppercase: true,
     },
+    category: {
+      type: String,
+      enum: ["visa", "license", "other"],
+      default: "other",
+      lowercase: true,
+      trim: true,
+    },
     published: {
       type: Boolean,
       default: true,

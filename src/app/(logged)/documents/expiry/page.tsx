@@ -19,6 +19,10 @@ import { toast } from "react-hot-toast";
 import AddExpiryDocumentModal from "@/components/Modals/AddExpiryDocumentModal";
 import { resolveAvatarColorWithFallback } from "@/components/entity/EntityProfileFrame";
 import PrintReportButton from "@/components/common/PrintReportButton";
+import {
+  getDocumentCategoryIcon,
+  getDocumentCategoryLabel,
+} from "@/config/documentCategoryVisuals";
 
 function formatRelativeExpiry(daysLeft: number | null) {
   if (daysLeft === null) {
@@ -126,6 +130,7 @@ const ExpiryDocumentsPage = () => {
       Entity: item.entity?.name || "",
       EntityType: item.entity?.entityType || "",
       DocumentName: item.name || "",
+      DocumentCategory: getDocumentCategoryLabel(item.templateCategory),
       ExpiryDate: formatDate(item.expiryDate || null),
       DaysLeft: formatRelativeExpiry(item.daysLeft),
       Status: item.status || calculateStatus(item.expiryDate || ""),
@@ -463,6 +468,7 @@ const ExpiryDocumentsPage = () => {
                       item.templateColor,
                       item.name || "Document",
                     );
+                    const DocumentIcon = getDocumentCategoryIcon(item.templateCategory);
 
                     return (
                       <Fragment key={item.id}>
@@ -490,7 +496,7 @@ const ExpiryDocumentsPage = () => {
                               className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-white"
                               style={{ backgroundColor: documentAvatarColor }}
                             >
-                              <FiFileText />
+                              <DocumentIcon />
                             </span>
                             <div className="flex flex-col">
                               <button

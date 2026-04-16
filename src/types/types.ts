@@ -40,6 +40,7 @@ export type TDocuments = {
   id?: string;
   documentTemplate?: string;
   name?: string;
+  templateCategory?: "visa" | "license" | "other";
   status?: string;
   issueDate?: string;
   expiryDate: string;
@@ -100,6 +101,7 @@ export type TExpiryDocumentItem = {
   documentTemplate?: string;
   name?: string;
   templateColor?: string;
+  templateCategory?: "visa" | "license" | "other";
   issueDate?: string;
   expiryDate?: string;
   notes?: string;

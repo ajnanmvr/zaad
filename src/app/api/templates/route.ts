@@ -10,6 +10,7 @@ import EntityDocument from "@/models/entityDocuments";
 import EntityCredential from "@/models/entityCredentials";
 import Records from "@/models/records";
 import { DEFAULT_PAYMENT_TEMPLATE_ICON, PAYMENT_TEMPLATE_ICON_KEYS } from "@/config/templateVisuals";
+import { normalizeDocumentCategory } from "@/config/documentCategoryVisuals";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 function normalizeHexColor(value?: string): string | undefined {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       const templates = await DocumentTemplate.find({
         $or: [{ published: { $ne: false } }, { _id: { $in: usedTemplateIds } }],
       })
-        .select("name color published createdAt")
+        .select("name color category published createdAt")
         .sort({ name: 1 });
 
       const usageMap = new Map<string, number>();
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
             label: item.name,
             name: item.name,
             color: item.color,
+            category: normalizeDocumentCategory(item.category),
             published: item.published !== false,
             unpublished: item.published === false,
             createdAt: item.createdAt,
@@ -241,7 +243,7 @@ export async function GET(request: NextRequest) {
           { _id: { $in: Array.from(documentUsageMap.keys()) } },
         ],
       })
-        .select("name color published")
+        .select("name color category published")
         .sort({ name: 1 }),
       CredentialTemplate.find({
         $or: [
@@ -276,6 +278,7 @@ export async function GET(request: NextRequest) {
           label: item.name,
           name: item.name,
           color: item.color,
+          category: normalizeDocumentCategory(item.category),
           published: item.published !== false,
           unpublished: item.published === false,
         })),
@@ -344,6 +347,7 @@ export async function POST(request: NextRequest) {
 
     if (type === "document") {
       const exists = await DocumentTemplate.findOne({ name: name.trim() });
+      const category = normalizeDocumentCategory(body?.category);
       if (exists) {
         if (exists.published === false) {
           exists.published = true;
@@ -351,6 +355,7 @@ export async function POST(request: NextRequest) {
           if (selectedColor) {
             exists.color = selectedColor;
           }
+          exists.category = category;
           await exists.save();
 
           return Response.json(
@@ -360,6 +365,7 @@ export async function POST(request: NextRequest) {
                 id: exists._id.toString(),
                 name: exists.name,
                 color: exists.color,
+                category: normalizeDocumentCategory(exists.category),
               },
             },
             { status: 200 }
@@ -380,7 +386,12 @@ export async function POST(request: NextRequest) {
             return generateEntityColor(existingColors);
           });
 
-      const template = await DocumentTemplate.create({ name: name.trim(), color, published: true });
+      const template = await DocumentTemplate.create({
+        name: name.trim(),
+        color,
+        category,
+        published: true,
+      });
       return Response.json(
         {
           message: "Document template created successfully",
@@ -388,6 +399,7 @@ export async function POST(request: NextRequest) {
             id: template._id.toString(),
             name: template.name,
             color: template.color,
+            category: normalizeDocumentCategory(template.category),
           },
         },
         { status: 201 }
@@ -698,6 +710,7 @@ export async function PUT(request: NextRequest) {
 
     if (type === "document") {
       const name = String(body?.name || "").trim();
+      const category = normalizeDocumentCategory(body?.category);
       if (!name) {
         return Response.json(
           { message: "Document name is required" },
@@ -718,7 +731,7 @@ export async function PUT(request: NextRequest) {
       }
 
       const selectedColor = normalizeHexColor(body?.color);
-      const update: Record<string, unknown> = { name };
+      const update: Record<string, unknown> = { name, category };
       if (selectedColor) {
         update.color = selectedColor;
       }
@@ -743,6 +756,7 @@ export async function PUT(request: NextRequest) {
             id: template._id.toString(),
             name: template.name,
             color: template.color,
+            category: normalizeDocumentCategory(template.category),
           },
         },
         { status: 200 }
