@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 function expensePage() {
   return (
     <Suspense fallback={null}>
-      <AddRecord type="expense"/>
+      <AddRecord type="expense" suggestionCategory="office_records" hideBreadcrumb />
     </Suspense>
   )
 }

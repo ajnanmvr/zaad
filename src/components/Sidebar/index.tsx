@@ -20,6 +20,7 @@ import {
   FiLayers,
   FiLock,
   FiPieChart,
+  FiSettings,
   FiShield,
   FiTrendingDown,
   FiTrendingUp,
@@ -371,6 +372,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Settings & Access" />
             <ul className="space-y-1.5">
+              <li>
+                <NavItem
+                  href="/settings"
+                  icon={<FiSettings />}
+                  label="Settings Home"
+                  active={pathname === "/settings"}
+                />
+              </li>
               {can("entities.write") && (
                 <SidebarLinkGroup
                   activeCondition={
@@ -378,7 +387,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     pathname.startsWith("/settings/credential-platforms") ||
                     pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/payment-statuses") ||
-                    pathname.startsWith("/settings/templates")
+                    pathname.startsWith("/settings/templates") ||
+                    pathname.startsWith("/settings/particular-suggestions")
                   }
                 >
                   {(handleClick, open) => (
@@ -390,7 +400,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           pathname.startsWith("/settings/credential-platforms") ||
                           pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/payment-statuses") ||
-                          pathname.startsWith("/settings/templates")
+                          pathname.startsWith("/settings/templates") ||
+                          pathname.startsWith("/settings/particular-suggestions")
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                         }`}
@@ -441,6 +452,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/payment-statuses"}
                             />
                           </li>
+                          <li>
+                            <NavItem
+                              href="/settings/particular-suggestions"
+                              icon={<FiFileText />}
+                              label="Particular Suggestions"
+                              active={pathname === "/settings/particular-suggestions"}
+                            />
+                          </li>
                         </ul>
                       </div>
                     </>
@@ -460,10 +479,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               {can("settings.read") && (
                 <li>
                   <NavItem
-                    href="/settings/permissions"
+                    href="/settings/roles"
                     icon={<FiShield />}
-                    label="Permission Matrix"
-                    active={pathname === "/settings/permissions"}
+                    label="Permission Overview"
+                    active={pathname === "/settings/roles"}
                   />
                 </li>
               )}

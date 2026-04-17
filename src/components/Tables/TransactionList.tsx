@@ -303,7 +303,7 @@ const TransactionList = ({
         params: { type: "payment" },
       });
       return (data?.options || []).map((item: any) => ({
-        value: item.method,
+        value: item.id,
         label: item.label || item.method,
         color: item.color,
         icon: item.icon,
@@ -367,7 +367,6 @@ const TransactionList = ({
         record?.client?.name || "",
         record?.client?.type || "",
         record?.particular || "",
-        record?.expenseCategory || "",
         record?.method || "",
         record?.status || "",
         record?.amount || "",
@@ -425,7 +424,6 @@ const TransactionList = ({
         "Record ID": `${record.suffix || ""}${record.number || ""}`,
         Client: record.client?.name || "",
         "Client Type": record.client?.type || "",
-        "Expense Category": record.expenseCategory || "",
         Type: record.type || "",
         Particular: record.particular || "",
         Method: record.method || "",
@@ -1008,11 +1006,6 @@ const TransactionList = ({
                                   <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
                                     {record?.particular}
                                   </p>
-                                  {record?.expenseCategory ? (
-                                    <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                      {record.expenseCategory}
-                                    </span>
-                                  ) : null}
                                 </Link>
                               </div>
                             </td>
@@ -1022,17 +1015,17 @@ const TransactionList = ({
                                 <div className="flex items-center gap-2">
                                   <PaymentMethodBadge
                                     label={
-                                      paymentMethodMap[record?.method || ""]
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
                                         ?.label ||
                                       record?.method ||
                                       "Unknown"
                                     }
                                     color={
-                                      paymentMethodMap[record?.method || ""]
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
                                         ?.color
                                     }
                                     icon={
-                                      paymentMethodMap[record?.method || ""]
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
                                         ?.icon
                                     }
                                     size="sm"

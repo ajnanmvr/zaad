@@ -86,6 +86,21 @@ const TransactionList = () => {
             </div>
           </div>
         </div>
+
+        <div className="relative z-10 mt-5 flex flex-wrap gap-2">
+          <Link
+            href="/accounts/transactions/liability/new?flow=in"
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+          >
+            Add Liability In
+          </Link>
+          <Link
+            href="/accounts/transactions/liability/new?flow=out"
+            className="inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 dark:border-orange-700 dark:bg-slate-900 dark:text-orange-300"
+          >
+            Add Liability Out
+          </Link>
+        </div>
       </section>
 
       <div className="mt-6">

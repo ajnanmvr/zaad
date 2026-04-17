@@ -9,8 +9,12 @@ import {
   FiBriefcase,
   FiClock,
   FiKey,
+  FiLayers,
+  FiLink,
+  FiSettings,
   FiShield,
   FiUser,
+  FiUsers,
 } from "react-icons/fi";
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
@@ -51,6 +55,8 @@ const SettingsPage = () => {
     Array.isArray(user?.permissions) && user.permissions.includes("entities.write");
   const canViewAudit =
     Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read");
+  const canViewUsers =
+    Array.isArray(user?.permissions) && user.permissions.includes("users.read");
 
   const activitiesQuery = useQuery({
     queryKey: ["my-activity", user?._id],
@@ -70,23 +76,69 @@ const SettingsPage = () => {
 
   return (
     <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-      <Breadcrumb pageName="My Profile" />
+      <Breadcrumb pageName="Settings" />
 
-      <section className="relative mt-6 overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-sky-300/20 blur-3xl" />
+      <section className="relative mt-6 overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-5 shadow-sm sm:p-6">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="relative z-10">
-          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-emerald-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300">
-            <FiUser />
-            Account Hub
+          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-100">
+            <FiSettings />
+            Settings Hub
           </p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
-            My Profile & Security
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">
+            Settings, access, and templates
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-            Manage profile context, monitor activity, and secure your account sessions.
+          <p className="mt-1 max-w-2xl text-sm text-slate-200/80">
+            Every settings section now has its own page. Use the cards below or the sidebar links to move directly to the area you need.
           </p>
         </div>
+      </section>
+
+      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Link href="/settings/document-types" className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Types & Platforms</p>
+              <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">Template catalogs</h3>
+            </div>
+            <FiLayers className="text-2xl text-cyan-500" />
+          </div>
+          <p className="mt-3 text-sm text-slate-500">Document types, credential platforms, payment methods, payment statuses, and suggestion lists.</p>
+        </Link>
+
+        <Link href="/settings/roles" className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Access</p>
+              <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">Roles & permissions</h3>
+            </div>
+            <FiShield className="text-2xl text-emerald-500" />
+          </div>
+          <p className="mt-3 text-sm text-slate-500">Manage role definitions and inspect grouped permissions from one page.</p>
+        </Link>
+
+        <Link href="/settings/particular-suggestions" className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Payments</p>
+              <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">Particular suggestions</h3>
+            </div>
+            <FiLink className="text-2xl text-amber-500" />
+          </div>
+          <p className="mt-3 text-sm text-slate-500">Review, publish, or delete the saved transaction description suggestions.</p>
+        </Link>
+
+        <Link href="/users" className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Administration</p>
+              <h3 className="mt-2 text-lg font-black text-slate-900 dark:text-slate-100">System users</h3>
+            </div>
+            <FiUsers className="text-2xl text-violet-500" />
+          </div>
+          <p className="mt-3 text-sm text-slate-500">Open the user management console and review accounts quickly.</p>
+        </Link>
       </section>
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -166,7 +218,21 @@ const SettingsPage = () => {
                   >
                     Payment Statuses
                   </Link>
+                  <Link
+                    href="/settings/particular-suggestions"
+                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                  >
+                    Particular Suggestions
+                  </Link>
                 </>
+              ) : null}
+              {canViewUsers ? (
+                <Link
+                  href="/users"
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  System Users
+                </Link>
               ) : null}
               {canViewAudit ? (
                 <Link

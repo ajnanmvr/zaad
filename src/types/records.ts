@@ -1,25 +1,27 @@
 type TRecordBase = {
   type: string;
   amount: number;
-  invoiceNo: string;
   particular: string;
-  expenseCategory?: string;
-  method?: string;
-  status?: string;
   serviceFee?: number;
   number: number;
   suffix: string;
+  paymentMethodTemplate?: string;
+  paymentStatusTemplate?: string;
+  method?: string;
+  status?: string;
+  recordKind?:
+    | "standard"
+    | "company"
+    | "self_transfer_in"
+    | "self_transfer_out"
+    | "liability"
+    | "instant_profit";
 };
 
 export type TRecordData = TRecordBase & {
   createdBy: string | undefined;
   entity?: string;
-  entityType?: "company" | "employee" | "individual" | "self";
-  self?: string;
-  employee?: string;
-  company?: string;
   remarks: string;
-  published?: boolean;
 };
 export type TRecordDataWithCreatedAt = TRecordData & {
   createdAt: Date;
@@ -30,7 +32,6 @@ export type TRecordList = TRecordBase & {
   creatorFullname?: string;
   id: string;
   employeeName?: string;
-  entityType?: "company" | "employee" | "individual" | "self";
   client: {
     name: string;
     id: string;
@@ -43,8 +44,6 @@ export type TRecordList = TRecordBase & {
   remarks: string;
   version?: number;
   deletedAt?: string;
-  deletedBy?: string;
-  deletedByFullname?: string;
   activityLog?: {
     action: "create" | "update" | "delete" | "recover";
     at: string;

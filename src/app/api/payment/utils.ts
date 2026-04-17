@@ -4,21 +4,17 @@ const DUBAI_TIME_ZONE = "Asia/Dubai";
 
 export const PAYMENT_POPULATE_FIELDS = [
   "createdBy",
-  "deletedBy",
   "activityLog.by",
   "entity",
-  "company",
-  "employee",
+  "paymentMethodTemplate",
+  "paymentStatusTemplate",
 ];
 
 export function getRecordClient(record: any) {
   const entity = record?.entity;
-  const company = record?.company;
-  const employee = record?.employee;
-  const self = record?.self;
 
   if (entity) {
-    const rawType = String(entity?.entityType || record?.entityType || "").toLowerCase();
+    const rawType = String(entity?.entityType || "").toLowerCase();
     const type =
       rawType === "individual"
         ? "individual"
@@ -26,7 +22,7 @@ export function getRecordClient(record: any) {
           ? "company"
           : rawType === "employee"
             ? "employee"
-            : "employee";
+            : "company";
 
     return {
       name: entity.name,
@@ -34,19 +30,6 @@ export function getRecordClient(record: any) {
       type,
       color: entity.color,
     };
-  }
-
-  if (company) {
-    return { name: company.name, id: company._id, type: "company" as const, color: company.color };
-  }
-
-  if (employee) {
-    const type = employee.entityType === "individual" ? "individual" : "employee";
-    return { name: employee.name, id: employee._id, type, color: employee.color };
-  }
-
-  if (self) {
-    return { name: self, type: "self" as const };
   }
 
   return null;
@@ -88,18 +71,17 @@ export function mapRecordListItem(record: any) {
   return {
     id: record._id,
     type: record.type,
+    recordKind: record.recordKind || "standard",
+    paymentMethodTemplate: record?.paymentMethodTemplate?._id?.toString?.() || record?.paymentMethodTemplate?.toString?.() || "",
+    paymentStatusTemplate: record?.paymentStatusTemplate?._id?.toString?.() || record?.paymentStatusTemplate?.toString?.() || "",
+    method: record?.paymentMethodTemplate?.method || "",
+    status: record?.paymentStatusTemplate?.status || "",
     client: getRecordClient(record),
-    employeeName: record?.employee?.name || undefined,
-    entityType: record?.entityType || undefined,
-    expenseCategory: record?.expenseCategory || "",
-    method: record.method,
     particular: record.particular,
-    invoiceNo: record.invoiceNo,
     amount: record.amount?.toFixed(2),
     serviceFee: record.serviceFee?.toFixed(2),
     creator: record?.createdBy?.username,
     creatorFullname: record?.createdBy?.fullname,
-    status: record.status,
     remarks: record.remarks,
     number: record.number,
     suffix: record.suffix,
@@ -108,8 +90,6 @@ export function mapRecordListItem(record: any) {
     dateTime,
     createdAt: record.createdAt,
     deletedAt: record.deletedAt,
-    deletedBy: record?.deletedBy?.username,
-    deletedByFullname: record?.deletedBy?.fullname,
     activityLog: (record?.activityLog || []).map((entry: any) => ({
       action: entry.action,
       at: entry.at,

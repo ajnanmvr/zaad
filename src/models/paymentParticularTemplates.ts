@@ -7,22 +7,9 @@ const PaymentParticularTemplateSchema = new Schema(
       required: true,
       trim: true,
     },
-    appliesTo: {
-      type: String,
-      enum: ["income", "expense", "both"],
-      default: "both",
-      index: true,
-    },
-    entityType: {
-      type: String,
-      enum: ["company", "employee", "individual", "self", ""],
-      default: "",
-      index: true,
-    },
-    expenseCategory: {
-      type: String,
-      trim: true,
-      default: "",
+    category: {
+      type: [String],
+      default: ["office_records"],
       index: true,
     },
     published: {
@@ -31,17 +18,14 @@ const PaymentParticularTemplateSchema = new Schema(
       index: true,
     },
   },
-  { timestamps: true, collection: "paymentParticularTemplates" }
+  { timestamps: true, collection: "paymentParticularTemplates" },
 );
 
 PaymentParticularTemplateSchema.index(
   {
     particular: 1,
-    appliesTo: 1,
-    entityType: 1,
-    expenseCategory: 1,
   },
-  { unique: true }
+  { unique: false },
 );
 
 const PaymentParticularTemplate =

@@ -16,8 +16,32 @@ export async function POST(request: NextRequest) {
       { message: "Created new payment record", data },
       { status: HttpStatusCode.Created },
     );
-  } catch (error) {
-    return Response.json(error, { status: 401 });
+  } catch (error: any) {
+    console.error("Payment creation error:", error);
+    
+    // Handle Mongoose validation errors
+    if (error?.name === "ValidationError") {
+      const validationErrors = Object.values(error.errors || {})
+        .map((err: any) => err.message)
+        .join("; ");
+      return Response.json(
+        { error: validationErrors || "Validation failed" },
+        { status: 400 },
+      );
+    }
+    
+    // Handle other known errors
+    if (error?.message) {
+      return Response.json(
+        { error: error.message },
+        { status: 400 },
+      );
+    }
+    
+    return Response.json(
+      { error: "Failed to create payment record" },
+      { status: 500 },
+    );
   }
 }
 

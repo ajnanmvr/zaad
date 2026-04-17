@@ -3,6 +3,7 @@ import TaskNotification from "@/models/taskNotifications";
 import Employee from "@/models/employees";
 import Entity from "@/models/entities";
 import PaymentTemplate from "@/models/paymentTemplates";
+import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
 
 type TFindRecordsOptions = {
   populate?: any;
@@ -92,7 +93,25 @@ export async function findEntitiesByIds(ids: any[]) {
 }
 
 export async function findPaymentTemplateMethods() {
-  return PaymentTemplate.find({}).select("method").sort({ method: 1 });
+  return PaymentTemplate.find({ published: { $ne: false } })
+    .select("_id method")
+    .sort({ method: 1 });
+}
+
+export async function findPaymentStatusTemplates() {
+  return PaymentStatusTemplate.find({ published: { $ne: false } })
+    .select("_id status")
+    .sort({ status: 1 });
+}
+
+export async function findPaymentTemplateByMethodName(method: string) {
+  return PaymentTemplate.findOne({ method: new RegExp(`^${String(method || "").trim()}$`, "i") })
+    .select("_id method");
+}
+
+export async function findPaymentStatusTemplateByStatusName(status: string) {
+  return PaymentStatusTemplate.findOne({ status: new RegExp(`^${String(status || "").trim()}$`, "i") })
+    .select("_id status");
 }
 
 export async function createPaymentEditNotification(data: any) {

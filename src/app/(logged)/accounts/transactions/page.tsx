@@ -1,8 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import InstantProfitModal from "@/components/Modals/InstantProfitModal";
 import TransactionList from "@/components/Tables/TransactionList";
-import { FiBookOpen, FiCreditCard, FiTrendingUp } from "react-icons/fi";
+import Link from "next/link";
+import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiShield } from "react-icons/fi";
 
 const TablesPage = () => {
+  const [showInstantProfitModal, setShowInstantProfitModal] = useState(false);
+
   return (
     <>
       <Breadcrumb pageName="Transactions" />
@@ -43,8 +50,38 @@ const TablesPage = () => {
               </p>
             </div>
           </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href="/accounts/expense/company"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+            >
+              <FiPlusCircle />
+              Company Expense
+            </Link>
+            <Link
+              href="/accounts/transactions/liability/new"
+              className="inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 dark:border-orange-700 dark:bg-slate-900 dark:text-orange-300"
+            >
+              <FiShield />
+              Liability Entry
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowInstantProfitModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50 dark:border-violet-700 dark:bg-slate-900 dark:text-violet-300"
+            >
+              <FiTrendingUp />
+              Instant Profit
+            </button>
+          </div>
         </div>
       </section>
+
+      <InstantProfitModal
+        isOpen={showInstantProfitModal}
+        onCancel={() => setShowInstantProfitModal(false)}
+      />
 
       <div className="mt-6">
       <TransactionList />

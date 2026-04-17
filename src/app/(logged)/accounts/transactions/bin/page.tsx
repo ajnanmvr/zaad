@@ -127,49 +127,55 @@ const TransactionBinPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <tr key={record.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-                    <td className="py-4 pl-4 text-sm font-semibold uppercase text-slate-700 dark:text-slate-200">
-                      {(record.suffix || "") + (record.number || "")}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                      {record.client?.name || "Unknown"}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                      {record.particular || "-"}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      {record.amount} AED
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                      {record.deletedAt ? formatDateTime(record.deletedAt) : "-"}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                      <UsernameWithIcon
-                        username={record.deletedBy}
-                        fullname={record.deletedByFullname}
-                      />
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="inline-flex items-center gap-2">
-                        <Link
-                          href={`/accounts/transactions/details/${record.id}`}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                        >
-                          <FiEye /> Details
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => recoverMutation.mutate(record.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                          disabled={recoverMutation.isPending}
-                        >
-                          <FiRotateCcw /> Recover
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {records.map((record) => {
+                  const deleteEntry = [...(record.activityLog || [])]
+                    .reverse()
+                    .find((entry) => entry.action === "delete");
+
+                  return (
+                    <tr key={record.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                      <td className="py-4 pl-4 text-sm font-semibold uppercase text-slate-700 dark:text-slate-200">
+                        {(record.suffix || "") + (record.number || "")}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        {record.client?.name || "Unknown"}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        {record.particular || "-"}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        {record.amount} AED
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        {record.deletedAt ? formatDateTime(record.deletedAt) : "-"}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        <UsernameWithIcon
+                          username={deleteEntry?.byUsername}
+                          fullname={deleteEntry?.byFullname}
+                        />
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <Link
+                            href={`/accounts/transactions/details/${record.id}`}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                          >
+                            <FiEye /> Details
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => recoverMutation.mutate(record.id)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                            disabled={recoverMutation.isPending}
+                          >
+                            <FiRotateCcw /> Recover
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

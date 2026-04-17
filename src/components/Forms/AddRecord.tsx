@@ -24,7 +24,34 @@ import PaymentMethodBadge from "../common/PaymentMethodBadge";
 
 type TEntitySearchType = "company" | "employee" | "individual";
 
-const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
+type AddRecordProps = {
+  type: string;
+  edit?: boolean;
+  suggestionCategory?:
+    | "office_records"
+    | "company_expense"
+    | "liability_in"
+    | "liability_out"
+    | "instant_profit"
+    | "income"
+    | "expense";
+  submitEndpoint?: "/api/payment" | "/api/payment/profit";
+  hideBreadcrumb?: boolean;
+  showSpecialModes?: boolean;
+  forceRecordKind?: "standard" | "company" | "liability" | "instant_profit";
+  initialMode?: "normal" | "liability" | "instant-profit";
+};
+
+const AddRecord = ({
+  type,
+  edit,
+  suggestionCategory = "office_records",
+  submitEndpoint,
+  hideBreadcrumb = false,
+  showSpecialModes = false,
+  forceRecordKind,
+  initialMode = "normal",
+}: AddRecordProps) => {
   const router = useRouter();
   const { id } = useParams();
   const searchParams = useSearchParams();
@@ -65,10 +92,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   >([]);
   const [recordMode, setRecordMode] = useState<
     "normal" | "liability" | "instant-profit"
-  >("normal");
-  const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
-  const [customExpenseCategory, setCustomExpenseCategory] = useState("");
-  const [isSavingExpenseCategory, setIsSavingExpenseCategory] = useState(false);
+  >(initialMode);
   const [particularSuggestions, setParticularSuggestions] = useState<string[]>([]);
   const [showParticularSuggestions, setShowParticularSuggestions] = useState(false);
   const [isSavingParticularSuggestion, setIsSavingParticularSuggestion] = useState(false);
@@ -76,31 +100,22 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     createdBy: user?._id,
     type,
     amount: 0,
-    invoiceNo: "",
     particular: "",
-    expenseCategory: "",
+    paymentMethodTemplate: "",
+    paymentStatusTemplate: "",
+    recordKind: forceRecordKind || "standard",
     remarks: "",
     number: 0,
     suffix: "",
   });
 
-  const selectedEntityType =
-    recordData?.entityType ||
-    (selectedOption === "company" || selectedOption === "employee" || selectedOption === "individual"
-      ? selectedOption
-      : "");
-  const isCompanyExpenseContext = type === "expense" && selectedEntityType === "company";
+  const resolveRecordKind = (nextKind: TRecordData["recordKind"] | undefined) =>
+    forceRecordKind || nextKind || "standard";
 
   useEffect(() => {
-    if (selectedOption === "self")
-      setRecordData((prev) => ({
-        ...prev,
-        entity: undefined,
-        entityType: "self",
-        self: "zaad",
-        company: undefined,
-        employee: undefined,
-      }));
+    if (!selectedOption) {
+      setRecordData((prev) => ({ ...prev, entity: undefined }));
+    }
   }, [selectedOption]);
 
   const fetchBalance = useCallback(
@@ -125,9 +140,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     const nextClientType =
       lockEntityType === "company"
         ? "company"
-        : lockEntityType === "self"
-          ? "self"
-          : lockEntityType;
+        : lockEntityType;
     setSelectedOption(nextClientType);
     if (
       lockEntityType === "company" ||
@@ -153,20 +166,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         lockEntityType === "individual"
           ? lockEntityId
           : undefined,
-      entityType:
-        lockEntityType === "company" ||
-        lockEntityType === "employee" ||
-        lockEntityType === "individual"
-          ? (lockEntityType as "company" | "employee" | "individual")
-          : lockEntityType === "self"
-            ? "self"
-            : undefined,
-      company: lockEntityType === "company" ? lockEntityId : undefined,
-      employee:
-        lockEntityType === "employee" || lockEntityType === "individual"
-          ? lockEntityId
-          : undefined,
-      self: lockEntityType === "self" ? "zaad" : undefined,
+      recordKind: resolveRecordKind(lockEntityType === "company" ? "company" : "standard"),
     }));
 
     fetchBalance(lockEntityId, nextClientType);
@@ -238,11 +238,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setRecordData((prev) => ({
       ...prev,
       entity: undefined,
-      entityType: entityType || undefined,
-      expenseCategory: entityType === "company" ? prev.expenseCategory || "" : "",
-      company: undefined,
-      employee: undefined,
-      self: undefined,
+      recordKind: resolveRecordKind(entityType === "company" ? "company" : "standard"),
     }));
   };
 
@@ -259,11 +255,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setRecordData((prev) => ({
       ...prev,
       entity: undefined,
-      entityType: searchEntityType || undefined,
-      expenseCategory: searchEntityType === "company" ? prev.expenseCategory || "" : "",
-      company: undefined,
-      employee: undefined,
-      self: undefined,
+      recordKind: resolveRecordKind(searchEntityType === "company" ? "company" : "standard"),
     }));
     debounceSearch(nextSearch, searchEntityType);
   };
@@ -283,22 +275,24 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
         } else {
           const { data } = await axios.get(`/api/payment/${id}`);
           const resolvedEntityType =
-            data?.entityType ||
-            (data?.company ? "company" : data?.employee ? "employee" : data?.self ? "self" : undefined);
-          const resolvedEntity = data?.entity || data?.company || data?.employee || undefined;
+            data?.entity?.entityType ||
+            (data?.recordKind === "company" ? "company" : undefined);
+          const resolvedEntity = data?.entity?._id || data?.entity || undefined;
 
           setRecordData({
             ...data,
             entity: resolvedEntity,
-            entityType: resolvedEntityType,
-            expenseCategory: data?.expenseCategory || "",
+            paymentMethodTemplate:
+              data?.paymentMethodTemplate?._id || data?.paymentMethodTemplate || "",
+            paymentStatusTemplate:
+              data?.paymentStatusTemplate?._id || data?.paymentStatusTemplate || "",
           });
 
           if (resolvedEntityType) {
             setSelectedOption(resolvedEntityType);
           }
-          setSelectedMethod(data.method);
-          setSelectedStatus(data.status);
+          setSelectedMethod(data?.paymentMethodTemplate?._id || data?.paymentMethodTemplate || "");
+          setSelectedStatus(data?.paymentStatusTemplate?._id || data?.paymentStatusTemplate || "");
           if (data.type === "expense") {
             setClientFee(data.amount + data.serviceFee);
           }
@@ -329,13 +323,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setRecordData((prev) => ({
       ...prev,
       entity: selected._id,
-      entityType: targetType,
-      company: targetType === "company" ? selected._id : undefined,
-      employee:
-        targetType === "employee" || targetType === "individual"
-          ? selected._id
-          : undefined,
-      self: undefined,
+      recordKind: resolveRecordKind(targetType === "company" ? "company" : "standard"),
     }));
     setSearchSuggestions([]);
     fetchBalance(selected._id, targetType);
@@ -344,17 +332,17 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     switch (true) {
-      case !recordData.entity && !recordData.self:
+      case !recordData.entity:
         toast.error("Please select a client from any type");
         return;
       case !recordData.particular:
         toast.error("Please fill in the particular.");
         return;
-      case isCompanyExpenseContext && !recordData.expenseCategory:
-        toast.error("Please select or add a company expense category.");
-        return;
-      case !recordData.method:
+      case !recordData.paymentMethodTemplate:
         toast.error("Please select a payment method.");
+        return;
+      case !recordData.paymentStatusTemplate:
+        toast.error("Please select a payment status.");
         return;
       case !recordData.number:
         toast.error("Please enter a transaction number.");
@@ -364,10 +352,10 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     }
     try {
       if (!edit) {
-        if (recordData?.status === "Profit") {
+        if (submitEndpoint === "/api/payment/profit" || recordData?.recordKind === "instant_profit") {
           await axios.post("/api/payment/profit", recordData);
         } else {
-          await axios.post("/api/payment", recordData);
+          await axios.post(submitEndpoint || "/api/payment", recordData);
         }
       } else {
         await axios.put(`/api/payment/${id}`, recordData);
@@ -400,7 +388,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       .then(([paymentRes, statusRes]) => {
         const methodOptions = (paymentRes.data?.options || []).map(
           (item: any) => ({
-            value: item.method,
+            value: item.id,
             label: item.label || item.method,
             color: item.color,
             icon: item.icon,
@@ -409,7 +397,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
         const statusOptions = (statusRes.data?.options || []).map(
           (item: any) => ({
-            value: item.status,
+            value: item.id,
             label: item.label || item.status,
             color: item.color,
             appliesTo: item.appliesTo || "both",
@@ -421,15 +409,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       })
       .catch((error) => {
         console.error("Error fetching payment templates:", error);
-      });
-
-    void axios
-      .get("/api/payment/expense-categories")
-      .then((response) => {
-        setExpenseCategories(Array.isArray(response.data?.categories) ? response.data.categories : []);
-      })
-      .catch((error) => {
-        console.error("Error fetching expense categories:", error);
       });
   }, [fetchPrev]);
 
@@ -444,14 +423,8 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       const params = new URLSearchParams({
         q: query,
         type,
+        category: suggestionCategory,
       });
-
-      if (selectedEntityType) {
-        params.set("entityType", selectedEntityType);
-      }
-      if (recordData?.expenseCategory) {
-        params.set("expenseCategory", recordData.expenseCategory);
-      }
 
       axios
         .get(`/api/payment/particular-suggestions?${params.toString()}`)
@@ -465,28 +438,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     }, 220);
 
     return () => clearTimeout(timer);
-  }, [recordData?.particular, recordData?.expenseCategory, selectedEntityType, type]);
-
-  const saveCustomExpenseCategory = async () => {
-    const name = customExpenseCategory.trim();
-    if (!name) {
-      toast.error("Type a category name first");
-      return;
-    }
-
-    try {
-      setIsSavingExpenseCategory(true);
-      await axios.post("/api/payment/expense-categories", { name });
-      setExpenseCategories((prev) => Array.from(new Set([...prev, name])).sort((a, b) => a.localeCompare(b)));
-      setRecordData((prev) => ({ ...prev, expenseCategory: name }));
-      setCustomExpenseCategory("");
-      toast.success("Expense category saved");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to save expense category");
-    } finally {
-      setIsSavingExpenseCategory(false);
-    }
-  };
+  }, [recordData?.particular, suggestionCategory, type]);
 
   const saveParticularSuggestion = async () => {
     const particular = recordData?.particular?.trim();
@@ -499,9 +451,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       setIsSavingParticularSuggestion(true);
       await axios.post("/api/payment/particular-suggestions", {
         particular,
-        appliesTo: type,
-        entityType: selectedEntityType || "",
-        expenseCategory: recordData?.expenseCategory || "",
+        category: suggestionCategory,
       });
       toast.success("Particular suggestion saved");
     } catch (error: any) {
@@ -529,53 +479,40 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     (method) => method.value === selectedMethod,
   );
   const filteredStatusOptions = paymentStatusOptions.filter((statusOption) => {
+    const statusLabel = String(statusOption.label || "").toLowerCase();
+    const isSpecialStatus = statusLabel.includes("liability") || statusLabel.includes("profit");
+    if (!showSpecialModes && isSpecialStatus) {
+      return false;
+    }
+
     return statusOption.appliesTo === "both" || statusOption.appliesTo === type;
   });
 
-  const applyOfficeExpensePreset = () => {
-    setSelectedOption("self");
-    setSearchEntityType("");
-    setClientType("self");
-    setSearchValue("ZAAD Self");
-    setSearchSuggestions([]);
-    setSelectedEntitySummary({ id: "self", name: "ZAAD Self", type: "self" });
-    const officeStatus = filteredStatusOptions.find((item) =>
-      item.value.toLowerCase().includes("office"),
-    );
-    const status = officeStatus?.value || "Office Expense";
-    setSelectedStatus(status);
-    setRecordData((prev) => ({
-      ...prev,
-      company: undefined,
-      employee: undefined,
-      self: "zaad",
-      status,
-    }));
-  };
-
   const applyLiabilityPreset = () => {
     const liabilityStatus = filteredStatusOptions.find((item) =>
-      item.value.toLowerCase().includes("liability"),
+      item.label.toLowerCase().includes("liability"),
     );
-    const status = liabilityStatus?.value || "liability";
+    const status = liabilityStatus?.value || "";
     setSelectedStatus(status);
     setRecordMode("liability");
     setRecordData((prev) => ({
       ...prev,
-      status,
+      paymentStatusTemplate: status,
+      recordKind: resolveRecordKind("liability"),
     }));
   };
 
   const applyInstantProfitPreset = () => {
     const profitStatus = filteredStatusOptions.find((item) =>
-      item.value.toLowerCase().includes("profit"),
+      item.label.toLowerCase().includes("profit"),
     );
-    const status = profitStatus?.value || "Profit";
+    const status = profitStatus?.value || "";
     setSelectedStatus(status);
     setRecordMode("instant-profit");
     setRecordData((prev) => ({
       ...prev,
-      status,
+      paymentStatusTemplate: status,
+      recordKind: resolveRecordKind("instant_profit"),
     }));
   };
 
@@ -589,7 +526,13 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
     if (mode === "instant-profit") {
       applyInstantProfitPreset();
+      return;
     }
+
+    setRecordData((prev) => ({
+      ...prev,
+      recordKind: resolveRecordKind(selectedOption === "company" ? "company" : "standard"),
+    }));
   };
 
   const selectedStatusMeta = filteredStatusOptions.find(
@@ -598,9 +541,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
   return (
     <>
-      <Breadcrumb
-        pageName={(edit ? "Edit " : "Add ") + capitalize(recordData?.type)}
-      />
+      {hideBreadcrumb ? null : (
+        <Breadcrumb pageName={(edit ? "Edit " : "Add ") + capitalize(recordData?.type)} />
+      )}
 
       <form className="relative mx-auto max-w-5xl" action="#">
         <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
@@ -670,7 +613,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       <label className={labelClass}>
                         Entity <span className="text-rose-500">*</span>
                       </label>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
                         <div className="relative z-20">
                           <select
                             title="entity type"
@@ -742,16 +685,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                             </ul>
                           )}
                         </div>
-
-                        {type === "expense" && (
-                          <button
-                            type="button"
-                            onClick={applyOfficeExpensePreset}
-                            className="rounded-xl border border-fuchsia-300 bg-fuchsia-50 px-4 py-2.5 text-sm font-semibold text-fuchsia-700 transition hover:bg-fuchsia-100 dark:border-fuchsia-800 dark:bg-fuchsia-900/20 dark:text-fuchsia-300"
-                          >
-                            Office Expense
-                          </button>
-                        )}
                       </div>
                     </div>
 
@@ -789,56 +722,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                 )}
 
                 <div>
-                  {isCompanyExpenseContext && (
-                    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-900/10">
-                      <label className={labelClass}>Company Expense Category</label>
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_160px]">
-                        <div className="relative z-20">
-                          <select
-                            value={recordData?.expenseCategory || ""}
-                            onChange={(e) =>
-                              setRecordData((prev) => ({
-                                ...prev,
-                                expenseCategory: e.target.value,
-                              }))
-                            }
-                            className={inputClass}
-                          >
-                            <option value="">Select expense category</option>
-                            {expenseCategories.map((category) => (
-                              <option key={category} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                            <FiChevronDown />
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={saveCustomExpenseCategory}
-                          disabled={isSavingExpenseCategory}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-300"
-                        >
-                          <FiPlus />
-                          {isSavingExpenseCategory ? "Saving..." : "Add Category"}
-                        </button>
-                      </div>
-
-                      <div className="mt-3">
-                        <input
-                          type="text"
-                          value={customExpenseCategory}
-                          onChange={(e) => setCustomExpenseCategory(e.target.value)}
-                          placeholder="Type a custom category then press Add Category"
-                          className={inputClass}
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   <label className={labelClass}>Particular / Purpose</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -896,7 +779,7 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                 </div>
 
                 {/* Transaction Context Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className={labelClass}>Transaction Suffix</label>
                     <input
@@ -925,22 +808,6 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className={labelClass}>Invoice Number</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                        <FiHash />
-                      </span>
-                      <input
-                        type="text"
-                        name="invoiceNo"
-                        value={recordData?.invoiceNo}
-                        onChange={handleChange}
-                        placeholder="INV-..."
-                        className={clsx(inputClass, "pl-11")}
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Financial Row */}
@@ -952,13 +819,13 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                     <div className="relative z-20">
                       <select
                         value={selectedMethod}
-                        name="method"
+                        name="paymentMethodTemplate"
                         title="method"
                         onChange={(e) => {
                           setSelectedMethod(e.target.value);
                           setRecordData({
                             ...recordData,
-                            method: e.target.value,
+                            paymentMethodTemplate: e.target.value,
                           });
                         }}
                         className={inputClass}
@@ -1043,48 +910,50 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       type === "expense" ? "md:col-span-2 lg:col-span-3" : ""
                     }
                   >
-                    <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Record Mode
-                      </p>
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                          <input
-                            type="radio"
-                            name="recordMode"
-                            value="normal"
-                            checked={recordMode === "normal"}
-                            onChange={() => handleModeChange("normal")}
-                            className="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          Normal
-                        </label>
-                        <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                          <input
-                            type="radio"
-                            name="recordMode"
-                            value="liability"
-                            checked={recordMode === "liability"}
-                            onChange={() => handleModeChange("liability")}
-                            className="h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-500"
-                          />
-                          Make as Liability
-                        </label>
-                        {type === "income" && (
+                    {showSpecialModes ? (
+                      <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Record Mode
+                        </p>
+                        <div className="flex flex-wrap gap-4 text-sm">
                           <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
                             <input
                               type="radio"
                               name="recordMode"
-                              value="instant-profit"
-                              checked={recordMode === "instant-profit"}
-                              onChange={() => handleModeChange("instant-profit")}
-                              className="h-4 w-4 border-slate-300 text-violet-600 focus:ring-violet-500"
+                              value="normal"
+                              checked={recordMode === "normal"}
+                              onChange={() => handleModeChange("normal")}
+                              className="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500"
                             />
-                            Make as Instant Profit
+                            Normal
                           </label>
-                        )}
+                          <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                            <input
+                              type="radio"
+                              name="recordMode"
+                              value="liability"
+                              checked={recordMode === "liability"}
+                              onChange={() => handleModeChange("liability")}
+                              className="h-4 w-4 border-slate-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            Make as Liability
+                          </label>
+                          {type === "income" && (
+                            <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                              <input
+                                type="radio"
+                                name="recordMode"
+                                value="instant-profit"
+                                checked={recordMode === "instant-profit"}
+                                onChange={() => handleModeChange("instant-profit")}
+                                className="h-4 w-4 border-slate-300 text-violet-600 focus:ring-violet-500"
+                              />
+                              Make as Instant Profit
+                            </label>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
                     <label className={labelClass}>
                       Payment Status <span className="text-rose-500">*</span>
@@ -1096,7 +965,10 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         name="payment-status"
                         onChange={(e) => {
                           setSelectedStatus(e.target.value);
-                          const normalized = e.target.value.toLowerCase();
+                          const selectedTemplate = filteredStatusOptions.find(
+                            (item) => item.value === e.target.value,
+                          );
+                          const normalized = String(selectedTemplate?.label || "").toLowerCase();
                           if (normalized.includes("liability")) {
                             setRecordMode("liability");
                           } else if (normalized.includes("profit")) {
@@ -1106,7 +978,16 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                           }
                           setRecordData({
                             ...recordData,
-                            status: e.target.value,
+                            paymentStatusTemplate: e.target.value,
+                            recordKind: resolveRecordKind(
+                              normalized.includes("liability")
+                                ? "liability"
+                                : normalized.includes("profit")
+                                  ? "instant_profit"
+                                  : selectedOption === "company"
+                                    ? "company"
+                                    : "standard",
+                            ),
                           });
                         }}
                         className={inputClass}
@@ -1116,13 +997,28 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                         </option>
                         {filteredStatusOptions.length > 0 ? (
                           filteredStatusOptions.map((statusOption) => (
-                            <option
-                              key={statusOption.value}
-                              value={statusOption.value}
-                            >
+                            <option key={statusOption.value} value={statusOption.value}>
                               {statusOption.label}
                             </option>
                           ))
+                        ) : showSpecialModes ? (
+                          <>
+                            {type === "income" && (
+                              <>
+                                <option value="Advance">Advance</option>
+                                <option value="Credit">Credit (Income)</option>
+                                <option value="Ready Cash">Ready Cash</option>
+                                <option value="liability">Liability Payment</option>
+                                <option value="Profit">Instant Profit</option>
+                              </>
+                            )}
+                            {type === "expense" && (
+                              <>
+                                <option value="Debit">Debit (Pay Out)</option>
+                                <option value="liability">Liability Payment</option>
+                              </>
+                            )}
+                          </>
                         ) : (
                           <>
                             {type === "income" && (
@@ -1130,23 +1026,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                                 <option value="Advance">Advance</option>
                                 <option value="Credit">Credit (Income)</option>
                                 <option value="Ready Cash">Ready Cash</option>
-                                <option value="liability">
-                                  Liability Payment
-                                </option>
-                                <option value="Profit">Instant Profit</option>
                               </>
                             )}
-                            {type === "expense" && (
-                              <>
-                                <option value="Debit">Debit (Pay Out)</option>
-                                <option value="liability">
-                                  Liability Payment
-                                </option>
-                                <option value="Office Expense">
-                                  Office Expense
-                                </option>
-                              </>
-                            )}
+                            {type === "expense" && <option value="Debit">Debit (Pay Out)</option>}
                           </>
                         )}
                       </select>

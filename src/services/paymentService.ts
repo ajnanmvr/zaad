@@ -8,6 +8,9 @@ import {
   findEntitiesByIds,
   findOneRecord,
   findPaymentTemplateMethods,
+  findPaymentTemplateByMethodName,
+  findPaymentStatusTemplateByStatusName,
+  findPaymentStatusTemplates,
   findRecordById,
   findRecordByIdAndPopulate,
   findRecordByIdLean,
@@ -76,35 +79,26 @@ function areValuesEqual(a: any, b: any) {
   return JSON.stringify(normalizeForCompare(a)) === JSON.stringify(normalizeForCompare(b));
 }
 
-function normalizeStatus(status: any) {
-  return String(status || "").toLowerCase();
-}
+const ACTIVE_RECORD_FILTER = { deletedAt: null };
 
 function normalizeEntityFields(payload: any) {
   const next = { ...(payload || {}) };
 
   const entityId = String(next.entity || "").trim();
-  const entityType = String(next.entityType || "").trim().toLowerCase();
-  const selfRaw = String(next.self || "").trim().toLowerCase();
-
-  if (entityId && ["company", "employee", "individual"].includes(entityType)) {
+  if (entityId) {
     next.entity = entityId;
-    next.entityType = entityType;
-    next.self = undefined;
-    if (entityType === "company") {
-      next.company = entityId;
-      next.employee = undefined;
-    } else {
-      next.employee = entityId;
-      next.company = undefined;
+    if (!next.recordKind || next.recordKind === "standard") {
+      const lockType = String(next.lockEntityType || "").toLowerCase();
+      if (lockType === "company") {
+        next.recordKind = "company";
+      }
     }
-  } else if (selfRaw === "zaad") {
-    next.entity = undefined;
-    next.entityType = "self";
-    next.company = undefined;
-    next.employee = undefined;
-    next.self = "zaad";
   }
+
+  delete next.entityType;
+  delete next.company;
+  delete next.employee;
+  delete next.self;
 
   return next;
 }
@@ -120,15 +114,28 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
   }
 
   const recordId = String(record._id);
-  const status = normalizeStatus(record.status);
+  const recordKind = String(record.recordKind || "").toLowerCase();
   const linkedIds = new Set<string>([recordId]);
-  const publicationFilter = includeArchived ? {} : { published: true };
+  const publicationFilter = includeArchived ? {} : ACTIVE_RECORD_FILTER;
 
-  if (status === "self deposit") {
+  if (recordKind === "self_transfer_in" || recordKind === "self_transfer_out") {
+    if (record.transferGroupId) {
+      const partners = await findRecords(
+        {
+          ...publicationFilter,
+          transferGroupId: record.transferGroupId,
+          _id: { $ne: record._id },
+        },
+        { select: "_id" }
+      );
+
+      partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
+      return Array.from(linkedIds);
+    }
+
     const partners = await findRecords({
       ...publicationFilter,
-      status: "Self Deposit",
-      self: "Zaad (Self Deposit)",
+      recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
       createdBy: record.createdBy,
       suffix: record.suffix,
       amount: record.amount,
@@ -139,17 +146,16 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
     return Array.from(linkedIds);
   }
 
-  if (status === "profit") {
+  if (recordKind === "instant_profit") {
     const recordNumber = Number(record.number);
 
-    if (record.type === "income" && normalizeStatus(record.method) !== "service fee") {
+    if (record.type === "income") {
       const partner = await findOneRecord(
         {
           ...publicationFilter,
-          status: "Profit",
+          recordKind: "instant_profit",
           createdBy: record.createdBy,
           type: "expense",
-          method: "service fee",
           serviceFee: record.amount,
           amount: 0,
           number: Number.isFinite(recordNumber) ? recordNumber + 1 : undefined,
@@ -163,11 +169,11 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
       }
     }
 
-    if (record.type === "expense" && normalizeStatus(record.method) === "service fee") {
+    if (record.type === "expense") {
       const partner = await findOneRecord(
         {
           ...publicationFilter,
-          status: "Profit",
+          recordKind: "instant_profit",
           createdBy: record.createdBy,
           type: "income",
           amount: record.serviceFee,
@@ -190,7 +196,7 @@ function buildTotals(records: any[]) {
   const totalIncome = records.reduce<number>(
     (acc: number, record: any) =>
       acc +
-      (record.type === "income" && !normalizeStatus(record.status).includes("liability")
+      (record.type === "income" && record.recordKind !== "liability"
         ? record.amount
         : 0),
     0
@@ -225,8 +231,8 @@ function canPairRecords(expense: any, income: any) {
   if (!expense || !income) return false;
 
   return (
-    expense.status === "Self Deposit" &&
-    income.status === "Self Deposit" &&
+    expense.recordKind === "self_transfer_out" &&
+    income.recordKind === "self_transfer_in" &&
     expense.type === "expense" &&
     income.type === "income" &&
     expense.amount === income.amount &&
@@ -275,6 +281,33 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
   const normalizedPayload = normalizeEntityFields(reqBody);
 
+  // Validate required fields before creating
+  const missingFields: string[] = [];
+  
+  if (!normalizedPayload.particular || String(normalizedPayload.particular).trim() === "") {
+    missingFields.push("particular");
+  }
+  
+  if (!normalizedPayload.amount && normalizedPayload.amount !== 0) {
+    missingFields.push("amount");
+  }
+  
+  if (!normalizedPayload.type) {
+    missingFields.push("type");
+  }
+  
+  if (!normalizedPayload.paymentMethodTemplate || String(normalizedPayload.paymentMethodTemplate).trim() === "") {
+    missingFields.push("paymentMethodTemplate");
+  }
+  
+  if (!normalizedPayload.paymentStatusTemplate || String(normalizedPayload.paymentStatusTemplate).trim() === "") {
+    missingFields.push("paymentStatusTemplate");
+  }
+  
+  if (missingFields.length > 0) {
+    throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+  }
+
   const data = await createRecord({
     ...normalizedPayload,
     createdBy: principal.userId,
@@ -299,10 +332,10 @@ export async function listPaymentRecords(input: {
   type?: string | null;
 }) {
   const contentPerSection = 25;
-  const query: Record<string, any> = { published: true };
+  const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
   if (input.method) {
-    query.method = input.method;
+    query.paymentMethodTemplate = input.method;
   }
   if (input.type) {
     query.type = input.type;
@@ -339,7 +372,7 @@ export async function getPaymentRecordDetails(id: string) {
 }
 
 export async function getPreviousPaymentSequence() {
-  const latest = await findOneRecord({ published: true }, "suffix number", {
+  const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", {
     createdAt: -1,
   });
   return { suffix: latest?.suffix, number: latest?.number || 0 };
@@ -360,20 +393,36 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     return { status: 400, body: { message: "The amount should be greater than 0" } };
   }
 
-  const latest = await findOneRecord({ published: true }, "suffix number", { createdAt: -1 });
+  const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", { createdAt: -1 });
   const newSuffix = latest?.suffix || "";
   const newNumber = latest?.number || 0;
+  const transferGroupId = `${Date.now()}-${Math.round(Math.random() * 100000)}`;
+
+  const [fromTemplate, toTemplate, selfDepositStatus] = await Promise.all([
+    findPaymentTemplateByMethodName(from),
+    findPaymentTemplateByMethodName(to),
+    findPaymentStatusTemplateByStatusName("Self Deposit"),
+  ]);
+
+  if (!fromTemplate || !toTemplate || !selfDepositStatus) {
+    return {
+      status: 400,
+      body: { message: "Missing payment templates/status templates for self transfer" },
+    };
+  }
 
   await createRecord({
     createdBy: principal.userId,
     type: "expense",
+    recordKind: "self_transfer_out",
+    transferDirection: "out",
+    transferGroupId,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 1,
     particular: `Money removed from ${from} to add in ${to}`,
-    self: "Zaad (Self Deposit)",
-    status: "Self Deposit",
-    method: from,
+    paymentMethodTemplate: fromTemplate._id,
+    paymentStatusTemplate: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -389,13 +438,15 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   await createRecord({
     createdBy: principal.userId,
     type: "income",
+    recordKind: "self_transfer_in",
+    transferDirection: "in",
+    transferGroupId,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 2,
     particular: `Money recieved as exchange from ${from}`,
-    self: "Zaad (Self Deposit)",
-    status: "Self Deposit",
-    method: to,
+    paymentMethodTemplate: toTemplate._id,
+    paymentStatusTemplate: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -413,7 +464,10 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
 
 export async function listSelfPayments(pageNumber: number) {
   const contentPerSection = 10;
-  const query = { published: true, self: "zaad" };
+  const query = {
+    ...ACTIVE_RECORD_FILTER,
+    recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
+  };
 
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
@@ -454,13 +508,16 @@ export async function listSelfDepositPayments(input: {
   method?: string | null;
 }) {
   const contentPerSection = 10;
-  const query: Record<string, any> = { published: true, status: "Self Deposit" };
+  const query: Record<string, any> = {
+    ...ACTIVE_RECORD_FILTER,
+    recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
+  };
 
   if (input.type) {
     query.type = input.type;
   }
   if (input.method) {
-    query.method = input.method;
+    query.paymentMethodTemplate = input.method;
   }
 
   const records = await findRecords(query, {
@@ -512,8 +569,8 @@ export async function listSelfDepositPayments(input: {
 export async function listLiabilitySummary() {
   const records = await findRecords(
     {
-      published: true,
-      status: { $regex: /^liability$/i },
+      ...ACTIVE_RECORD_FILTER,
+      recordKind: "liability",
     },
     {
       populate: PAYMENT_POPULATE_FIELDS,
@@ -568,8 +625,18 @@ export async function listLiabilitySummary() {
 }
 
 export async function createProfitPair(reqBody: any, principal: TPrincipal) {
-  await createRecord({
+  const serviceFeeTemplate = await findPaymentTemplateByMethodName("service fee");
+  if (!serviceFeeTemplate) {
+    throw new Error("Service fee payment template not found");
+  }
+
+  const normalizedPayload = normalizeEntityFields({
     ...reqBody,
+    recordKind: "instant_profit",
+  });
+
+  await createRecord({
+    ...normalizedPayload,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -583,18 +650,18 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     ],
   });
 
-  let { amount, number, type, method, ...rest } = reqBody;
+  let { amount, number, type, ...rest } = normalizedPayload;
   const serviceFee = amount;
   amount = 0;
   type = "expense";
-  method = "service fee";
   number = +number + 1;
 
   await createRecord({
     serviceFee,
     amount,
     type,
-    method,
+    recordKind: "instant_profit",
+    paymentMethodTemplate: serviceFeeTemplate._id,
     number,
     ...rest,
     createdBy: principal.userId,
@@ -613,14 +680,15 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
 
 export async function listPaymentAccounts(searchParams: URLSearchParams) {
   const filter = filterData(searchParams, true);
+  const normalizedFilter = { ...filter, deletedAt: null };
   const [aggregate, paymentTemplates, detailedRecords] = await Promise.all([
     aggregateRecords([
-      { $match: filter },
+      { $match: normalizedFilter },
       {
         $group: {
           _id: {
             type: "$type",
-            method: "$method",
+            methodTemplate: "$paymentMethodTemplate",
           },
           total: { $sum: "$amount" },
           count: { $sum: 1 },
@@ -632,7 +700,12 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
           zaadExpenseTotal: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ["$type", "expense"] }, { $eq: ["$self", "zaad"] }] },
+                {
+                  $and: [
+                    { $eq: ["$type", "expense"] },
+                    { $in: ["$recordKind", ["self_transfer_out"]] },
+                  ],
+                },
                 "$amount",
                 0,
               ],
@@ -642,16 +715,20 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
       },
     ]),
     findPaymentTemplateMethods(),
-    findRecords(filter, {
-      select: "amount type status createdAt entity entityType company employee self expenseCategory",
+    findRecords(normalizedFilter, {
+      select: "amount type createdAt entity paymentMethodTemplate paymentStatusTemplate recordKind",
       populate: [
         { path: "entity", select: "name entityType color" },
-        { path: "company", select: "name color" },
-        { path: "employee", select: "name entityType color" },
+        { path: "paymentMethodTemplate", select: "method" },
+        { path: "paymentStatusTemplate", select: "status" },
       ],
       lean: true,
     }),
   ]);
+
+  const methodNameById = new Map(
+    (paymentTemplates as any[]).map((item: any) => [String(item._id), String(item.method)])
+  );
 
   const summary: Record<string, Record<string, number>> = { income: {}, expense: {} };
   let incomeCount = 0;
@@ -661,7 +738,8 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
 
   for (const row of aggregate as any[]) {
     const type = row?._id?.type;
-    const method = row?._id?.method || "unknown";
+    const methodTemplateId = String(row?._id?.methodTemplate || "");
+    const method = methodNameById.get(methodTemplateId) || "unknown";
     if (!type) continue;
 
     if (!summary[type]) {
@@ -682,7 +760,7 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
   const methodsFromSummary = Array.from(
     new Set([...Object.keys(summary.income || {}), ...Object.keys(summary.expense || {})])
   );
-  const methodsFromTemplates = paymentTemplates.map((item: any) => item.method).filter(Boolean);
+  const methodsFromTemplates = (paymentTemplates as any[]).map((item: any) => item.method).filter(Boolean);
   const extraMethods = methodsFromSummary
     .filter((method) => !methodsFromTemplates.includes(method))
     .sort((a, b) => a.localeCompare(b));
@@ -730,7 +808,8 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
       monthlyMap.set(monthKey, monthBucket);
     }
 
-    const normalizedStatus = String(record?.status || "unknown").trim().toLowerCase() || "unknown";
+    const normalizedStatus =
+      String(record?.paymentStatusTemplate?.status || "unknown").trim().toLowerCase() || "unknown";
     const statusBucket = statusMap.get(normalizedStatus) || { income: 0, expense: 0, total: 0 };
     statusBucket[type] += amount;
     statusBucket.total += amount;
@@ -750,17 +829,9 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
             : "employee";
       entityKey = `${resolvedType || "entity"}:${String(record.entity._id)}`;
       entityLabel = String(record.entity.name || "Unknown Entity");
-    } else if (record?.company?._id) {
-      entityKey = `company:${String(record.company._id)}`;
-      entityLabel = String(record.company.name || "Unknown Company");
-      entityType = "company";
-    } else if (record?.employee?._id) {
-      entityKey = `employee:${String(record.employee._id)}`;
-      entityLabel = String(record.employee.name || "Unknown Employee");
-      entityType = "employee";
-    } else if (record?.self) {
-      entityKey = `self:${String(record.self)}`;
-      entityLabel = String(record.self || "Self").toUpperCase();
+    } else if (record?.recordKind === "self_transfer_in" || record?.recordKind === "self_transfer_out") {
+      entityKey = "self:zaad";
+      entityLabel = "ZAAD SELF";
       entityType = "self";
     }
 
@@ -885,16 +956,14 @@ function aggregateEntityBalances(
 export async function listProfitBalances(searchParams: URLSearchParams) {
   const filter = filterData(searchParams, true);
   const groupedBalances = await aggregateRecords<any>([
-    { $match: filter },
+    { $match: { ...filter, deletedAt: null } },
     {
       $project: {
         type: 1,
         amount: { $ifNull: ["$amount", 0] },
         serviceFee: { $ifNull: ["$serviceFee", 0] },
         createdAt: 1,
-        entityRef: {
-          $ifNull: ["$entity", { $ifNull: ["$company", "$employee"] }],
-        },
+        entityRef: "$entity",
       },
     },
     { $match: { entityRef: { $ne: null } } },
@@ -1008,11 +1077,10 @@ export async function listPaymentBin(input: {
   pageNumber: number;
   search?: string;
 }) {
-  const query: Record<string, any> = { published: false };
+  const query: Record<string, any> = { deletedAt: { $ne: null } };
   if (input.search?.trim()) {
     query.$or = [
       { particular: { $regex: input.search.trim(), $options: "i" } },
-      { invoiceNo: { $regex: input.search.trim(), $options: "i" } },
       { suffix: { $regex: input.search.trim(), $options: "i" } },
     ];
   }
@@ -1036,19 +1104,14 @@ export async function listPaymentBin(input: {
 
 export async function listCompanyPaymentRecords(companyId: string, recordScope: "company" | "employees" | "mixed") {
   const employeeIds = await distinctEmployeeIdsByCompany(companyId);
-  const query: Record<string, any> = { published: true };
+  const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
   if (recordScope === "employees") {
-    query.$or = [{ entity: { $in: employeeIds } }, { employee: { $in: employeeIds } }];
+    query.entity = { $in: employeeIds };
   } else if (recordScope === "mixed") {
-    query.$or = [
-      { entity: companyId },
-      { entity: { $in: employeeIds } },
-      { company: companyId },
-      { employee: { $in: employeeIds } },
-    ];
+    query.entity = { $in: [companyId, ...employeeIds] };
   } else {
-    query.$or = [{ entity: companyId }, { company: companyId }];
+    query.entity = companyId;
   }
 
   const records = await findRecords(query, {
@@ -1083,8 +1146,8 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
 
 export async function listEmployeePaymentRecords(employeeId: string) {
   const query = {
-    published: true,
-    $or: [{ entity: employeeId }, { employee: employeeId }],
+    ...ACTIVE_RECORD_FILTER,
+    entity: employeeId,
   };
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
@@ -1116,7 +1179,7 @@ export async function listEmployeePaymentRecords(employeeId: string) {
 
 export async function listIndividualPaymentRecords(employeeId: string) {
   const records = await findRecords(
-    { published: true, $or: [{ entity: employeeId }, { employee: employeeId }] },
+    { ...ACTIVE_RECORD_FILTER, entity: employeeId },
     {
       populate: PAYMENT_POPULATE_FIELDS,
       sort: { createdAt: -1 },
@@ -1136,7 +1199,7 @@ export async function listIndividualPaymentRecords(employeeId: string) {
   }
 
   const individualRecords = records.filter((record: any) => {
-    const resolvedType = String(record?.entity?.entityType || record?.entityType || record?.employee?.entityType || "").toLowerCase();
+    const resolvedType = String(record?.entity?.entityType || "").toLowerCase();
     return resolvedType === "individual";
   });
 
@@ -1160,9 +1223,7 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
-      published: false,
       deletedAt: new Date(),
-      deletedBy: principal.userId,
       $push: {
         activityLog: {
           action: "delete",
@@ -1189,10 +1250,8 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
     createdAt,
     updatedAt,
     createdBy,
-    published,
     activityLog,
     deletedAt,
-    deletedBy,
     ...safePayload
   } = reqBody || {};
 
@@ -1276,9 +1335,7 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   const data = await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
-      published: true,
       deletedAt: null,
-      deletedBy: null,
       $push: {
         activityLog: {
           action: "recover",
