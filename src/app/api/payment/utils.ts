@@ -6,14 +6,35 @@ export const PAYMENT_POPULATE_FIELDS = [
   "createdBy",
   "deletedBy",
   "activityLog.by",
+  "entity",
   "company",
   "employee",
 ];
 
 export function getRecordClient(record: any) {
+  const entity = record?.entity;
   const company = record?.company;
   const employee = record?.employee;
   const self = record?.self;
+
+  if (entity) {
+    const rawType = String(entity?.entityType || record?.entityType || "").toLowerCase();
+    const type =
+      rawType === "individual"
+        ? "individual"
+        : rawType === "company"
+          ? "company"
+          : rawType === "employee"
+            ? "employee"
+            : "employee";
+
+    return {
+      name: entity.name,
+      id: entity._id,
+      type,
+      color: entity.color,
+    };
+  }
 
   if (company) {
     return { name: company.name, id: company._id, type: "company" as const, color: company.color };
@@ -68,6 +89,9 @@ export function mapRecordListItem(record: any) {
     id: record._id,
     type: record.type,
     client: getRecordClient(record),
+    employeeName: record?.employee?.name || undefined,
+    entityType: record?.entityType || undefined,
+    expenseCategory: record?.expenseCategory || "",
     method: record.method,
     particular: record.particular,
     invoiceNo: record.invoiceNo,

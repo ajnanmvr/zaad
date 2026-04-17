@@ -48,6 +48,7 @@ const baseData = {
 };
 
 type CompanyRecordScope = "company" | "employees" | "mixed";
+const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 
 const generateQuery = (filter: typeof baseData) => {
   let query = "";
@@ -366,6 +367,7 @@ const TransactionList = ({
         record?.client?.name || "",
         record?.client?.type || "",
         record?.particular || "",
+        record?.expenseCategory || "",
         record?.method || "",
         record?.status || "",
         record?.amount || "",
@@ -423,6 +425,7 @@ const TransactionList = ({
         "Record ID": `${record.suffix || ""}${record.number || ""}`,
         Client: record.client?.name || "",
         "Client Type": record.client?.type || "",
+        "Expense Category": record.expenseCategory || "",
         Type: record.type || "",
         Particular: record.particular || "",
         Method: record.method || "",
@@ -480,9 +483,21 @@ const TransactionList = ({
         const amount = Number(record.amount || 0);
         const serviceFee = Number(record.serviceFee || 0);
         const total = amount + serviceFee;
+
+        const descriptionParts: string[] = [];
+        if (record.client?.type === "employee" || record.client?.type === "individual") {
+          descriptionParts.push(`Employee: ${record.client?.name || "Unknown"}`);
+        } else {
+          descriptionParts.push(`Company: ${record.client?.name || "Unknown"}`);
+          if (record.employeeName) {
+            descriptionParts.push(`Employee: ${record.employeeName}`);
+          }
+        }
+        descriptionParts.push(record.method || "Unknown method");
+
         return {
           title: record.particular || `Expense ${record.suffix || ""}${record.number || ""}`,
-          desc: `${record.client?.name || "Unknown"} | ${record.method || "Unknown method"}`,
+          desc: descriptionParts.join(" | "),
           rate: Number(total.toFixed(2)),
           quantity: 1,
         };
@@ -497,30 +512,36 @@ const TransactionList = ({
       .filter((record) => record.type === "income")
       .reduce((sum, record) => sum + Number(record.amount || 0), 0);
 
-    try {
-      const prevResponse = await axios.get("/api/invoice/prev");
-      const prevData = prevResponse.data || {};
+    const today = new Date();
+    const validTo = new Date(today);
+    validTo.setDate(validTo.getDate() + 30);
 
-      const today = new Date();
-      const validTo = new Date(today);
-      validTo.setDate(validTo.getDate() + 30);
+    const entityType =
+      lockEntityType === "company" ||
+      lockEntityType === "employee" ||
+      lockEntityType === "individual"
+        ? lockEntityType
+        : null;
 
-      const payload = {
-        title: prevData.title || "Invoice",
-        suffix: prevData.suffix || "INV-",
-        invoiceNo: Number(prevData.invoiceNo || 0) + 1,
+    const prefillPayload = {
+      connectionMode: entityType ? "connected" : "detached",
+      selectedEntityType: entityType,
+      selectedEntitySummary:
+        entityType && lockEntityId
+          ? {
+              id: lockEntityId,
+              name: lockEntityName || selectedRecords[0]?.client?.name || "Client",
+              type: entityType,
+            }
+          : null,
+      invoiceData: {
         quotation: "false",
         message: "",
         trn: "",
         createdBy: user?._id,
         client: lockEntityName || selectedRecords[0]?.client?.name || "Client",
         entityId: lockEntityId || null,
-        entityType:
-          lockEntityType === "company" ||
-          lockEntityType === "employee" ||
-          lockEntityType === "individual"
-            ? lockEntityType
-            : null,
+        entityType,
         date: today.toISOString().split("T")[0],
         validTo: validTo.toISOString().split("T")[0],
         items: expenseItems,
@@ -531,21 +552,24 @@ const TransactionList = ({
         amount: 0,
         showBalance: "show",
         balance: 0,
-      };
+      },
+      createdAt: Date.now(),
+    };
 
-      const createResponse = await axios.post("/api/invoice", payload);
-      const createdId = createResponse?.data?.data?._id;
-
-      toast.success("Invoice created from selected records");
+    try {
+      sessionStorage.setItem(INVOICE_PREFILL_STORAGE_KEY, JSON.stringify(prefillPayload));
       setSelectedRecordIds([]);
+      toast.success("Invoice draft prepared from selected records");
 
-      if (createdId) {
-        router.push(`/accounts/invoice/${createdId}`);
-      } else {
-        router.push("/accounts/invoice");
+      const params = new URLSearchParams();
+      params.set("prefill", "records");
+      if (returnTo) {
+        params.set("returnTo", returnTo);
       }
+
+      router.push(`/accounts/invoice/new?${params.toString()}`);
     } catch (error) {
-      toast.error("Failed to create invoice from selected records");
+      toast.error("Failed to prepare invoice draft from selected records");
       console.error(error);
     }
   };
@@ -984,6 +1008,11 @@ const TransactionList = ({
                                   <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
                                     {record?.particular}
                                   </p>
+                                  {record?.expenseCategory ? (
+                                    <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                      {record.expenseCategory}
+                                    </span>
+                                  ) : null}
                                 </Link>
                               </div>
                             </td>

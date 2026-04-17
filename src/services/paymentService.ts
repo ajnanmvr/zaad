@@ -80,6 +80,35 @@ function normalizeStatus(status: any) {
   return String(status || "").toLowerCase();
 }
 
+function normalizeEntityFields(payload: any) {
+  const next = { ...(payload || {}) };
+
+  const entityId = String(next.entity || "").trim();
+  const entityType = String(next.entityType || "").trim().toLowerCase();
+  const selfRaw = String(next.self || "").trim().toLowerCase();
+
+  if (entityId && ["company", "employee", "individual"].includes(entityType)) {
+    next.entity = entityId;
+    next.entityType = entityType;
+    next.self = undefined;
+    if (entityType === "company") {
+      next.company = entityId;
+      next.employee = undefined;
+    } else {
+      next.employee = entityId;
+      next.company = undefined;
+    }
+  } else if (selfRaw === "zaad") {
+    next.entity = undefined;
+    next.entityType = "self";
+    next.company = undefined;
+    next.employee = undefined;
+    next.self = "zaad";
+  }
+
+  return next;
+}
+
 export function isAdminRole(role?: string) {
   const normalized = (role || "").toLowerCase();
   return normalized === "admin" || normalized === "superadmin";
@@ -244,8 +273,10 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
 }
 
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
+  const normalizedPayload = normalizeEntityFields(reqBody);
+
   const data = await createRecord({
-    ...reqBody,
+    ...normalizedPayload,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -612,10 +643,11 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
     ]),
     findPaymentTemplateMethods(),
     findRecords(filter, {
-      select: "amount type status createdAt company employee self",
+      select: "amount type status createdAt entity entityType company employee self expenseCategory",
       populate: [
-        { path: "company", select: "name" },
-        { path: "employee", select: "name" },
+        { path: "entity", select: "name entityType color" },
+        { path: "company", select: "name color" },
+        { path: "employee", select: "name entityType color" },
       ],
       lean: true,
     }),
@@ -706,9 +738,19 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
 
     let entityKey = "unknown";
     let entityLabel = "Unknown";
-    let entityType: "company" | "employee" | "self" | "unknown" = "unknown";
+    let entityType: "company" | "employee" | "individual" | "self" | "unknown" = "unknown";
 
-    if (record?.company?._id) {
+    if (record?.entity?._id) {
+      const resolvedType = String(record.entity.entityType || record.entityType || "").toLowerCase();
+      entityType =
+        resolvedType === "company"
+          ? "company"
+          : resolvedType === "individual"
+            ? "individual"
+            : "employee";
+      entityKey = `${resolvedType || "entity"}:${String(record.entity._id)}`;
+      entityLabel = String(record.entity.name || "Unknown Entity");
+    } else if (record?.company?._id) {
       entityKey = `company:${String(record.company._id)}`;
       entityLabel = String(record.company.name || "Unknown Company");
       entityType = "company";
@@ -850,16 +892,15 @@ export async function listProfitBalances(searchParams: URLSearchParams) {
         amount: { $ifNull: ["$amount", 0] },
         serviceFee: { $ifNull: ["$serviceFee", 0] },
         createdAt: 1,
-        entityRef: { $ifNull: ["$company", "$employee"] },
-        refKind: {
-          $cond: [{ $ifNull: ["$company", false] }, "company", "employee"],
+        entityRef: {
+          $ifNull: ["$entity", { $ifNull: ["$company", "$employee"] }],
         },
       },
     },
     { $match: { entityRef: { $ne: null } } },
     {
       $group: {
-        _id: { entityId: "$entityRef", refKind: "$refKind" },
+        _id: { entityId: "$entityRef" },
         incomeTotal: { $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] } },
         expenseTotal: {
           $sum: {
@@ -998,11 +1039,16 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
   const query: Record<string, any> = { published: true };
 
   if (recordScope === "employees") {
-    query.employee = { $in: employeeIds };
+    query.$or = [{ entity: { $in: employeeIds } }, { employee: { $in: employeeIds } }];
   } else if (recordScope === "mixed") {
-    query.$or = [{ company: companyId }, { employee: { $in: employeeIds } }];
+    query.$or = [
+      { entity: companyId },
+      { entity: { $in: employeeIds } },
+      { company: companyId },
+      { employee: { $in: employeeIds } },
+    ];
   } else {
-    query.company = companyId;
+    query.$or = [{ entity: companyId }, { company: companyId }];
   }
 
   const records = await findRecords(query, {
@@ -1036,7 +1082,10 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
 }
 
 export async function listEmployeePaymentRecords(employeeId: string) {
-  const query = { published: true, employee: employeeId };
+  const query = {
+    published: true,
+    $or: [{ entity: employeeId }, { employee: employeeId }],
+  };
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
     sort: { createdAt: -1 },
@@ -1067,7 +1116,7 @@ export async function listEmployeePaymentRecords(employeeId: string) {
 
 export async function listIndividualPaymentRecords(employeeId: string) {
   const records = await findRecords(
-    { published: true, employee: employeeId },
+    { published: true, $or: [{ entity: employeeId }, { employee: employeeId }] },
     {
       populate: PAYMENT_POPULATE_FIELDS,
       sort: { createdAt: -1 },
@@ -1086,9 +1135,10 @@ export async function listIndividualPaymentRecords(employeeId: string) {
     };
   }
 
-  const individualRecords = records.filter(
-    (record: any) => record?.employee?.entityType === "individual"
-  );
+  const individualRecords = records.filter((record: any) => {
+    const resolvedType = String(record?.entity?.entityType || record?.entityType || record?.employee?.entityType || "").toLowerCase();
+    return resolvedType === "individual";
+  });
 
   const transformedData = individualRecords.map(mapRecordListItem);
   const totals = buildTotals(individualRecords);
@@ -1152,7 +1202,9 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
     return { status: 404, body: { error: "Record not found" } };
   }
 
-  const changedEntries = Object.entries(safePayload).filter(([key, nextValue]) => {
+  const normalizedPayload = normalizeEntityFields(safePayload);
+
+  const changedEntries = Object.entries(normalizedPayload).filter(([key, nextValue]) => {
     const currentValue = (existingRecord as any)[key];
     return !areValuesEqual(nextValue, currentValue);
   });

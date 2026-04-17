@@ -15,6 +15,7 @@ import {
   FiDollarSign,
   FiFileText,
   FiHash,
+  FiPlus,
   FiUserPlus,
   FiCircle,
 } from "react-icons/fi";
@@ -65,21 +66,37 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const [recordMode, setRecordMode] = useState<
     "normal" | "liability" | "instant-profit"
   >("normal");
+  const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
+  const [customExpenseCategory, setCustomExpenseCategory] = useState("");
+  const [isSavingExpenseCategory, setIsSavingExpenseCategory] = useState(false);
+  const [particularSuggestions, setParticularSuggestions] = useState<string[]>([]);
+  const [showParticularSuggestions, setShowParticularSuggestions] = useState(false);
+  const [isSavingParticularSuggestion, setIsSavingParticularSuggestion] = useState(false);
   const [recordData, setRecordData] = useState<TRecordData>({
     createdBy: user?._id,
     type,
     amount: 0,
     invoiceNo: "",
     particular: "",
+    expenseCategory: "",
     remarks: "",
     number: 0,
     suffix: "",
   });
 
+  const selectedEntityType =
+    recordData?.entityType ||
+    (selectedOption === "company" || selectedOption === "employee" || selectedOption === "individual"
+      ? selectedOption
+      : "");
+  const isCompanyExpenseContext = type === "expense" && selectedEntityType === "company";
+
   useEffect(() => {
     if (selectedOption === "self")
       setRecordData((prev) => ({
         ...prev,
+        entity: undefined,
+        entityType: "self",
         self: "zaad",
         company: undefined,
         employee: undefined,
@@ -130,6 +147,20 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
 
     setRecordData((prev) => ({
       ...prev,
+      entity:
+        lockEntityType === "company" ||
+        lockEntityType === "employee" ||
+        lockEntityType === "individual"
+          ? lockEntityId
+          : undefined,
+      entityType:
+        lockEntityType === "company" ||
+        lockEntityType === "employee" ||
+        lockEntityType === "individual"
+          ? (lockEntityType as "company" | "employee" | "individual")
+          : lockEntityType === "self"
+            ? "self"
+            : undefined,
       company: lockEntityType === "company" ? lockEntityId : undefined,
       employee:
         lockEntityType === "employee" || lockEntityType === "individual"
@@ -206,6 +237,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setBalance(0);
     setRecordData((prev) => ({
       ...prev,
+      entity: undefined,
+      entityType: entityType || undefined,
+      expenseCategory: entityType === "company" ? prev.expenseCategory || "" : "",
       company: undefined,
       employee: undefined,
       self: undefined,
@@ -224,6 +258,9 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     setSelectedEntitySummary(null);
     setRecordData((prev) => ({
       ...prev,
+      entity: undefined,
+      entityType: searchEntityType || undefined,
+      expenseCategory: searchEntityType === "company" ? prev.expenseCategory || "" : "",
       company: undefined,
       employee: undefined,
       self: undefined,
@@ -245,7 +282,21 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
           }));
         } else {
           const { data } = await axios.get(`/api/payment/${id}`);
-          setRecordData(data);
+          const resolvedEntityType =
+            data?.entityType ||
+            (data?.company ? "company" : data?.employee ? "employee" : data?.self ? "self" : undefined);
+          const resolvedEntity = data?.entity || data?.company || data?.employee || undefined;
+
+          setRecordData({
+            ...data,
+            entity: resolvedEntity,
+            entityType: resolvedEntityType,
+            expenseCategory: data?.expenseCategory || "",
+          });
+
+          if (resolvedEntityType) {
+            setSelectedOption(resolvedEntityType);
+          }
           setSelectedMethod(data.method);
           setSelectedStatus(data.status);
           if (data.type === "expense") {
@@ -277,6 +328,8 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
     });
     setRecordData((prev) => ({
       ...prev,
+      entity: selected._id,
+      entityType: targetType,
       company: targetType === "company" ? selected._id : undefined,
       employee:
         targetType === "employee" || targetType === "individual"
@@ -291,11 +344,14 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     switch (true) {
-      case !recordData.company && !recordData.employee && !recordData.self:
+      case !recordData.entity && !recordData.self:
         toast.error("Please select a client from any type");
         return;
       case !recordData.particular:
         toast.error("Please fill in the particular.");
+        return;
+      case isCompanyExpenseContext && !recordData.expenseCategory:
+        toast.error("Please select or add a company expense category.");
         return;
       case !recordData.method:
         toast.error("Please select a payment method.");
@@ -366,7 +422,94 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
       .catch((error) => {
         console.error("Error fetching payment templates:", error);
       });
+
+    void axios
+      .get("/api/payment/expense-categories")
+      .then((response) => {
+        setExpenseCategories(Array.isArray(response.data?.categories) ? response.data.categories : []);
+      })
+      .catch((error) => {
+        console.error("Error fetching expense categories:", error);
+      });
   }, [fetchPrev]);
+
+  useEffect(() => {
+    const query = recordData?.particular?.trim();
+    if (!query || query.length < 2) {
+      setParticularSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({
+        q: query,
+        type,
+      });
+
+      if (selectedEntityType) {
+        params.set("entityType", selectedEntityType);
+      }
+      if (recordData?.expenseCategory) {
+        params.set("expenseCategory", recordData.expenseCategory);
+      }
+
+      axios
+        .get(`/api/payment/particular-suggestions?${params.toString()}`)
+        .then((response) => {
+          setParticularSuggestions(Array.isArray(response.data?.suggestions) ? response.data.suggestions : []);
+        })
+        .catch((error) => {
+          console.error("Error fetching particular suggestions:", error);
+          setParticularSuggestions([]);
+        });
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [recordData?.particular, recordData?.expenseCategory, selectedEntityType, type]);
+
+  const saveCustomExpenseCategory = async () => {
+    const name = customExpenseCategory.trim();
+    if (!name) {
+      toast.error("Type a category name first");
+      return;
+    }
+
+    try {
+      setIsSavingExpenseCategory(true);
+      await axios.post("/api/payment/expense-categories", { name });
+      setExpenseCategories((prev) => Array.from(new Set([...prev, name])).sort((a, b) => a.localeCompare(b)));
+      setRecordData((prev) => ({ ...prev, expenseCategory: name }));
+      setCustomExpenseCategory("");
+      toast.success("Expense category saved");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to save expense category");
+    } finally {
+      setIsSavingExpenseCategory(false);
+    }
+  };
+
+  const saveParticularSuggestion = async () => {
+    const particular = recordData?.particular?.trim();
+    if (!particular) {
+      toast.error("Type a particular first");
+      return;
+    }
+
+    try {
+      setIsSavingParticularSuggestion(true);
+      await axios.post("/api/payment/particular-suggestions", {
+        particular,
+        appliesTo: type,
+        entityType: selectedEntityType || "",
+        expenseCategory: recordData?.expenseCategory || "",
+      });
+      toast.success("Particular suggestion saved");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to save particular suggestion");
+    } finally {
+      setIsSavingParticularSuggestion(false);
+    }
+  };
 
   const inputClass =
     "w-full appearance-none rounded-2xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
@@ -646,6 +789,56 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                 )}
 
                 <div>
+                  {isCompanyExpenseContext && (
+                    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-900/10">
+                      <label className={labelClass}>Company Expense Category</label>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_160px]">
+                        <div className="relative z-20">
+                          <select
+                            value={recordData?.expenseCategory || ""}
+                            onChange={(e) =>
+                              setRecordData((prev) => ({
+                                ...prev,
+                                expenseCategory: e.target.value,
+                              }))
+                            }
+                            className={inputClass}
+                          >
+                            <option value="">Select expense category</option>
+                            {expenseCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <FiChevronDown />
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={saveCustomExpenseCategory}
+                          disabled={isSavingExpenseCategory}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-300"
+                        >
+                          <FiPlus />
+                          {isSavingExpenseCategory ? "Saving..." : "Add Category"}
+                        </button>
+                      </div>
+
+                      <div className="mt-3">
+                        <input
+                          type="text"
+                          value={customExpenseCategory}
+                          onChange={(e) => setCustomExpenseCategory(e.target.value)}
+                          placeholder="Type a custom category then press Add Category"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <label className={labelClass}>Particular / Purpose</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -656,10 +849,49 @@ const AddRecord = ({ type, edit }: { type: string; edit?: boolean }) => {
                       name="particular"
                       required={true}
                       value={recordData?.particular}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        handleChange(e);
+                        setShowParticularSuggestions(true);
+                      }}
+                      onFocus={() => setShowParticularSuggestions(true)}
                       placeholder="E.g., Salary payment, Consultation fee..."
                       className={clsx(inputClass, "pl-11")}
                     />
+
+                    {showParticularSuggestions && particularSuggestions.length > 0 && (
+                      <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                        <div className="max-h-44 overflow-y-auto">
+                          {particularSuggestions.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() => {
+                                setRecordData((prev) => ({ ...prev, particular: suggestion }));
+                                setShowParticularSuggestions(false);
+                              }}
+                              className="block w-full px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Start typing to see suggestions from previous records and saved templates.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={saveParticularSuggestion}
+                      disabled={isSavingParticularSuggestion}
+                      className="inline-flex items-center gap-2 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-60 dark:border-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-300"
+                    >
+                      <FiPlus />
+                      {isSavingParticularSuggestion ? "Saving..." : "Save as Suggestion"}
+                    </button>
                   </div>
                 </div>
 

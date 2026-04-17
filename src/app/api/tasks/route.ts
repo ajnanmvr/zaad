@@ -5,6 +5,8 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
 
+const ALLOWED_LINK_TARGET_TYPES = new Set(["company", "employee", "individual"]);
+
 function parseLinkedTargets(raw: unknown) {
   if (!Array.isArray(raw)) {
     return [];
@@ -20,7 +22,7 @@ function parseLinkedTargets(raw: unknown) {
       const targetId = String((item as any)?.targetId || "").trim();
       const targetLabel = String((item as any)?.targetLabel || "").trim();
 
-      if (!targetType || !targetId) {
+      if (!targetType || !targetId || !ALLOWED_LINK_TARGET_TYPES.has(targetType)) {
         return null;
       }
 
@@ -35,6 +37,17 @@ function parseLinkedTargets(raw: unknown) {
     .filter(Boolean);
 }
 
+function normalizeTaskCategory(raw: unknown): "visa" | "license" | "other" | undefined {
+  const value = String(raw || "")
+    .trim()
+    .toLowerCase();
+
+  if (value === "visa") return "visa";
+  if (value === "license") return "license";
+  if (value === "other") return "other";
+  return undefined;
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -46,10 +59,12 @@ export async function GET(request: NextRequest) {
 
     const params = request.nextUrl.searchParams;
     const scope = params.get("scope") || "mine";
+    const statusGroup = params.get("statusGroup") || "active";
     const status = params.get("status") || "";
     const priority = params.get("priority") || "";
     const assignee = params.get("assignee") || "";
     const search = params.get("search") || "";
+    const category = params.get("category") || "";
     const date = params.get("date") || "";
     const page = Number(params.get("page") || "0");
     const limit = Number(params.get("limit") || "20");
@@ -87,8 +102,22 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    if (status) query.status = status;
+    if (status) {
+      query.status = status;
+    } else if (statusGroup === "active") {
+      query.status = { $in: ["todo", "in_progress"] };
+    } else if (statusGroup === "completed") {
+      query.status = "completed";
+    } else if (statusGroup === "cancelled") {
+      query.status = "cancelled";
+    }
     if (priority) query.priority = priority;
+    if (category) {
+      const normalizedCategory = normalizeTaskCategory(category);
+      if (normalizedCategory) {
+        query.category = normalizedCategory;
+      }
+    }
     if (search.trim()) {
       query.$or = [
         { title: { $regex: search.trim(), $options: "i" } },
@@ -113,13 +142,85 @@ export async function GET(request: NextRequest) {
       query.dueDate = { $gte: start, $lt: end };
     }
 
+    const farFutureDate = new Date("9999-12-31T23:59:59.999Z");
     const [tasks, total] = await Promise.all([
-      Task.find(query)
-        .populate("assignedTo", "username fullname role")
-        .populate("assignedBy", "username fullname role")
-        .sort({ status: 1, priority: -1, dueDate: 1, createdAt: -1 })
-        .skip(page * limit)
-        .limit(limit),
+      Task.aggregate([
+        { $match: query },
+        {
+          $addFields: {
+            priorityRank: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$priority", "urgent"] }, then: 4 },
+                  { case: { $eq: ["$priority", "high"] }, then: 3 },
+                  { case: { $eq: ["$priority", "medium"] }, then: 2 },
+                  { case: { $eq: ["$priority", "low"] }, then: 1 },
+                ],
+                default: 0,
+              },
+            },
+            dueDateSort: { $ifNull: ["$dueDate", farFutureDate] },
+          },
+        },
+        { $sort: { priorityRank: -1, dueDateSort: 1, createdAt: -1 } },
+        { $skip: page * limit },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "assignedTo",
+            foreignField: "_id",
+            as: "assignedTo",
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "assignedBy",
+            foreignField: "_id",
+            as: "assignedBy",
+          },
+        },
+        {
+          $unwind: {
+            path: "$assignedTo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$assignedBy",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            title: 1,
+            description: 1,
+            status: 1,
+            priority: 1,
+            category: 1,
+            dueDate: 1,
+            completionNote: 1,
+            cancellationNote: 1,
+            linkedTargets: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            assignedTo: {
+              _id: "$assignedTo._id",
+              username: "$assignedTo.username",
+              fullname: "$assignedTo.fullname",
+              role: "$assignedTo.role",
+            },
+            assignedBy: {
+              _id: "$assignedBy._id",
+              username: "$assignedBy.username",
+              fullname: "$assignedBy.fullname",
+              role: "$assignedBy.role",
+            },
+          },
+        },
+      ]),
       Task.countDocuments(query),
     ]);
 
@@ -152,6 +253,7 @@ export async function POST(request: NextRequest) {
       title,
       description,
       priority,
+      category,
       dueDate,
       assignedTo,
       linkedTargets,
@@ -159,6 +261,7 @@ export async function POST(request: NextRequest) {
       title?: string;
       description?: string;
       priority?: "low" | "medium" | "high" | "urgent";
+      category?: "visa" | "license" | "other";
       dueDate?: string | null;
       assignedTo?: string;
       linkedTargets?: Array<{
@@ -177,15 +280,26 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedLinks = parseLinkedTargets(linkedTargets);
+    const normalizedCategory = normalizeTaskCategory(category);
 
     const task = await Task.create({
       title: title.trim(),
       description: (description || "").trim(),
       priority: priority || "medium",
+      category: normalizedCategory,
       dueDate: dueDate ? new Date(dueDate) : null,
       assignedTo,
       assignedBy: principal.userId,
       status: "todo",
+      taskHistory: [
+        {
+          action: "created",
+          status: "todo",
+          note: "",
+          changedBy: principal.userId,
+          changedAt: new Date(),
+        },
+      ],
       linkedTargets: normalizedLinks,
       published: true,
     });

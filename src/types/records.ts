@@ -3,6 +3,7 @@ type TRecordBase = {
   amount: number;
   invoiceNo: string;
   particular: string;
+  expenseCategory?: string;
   method?: string;
   status?: string;
   serviceFee?: number;
@@ -12,6 +13,8 @@ type TRecordBase = {
 
 export type TRecordData = TRecordBase & {
   createdBy: string | undefined;
+  entity?: string;
+  entityType?: "company" | "employee" | "individual" | "self";
   self?: string;
   employee?: string;
   company?: string;
@@ -26,6 +29,8 @@ export type TRecordList = TRecordBase & {
   creator: string;
   creatorFullname?: string;
   id: string;
+  employeeName?: string;
+  entityType?: "company" | "employee" | "individual" | "self";
   client: {
     name: string;
     id: string;

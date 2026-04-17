@@ -5,6 +5,8 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
 
+const ALLOWED_LINK_TARGET_TYPES = new Set(["company", "employee", "individual"]);
+
 function parseLinkedTargets(raw: unknown) {
   if (!Array.isArray(raw)) {
     return [];
@@ -20,7 +22,7 @@ function parseLinkedTargets(raw: unknown) {
       const targetId = String((item as any)?.targetId || "").trim();
       const targetLabel = String((item as any)?.targetLabel || "").trim();
 
-      if (!targetType || !targetId) {
+      if (!targetType || !targetId || !ALLOWED_LINK_TARGET_TYPES.has(targetType)) {
         return null;
       }
 
@@ -33,6 +35,17 @@ function parseLinkedTargets(raw: unknown) {
       return { targetType, targetId, targetLabel };
     })
     .filter(Boolean);
+}
+
+function normalizeTaskCategory(raw: unknown): "visa" | "license" | "other" | null {
+  const value = String(raw || "")
+    .trim()
+    .toLowerCase();
+
+  if (value === "visa") return "visa";
+  if (value === "license") return "license";
+  if (value === "other") return "other";
+  return null;
 }
 
 export async function GET(
@@ -49,7 +62,8 @@ export async function GET(
 
     const task = await Task.findOne({ _id: params.id, published: true })
       .populate("assignedTo", "username fullname role")
-      .populate("assignedBy", "username fullname role");
+      .populate("assignedBy", "username fullname role")
+      .populate("taskHistory.changedBy", "username fullname role");
 
     if (!task) {
       return Response.json({ error: "Task not found" }, { status: 404 });
@@ -101,32 +115,65 @@ export async function PUT(
       if (body.title !== undefined) update.title = String(body.title || "").trim();
       if (body.description !== undefined) update.description = String(body.description || "").trim();
       if (body.priority !== undefined) update.priority = body.priority;
+      if (body.category !== undefined) {
+        const normalizedCategory = normalizeTaskCategory(body.category);
+        update.category = normalizedCategory || undefined;
+      }
       if (body.status !== undefined) update.status = body.status;
       if (body.assignedTo !== undefined) update.assignedTo = body.assignedTo;
       if (body.dueDate !== undefined) update.dueDate = body.dueDate ? new Date(body.dueDate) : null;
       if (body.completionNote !== undefined) update.completionNote = String(body.completionNote || "");
+      if (body.cancellationNote !== undefined) {
+        update.cancellationNote = String(body.cancellationNote || "");
+      }
       if (body.linkedTargets !== undefined) {
         update.linkedTargets = parseLinkedTargets(body.linkedTargets);
       }
-
-      if (body.status === "completed") {
-        update.completedAt = new Date();
-      }
     } else {
-      if (body.status && ["in_progress", "completed"].includes(body.status)) {
+      if (body.status && ["in_progress", "completed", "cancelled"].includes(body.status)) {
         update.status = body.status;
       }
       if (body.completionNote !== undefined) {
         update.completionNote = String(body.completionNote || "").trim();
       }
-      if (body.status === "completed") {
-        update.completedAt = new Date();
+      if (body.cancellationNote !== undefined) {
+        update.cancellationNote = String(body.cancellationNote || "").trim();
       }
     }
 
-    const updated = await Task.findByIdAndUpdate(existing._id, update, { new: true })
+    const previousStatus = String(existing.status || "todo");
+    const nextStatus = String(update.status || previousStatus);
+
+    if (nextStatus === "completed") {
+      update.completedAt = new Date();
+    } else if (update.status !== undefined) {
+      update.completedAt = null;
+    }
+
+    const shouldRecordStatusHistory = update.status !== undefined && previousStatus !== nextStatus;
+    const statusHistoryEntry = shouldRecordStatusHistory
+      ? {
+          action: nextStatus,
+          status: nextStatus,
+          note:
+            nextStatus === "completed"
+              ? String(update.completionNote || body.completionNote || "").trim()
+              : nextStatus === "cancelled"
+                ? String(update.cancellationNote || body.cancellationNote || "").trim()
+                : "",
+          changedBy: principal.userId,
+          changedAt: new Date(),
+        }
+      : null;
+
+    const updatePayload = statusHistoryEntry
+      ? { $set: update, $push: { taskHistory: statusHistoryEntry } }
+      : { $set: update };
+
+    const updated = await Task.findByIdAndUpdate(existing._id, updatePayload, { new: true })
       .populate("assignedTo", "username fullname role")
-      .populate("assignedBy", "username fullname role");
+      .populate("assignedBy", "username fullname role")
+      .populate("taskHistory.changedBy", "username fullname role");
 
     if (updated && update.assignedTo && String(update.assignedTo) !== existing.assignedTo.toString()) {
       await TaskNotification.create({

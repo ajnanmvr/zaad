@@ -12,10 +12,27 @@ import clsx from "clsx";
 import EntityAvatar from "../common/EntityAvatar";
 import toast from "react-hot-toast";
 
+const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
+const INVOICE_PREFILL_MAX_AGE_MS = 30 * 60 * 1000;
+
+type InvoicePrefillPayload = {
+    connectionMode?: "detached" | "connected";
+    selectedEntityType?: "company" | "employee" | "individual" | null;
+    selectedEntitySummary?: {
+        id: string;
+        name: string;
+        color?: string;
+        type: "company" | "employee" | "individual";
+    } | null;
+    invoiceData?: Record<string, any>;
+    createdAt?: number;
+};
+
 const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const router = useRouter()
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo");
+    const prefillSource = searchParams.get("prefill");
     const { user } = useUserContext();
 
     const [isEditMode, setisEditMode] = useState(false);
@@ -81,12 +98,57 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 setisEditMode(true)
             } else {
                 const { data } = await axios.get(`/api/invoice/prev`);
-                setInvoiceData((prev: any) => ({ ...prev, title: data?.title, invoiceNo: +data?.invoiceNo + 1, suffix: data?.suffix }))
+                const baseInvoiceData = {
+                    title: data?.title,
+                    invoiceNo: +data?.invoiceNo + 1,
+                    suffix: data?.suffix,
+                };
+
+                let nextInvoiceData: Record<string, any> = baseInvoiceData;
+
+                if (prefillSource === "records") {
+                    try {
+                        const rawPrefill = sessionStorage.getItem(INVOICE_PREFILL_STORAGE_KEY);
+                        if (rawPrefill) {
+                            const parsed: InvoicePrefillPayload = JSON.parse(rawPrefill);
+                            const createdAt = Number(parsed?.createdAt || 0);
+                            const isFresh = createdAt > 0 && Date.now() - createdAt <= INVOICE_PREFILL_MAX_AGE_MS;
+
+                            if (isFresh && parsed?.invoiceData) {
+                                nextInvoiceData = {
+                                    ...baseInvoiceData,
+                                    ...parsed.invoiceData,
+                                };
+
+                                if (parsed.connectionMode === "connected" && parsed.selectedEntityType) {
+                                    setConnectionMode("connected");
+                                    setSelectedEntityType(parsed.selectedEntityType);
+                                    setSelectedEntitySummary(parsed.selectedEntitySummary || null);
+                                    setEntitySearchValue(String(parsed.invoiceData.client || ""));
+                                } else {
+                                    setConnectionMode("detached");
+                                    setSelectedEntityType("");
+                                    setSelectedEntitySummary(null);
+                                    setEntitySearchValue(String(parsed.invoiceData.client || ""));
+                                }
+
+                                toast.success("Invoice form auto-filled from selected records");
+                            }
+
+                            sessionStorage.removeItem(INVOICE_PREFILL_STORAGE_KEY);
+                        }
+                    } catch (prefillError) {
+                        sessionStorage.removeItem(INVOICE_PREFILL_STORAGE_KEY);
+                        console.error("Failed to parse invoice prefill payload:", prefillError);
+                    }
+                }
+
+                setInvoiceData((prev: any) => ({ ...prev, ...nextInvoiceData }));
             }
         } catch (error) {
             console.log(error);
         }
-    }, [edit]);
+    }, [edit, prefillSource]);
     useEffect(() => {
         fetchData()
     }, [fetchData])

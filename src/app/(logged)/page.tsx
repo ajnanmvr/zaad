@@ -78,15 +78,6 @@ export default function Home() {
   const upcomingTasks = data?.upcomingTasks || [];
   const taskSummary = data?.taskSummary || { open: 0, inProgress: 0, completed: 0, overdue: 0 };
 
-  const entitiesDonutOptions: ApexOptions = {
-    chart: { type: "donut", toolbar: { show: false } },
-    labels: ["Companies", "Employees", "Individuals"],
-    colors: ["#0EA5E9", "#10B981", "#F59E0B"],
-    legend: { position: "bottom" },
-    dataLabels: { enabled: false },
-    stroke: { colors: ["#ffffff"], width: 2 },
-  };
-
   const expiryBarOptions: ApexOptions = {
     chart: { type: "bar", toolbar: { show: false } },
     colors: ["#EF4444", "#F59E0B", "#22C55E"],
@@ -164,20 +155,7 @@ export default function Home() {
         <MetricCard label="Renewed This Month" value={String(documentStats.renewedThisMonth)} icon={<FiArrowUpRight />} tone="teal" />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Entity Mix</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Distribution across companies, employees, and individuals.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="donut"
-              height={300}
-              options={entitiesDonutOptions}
-              series={[counts.companies, counts.employees, counts.individuals]}
-            />
-          </div>
-        </div>
-
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
           <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Expiry Health</h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Expired, in renewal window, and valid documents.</p>

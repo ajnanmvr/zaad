@@ -7,9 +7,9 @@ import { Suspense } from "react";
 export default function MyTasksPage() {
   return (
     <>
-      <Breadcrumb pageName="My Tasks" />
+      <Breadcrumb pageName="Tasks List" />
       <Suspense fallback={null}>
-        <TaskWorkspace mode="mine" />
+        <TaskWorkspace mode="manage" initialView="list" />
       </Suspense>
     </>
   );

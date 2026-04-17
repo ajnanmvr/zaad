@@ -1,9 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-import "./companies";
-import "./employees";
-import "./users";
-
 const RecordSchema = new Schema(
   {
     suffix: String,
@@ -24,6 +20,22 @@ const RecordSchema = new Schema(
       type: String,
       required: [true, "Please provide a record type"],
       enum: ["income", "expense"],
+    },
+    entity: {
+      type: Schema.Types.ObjectId,
+      ref: "entities",
+      index: true,
+    },
+    entityType: {
+      type: String,
+      enum: ["company", "employee", "individual", "self"],
+      index: true,
+    },
+    expenseCategory: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
     },
     company: {
       type: Schema.Types.ObjectId,

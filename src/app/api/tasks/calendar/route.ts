@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
 
     const tasks = await Task.find(query)
-      .select("title priority status dueDate assignedTo")
+      .select("title priority status category dueDate assignedTo")
       .populate("assignedTo", "username fullname")
       .sort({ dueDate: 1, priority: -1, createdAt: -1 });
 

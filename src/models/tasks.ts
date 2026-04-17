@@ -24,6 +24,12 @@ const TaskSchema = new mongoose.Schema(
       default: "medium",
       index: true,
     },
+    category: {
+      type: String,
+      enum: ["visa", "license", "other"],
+      default: undefined,
+      index: true,
+    },
     dueDate: {
       type: Date,
       default: null,
@@ -46,10 +52,44 @@ const TaskSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    cancellationNote: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     completedAt: {
       type: Date,
       default: null,
     },
+    taskHistory: [
+      {
+        action: {
+          type: String,
+          enum: ["created", "todo", "in_progress", "completed", "cancelled"],
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ["todo", "in_progress", "completed", "cancelled"],
+          required: true,
+        },
+        note: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        changedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "users",
+          required: true,
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+          required: true,
+        },
+      },
+    ],
     linkedTargets: [
       {
         targetType: {
