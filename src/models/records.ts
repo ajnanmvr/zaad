@@ -4,7 +4,12 @@ const RecordSchema = new Schema(
   {
     suffix: String,
     number: Number,
-    particular: { type: String, required: true, trim: true },
+    particular: {type: String, required: true, trim: true
+    },
+    category: {
+      type: String,
+      trim: true,
+    },
     serviceFee: Number,
     amount: {
       type: Number,
@@ -33,7 +38,9 @@ const RecordSchema = new Schema(
     paymentStatusTemplate: {
       type: Schema.Types.ObjectId,
       ref: "paymentStatusTemplates",
-      required: [true, "Please provide a payment status template"],
+      required: function (this: any) {
+        return this.recordKind !== "liability";
+      },
       index: true,
     },
     recordKind: {
@@ -47,6 +54,11 @@ const RecordSchema = new Schema(
         "instant_profit",
       ],
       default: "standard",
+      index: true,
+    },
+    transferGroupId: {
+      type: String,
+      trim: true,
       index: true,
     },
     createdBy: {
@@ -106,11 +118,6 @@ const SelfTransferRecordSchema = new Schema({
     type: String,
     enum: ["in", "out"],
   },
-  transferGroupId: {
-    type: String,
-    trim: true,
-    index: true,
-  },
 });
 
 const LiabilityRecordSchema = new Schema({
@@ -131,43 +138,23 @@ const Records =
   mongoose.models.Record || mongoose.model("Record", RecordSchema);
 
 if (!mongoose.models.CompanyRecord) {
-  (Records as any).discriminator(
-    "CompanyRecord",
-    CompanyRecordSchema,
-    "company",
-  );
+  (Records as any).discriminator("CompanyRecord", CompanyRecordSchema, "company");
 }
 
 if (!mongoose.models.SelfTransferRecord) {
-  (Records as any).discriminator(
-    "SelfTransferRecord",
-    SelfTransferRecordSchema,
-    "self_transfer_in",
-  );
+  (Records as any).discriminator("SelfTransferRecord", SelfTransferRecordSchema, "self_transfer_in");
 }
 
 if (!mongoose.models.SelfTransferOutRecord) {
-  (Records as any).discriminator(
-    "SelfTransferOutRecord",
-    SelfTransferRecordSchema,
-    "self_transfer_out",
-  );
+  (Records as any).discriminator("SelfTransferOutRecord", SelfTransferRecordSchema, "self_transfer_out");
 }
 
 if (!mongoose.models.LiabilityRecord) {
-  (Records as any).discriminator(
-    "LiabilityRecord",
-    LiabilityRecordSchema,
-    "liability",
-  );
+  (Records as any).discriminator("LiabilityRecord", LiabilityRecordSchema, "liability");
 }
 
 if (!mongoose.models.InstantProfitRecord) {
-  (Records as any).discriminator(
-    "InstantProfitRecord",
-    InstantProfitRecordSchema,
-    "instant_profit",
-  );
+  (Records as any).discriminator("InstantProfitRecord", InstantProfitRecordSchema, "instant_profit");
 }
 
 export default Records;

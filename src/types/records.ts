@@ -2,6 +2,7 @@ type TRecordBase = {
   type: string;
   amount: number;
   particular: string;
+  category?: string;
   serviceFee?: number;
   number: number;
   suffix: string;
@@ -16,6 +17,7 @@ type TRecordBase = {
     | "self_transfer_out"
     | "liability"
     | "instant_profit";
+  transferGroupId?: string;
 };
 
 export type TRecordData = TRecordBase & {

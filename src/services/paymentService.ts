@@ -1,5 +1,6 @@
 import { filterData } from "@/utils/filterData";
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
+import { randomUUID } from "crypto";
 import {
   aggregateRecords,
   createPaymentEditNotification,
@@ -101,6 +102,10 @@ function normalizeEntityFields(payload: any) {
   delete next.self;
 
   return next;
+}
+
+function generateGroupId() {
+  return randomUUID();
 }
 
 export function isAdminRole(role?: string) {
@@ -280,6 +285,7 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
 
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
   const normalizedPayload = normalizeEntityFields(reqBody);
+  const recordKind = String(normalizedPayload.recordKind || "").toLowerCase();
 
   // Validate required fields before creating
   const missingFields: string[] = [];
@@ -300,7 +306,10 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     missingFields.push("paymentMethodTemplate");
   }
   
-  if (!normalizedPayload.paymentStatusTemplate || String(normalizedPayload.paymentStatusTemplate).trim() === "") {
+  if (
+    recordKind !== "liability" &&
+    (!normalizedPayload.paymentStatusTemplate || String(normalizedPayload.paymentStatusTemplate).trim() === "")
+  ) {
     missingFields.push("paymentStatusTemplate");
   }
   
@@ -310,6 +319,10 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
 
   const data = await createRecord({
     ...normalizedPayload,
+    paymentStatusTemplate:
+      recordKind === "liability"
+        ? normalizedPayload.paymentStatusTemplate || undefined
+        : normalizedPayload.paymentStatusTemplate,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -396,7 +409,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", { createdAt: -1 });
   const newSuffix = latest?.suffix || "";
   const newNumber = latest?.number || 0;
-  const transferGroupId = `${Date.now()}-${Math.round(Math.random() * 100000)}`;
+  const transferGroupId = generateGroupId();
 
   const [fromTemplate, toTemplate, selfDepositStatus] = await Promise.all([
     findPaymentTemplateByMethodName(from),
@@ -630,13 +643,17 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     throw new Error("Service fee payment template not found");
   }
 
+  const transferGroupId = generateGroupId();
+
   const normalizedPayload = normalizeEntityFields({
     ...reqBody,
     recordKind: "instant_profit",
+    transferGroupId,
   });
 
   await createRecord({
     ...normalizedPayload,
+    transferGroupId,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -663,6 +680,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     recordKind: "instant_profit",
     paymentMethodTemplate: serviceFeeTemplate._id,
     number,
+    transferGroupId,
     ...rest,
     createdBy: principal.userId,
     activityLog: [

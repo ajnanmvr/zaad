@@ -5,7 +5,8 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import InstantProfitModal from "@/components/Modals/InstantProfitModal";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
-import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiShield } from "react-icons/fi";
+import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
+import { FiArrowDownLeft } from "react-icons/fi";
 
 const TablesPage = () => {
   const [showInstantProfitModal, setShowInstantProfitModal] = useState(false);
@@ -53,18 +54,32 @@ const TablesPage = () => {
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href="/accounts/expense/company"
+              href="/accounts/transactions/self-deposit"
               className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
             >
-              <FiPlusCircle />
-              Company Expense
+              <FiArrowDownLeft />
+              Self Deposit
             </Link>
             <Link
-              href="/accounts/transactions/liability/new"
-              className="inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 dark:border-orange-700 dark:bg-slate-900 dark:text-orange-300"
+              href="/accounts/income"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
             >
-              <FiShield />
-              Liability Entry
+              <FiPlusCircle />
+              Income
+            </Link>
+            <Link
+              href="/accounts/expense"
+              className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
+            >
+              <FiDollarSign />
+              Expense
+            </Link>
+            <Link
+              href="/accounts/transactions/bin"
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300"
+            >
+              <FiTrash2 />
+              Bin
             </Link>
             <button
               type="button"

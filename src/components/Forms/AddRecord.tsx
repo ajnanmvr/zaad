@@ -37,6 +37,7 @@ type AddRecordProps = {
     | "expense";
   submitEndpoint?: "/api/payment" | "/api/payment/profit";
   hideBreadcrumb?: boolean;
+  hidePaymentStatus?: boolean;
   showSpecialModes?: boolean;
   forceRecordKind?: "standard" | "company" | "liability" | "instant_profit";
   initialMode?: "normal" | "liability" | "instant-profit";
@@ -48,6 +49,7 @@ const AddRecord = ({
   suggestionCategory = "office_records",
   submitEndpoint,
   hideBreadcrumb = false,
+  hidePaymentStatus = false,
   showSpecialModes = false,
   forceRecordKind,
   initialMode = "normal",
@@ -341,7 +343,7 @@ const AddRecord = ({
       case !recordData.paymentMethodTemplate:
         toast.error("Please select a payment method.");
         return;
-      case !recordData.paymentStatusTemplate:
+        case !hidePaymentStatus && !recordData.paymentStatusTemplate:
         toast.error("Please select a payment status.");
         return;
       case !recordData.number:
@@ -538,6 +540,85 @@ const AddRecord = ({
   const selectedStatusMeta = filteredStatusOptions.find(
     (statusOption) => statusOption.value === selectedStatus,
   );
+  const activeRecordKind = String(recordData?.recordKind || forceRecordKind || "standard").toLowerCase();
+  const isCompanyRecord = activeRecordKind === "company";
+  const isLiabilityRecord = activeRecordKind === "liability";
+  const isInstantProfitRecord = activeRecordKind === "instant_profit";
+  const headerTone = isCompanyRecord
+    ? "cyan"
+    : isLiabilityRecord
+      ? "orange"
+      : isInstantProfitRecord
+        ? "violet"
+        : type === "income"
+          ? "emerald"
+          : "rose";
+  const headerCopy = isCompanyRecord
+    ? {
+        badge: "Company Entry",
+        title: "Create Company Transaction Record",
+        description: "Capture company-specific transactions with a dedicated flow.",
+      }
+    : isLiabilityRecord
+      ? {
+          badge: "Liability Entry",
+          title: "Create Liability Transaction Record",
+          description: "Capture liability transactions with a dedicated flow.",
+        }
+      : isInstantProfitRecord
+        ? {
+            badge: "Special Entry",
+            title: "Create Instant Profit Record",
+            description: "Capture instant profit transactions with a dedicated flow.",
+          }
+        : {
+            badge: type === "income" ? "Income Entry" : "Expense Entry",
+            title: edit ? "Edit Transaction Record" : "Create Transaction Record",
+            description: "Capture client, method, amount, and status details with a clean structured flow.",
+          };
+
+  const headerClasses = {
+    emerald: {
+      shell:
+        "border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:border-emerald-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20",
+      glowA: "bg-emerald-300/20",
+      glowB: "bg-teal-300/20",
+      badge: "border-emerald-300/60 bg-emerald-100/80 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300",
+      accent: "bg-emerald-500",
+    },
+    rose: {
+      shell:
+        "border-rose-200/80 bg-gradient-to-br from-rose-50 via-white to-orange-50 dark:border-rose-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-rose-950/20",
+      glowA: "bg-rose-300/20",
+      glowB: "bg-orange-300/20",
+      badge: "border-rose-300/60 bg-rose-100/80 text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/30 dark:text-rose-300",
+      accent: "bg-rose-500",
+    },
+    orange: {
+      shell:
+        "border-orange-200/80 bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:border-orange-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-orange-950/20",
+      glowA: "bg-orange-300/20",
+      glowB: "bg-amber-300/20",
+      badge: "border-orange-300/60 bg-orange-100/80 text-orange-700 dark:border-orange-700/40 dark:bg-orange-900/30 dark:text-orange-300",
+      accent: "bg-orange-500",
+    },
+    cyan: {
+      shell:
+        "border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-white to-blue-50 dark:border-cyan-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20",
+      glowA: "bg-cyan-300/20",
+      glowB: "bg-blue-300/20",
+      badge: "border-cyan-300/60 bg-cyan-100/80 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300",
+      accent: "bg-cyan-500",
+    },
+    violet: {
+      shell:
+        "border-violet-200/80 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 dark:border-violet-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-violet-950/20",
+      glowA: "bg-violet-300/20",
+      glowB: "bg-fuchsia-300/20",
+      badge: "border-violet-300/60 bg-violet-100/80 text-violet-700 dark:border-violet-700/40 dark:bg-violet-900/30 dark:text-violet-300",
+      accent: "bg-violet-500",
+    },
+  } as const;
 
   return (
     <>
@@ -550,21 +631,19 @@ const AddRecord = ({
           <div
             className={clsx(
               "relative overflow-hidden border-b p-6 sm:p-7",
-              type === "income"
-                ? "border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:border-emerald-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20"
-                : "border-rose-200/80 bg-gradient-to-br from-rose-50 via-white to-orange-50 dark:border-rose-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-rose-950/20",
+              headerClasses[headerTone].shell,
             )}
           >
             <div
               className={clsx(
                 "pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl",
-                type === "income" ? "bg-emerald-300/20" : "bg-rose-300/20",
+                headerClasses[headerTone].glowA,
               )}
             />
             <div
               className={clsx(
                 "pointer-events-none absolute -bottom-16 -left-14 h-48 w-48 rounded-full blur-3xl",
-                type === "income" ? "bg-teal-300/20" : "bg-orange-300/20",
+                headerClasses[headerTone].glowB,
               )}
             />
 
@@ -573,22 +652,17 @@ const AddRecord = ({
                 <p
                   className={clsx(
                     "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider",
-                    type === "income"
-                      ? "border-emerald-300/60 bg-emerald-100/80 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/30 dark:text-emerald-300"
-                      : "border-rose-300/60 bg-rose-100/80 text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/30 dark:text-rose-300",
+                    headerClasses[headerTone].badge,
                   )}
                 >
-                  {type === "income" ? <FiCheckCircle /> : <FiDollarSign />}
-                  {type === "income" ? "Income Entry" : "Expense Entry"}
+                  {isCompanyRecord ? <FiDollarSign /> : isLiabilityRecord ? <FiDollarSign /> : type === "income" ? <FiCheckCircle /> : <FiDollarSign />}
+                  {headerCopy.badge}
                 </p>
                 <h3 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-                  {edit
-                    ? "Edit Transaction Record"
-                    : "Create Transaction Record"}
+                  {headerCopy.title}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Capture client, method, amount, and status details with a
-                  clean structured flow.
+                  {headerCopy.description}
                 </p>
               </div>
 
@@ -596,7 +670,7 @@ const AddRecord = ({
                 <span
                   className={clsx(
                     "h-2.5 w-2.5 rounded-full",
-                    type === "income" ? "bg-emerald-500" : "bg-rose-500",
+                    headerClasses[headerTone].accent,
                   )}
                 />
                 {edit ? "Update Mode" : "Create Mode"}
@@ -955,102 +1029,106 @@ const AddRecord = ({
                       </div>
                     ) : null}
 
-                    <label className={labelClass}>
-                      Payment Status <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative z-20">
-                      <select
-                        title="payment status"
-                        value={selectedStatus}
-                        name="payment-status"
-                        onChange={(e) => {
-                          setSelectedStatus(e.target.value);
-                          const selectedTemplate = filteredStatusOptions.find(
-                            (item) => item.value === e.target.value,
-                          );
-                          const normalized = String(selectedTemplate?.label || "").toLowerCase();
-                          if (normalized.includes("liability")) {
-                            setRecordMode("liability");
-                          } else if (normalized.includes("profit")) {
-                            setRecordMode("instant-profit");
-                          } else {
-                            setRecordMode("normal");
-                          }
-                          setRecordData({
-                            ...recordData,
-                            paymentStatusTemplate: e.target.value,
-                            recordKind: resolveRecordKind(
-                              normalized.includes("liability")
-                                ? "liability"
-                                : normalized.includes("profit")
-                                  ? "instant_profit"
-                                  : selectedOption === "company"
-                                    ? "company"
-                                    : "standard",
-                            ),
-                          });
-                        }}
-                        className={inputClass}
-                      >
-                        <option value="" disabled>
-                          Select Status
-                        </option>
-                        {filteredStatusOptions.length > 0 ? (
-                          filteredStatusOptions.map((statusOption) => (
-                            <option key={statusOption.value} value={statusOption.value}>
-                              {statusOption.label}
+                    {!hidePaymentStatus && (
+                      <>
+                        <label className={labelClass}>
+                          Payment Status <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative z-20">
+                          <select
+                            title="payment status"
+                            value={selectedStatus}
+                            name="payment-status"
+                            onChange={(e) => {
+                              setSelectedStatus(e.target.value);
+                              const selectedTemplate = filteredStatusOptions.find(
+                                (item) => item.value === e.target.value,
+                              );
+                              const normalized = String(selectedTemplate?.label || "").toLowerCase();
+                              if (normalized.includes("liability")) {
+                                setRecordMode("liability");
+                              } else if (normalized.includes("profit")) {
+                                setRecordMode("instant-profit");
+                              } else {
+                                setRecordMode("normal");
+                              }
+                              setRecordData({
+                                ...recordData,
+                                paymentStatusTemplate: e.target.value,
+                                recordKind: resolveRecordKind(
+                                  normalized.includes("liability")
+                                    ? "liability"
+                                    : normalized.includes("profit")
+                                      ? "instant_profit"
+                                      : selectedOption === "company"
+                                        ? "company"
+                                        : "standard",
+                                ),
+                              });
+                            }}
+                            className={inputClass}
+                          >
+                            <option value="" disabled>
+                              Select Status
                             </option>
-                          ))
-                        ) : showSpecialModes ? (
-                          <>
-                            {type === "income" && (
+                            {filteredStatusOptions.length > 0 ? (
+                              filteredStatusOptions.map((statusOption) => (
+                                <option key={statusOption.value} value={statusOption.value}>
+                                  {statusOption.label}
+                                </option>
+                              ))
+                            ) : showSpecialModes ? (
                               <>
-                                <option value="Advance">Advance</option>
-                                <option value="Credit">Credit (Income)</option>
-                                <option value="Ready Cash">Ready Cash</option>
-                                <option value="liability">Liability Payment</option>
-                                <option value="Profit">Instant Profit</option>
+                                {type === "income" && (
+                                  <>
+                                    <option value="Advance">Advance</option>
+                                    <option value="Credit">Credit (Income)</option>
+                                    <option value="Ready Cash">Ready Cash</option>
+                                    <option value="liability">Liability Payment</option>
+                                    <option value="Profit">Instant Profit</option>
+                                  </>
+                                )}
+                                {type === "expense" && (
+                                  <>
+                                    <option value="Debit">Debit (Pay Out)</option>
+                                    <option value="liability">Liability Payment</option>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {type === "income" && (
+                                  <>
+                                    <option value="Advance">Advance</option>
+                                    <option value="Credit">Credit (Income)</option>
+                                    <option value="Ready Cash">Ready Cash</option>
+                                  </>
+                                )}
+                                {type === "expense" && <option value="Debit">Debit (Pay Out)</option>}
                               </>
                             )}
-                            {type === "expense" && (
-                              <>
-                                <option value="Debit">Debit (Pay Out)</option>
-                                <option value="liability">Liability Payment</option>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {type === "income" && (
-                              <>
-                                <option value="Advance">Advance</option>
-                                <option value="Credit">Credit (Income)</option>
-                                <option value="Ready Cash">Ready Cash</option>
-                              </>
-                            )}
-                            {type === "expense" && <option value="Debit">Debit (Pay Out)</option>}
-                          </>
+                          </select>
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <FiChevronDown />
+                          </span>
+                        </div>
+                        {selectedStatusMeta && (
+                          <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800">
+                            <span
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white"
+                              style={{
+                                backgroundColor:
+                                  selectedStatusMeta.color || "#0F766E",
+                              }}
+                            >
+                              <FiCircle className="text-[10px]" />
+                            </span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                              {selectedStatusMeta.label}
+                            </span>
+                          </div>
                         )}
-                      </select>
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                        <FiChevronDown />
-                      </span>
-                    </div>
-                    {selectedStatusMeta && (
-                      <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800">
-                        <span
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white"
-                          style={{
-                            backgroundColor:
-                              selectedStatusMeta.color || "#0F766E",
-                          }}
-                        >
-                          <FiCircle className="text-[10px]" />
-                        </span>
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                          {selectedStatusMeta.label}
-                        </span>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>

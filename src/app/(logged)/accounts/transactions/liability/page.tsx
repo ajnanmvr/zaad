@@ -1,10 +1,12 @@
 "use client"
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import LiabilityRecordModal from "@/components/Modals/LiabilityRecordModal";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
+import { useState } from "react";
 import { FiAlertCircle, FiClock, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 
 interface Client {
@@ -20,6 +22,8 @@ interface TransformedData {
 
 
 const TransactionList = () => {
+  const [showLiabilityIncomeModal, setShowLiabilityIncomeModal] = useState(false);
+  const [showLiabilityExpenseModal, setShowLiabilityExpenseModal] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["liability"], queryFn: async () => {
@@ -88,20 +92,39 @@ const TransactionList = () => {
         </div>
 
         <div className="relative z-10 mt-5 flex flex-wrap gap-2">
-          <Link
-            href="/accounts/transactions/liability/new?flow=in"
+          <button
+            type="button"
+            onClick={() => setShowLiabilityIncomeModal(true)}
             className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
           >
-            Add Liability In
-          </Link>
-          <Link
-            href="/accounts/transactions/liability/new?flow=out"
+            Add Liability Income
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowLiabilityExpenseModal(true)}
             className="inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 dark:border-orange-700 dark:bg-slate-900 dark:text-orange-300"
           >
-            Add Liability Out
-          </Link>
+            Add Liability Expense
+          </button>
         </div>
       </section>
+
+      <LiabilityRecordModal
+        isOpen={showLiabilityIncomeModal}
+        onClose={() => setShowLiabilityIncomeModal(false)}
+        badgeLabel="Liability Income"
+        title="Add Liability Income"
+        type="income"
+        suggestionCategory="liability_in"
+      />
+      <LiabilityRecordModal
+        isOpen={showLiabilityExpenseModal}
+        onClose={() => setShowLiabilityExpenseModal(false)}
+        badgeLabel="Liability Expense"
+        title="Add Liability Expense"
+        type="expense"
+        suggestionCategory="liability_out"
+      />
 
       <div className="mt-6">
       {isLoading ?

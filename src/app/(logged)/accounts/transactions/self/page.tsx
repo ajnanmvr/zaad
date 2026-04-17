@@ -1,12 +1,15 @@
 
+"use client";
+
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
-import { FiBookOpen, FiShield, FiTrendingUp } from "react-icons/fi";
+import { FiBookOpen, FiShield, FiTrendingUp, FiPlusCircle, FiDollarSign } from "react-icons/fi";
+import Link from "next/link";
 
 const TablesPage = () => {
   return (
     <>
-      <Breadcrumb pageName="ZAAD Records" />
+      <Breadcrumb pageName="Company Records" />
 
       <section className="relative overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm dark:border-emerald-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
@@ -18,10 +21,10 @@ const TablesPage = () => {
             Internal Ledger
           </p>
           <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-            ZAAD Records
+            Company Records
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-            Monitor internal deposits and operational transactions from the self account with full traceability.
+            Record and monitor company-only income and expense entries with a focused workflow.
           </p>
 
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -39,6 +42,23 @@ const TablesPage = () => {
                 Internal Audit View
               </p>
             </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href="/accounts/transactions/self/new?type=income"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+            >
+              <FiPlusCircle />
+              Record Company Income
+            </Link>
+            <Link
+              href="/accounts/transactions/self/new?type=expense"
+              className="inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 dark:border-orange-700 dark:bg-slate-900 dark:text-orange-300"
+            >
+              <FiDollarSign />
+              Record Company Expense
+            </Link>
           </div>
         </div>
       </section>

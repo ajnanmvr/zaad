@@ -31,6 +31,7 @@ const LiabilityEntryPage = ({ searchParams }: { searchParams?: { flow?: string }
           type={type}
           suggestionCategory={suggestionCategory}
           forceRecordKind="liability"
+          hidePaymentStatus
           hideBreadcrumb
         />
       </Suspense>
