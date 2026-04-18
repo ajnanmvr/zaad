@@ -88,20 +88,40 @@ function normalizeEntityFields(payload: any) {
   const entityId = String(next.entity || "").trim();
   if (entityId) {
     next.entity = entityId;
-    if (!next.recordKind || next.recordKind === "standard") {
-      const lockType = String(next.lockEntityType || "").toLowerCase();
-      if (lockType === "company") {
-        next.recordKind = "company";
-      }
-    }
+  }
+
+  const methodId = String(next.method || next.paymentMethodTemplate || "").trim();
+  if (methodId) {
+    next.method = methodId;
+  }
+
+  const statusId = String(next.status || next.paymentStatusTemplate || "").trim();
+  if (statusId) {
+    next.status = statusId;
   }
 
   delete next.entityType;
   delete next.company;
   delete next.employee;
   delete next.self;
+  delete next.paymentMethodTemplate;
+  delete next.paymentStatusTemplate;
 
   return next;
+}
+
+async function resolveMethodFilter(method?: string | null) {
+  const value = String(method || "").trim();
+  if (!value) {
+    return null;
+  }
+
+  if (/^[a-fA-F0-9]{24}$/.test(value)) {
+    return value;
+  }
+
+  const template = await findPaymentTemplateByMethodName(value);
+  return template?._id?.toString?.() || value;
 }
 
 function generateGroupId() {
@@ -123,7 +143,7 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
   const linkedIds = new Set<string>([recordId]);
   const publicationFilter = includeArchived ? {} : ACTIVE_RECORD_FILTER;
 
-  if (recordKind === "self_transfer_in" || recordKind === "self_transfer_out") {
+  if (recordKind === "self_transfer") {
     if (record.transferGroupId) {
       const partners = await findRecords(
         {
@@ -140,7 +160,7 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
 
     const partners = await findRecords({
       ...publicationFilter,
-      recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
+      recordKind: "self_transfer",
       createdBy: record.createdBy,
       suffix: record.suffix,
       amount: record.amount,
@@ -236,11 +256,12 @@ function canPairRecords(expense: any, income: any) {
   if (!expense || !income) return false;
 
   return (
-    expense.recordKind === "self_transfer_out" &&
-    income.recordKind === "self_transfer_in" &&
+    expense.recordKind === "self_transfer" &&
+    income.recordKind === "self_transfer" &&
     expense.type === "expense" &&
     income.type === "income" &&
     expense.amount === income.amount &&
+    String(expense.transferGroupId || "") === String(income.transferGroupId || "") &&
     String(expense.suffix || "") === String(income.suffix || "") &&
     String(expense.createdBy || "") === String(income.createdBy || "")
   );
@@ -302,15 +323,15 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     missingFields.push("type");
   }
   
-  if (!normalizedPayload.paymentMethodTemplate || String(normalizedPayload.paymentMethodTemplate).trim() === "") {
-    missingFields.push("paymentMethodTemplate");
+  if (!normalizedPayload.method || String(normalizedPayload.method).trim() === "") {
+    missingFields.push("method");
   }
   
   if (
     recordKind !== "liability" &&
-    (!normalizedPayload.paymentStatusTemplate || String(normalizedPayload.paymentStatusTemplate).trim() === "")
+    (!normalizedPayload.status || String(normalizedPayload.status).trim() === "")
   ) {
-    missingFields.push("paymentStatusTemplate");
+    missingFields.push("status");
   }
   
   if (missingFields.length > 0) {
@@ -319,10 +340,10 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
 
   const data = await createRecord({
     ...normalizedPayload,
-    paymentStatusTemplate:
+    status:
       recordKind === "liability"
-        ? normalizedPayload.paymentStatusTemplate || undefined
-        : normalizedPayload.paymentStatusTemplate,
+        ? normalizedPayload.status || undefined
+        : normalizedPayload.status,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -343,15 +364,19 @@ export async function listPaymentRecords(input: {
   pageNumber: number;
   method?: string | null;
   type?: string | null;
+  category?: string | null;
 }) {
   const contentPerSection = 25;
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
   if (input.method) {
-    query.paymentMethodTemplate = input.method;
+    query.method = await resolveMethodFilter(input.method);
   }
   if (input.type) {
     query.type = input.type;
+  }
+  if (input.category) {
+    query.category = input.category;
   }
 
   const records = await findRecords(query, {
@@ -427,15 +452,14 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   await createRecord({
     createdBy: principal.userId,
     type: "expense",
-    recordKind: "self_transfer_out",
-    transferDirection: "out",
+    recordKind: "self_transfer",
     transferGroupId,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 1,
     particular: `Money removed from ${from} to add in ${to}`,
-    paymentMethodTemplate: fromTemplate._id,
-    paymentStatusTemplate: selfDepositStatus._id,
+    method: fromTemplate._id,
+    status: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -451,15 +475,14 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   await createRecord({
     createdBy: principal.userId,
     type: "income",
-    recordKind: "self_transfer_in",
-    transferDirection: "in",
+    recordKind: "self_transfer",
     transferGroupId,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 2,
     particular: `Money recieved as exchange from ${from}`,
-    paymentMethodTemplate: toTemplate._id,
-    paymentStatusTemplate: selfDepositStatus._id,
+    method: toTemplate._id,
+    status: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -479,7 +502,7 @@ export async function listSelfPayments(pageNumber: number) {
   const contentPerSection = 10;
   const query = {
     ...ACTIVE_RECORD_FILTER,
-    recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
+    recordKind: "self_transfer",
   };
 
   const records = await findRecords(query, {
@@ -523,14 +546,14 @@ export async function listSelfDepositPayments(input: {
   const contentPerSection = 10;
   const query: Record<string, any> = {
     ...ACTIVE_RECORD_FILTER,
-    recordKind: { $in: ["self_transfer_in", "self_transfer_out"] },
+    recordKind: "self_transfer",
   };
 
   if (input.type) {
     query.type = input.type;
   }
   if (input.method) {
-    query.paymentMethodTemplate = input.method;
+    query.method = await resolveMethodFilter(input.method);
   }
 
   const records = await findRecords(query, {
@@ -678,7 +701,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     amount,
     type,
     recordKind: "instant_profit",
-    paymentMethodTemplate: serviceFeeTemplate._id,
+    method: serviceFeeTemplate._id,
     number,
     transferGroupId,
     ...rest,
@@ -706,7 +729,7 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
         $group: {
           _id: {
             type: "$type",
-            methodTemplate: "$paymentMethodTemplate",
+            methodTemplate: "$method",
           },
           total: { $sum: "$amount" },
           count: { $sum: 1 },
@@ -721,7 +744,7 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
                 {
                   $and: [
                     { $eq: ["$type", "expense"] },
-                    { $in: ["$recordKind", ["self_transfer_out"]] },
+                    { $eq: ["$recordKind", "self_transfer"] },
                   ],
                 },
                 "$amount",
@@ -734,11 +757,11 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
     ]),
     findPaymentTemplateMethods(),
     findRecords(normalizedFilter, {
-      select: "amount type createdAt entity paymentMethodTemplate paymentStatusTemplate recordKind",
+      select: "amount type createdAt entity method status recordKind",
       populate: [
         { path: "entity", select: "name entityType color" },
-        { path: "paymentMethodTemplate", select: "method" },
-        { path: "paymentStatusTemplate", select: "status" },
+        { path: "method", select: "method color icon" },
+        { path: "status", select: "status color" },
       ],
       lean: true,
     }),
@@ -826,8 +849,7 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
       monthlyMap.set(monthKey, monthBucket);
     }
 
-    const normalizedStatus =
-      String(record?.paymentStatusTemplate?.status || "unknown").trim().toLowerCase() || "unknown";
+    const normalizedStatus = String(record?.status?.status || "unknown").trim().toLowerCase() || "unknown";
     const statusBucket = statusMap.get(normalizedStatus) || { income: 0, expense: 0, total: 0 };
     statusBucket[type] += amount;
     statusBucket.total += amount;
@@ -847,7 +869,7 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
             : "employee";
       entityKey = `${resolvedType || "entity"}:${String(record.entity._id)}`;
       entityLabel = String(record.entity.name || "Unknown Entity");
-    } else if (record?.recordKind === "self_transfer_in" || record?.recordKind === "self_transfer_out") {
+    } else if (record?.recordKind === "self_transfer") {
       entityKey = "self:zaad";
       entityLabel = "ZAAD SELF";
       entityType = "self";

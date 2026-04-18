@@ -330,7 +330,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <NavItem
                   href="/accounts/transactions/self"
                   icon={<FiBookOpen />}
-                  label="Company Records"
+                  label="Office Records"
                   active={pathname === "/accounts/transactions/self"}
                 />
               </li>

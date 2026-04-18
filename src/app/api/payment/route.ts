@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     const pageNumber = Number(searchParams.get("page") || 0);
     const method = searchParams.get("m");
     const type = searchParams.get("t");
-    const response = await listPaymentRecords({ pageNumber, method, type });
+    const category = searchParams.get("category");
+    const response = await listPaymentRecords({ pageNumber, method, type, category });
     return Response.json(response, { status: 200 });
   } catch (error) {
     return Response.json({ error }, { status: 401 });

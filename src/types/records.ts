@@ -6,17 +6,17 @@ type TRecordBase = {
   serviceFee?: number;
   number: number;
   suffix: string;
-  paymentMethodTemplate?: string;
-  paymentStatusTemplate?: string;
   method?: string;
   status?: string;
+  paymentMethodTemplate?: string;
+  paymentStatusTemplate?: string;
   recordKind?:
     | "standard"
     | "company"
-    | "self_transfer_in"
-    | "self_transfer_out"
+    | "self_transfer"
     | "liability"
-    | "instant_profit";
+    | "instant_profit"
+    | "office_records";
   transferGroupId?: string;
 };
 

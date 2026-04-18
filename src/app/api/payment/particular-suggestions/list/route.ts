@@ -5,7 +5,6 @@ import PaymentParticularTemplate from "@/models/paymentParticularTemplates";
 
 const ALLOWED_CATEGORIES = new Set([
   "office_records",
-  "company_expense",
   "liability_in",
   "liability_out",
   "instant_profit",

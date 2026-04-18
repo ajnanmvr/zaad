@@ -31,7 +31,8 @@ const PaymentMethodBadge = ({
   const iconKey = (icon || "card") as TPaymentTemplateIcon;
   const Icon = getPaymentMethodIcon(iconKey);
 
-  const shellClass = size === "sm" ? "gap-1.5 px-2.5 py-1 text-xs" : "gap-2 px-3 py-1.5 text-sm";
+  const shellClass =
+    size === "sm" ? "gap-1.5 px-2.5 py-1 text-xs" : "gap-2 px-3 py-1.5 text-sm";
   const iconWrapClass = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   const iconClass = size === "sm" ? "text-[10px]" : "text-[11px]";
 

@@ -6,7 +6,6 @@ import PaymentParticularTemplate from "@/models/paymentParticularTemplates";
 
 type ParticularCategory =
   | "office_records"
-  | "company_expense"
   | "liability_in"
   | "liability_out"
   | "instant_profit"
@@ -15,7 +14,6 @@ type ParticularCategory =
 
 const ALLOWED_CATEGORIES = new Set<ParticularCategory>([
   "office_records",
-  "company_expense",
   "liability_in",
   "liability_out",
   "instant_profit",
@@ -36,16 +34,14 @@ function normalizeCategories(raw: unknown): ParticularCategory[] {
   if (!Array.isArray(raw)) return [];
 
   const normalized = raw
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter((value): value is ParticularCategory => ALLOWED_CATEGORIES.has(value as ParticularCategory));
+    .map((value: unknown) => String(value || "").trim().toLowerCase())
+    .filter((value: string): value is ParticularCategory => ALLOWED_CATEGORIES.has(value as ParticularCategory));
 
   return Array.from(new Set(normalized));
 }
 
 function buildRecordCategoryFilter(category: ParticularCategory) {
   switch (category) {
-    case "company_expense":
-      return { type: "expense", recordKind: "company" };
     case "liability_in":
       return { type: "income", recordKind: "liability" };
     case "liability_out":
@@ -58,7 +54,7 @@ function buildRecordCategoryFilter(category: ParticularCategory) {
       return { type: "expense" };
     case "office_records":
     default:
-      return { recordKind: { $in: ["standard", "company"] } };
+      return { category: "office_records" };
   }
 }
 
@@ -141,8 +137,8 @@ export async function POST(request: NextRequest) {
         ? existing.category
         : [String((existing as any).category || "").trim().toLowerCase()];
       const currentCategories = currentCategoriesRaw
-        .map((value) => String(value || "").trim().toLowerCase())
-        .filter((value): value is ParticularCategory => ALLOWED_CATEGORIES.has(value as ParticularCategory));
+        .map((value: unknown) => String(value || "").trim().toLowerCase())
+        .filter((value: string): value is ParticularCategory => ALLOWED_CATEGORIES.has(value as ParticularCategory));
 
       existing.category = Array.from(new Set([...currentCategories, ...nextCategories]));
       if (existing.published === false) {
@@ -232,7 +228,7 @@ export async function PATCH(request: NextRequest) {
       return Response.json({ error: "No updates provided" }, { status: 400 });
     }
 
-    const current = await PaymentParticularTemplate.findById(id).lean();
+    const current = await PaymentParticularTemplate.findById(id).lean<any>();
     if (!current) {
       return Response.json({ error: "Suggestion not found" }, { status: 404 });
     }

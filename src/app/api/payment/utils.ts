@@ -6,8 +6,8 @@ export const PAYMENT_POPULATE_FIELDS = [
   "createdBy",
   "activityLog.by",
   "entity",
-  "paymentMethodTemplate",
-  "paymentStatusTemplate",
+  "method",
+  "status",
 ];
 
 export function getRecordClient(record: any) {
@@ -29,6 +29,15 @@ export function getRecordClient(record: any) {
       id: entity._id,
       type,
       color: entity.color,
+    };
+  }
+
+  if (String(record?.category || "").toLowerCase() === "office_records") {
+    return {
+      name: "Office",
+      id: "office",
+      type: "office",
+      color: "#0F766E",
     };
   }
 
@@ -73,10 +82,10 @@ export function mapRecordListItem(record: any) {
     type: record.type,
     recordKind: record.recordKind || "standard",
     transferGroupId: record.transferGroupId || "",
-    paymentMethodTemplate: record?.paymentMethodTemplate?._id?.toString?.() || record?.paymentMethodTemplate?.toString?.() || "",
-    paymentStatusTemplate: record?.paymentStatusTemplate?._id?.toString?.() || record?.paymentStatusTemplate?.toString?.() || "",
-    method: record?.paymentMethodTemplate?.method || "",
-    status: record?.paymentStatusTemplate?.status || "",
+    paymentMethodTemplate: record?.method?._id?.toString?.() || record?.method?.toString?.() || record?.paymentMethodTemplate?._id?.toString?.() || record?.paymentMethodTemplate?.toString?.() || "",
+    paymentStatusTemplate: record?.status?._id?.toString?.() || record?.status?.toString?.() || record?.paymentStatusTemplate?._id?.toString?.() || record?.paymentStatusTemplate?.toString?.() || "",
+    method: record?.method?.method || record?.paymentMethodTemplate?.method || "",
+    status: record?.status?.status || record?.paymentStatusTemplate?.status || "",
     client: getRecordClient(record),
     particular: record.particular,
     category: record.category,

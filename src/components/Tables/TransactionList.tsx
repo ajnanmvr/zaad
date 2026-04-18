@@ -47,19 +47,9 @@ const baseData = {
   m: "",
 };
 
-type CompanyRecordScope = "company" | "employees" | "mixed";
-const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
+type LedgerCategory = "office_records";
 
-const generateQuery = (filter: typeof baseData) => {
-  let query = "";
-  if (filter.t) {
-    query += `&t=${filter.t}`;
-  }
-  if (filter.m) {
-    query += `&m=${filter.m}`;
-  }
-  return query;
-};
+const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 
 const formatTransactionListDate = (dateString: string | null | undefined) => {
   if (!dateString) return "N/A";
@@ -145,6 +135,7 @@ const getTransactionVisual = (record: TRecordList) => {
   const status = (record?.status || "").toLowerCase();
   const particular = (record?.particular || "").toLowerCase();
   const isSelf = record?.client?.type === "self";
+  const isOfficeRecord = record?.category === "office_records";
 
   const isSelfTransfer =
     status.includes("self deposit") ||
@@ -160,6 +151,24 @@ const getTransactionVisual = (record: TRecordList) => {
     isSelf &&
     record?.type === "expense" &&
     (isOfficeExpense || status.includes("debit"));
+
+  if (isOfficeRecord) {
+    if (record?.type === "income") {
+      return {
+        label: "Office Income",
+        badgeClass:
+          "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+        amountClass: "text-emerald-600 dark:text-emerald-400",
+      };
+    }
+
+    return {
+      label: "Office Expense",
+      badgeClass:
+        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+      amountClass: "text-rose-600 dark:text-rose-400",
+    };
+  }
 
   if (isSelfTransfer) {
     if (record?.type === "income") {
@@ -199,7 +208,7 @@ const getTransactionVisual = (record: TRecordList) => {
 
   if (isCompanyExpense) {
     return {
-      label: "Company Expense",
+      label: "Office Expense",
       badgeClass:
         "bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:ring-fuchsia-500/30",
       amountClass: "text-fuchsia-600 dark:text-fuchsia-400",
@@ -235,6 +244,7 @@ const getTransactionVisual = (record: TRecordList) => {
 const TransactionList = ({
   type,
   id,
+  category,
   embedded = false,
   lockEntityType,
   lockEntityId,
@@ -243,6 +253,7 @@ const TransactionList = ({
 }: {
   type?: string | string[];
   id?: string | string[];
+  category?: LedgerCategory;
   embedded?: boolean;
   lockEntityType?: string;
   lockEntityId?: string;
@@ -269,27 +280,25 @@ const TransactionList = ({
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [exportScope, setExportScope] = useState<ExportScope>("selected");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
-  const [companyRecordScope, setCompanyRecordScope] =
-    useState<CompanyRecordScope>("company");
 
-  const query = generateQuery(filter);
   const currentType = Array.isArray(type) ? type[0] : type;
-  const isCompanyScopedView = currentType === "company" && Boolean(id);
-  const companyScopeQuery =
-    isCompanyScopedView && id
-      ? `&recordScope=${encodeURIComponent(companyRecordScope)}`
-      : "";
+  const hasLedgerContext = Boolean(currentType || category);
 
   const { data: paymentData, isLoading } = useQuery({
-    queryKey: ["payment", pageNumber, type, id, filter, companyRecordScope],
+    queryKey: ["payment", pageNumber, type, id, category, filter],
     queryFn: async () => {
       const routeSegment = currentType
         ? currentType === "self" || currentType === "self-deposit"
           ? `/${currentType}`
           : `/${currentType}/${id}`
         : "";
+      const params = new URLSearchParams();
+      params.set("page", String(pageNumber));
+      if (filter.t) params.set("t", filter.t);
+      if (filter.m) params.set("m", filter.m);
+      if (category) params.set("category", category);
       const res = await axios.get(
-        `/api/payment${routeSegment}?page=${pageNumber}${query}${companyScopeQuery}`,
+        `/api/payment${routeSegment}?${params.toString()}`,
       );
       return res.data;
     },
@@ -326,7 +335,7 @@ const TransactionList = ({
       setRecords(paymentData.records);
       setHasMore(paymentData.hasMore);
 
-      if (type && paymentData.records?.length > 0) {
+      if (hasLedgerContext && paymentData.records?.length > 0) {
         const { balance, totalIncome, totalExpense, totalTransactions } =
           paymentData;
         setCards([balance, totalIncome, totalExpense, totalTransactions]);
@@ -355,7 +364,7 @@ const TransactionList = ({
         setRecordsWithBalance(paymentData.records || []);
       }
     }
-  }, [paymentData, type]);
+  }, [paymentData, hasLedgerContext]);
 
   const visibleRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -364,7 +373,7 @@ const TransactionList = ({
     return recordsWithBalance.filter((record) => {
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
-        record?.client?.name || "",
+        record?.client?.name || (record?.category === "office_records" ? "Office" : ""),
         record?.client?.type || "",
         record?.particular || "",
         record?.method || "",
@@ -763,29 +772,12 @@ const TransactionList = ({
                   Transaction History
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-500">
-                  {filter.m || filter.t || isCompanyScopedView
-                    ? `Filtered by: ${filter.t} ${filter.m} ${
-                        isCompanyScopedView
-                          ? companyRecordScope === "company"
-                            ? "Company records only"
-                            : companyRecordScope === "employees"
-                              ? "Employees in this company"
-                              : "Company and employees mixed"
-                          : ""
-                      }`
+                  {filter.m || filter.t
+                    ? `Filtered by: ${filter.t} ${filter.m}`
                     : "All recent transactions"}
                 </p>
-                {(filter.m || filter.t || isCompanyScopedView) && (
+                {(filter.m || filter.t) && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {isCompanyScopedView && (
-                      <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
-                        {companyRecordScope === "company"
-                          ? "Company only"
-                          : companyRecordScope === "employees"
-                            ? "Employees only"
-                            : "Mixed"}
-                      </span>
-                    )}
                     {filter.t && (
                       <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                         {filter.t}
@@ -846,20 +838,6 @@ const TransactionList = ({
                     <FiFileText /> To Invoice
                   </button>
                 </div>
-              )}
-              {isCompanyScopedView && (
-                <select
-                  value={companyRecordScope}
-                  onChange={(event) => {
-                    setCompanyRecordScope(event.target.value as CompanyRecordScope);
-                    setPageNumber(0);
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value="company">Company records only</option>
-                  <option value="employees">Employees in this company only</option>
-                  <option value="mixed">Both mixed</option>
-                </select>
               )}
               <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
                 <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -933,7 +911,7 @@ const TransactionList = ({
                     <th className="min-w-[150px] px-4 pb-3">Method</th>
                     <th className="min-w-[150px] px-4 pb-3">Amount</th>
                     <th className="min-w-[150px] px-4 pb-3">Date/Time</th>
-                    {type && (
+                    {(type || category) && (
                       <th className="min-w-[120px] px-4 pb-3">Balance</th>
                     )}
                     <th className="px-4 pb-3 text-center">Actions</th>
@@ -942,14 +920,14 @@ const TransactionList = ({
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={type ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6} className="py-8">
+                      <td colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6} className="py-8">
                         <SkeletonList />
                       </td>
                     </tr>
                   ) : visibleRecords.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={type ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6}
+                        colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6}
                         className="py-12 text-center text-slate-500 dark:text-slate-400"
                       >
                         No transactions found.
@@ -997,7 +975,22 @@ const TransactionList = ({
                               <div className="flex items-start gap-3">
                                 {getTransactionAvatar(record)}
                                 <Link
-                                  href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
+                                  href={
+                                    record?.client?.type &&
+                                    record.client.type !== "self" &&
+                                    record.client.type !== "office"
+                                      ? `/${record.client.type}/${record.client.id}`
+                                      : "#"
+                                  }
+                                  onClick={(event) => {
+                                    if (
+                                      !record?.client?.type ||
+                                      record.client.type === "self" ||
+                                      record.client.type === "office"
+                                    ) {
+                                      event.preventDefault();
+                                    }
+                                  }}
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
                                   <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
@@ -1078,7 +1071,7 @@ const TransactionList = ({
                               </span>
                             </td>
 
-                            {type && (
+                            {(type || category) && (
                               <td className="py-4 px-4 align-top">
                                 <span
                                   className={clsx(

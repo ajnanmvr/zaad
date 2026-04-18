@@ -9,8 +9,6 @@ const VALID_SECTIONS = [
   "documents",
   "credentials",
   "handovers",
-  "records",
-  "invoices",
 ] as const;
 
 export default function EmployeeSectionPage() {

@@ -114,6 +114,14 @@ export async function findPaymentStatusTemplateByStatusName(status: string) {
     .select("_id status");
 }
 
+export async function findPaymentTemplateById(id: string) {
+  return PaymentTemplate.findById(id).select("_id method color icon published");
+}
+
+export async function findPaymentStatusTemplateById(id: string) {
+  return PaymentStatusTemplate.findById(id).select("_id status color published");
+}
+
 export async function createPaymentEditNotification(data: any) {
   return TaskNotification.create(data);
 }

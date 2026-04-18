@@ -19,7 +19,7 @@ import EntityListingShell from "./EntityListingShell";
 
 type CompanySort = "newest" | "oldest" | "name-asc" | "name-desc";
 
-function CompanyList({ sort }: { sort?: string }) {
+function CompanyList() {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -177,7 +177,7 @@ function CompanyList({ sort }: { sort?: string }) {
                   />
                 </td>
                 <td className="py-4 pl-4">
-                  <Link href={sort === "a" ? `/accounts/transactions/company/${id}` : `/company/${id}`}>
+                  <Link href={`/company/${id}`}>
                     <div className="flex items-center gap-3">
                       <EntityAvatar name={name} color={color} size="md" />
                       <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">

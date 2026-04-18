@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import InstantProfitModal from "@/components/Modals/InstantProfitModal";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
 import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
 
 const TablesPage = () => {
-  const [showInstantProfitModal, setShowInstantProfitModal] = useState(false);
 
   return (
     <>
@@ -54,25 +52,11 @@ const TablesPage = () => {
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href="/accounts/transactions/self-deposit"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
-            >
-              <FiArrowDownLeft />
-              Self Deposit
-            </Link>
-            <Link
-              href="/accounts/income"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              href="/accounts/add-record"
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-300"
             >
               <FiPlusCircle />
-              Income
-            </Link>
-            <Link
-              href="/accounts/expense"
-              className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
-            >
-              <FiDollarSign />
-              Expense
+              Add Record
             </Link>
             <Link
               href="/accounts/transactions/bin"
@@ -81,22 +65,9 @@ const TablesPage = () => {
               <FiTrash2 />
               Bin
             </Link>
-            <button
-              type="button"
-              onClick={() => setShowInstantProfitModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50 dark:border-violet-700 dark:bg-slate-900 dark:text-violet-300"
-            >
-              <FiTrendingUp />
-              Instant Profit
-            </button>
           </div>
         </div>
       </section>
-
-      <InstantProfitModal
-        isOpen={showInstantProfitModal}
-        onCancel={() => setShowInstantProfitModal(false)}
-      />
 
       <div className="mt-6">
       <TransactionList />

@@ -1,7 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
-import { listSelfPayments } from "@/services/paymentService";
+import { listPaymentRecords } from "@/services/paymentService";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +10,14 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = Number(searchParams.get("page") || 0);
-    const response = await listSelfPayments(pageNumber);
+    const method = searchParams.get("m");
+    const type = searchParams.get("t");
+    const response = await listPaymentRecords({
+      pageNumber,
+      method,
+      type,
+      category: "office_records",
+    });
 
     return Response.json(response, { status: 200 });
   } catch (error) {

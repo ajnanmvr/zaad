@@ -16,7 +16,6 @@ import {
 
 type ParticularCategory =
   | "office_records"
-  | "company_expense"
   | "liability_in"
   | "liability_out"
   | "instant_profit"
@@ -41,7 +40,6 @@ type TPaginationInfo = {
 
 const CATEGORY_ITEMS: Array<{ value: ParticularCategory; label: string; hint: string }> = [
   { value: "office_records", label: "Office Records", hint: "Regular office income/expense" },
-  { value: "company_expense", label: "Company Expense", hint: "Company-specific expense particulars" },
   { value: "liability_in", label: "Liability In", hint: "Incoming liability entries" },
   { value: "liability_out", label: "Liability Out", hint: "Outgoing liability entries" },
   { value: "instant_profit", label: "Instant Profit", hint: "Instant profit records" },
