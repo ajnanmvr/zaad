@@ -1,22 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import ExportActionsMenu from "@/components/common/ExportActionsMenu";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
-import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
-import type { TPaymentTemplateIcon } from "@/config/templateVisuals";
 import {
   FiArrowLeft,
-  FiExternalLink,
   FiGrid,
-  FiHash,
   FiPlusCircle,
-  FiSearch,
   FiTrendingDown,
   FiTrendingUp,
 } from "react-icons/fi";
@@ -27,106 +20,30 @@ type OfficeSummaryRow = {
   count: number;
 };
 
-type OfficeRecord = {
-  id: string;
-  suffix?: string;
-  number?: number;
-  particular?: string;
-  categoryName?: string;
-  categoryColor?: string;
-  categoryIcon?: string;
-  amount?: string;
-  serviceFee?: string;
-  type?: "income" | "expense";
-  method?: string;
-  methodColor?: string;
-  methodIcon?: string;
-};
-
 type OfficeResponse = {
-  records: OfficeRecord[];
   summary: {
     incomeByCategory: OfficeSummaryRow[];
     expenseByCategory: OfficeSummaryRow[];
     totalIncome: number;
     totalExpense: number;
   };
-  pagination: {
-    page: number;
-    totalPages: number;
-    hasMore: boolean;
-    total: number;
-  };
 };
 
-type SortOption = "newest" | "oldest" | "amount-desc" | "amount-asc" | "particular-asc" | "particular-desc";
-
 export default function OfficeRecordsPage() {
-  const [page, setPage] = useState(0);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"" | "income" | "expense">("");
-  const [methodFilter, setMethodFilter] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
   const { data, isLoading, isError } = useQuery<OfficeResponse>({
-    queryKey: ["office-records-page", page, search, typeFilter, methodFilter, sortBy],
+    queryKey: ["office-records-page-summary"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("limit", "20");
-      if (search.trim()) params.set("search", search.trim());
-      if (typeFilter) params.set("type", typeFilter);
-      if (methodFilter) params.set("method", methodFilter);
-      if (sortBy) params.set("sort", sortBy);
-      const { data } = await axios.get(`/api/payment/office-records?${params.toString()}`);
+      const { data } = await axios.get("/api/payment/office-records");
       return data;
     },
   });
 
-  const records = data?.records || [];
   const expenseByCategory = data?.summary?.expenseByCategory || [];
   const incomeByCategory = data?.summary?.incomeByCategory || [];
   const totalIncome = data?.summary?.totalIncome || 0;
   const totalExpense = data?.summary?.totalExpense || 0;
 
   const net = useMemo(() => Number((totalIncome - totalExpense).toFixed(2)), [totalIncome, totalExpense]);
-
-  const methodOptions = useMemo(() => {
-    return Array.from(new Set(records.map((row) => String(row.method || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-  }, [records]);
-
-  const selectedRows = useMemo(() => records.filter((row) => selectedIds.includes(row.id)), [records, selectedIds]);
-  const allSelected = records.length > 0 && records.every((row) => selectedIds.includes(row.id));
-
-  const exportRows = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
-    const sourceRows = mode === "selected" ? selectedRows : records;
-    if (!sourceRows.length) return;
-
-    const normalized = sourceRows.map((row) => {
-      const amount = Number(row.amount || 0);
-      const serviceFee = Number(row.serviceFee || 0);
-      const effectiveAmount = row.type === "expense" ? amount + serviceFee : amount;
-      return {
-        "Record ID": `${row.suffix || ""}${row.number || ""}`,
-        Particular: row.particular || "",
-        Category: row.categoryName || "Office",
-        Type: row.type || "",
-        Method: row.method || "",
-        "Amount (AED)": effectiveAmount.toFixed(2),
-      };
-    });
-
-    if (format === "csv") {
-      exportRowsCsv(normalized, "office-records");
-      return;
-    }
-    if (format === "excel") {
-      exportRowsExcel(normalized, "office-records");
-      return;
-    }
-    await exportRowsPdf(normalized, "office-records");
-  };
 
   return (
     <div className="space-y-6">
@@ -162,10 +79,10 @@ export default function OfficeRecordsPage() {
               <FiPlusCircle /> + Expense
             </Link>
             <Link
-              href="/accounts/transactions"
+              href="/accounts/transactions?category=office_records"
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white/90 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
             >
-              <FiArrowLeft /> All Transactions
+              <FiArrowLeft /> View Office Transactions
             </Link>
           </div>
         </div>
@@ -230,186 +147,11 @@ export default function OfficeRecordsPage() {
         </section>
       </div>
 
-      <section className="rounded-3xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">Office Record List</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={(event) => {
-                  setPage(0);
-                  setSearch(event.target.value);
-                }}
-                placeholder="Search records..."
-                className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 pl-9 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-              />
-            </div>
-            <select
-              value={typeFilter}
-              onChange={(event) => {
-                setPage(0);
-                setTypeFilter(event.target.value as "" | "income" | "expense");
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <option value="">Filter: All Types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-            <select
-              value={methodFilter}
-              onChange={(event) => {
-                setPage(0);
-                setMethodFilter(event.target.value);
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <option value="">Filter: All Methods</option>
-              {methodOptions.map((option) => (
-                <option key={option} value={option.toLowerCase()}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortBy}
-              onChange={(event) => {
-                setPage(0);
-                setSortBy(event.target.value as SortOption);
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <option value="newest">Sort: Newest</option>
-              <option value="oldest">Sort: Oldest</option>
-              <option value="amount-desc">Sort: Amount High-Low</option>
-              <option value="amount-asc">Sort: Amount Low-High</option>
-              <option value="particular-asc">Sort: Particular A-Z</option>
-              <option value="particular-desc">Sort: Particular Z-A</option>
-            </select>
-            <ExportActionsMenu onExport={exportRows} selectedCount={selectedRows.length} />
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700">Loading office records...</div>
-        ) : isError ? (
-          <div className="rounded-xl border border-rose-200 p-8 text-center text-rose-600 dark:border-rose-900/40 dark:text-rose-300">Failed to load office records.</div>
-        ) : records.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700">No office records found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={(event) => {
-                        if (event.target.checked) {
-                          setSelectedIds(records.map((row) => row.id));
-                        } else {
-                          setSelectedIds([]);
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-slate-300 text-cyan-600"
-                    />
-                  </th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Record ID</th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Particular</th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Category</th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Amount</th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Method</th>
-                  <th className="px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-500">View</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => {
-                  const amount = Number(record.amount || 0);
-                  const serviceFee = Number(record.serviceFee || 0);
-                  const effectiveAmount = record.type === "expense" ? amount + serviceFee : amount;
-                  const recordId = `${record.suffix || ""}${record.number || ""}`;
-                  const isIncome = record.type === "income";
-                  const CategoryIcon = getPaymentMethodIcon(record.categoryIcon as TPaymentTemplateIcon);
-                  const MethodIcon = getPaymentMethodIcon(record.methodIcon as TPaymentTemplateIcon);
-
-                  return (
-                    <tr key={record.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="px-3 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(record.id)}
-                          onChange={(event) => {
-                            setSelectedIds((prev) =>
-                              event.target.checked
-                                ? Array.from(new Set([...prev, record.id]))
-                                : prev.filter((id) => id !== record.id),
-                            );
-                          }}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600"
-                        />
-                      </td>
-                      <td className="px-3 py-3 text-sm font-bold text-slate-700 dark:text-slate-200">{recordId || <span className="inline-flex items-center gap-1"><FiHash /> -</span>}</td>
-                      <td className="px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">{record.particular || "-"}</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold"
-                          style={{
-                            backgroundColor: `${record.categoryColor || "#0f766e"}22`,
-                            color: record.categoryColor || "#0f766e",
-                          }}
-                        >
-                          <CategoryIcon className="h-3.5 w-3.5" />
-                          {record.categoryName || "Office"}
-                        </span>
-                      </td>
-                      <td className={clsx("px-3 py-3 text-sm font-black", isIncome ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>AED {effectiveAmount.toFixed(2)}</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold"
-                          style={{
-                            backgroundColor: `${record.methodColor || "#334155"}22`,
-                            color: record.methodColor || "#334155",
-                          }}
-                        >
-                          <MethodIcon className="h-3.5 w-3.5" />
-                          {record.method || "-"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <Link href={`/accounts/transactions/details/${record.id}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
-                          Open <FiExternalLink className="h-3 w-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-            disabled={page === 0}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            onClick={() => setPage((prev) => prev + 1)}
-            disabled={!data?.pagination?.hasMore}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"
-          >
-            Next
-          </button>
-        </div>
-      </section>
+      {isLoading ? (
+        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700">Loading office summary...</div>
+      ) : isError ? (
+        <div className="rounded-xl border border-rose-200 p-8 text-center text-rose-600 dark:border-rose-900/40 dark:text-rose-300">Failed to load office summary.</div>
+      ) : null}
     </div>
   );
 }

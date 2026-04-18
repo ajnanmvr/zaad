@@ -4,6 +4,7 @@ import { TRecordData } from "@/types/records";
 import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
 import { TPaymentTemplateIcon } from "@/config/templateVisuals";
 import axios from "axios";
+import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -141,7 +142,9 @@ const SimpleRecordForm = ({
   const [loading, setLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<PaymentStatus[]>([]);
-  const [officeExpenseCategories, setOfficeExpenseCategories] = useState<OfficeExpenseCategoryOption[]>([]);
+  const [officeExpenseCategories, setOfficeExpenseCategories] = useState<
+    OfficeExpenseCategoryOption[]
+  >([]);
   const [entitySearchResults, setEntitySearchResults] = useState<
     EntityOption[]
   >([]);
@@ -156,7 +159,9 @@ const SimpleRecordForm = ({
     useState(false);
   const [clientFee, setClientFee] = useState<number | "">("");
 
-  const [formData, setFormData] = useState<Partial<TRecordData> & { from?: string; to?: string }>({
+  const [formData, setFormData] = useState<
+    Partial<TRecordData> & { from?: string; to?: string }
+  >({
     type: "income",
     amount: undefined,
     particular: "",
@@ -270,11 +275,17 @@ const SimpleRecordForm = ({
       });
 
       if (supportsClientFee) {
-        setClientFee(Number((normalizedAmount + normalizedServiceFee).toFixed(2)));
+        setClientFee(
+          Number((normalizedAmount + normalizedServiceFee).toFixed(2)),
+        );
       } else {
         setClientFee("");
       }
-      if (data?.entity?._id || data?.entity?.name || typeof data?.entity === "string") {
+      if (
+        data?.entity?._id ||
+        data?.entity?.name ||
+        typeof data?.entity === "string"
+      ) {
         const fallbackEntity: EntityOption = {
           _id: data?.entity?._id || data?.entity || "",
           name: data?.entity?.name || "Current entity",
@@ -287,7 +298,8 @@ const SimpleRecordForm = ({
 
         const entityId = data?.entity?._id || data?.entity;
         const shouldFetchEntityDetails =
-          typeof entityId === "string" && (!data?.entity?.name || !data?.entity?.entityType);
+          typeof entityId === "string" &&
+          (!data?.entity?.name || !data?.entity?.entityType);
 
         if (shouldFetchEntityDetails) {
           const detailedEntity = await fetchEntityDetailsById(entityId);
@@ -470,15 +482,22 @@ const SimpleRecordForm = ({
   };
 
   const getFormVisibility = useCallback(
-    (recordKind?: Partial<TRecordData>["recordKind"], type?: Partial<TRecordData>["type"]) => {
+    (
+      recordKind?: Partial<TRecordData>["recordKind"],
+      type?: Partial<TRecordData>["type"],
+    ) => {
       const nextRecordKind = String(recordKind || "");
       const nextType = String(type || "");
 
       return {
-        needsEntity: ["standard", "instant_profit", "liability"].includes(nextRecordKind),
+        needsEntity: ["standard", "instant_profit", "liability"].includes(
+          nextRecordKind,
+        ),
         needsPaymentStatus: nextRecordKind === "standard",
         needsCategory: nextRecordKind === "office_records",
-        allowsServiceFee: nextType === "expense" && ["standard", "instant_profit"].includes(nextRecordKind),
+        allowsServiceFee:
+          nextType === "expense" &&
+          ["standard", "instant_profit"].includes(nextRecordKind),
         needsParticular: nextRecordKind !== "self_transfer",
         needsMethod: nextRecordKind !== "self_transfer",
         needsSwapMethods: nextRecordKind === "self_transfer",
@@ -490,7 +509,9 @@ const SimpleRecordForm = ({
   const sanitizeFormDataByVisibility = useCallback(
     (draft: Partial<TRecordData> & { from?: string; to?: string }) => {
       const visibility = getFormVisibility(draft.recordKind, draft.type);
-      const nextDraft: Partial<TRecordData> & { from?: string; to?: string } = { ...draft };
+      const nextDraft: Partial<TRecordData> & { from?: string; to?: string } = {
+        ...draft,
+      };
 
       if (!visibility.needsEntity) {
         nextDraft.entity = undefined;
@@ -529,8 +550,12 @@ const SimpleRecordForm = ({
   useEffect(() => {
     if (isEdit) return;
 
-    const nextKind = String(searchParams.get("recordKind") || "").trim().toLowerCase();
-    const nextType = String(searchParams.get("type") || "").trim().toLowerCase();
+    const nextKind = String(searchParams.get("recordKind") || "")
+      .trim()
+      .toLowerCase();
+    const nextType = String(searchParams.get("type") || "")
+      .trim()
+      .toLowerCase();
 
     const allowedKinds: RecordKind[] = [
       "standard",
@@ -574,7 +599,9 @@ const SimpleRecordForm = ({
       setClientFee("");
     }
 
-    setFormData((prev) => sanitizeFormDataByVisibility({ ...prev, recordKind: kind }));
+    setFormData((prev) =>
+      sanitizeFormDataByVisibility({ ...prev, recordKind: kind }),
+    );
   };
 
   const handleTypeChange = (type: RecordType) => {
@@ -650,9 +677,17 @@ const SimpleRecordForm = ({
       return;
     }
 
-    const { needsParticular, needsMethod, needsSwapMethods, needsPaymentStatus } = getFormVisibility(formData.recordKind, formData.type);
+    const {
+      needsParticular,
+      needsMethod,
+      needsSwapMethods,
+      needsPaymentStatus,
+    } = getFormVisibility(formData.recordKind, formData.type);
 
-    if (needsParticular && (!formData.particular || formData.particular.trim() === "")) {
+    if (
+      needsParticular &&
+      (!formData.particular || formData.particular.trim() === "")
+    ) {
       toast.error("Description/Particular is required");
       return;
     }
@@ -735,14 +770,13 @@ const SimpleRecordForm = ({
   );
   const nextType: RecordType =
     formData.type === "income" ? "expense" : "income";
-  const switchTheme =
-    usesNeutralTheme
-      ? {
-          bg: isDarkMode ? "#10223a" : "#eaf2ff",
-          border: isDarkMode ? "#1e3a5f" : "#bfdbfe",
-          text: isDarkMode ? "#93c5fd" : "#1d4ed8",
-        }
-      : nextType === "expense"
+  const switchTheme = usesNeutralTheme
+    ? {
+        bg: isDarkMode ? "#10223a" : "#eaf2ff",
+        border: isDarkMode ? "#1e3a5f" : "#bfdbfe",
+        text: isDarkMode ? "#93c5fd" : "#1d4ed8",
+      }
+    : nextType === "expense"
       ? {
           bg: isDarkMode ? "#3b0f12" : "#ffe7e7",
           border: isDarkMode ? "#7f1d1d" : "#fecaca",
@@ -753,15 +787,14 @@ const SimpleRecordForm = ({
           border: isDarkMode ? "#166534" : "#bbf7d0",
           text: isDarkMode ? "#86efac" : "#166534",
         };
-  const theme =
-    usesNeutralTheme
-      ? {
-          panel: isDarkMode ? "#0f172a" : "#f8fbff",
-          border: isDarkMode ? "#1e293b" : "#dbeafe",
-          soft: isDarkMode ? "#172554" : "#eef4ff",
-          strong: isDarkMode ? "#60a5fa" : "#2563eb",
-        }
-      : formData.type === "income"
+  const theme = usesNeutralTheme
+    ? {
+        panel: isDarkMode ? "#0f172a" : "#f8fbff",
+        border: isDarkMode ? "#1e293b" : "#dbeafe",
+        soft: isDarkMode ? "#172554" : "#eef4ff",
+        strong: isDarkMode ? "#60a5fa" : "#2563eb",
+      }
+    : formData.type === "income"
       ? {
           panel: isDarkMode ? "#0b1a13" : "#fbfefc",
           border: isDarkMode ? "#1f5138" : "#cdeed8",
@@ -778,6 +811,7 @@ const SimpleRecordForm = ({
   const createHeader = useMemo(() => {
     const kind = String(formData.recordKind || "").toLowerCase();
     const type = String(formData.type || "income").toLowerCase();
+    const isExpense = type === "expense";
 
     if (kind === "instant_profit") {
       return {
@@ -793,10 +827,35 @@ const SimpleRecordForm = ({
       };
     }
 
-    const isExpense = type === "expense";
+    if (kind === "liability") {
+      return {
+        title: isExpense ? "New Liability Expense" : "New Liability Income",
+        icon: isExpense ? (
+          <FiTrendingDown className="h-5 w-5" />
+        ) : (
+          <FiTrendingUp className="h-5 w-5" />
+        ),
+      };
+    }
+
+    if (kind === "office_records") {
+      return {
+        title: isExpense ? "New Office Expense" : "New Office Income",
+        icon: isExpense ? (
+          <FiTrendingDown className="h-5 w-5" />
+        ) : (
+          <FiTrendingUp className="h-5 w-5" />
+        ),
+      };
+    }
+
     return {
       title: isExpense ? "New Expense" : "New Income",
-      icon: isExpense ? <FiTrendingDown className="h-5 w-5" /> : <FiTrendingUp className="h-5 w-5" />,
+      icon: isExpense ? (
+        <FiTrendingDown className="h-5 w-5" />
+      ) : (
+        <FiTrendingUp className="h-5 w-5" />
+      ),
     };
   }, [formData.recordKind, formData.type]);
 
@@ -871,15 +930,24 @@ const SimpleRecordForm = ({
       <div className="relative mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                style={{
-                  borderColor: theme.border,
-                }}
-              >
-                Transaction builder
-              </p>
+            <h1 className="mt-3 flex items-center gap-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              {isEdit ? (
+                "Edit Transaction"
+              ) : (
+                <>
+                  <span
+                    className={clsx(
+                      "inline-flex h-8 w-8 items-center justify-center rounded-xl",
+                      formData.type === "expense"
+                        ? "bg-rose-500/15 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300"
+                        : "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
+                    )}
+                  >
+                    {createHeader.icon}
+                  </span>
+                  {createHeader.title}
+                </>
+              )}
               {!usesNeutralTheme ? (
                 <button
                   type="button"
@@ -888,34 +956,13 @@ const SimpleRecordForm = ({
                       formData.type === "income" ? "expense" : "income",
                     )
                   }
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.06em] shadow-sm transition-opacity duration-200 hover:opacity-90"
-                  style={{
-                    backgroundColor: switchTheme.bg,
-                    borderColor: switchTheme.border,
-                    color: switchTheme.text,
-                  }}
+                  className="text-[11px] pt-2 text-violet-500 font-semibold leading-[0px] transition-opacity duration-200 hover:opacity-90"
                 >
-                  {formData.type === "income" ? (
-                    <FiArrowUpRight className="h-3.5 w-3.5" />
-                  ) : (
-                    <FiArrowDownLeft className="h-3.5 w-3.5" />
-                  )}
-                  Switch to {nextType}
+                  Change
                 </button>
               ) : null}
-            </div>
-            <h1 className="mt-3 flex items-center gap-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              {isEdit ? (
-                "Edit Transaction"
-              ) : (
-                <>
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900/10 text-slate-700 dark:bg-slate-100/10 dark:text-slate-200">
-                    {createHeader.icon}
-                  </span>
-                  {createHeader.title}
-                </>
-              )}
             </h1>
+
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
               Clean, solid-color UI with strong contrast and a modern dashboard
               feel.
@@ -1141,7 +1188,10 @@ const SimpleRecordForm = ({
                       >
                         <option value="">Select office category...</option>
                         {officeExpenseCategories.map((categoryOption) => (
-                          <option key={categoryOption.id} value={categoryOption.id}>
+                          <option
+                            key={categoryOption.id}
+                            value={categoryOption.id}
+                          >
                             {categoryOption.label || categoryOption.category}
                           </option>
                         ))}
@@ -1184,7 +1234,9 @@ const SimpleRecordForm = ({
                         <input
                           type="text"
                           value={formData.particular || ""}
-                          onChange={(e) => handleParticularSearch(e.target.value)}
+                          onChange={(e) =>
+                            handleParticularSearch(e.target.value)
+                          }
                           onFocus={() => setShowParticularDropdown(true)}
                           required
                           className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-9 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
@@ -1308,7 +1360,10 @@ const SimpleRecordForm = ({
                         key={method.id}
                         type="button"
                         onClick={() =>
-                          setFormData((prev) => ({ ...prev, method: method.id }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            method: method.id,
+                          }))
                         }
                         className={`rounded-xl border p-2 text-left transition-all duration-200 ${
                           formData.method === method.id
@@ -1339,7 +1394,7 @@ const SimpleRecordForm = ({
                 </div>
               </div>
             )}
-            
+
             {needsSwapMethods && (
               <div className="space-y-6 my-6">
                 <div className="grid gap-6 md:grid-cols-2">
@@ -1350,29 +1405,46 @@ const SimpleRecordForm = ({
                     </div>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
                       {paymentMethods.map((method) => {
-                        const Icon = getPaymentMethodIcon((method.icon || "card") as TPaymentTemplateIcon);
+                        const Icon = getPaymentMethodIcon(
+                          (method.icon || "card") as TPaymentTemplateIcon,
+                        );
                         const selectedMethodColor = method.color || "#dc2626";
-                        const selectedTextClass = getReadableTextClass(selectedMethodColor);
-                        const selectedIconWrapClass = getReadableIconWrapClass(selectedMethodColor);
+                        const selectedTextClass =
+                          getReadableTextClass(selectedMethodColor);
+                        const selectedIconWrapClass =
+                          getReadableIconWrapClass(selectedMethodColor);
                         const methodValue = method.label || method.method;
-                        
+
                         return (
                           <button
                             key={`from-${method.id}`}
                             type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, from: methodValue }))}
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                from: methodValue,
+                              }))
+                            }
                             className={`rounded-xl border p-2 text-left transition-all duration-200 ${
                               formData.from === methodValue
                                 ? `border-transparent shadow-lg ${selectedTextClass}`
                                 : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
                             }`}
-                            style={formData.from === methodValue ? { backgroundColor: selectedMethodColor } : undefined}
+                            style={
+                              formData.from === methodValue
+                                ? { backgroundColor: selectedMethodColor }
+                                : undefined
+                            }
                           >
                             <div className="flex flex-col items-center gap-1.5 text-center">
-                              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.from === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                              <span
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.from === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+                              >
                                 <Icon className="h-3.5 w-3.5" />
                               </span>
-                              <span className={`text-[11px] font-semibold leading-tight ${formData.from === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}>
+                              <span
+                                className={`text-[11px] font-semibold leading-tight ${formData.from === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
+                              >
                                 {methodValue}
                               </span>
                             </div>
@@ -1389,29 +1461,46 @@ const SimpleRecordForm = ({
                     </div>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
                       {paymentMethods.map((method) => {
-                        const Icon = getPaymentMethodIcon((method.icon || "card") as TPaymentTemplateIcon);
+                        const Icon = getPaymentMethodIcon(
+                          (method.icon || "card") as TPaymentTemplateIcon,
+                        );
                         const selectedMethodColor = method.color || "#16a34a";
-                        const selectedTextClass = getReadableTextClass(selectedMethodColor);
-                        const selectedIconWrapClass = getReadableIconWrapClass(selectedMethodColor);
+                        const selectedTextClass =
+                          getReadableTextClass(selectedMethodColor);
+                        const selectedIconWrapClass =
+                          getReadableIconWrapClass(selectedMethodColor);
                         const methodValue = method.label || method.method;
-                        
+
                         return (
                           <button
                             key={`to-${method.id}`}
                             type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, to: methodValue }))}
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                to: methodValue,
+                              }))
+                            }
                             className={`rounded-xl border p-2 text-left transition-all duration-200 ${
                               formData.to === methodValue
                                 ? `border-transparent shadow-lg ${selectedTextClass}`
                                 : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
                             }`}
-                            style={formData.to === methodValue ? { backgroundColor: selectedMethodColor } : undefined}
+                            style={
+                              formData.to === methodValue
+                                ? { backgroundColor: selectedMethodColor }
+                                : undefined
+                            }
                           >
                             <div className="flex flex-col items-center gap-1.5 text-center">
-                              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.to === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                              <span
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.to === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+                              >
                                 <Icon className="h-3.5 w-3.5" />
                               </span>
-                              <span className={`text-[11px] font-semibold leading-tight ${formData.to === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}>
+                              <span
+                                className={`text-[11px] font-semibold leading-tight ${formData.to === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
+                              >
                                 {methodValue}
                               </span>
                             </div>

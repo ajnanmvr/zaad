@@ -47,7 +47,7 @@ const baseData = {
   m: "",
 };
 
-type LedgerCategory = "office_records";
+type LedgerCategory = "office_records" | "liability";
 
 const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 

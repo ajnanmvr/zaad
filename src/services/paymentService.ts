@@ -373,6 +373,8 @@ export async function listPaymentRecords(input: {
   if (input.category) {
     if (input.category === "office_records") {
       query.recordKind = "office_records";
+    } else if (input.category === "liability") {
+      query.recordKind = "liability";
     } else {
       query.category = input.category;
     }
