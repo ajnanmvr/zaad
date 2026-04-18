@@ -693,6 +693,16 @@ const SimpleRecordForm = ({
       return;
     }
 
+    if (needsEntity && !formData.entity) {
+      toast.error("Entity is required");
+      return;
+    }
+
+    if (needsCategory && !formData.category) {
+      toast.error("Category is required");
+      return;
+    }
+
     if (needsMethod && !formData.method) {
       toast.error("Payment method is required");
       return;
@@ -705,6 +715,11 @@ const SimpleRecordForm = ({
 
     if (needsSwapMethods && formData.from === formData.to) {
       toast.error("From and To payment methods must be different");
+      return;
+    }
+
+    if (allowsServiceFee && clientFee === "") {
+      toast.error("Client Fee is required");
       return;
     }
 

@@ -1,7 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import PaymentParticularTemplate from "@/models/paymentParticularTemplates";
 
 type ParticularCategory =
@@ -78,31 +77,19 @@ export async function GET(request: NextRequest) {
       ...buildRecordCategoryFilter(category),
     };
 
-    const [templateRows, recordRows] = await Promise.all([
-      PaymentParticularTemplate.find({
-        published: true,
-        category,
-        particular: { $regex: regex },
-      })
-        .select("particular")
-        .sort({ updatedAt: -1 })
-        .limit(12)
-        .lean(),
-      Records.find(recordFilter)
-        .select("particular")
-        .sort({ updatedAt: -1 })
-        .limit(24)
-        .lean(),
-    ]);
+    const templateRows = await PaymentParticularTemplate.find({
+      published: true,
+      category,
+      particular: { $regex: regex },
+    })
+      .select("particular")
+      .sort({ updatedAt: -1 })
+      .limit(12)
+      .lean();
 
     const unique = new Set<string>();
 
     for (const row of templateRows as any[]) {
-      const value = String(row?.particular || "").trim();
-      if (value) unique.add(value);
-    }
-
-    for (const row of recordRows as any[]) {
       const value = String(row?.particular || "").trim();
       if (value) unique.add(value);
     }
