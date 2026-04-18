@@ -1,8 +1,13 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import { PAYMENT_POPULATE_FIELDS, mapRecordListItem } from "@/app/api/payment/utils";
+import { findRecords } from "@/repositories/paymentRepository";
+
+type EntityBucket = {
+  income: number;
+  expense: number;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +36,11 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const baseRecords = await Records.find(query)
-        .populate(PAYMENT_POPULATE_FIELDS)
-        .sort({ createdAt: -1 })
-        .lean();
+    const baseRecords = await findRecords(query, {
+      populate: PAYMENT_POPULATE_FIELDS,
+      sort: { createdAt: -1 },
+      lean: true,
+    });
 
     const mappedRows = baseRecords.map(mapRecordListItem);
 
@@ -72,7 +78,7 @@ export async function GET(request: NextRequest) {
     const pagedRows = sortedRows.slice(page * limit, page * limit + limit);
 
     const groupedByEntity = filteredRows.reduce(
-      (acc: Record<string, { income: number; expense: number }>, row: any) => {
+      (acc: Record<string, EntityBucket>, row: any) => {
         const entityName = String(row?.client?.name || "Unknown Entity");
         if (!acc[entityName]) {
           acc[entityName] = { income: 0, expense: 0 };
@@ -88,13 +94,19 @@ export async function GET(request: NextRequest) {
       {},
     );
 
-    const entitySummary = Object.entries(groupedByEntity)
-      .map(([entity, bucket]) => ({
-        entity,
-        income: Number(bucket.income.toFixed(2)),
-        expense: Number(bucket.expense.toFixed(2)),
-        net: Number((bucket.income - bucket.expense).toFixed(2)),
-      }))
+    const entitySummary = Object.keys(groupedByEntity)
+      .map((entity) => {
+        const bucket: EntityBucket = groupedByEntity[entity] || {
+          income: 0,
+          expense: 0,
+        };
+        return {
+          entity,
+          income: Number(bucket.income.toFixed(2)),
+          expense: Number(bucket.expense.toFixed(2)),
+          net: Number((bucket.income - bucket.expense).toFixed(2)),
+        };
+      })
       .sort((a: any, b: any) => Math.abs(b.net) - Math.abs(a.net));
 
     const totals = entitySummary.reduce(

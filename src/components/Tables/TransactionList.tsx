@@ -112,9 +112,21 @@ const getTransactionAvatar = (record: TRecordList) => {
 
   // Self-deposit: use swap icon
   if (isSelfTransfer) {
+    const isOut = record?.type === "expense";
     return (
-      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-200 dark:bg-slate-700 shadow-inner ring-1 ring-white/20">
-        <FiArrowRight className="h-4 w-4 text-slate-600 dark:text-slate-400 rotate-45" />
+      <div
+        className={clsx(
+          "flex items-center justify-center h-8 w-8 rounded-xl shadow-inner ring-1 ring-white/20",
+          isOut
+            ? "bg-rose-100 dark:bg-rose-500/20"
+            : "bg-emerald-100 dark:bg-emerald-500/20",
+        )}
+      >
+        {isOut ? (
+          <FiArrowDownLeft className="h-4 w-4 text-rose-600 dark:text-rose-300" />
+        ) : (
+          <FiArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+        )}
       </div>
     );
   }
@@ -965,7 +977,11 @@ const TransactionList = ({
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
                                   <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
-                                    {record?.recordKind === "office_records"
+                                    {record?.recordKind === "self_transfer"
+                                      ? record?.type === "expense"
+                                        ? "Self Transfer Out"
+                                        : "Self Transfer In"
+                                      : record?.recordKind === "office_records"
                                       ? record?.categoryName || "Office Record"
                                       : record?.client?.name || "Unknown"}
                                   </p>

@@ -499,7 +499,8 @@ const SimpleRecordForm = ({
           nextType === "expense" &&
           ["standard", "instant_profit"].includes(nextRecordKind),
         needsParticular: nextRecordKind !== "self_transfer",
-        needsMethod: nextRecordKind !== "self_transfer",
+        needsMethod:
+          !["self_transfer", "liability"].includes(nextRecordKind),
         needsSwapMethods: nextRecordKind === "self_transfer",
       };
     },
@@ -726,10 +727,7 @@ const SimpleRecordForm = ({
         let endpoint = "/api/payment";
         if (formData.recordKind === "self_transfer") {
           endpoint = "/api/payment/self-deposit";
-        } else if (
-          formData.type === "expense" &&
-          formData.recordKind === "instant_profit"
-        ) {
+        } else if (formData.recordKind === "instant_profit") {
           endpoint = "/api/payment/profit";
         }
         await axios.post(endpoint, recordData);
@@ -756,6 +754,7 @@ const SimpleRecordForm = ({
   const needsParticular = visibility.needsParticular;
   const needsMethod = visibility.needsMethod;
   const needsSwapMethods = visibility.needsSwapMethods;
+  const isSelfTransferSwap = formData.recordKind === "self_transfer";
   const showCurrentEntityInEdit = isEdit && !needsEntity && !!selectedEntity;
   const amountValue = Number(formData.amount || 0);
   const clientFeeValue = typeof clientFee === "number" ? clientFee : 0;
@@ -1270,7 +1269,7 @@ const SimpleRecordForm = ({
                   )}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className={clsx("grid gap-3", allowsServiceFee && "md:grid-cols-2")}>
                   {allowsServiceFee ? (
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
@@ -1398,7 +1397,13 @@ const SimpleRecordForm = ({
             {needsSwapMethods && (
               <div className="space-y-6 my-6">
                 <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-5">
+                  <div
+                    className={clsx(
+                      "space-y-5",
+                      isSelfTransferSwap &&
+                        "rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-800/40 dark:bg-rose-900/10",
+                    )}
+                  >
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
                       <FiArrowDownLeft className="h-4 w-4" />
                       From Account
@@ -1445,7 +1450,7 @@ const SimpleRecordForm = ({
                               <span
                                 className={`text-[11px] font-semibold leading-tight ${formData.from === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
                               >
-                                {methodValue}
+                                {method.label || method.method}
                               </span>
                             </div>
                           </button>
@@ -1454,7 +1459,13 @@ const SimpleRecordForm = ({
                     </div>
                   </div>
 
-                  <div className="space-y-5">
+                  <div
+                    className={clsx(
+                      "space-y-5",
+                      isSelfTransferSwap &&
+                        "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/10",
+                    )}
+                  >
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
                       <FiArrowUpRight className="h-4 w-4" />
                       To Account
@@ -1501,7 +1512,7 @@ const SimpleRecordForm = ({
                               <span
                                 className={`text-[11px] font-semibold leading-tight ${formData.to === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
                               >
-                                {methodValue}
+                                {method.label || method.method}
                               </span>
                             </div>
                           </button>
@@ -1602,7 +1613,13 @@ const SimpleRecordForm = ({
               ) : (
                 <>
                   <FiSave />
-                  {isEdit ? "Update Record" : "Create Record"}
+                  {isEdit
+                    ? "Update Record"
+                    : createHeader.title.startsWith("New ")
+                      ? `Create ${createHeader.title.slice(4)}`
+                      : createHeader.title.startsWith("Add ")
+                        ? `Create ${createHeader.title.slice(4)}`
+                        : `Create ${createHeader.title}`}
                 </>
               )}
             </button>

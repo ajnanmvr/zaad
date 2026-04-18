@@ -307,6 +307,7 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
   const normalizedPayload = normalizeEntityFields(reqBody);
   const recordKind = String(normalizedPayload.recordKind || "").toLowerCase();
+  const requiresMethod = !["liability", "self_transfer"].includes(recordKind);
 
   // Validate required fields before creating
   const missingFields: string[] = [];
@@ -323,7 +324,10 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     missingFields.push("type");
   }
   
-  if (!normalizedPayload.method || String(normalizedPayload.method).trim() === "") {
+  if (
+    requiresMethod &&
+    (!normalizedPayload.method || String(normalizedPayload.method).trim() === "")
+  ) {
     missingFields.push("method");
   }
   
@@ -434,6 +438,9 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     return { status: 400, body: { message: "The amount should be greater than 0" } };
   }
 
+  const fromMethod = await resolveMethodFilter(from);
+  const toMethod = await resolveMethodFilter(to);
+
   const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", { createdAt: -1 });
   const newSuffix = latest?.suffix || "";
   const newNumber = latest?.number || 0;
@@ -444,6 +451,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     type: "expense",
     recordKind: "self_transfer",
     transferGroupId,
+    method: fromMethod,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 1,
@@ -465,6 +473,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     type: "income",
     recordKind: "self_transfer",
     transferGroupId,
+    method: toMethod,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 2,
@@ -647,10 +656,10 @@ export async function listLiabilitySummary() {
 }
 
 export async function createProfitPair(reqBody: any, principal: TPrincipal) {
-  const serviceFeeTemplate = await findPaymentTemplateByMethodName("service fee");
-  if (!serviceFeeTemplate) {
-    throw new Error("Service fee payment template not found");
-  }
+  const toMethodId = String(reqBody?.to || "").trim();
+  const serviceFeeTemplate = toMethodId
+    ? null
+    : await findPaymentTemplateByMethodName("service fee");
 
   const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
   const transferGroupId = generateGroupId();
@@ -690,13 +699,19 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     ...rest
   } = normalizedPayload;
 
+  const mirrorMethod = toMethodId || serviceFeeTemplate?._id || originalMethod;
+  if (!mirrorMethod) {
+    throw new Error("Payment method is required for instant profit records");
+  }
+
   await createRecord({
     ...rest,
-    serviceFee: originalServiceFee || 0,
+    // Mirror expense carries the income amount as service fee.
+    serviceFee: Number(originalAmount || 0),
     amount: 0,
     type: "expense",
     recordKind: "instant_profit",
-    method: serviceFeeTemplate._id,
+    method: mirrorMethod,
     number: +number + 1,
     transferGroupId,
     createdBy: principal.userId,

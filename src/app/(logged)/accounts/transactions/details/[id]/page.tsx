@@ -107,6 +107,7 @@ const TransactionDetailsPage = () => {
   });
 
   const record = data?.record;
+  const isOfficeRecord = record?.recordKind === "office_records";
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -169,12 +170,14 @@ const TransactionDetailsPage = () => {
               <FiArrowLeft className="text-base" />
               Back
             </Link>
-            <Link
-              href={getClientHref(record)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <FiExternalLink /> View Entity
-            </Link>
+            {!isOfficeRecord ? (
+              <Link
+                href={getClientHref(record)}
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <FiExternalLink /> View Entity
+              </Link>
+            ) : null}
             <Link
               href={`/accounts/transactions/edit/${record?.type}/${record?.id}`}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
@@ -262,10 +265,10 @@ const TransactionDetailsPage = () => {
                     )}
 
                     {renderTableRow(
-                      "Client / Entity",
-                      record.recordKind === "office_records" ? (
+                      isOfficeRecord ? "Category" : "Client / Entity",
+                      isOfficeRecord ? (
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {record.categoryName || "Office Record"}
+                          {record.categoryName || "Office"}
                         </span>
                       ) : (
                         <Link
@@ -281,7 +284,7 @@ const TransactionDetailsPage = () => {
                           )}
                         </Link>
                       ),
-                      <FiUser />
+                      isOfficeRecord ? <FiTag /> : <FiUser />
                     )}
 
                     {renderTableRow(

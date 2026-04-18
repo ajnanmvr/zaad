@@ -4,6 +4,13 @@ import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { PAYMENT_POPULATE_FIELDS, mapRecordListItem } from "@/app/api/payment/utils";
 
+type CategoryBucket = {
+  incomeTotal: number;
+  incomeCount: number;
+  expenseTotal: number;
+  expenseCount: number;
+};
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
@@ -72,7 +79,7 @@ export async function GET(request: NextRequest) {
     const pagedRows = sortedRows.slice(page * limit, page * limit + limit);
 
     const groupedByCategory = filteredRows.reduce(
-      (acc: Record<string, { incomeTotal: number; incomeCount: number; expenseTotal: number; expenseCount: number }>, row: any) => {
+      (acc: Record<string, CategoryBucket>, row: any) => {
         const categoryKey = String(row.categoryName || "Office");
         if (!acc[categoryKey]) {
           acc[categoryKey] = {
@@ -96,7 +103,11 @@ export async function GET(request: NextRequest) {
       {},
     );
 
-    const incomeByCategory = Object.entries(groupedByCategory)
+    const categoryEntries = Object.entries(groupedByCategory) as Array<
+      [string, CategoryBucket]
+    >;
+
+    const incomeByCategory = categoryEntries
       .filter(([, bucket]) => bucket.incomeCount > 0)
       .map(([category, bucket]) => ({
         category,
@@ -105,7 +116,7 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.total - a.total);
 
-    const expenseByCategory = Object.entries(groupedByCategory)
+    const expenseByCategory = categoryEntries
       .filter(([, bucket]) => bucket.expenseCount > 0)
       .map(([category, bucket]) => ({
         category,
