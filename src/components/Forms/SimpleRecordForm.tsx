@@ -12,6 +12,7 @@ import {
   FiLoader,
   FiArrowUpRight,
   FiArrowDownLeft,
+  FiCreditCard,
   FiTrendingUp,
   FiShield,
   FiHome,
@@ -904,21 +905,23 @@ const SimpleRecordForm = ({
                         placeholder="0.00"
                       />
                       <div className="mt-1.5 flex items-center gap-2 whitespace-nowrap">
-                        <p
-                          className={`text-[11px] font-semibold uppercase tracking-wide ${
-                            autoServiceFee < 0
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-green-600 dark:text-green-400"
-                          }`}
-                        >
-                          Service Fee: AED {autoServiceFee.toFixed(2)}
+                        <p className="text-[11px] font-semibold uppercase tracking-wide">
+                          Service Fee:{" "}
+                          <span
+                            className={
+                              autoServiceFee < 0
+                                ? "text-red dark:text-red"
+                                : "text-green-600 dark:text-green-400"
+                            }
+                          >
+                            AED {autoServiceFee.toFixed(2)}
+                          </span>
                         </p>
+
                         {autoServiceFee < 0 ? (
-                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300">
-                            <FiAlertTriangle className="h-3.5 w-3.5" />
-                            <span>
-                              Warning: Service fee is in loss ({autoServiceFee.toFixed(2)}).
-                            </span>
+                          <div className="inline-flex items-center gap-1.5 rounded-lg border-[0.5px] border-amber-300 bg-amber-50 px-2 text-[0.65rem] font-semibold text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300">
+                            <FiAlertTriangle className="h-2.5 w-2.5" />
+                            Service fee is in loss
                           </div>
                         ) : null}
                       </div>
@@ -947,6 +950,11 @@ const SimpleRecordForm = ({
             </div>
 
             <div className="space-y-5 my-6">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
+                <FiCreditCard className="h-4 w-4" />
+                Payment Method
+              </div>
+
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 {paymentMethods.map((method) => {
                   const Icon = getPaymentMethodIcon(
