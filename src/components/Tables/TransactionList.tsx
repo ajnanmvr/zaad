@@ -135,7 +135,7 @@ const getTransactionVisual = (record: TRecordList) => {
   const status = (record?.status || "").toLowerCase();
   const particular = (record?.particular || "").toLowerCase();
   const isSelf = record?.client?.type === "self";
-  const isOfficeRecord = record?.category === "office_records";
+  const isOfficeRecord = record?.recordKind === "office_records";
 
   const isSelfTransfer =
     status.includes("self deposit") ||
@@ -373,7 +373,7 @@ const TransactionList = ({
     return recordsWithBalance.filter((record) => {
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
-        record?.client?.name || (record?.category === "office_records" ? "Office" : ""),
+        record?.client?.name || (record?.recordKind === "office_records" ? "Office" : ""),
         record?.client?.type || "",
         record?.particular || "",
         record?.method || "",

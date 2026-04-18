@@ -376,7 +376,11 @@ export async function listPaymentRecords(input: {
     query.type = input.type;
   }
   if (input.category) {
-    query.category = input.category;
+    if (input.category === "office_records") {
+      query.recordKind = "office_records";
+    } else {
+      query.category = input.category;
+    }
   }
 
   const records = await findRecords(query, {

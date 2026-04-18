@@ -377,6 +377,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
                     pathname.startsWith("/settings/credential-platforms") ||
+                    pathname.startsWith("/settings/office-expense-categories") ||
                     pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates") ||
@@ -390,6 +391,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
                           pathname.startsWith("/settings/document-types") ||
                           pathname.startsWith("/settings/credential-platforms") ||
+                          pathname.startsWith("/settings/office-expense-categories") ||
                           pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates") ||
@@ -426,6 +428,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               icon={<FiFileText />}
                               label="Credential Platforms"
                               active={pathname === "/settings/credential-platforms"}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/settings/office-expense-categories"
+                              icon={<FiBriefcase />}
+                              label="Office Categories"
+                              active={pathname === "/settings/office-expense-categories"}
                             />
                           </li>
                           <li>

@@ -3,6 +3,9 @@ type TRecordBase = {
   amount: number;
   particular: string;
   category?: string;
+  categoryName?: string;
+  categoryColor?: string;
+  categoryIcon?: string;
   serviceFee?: number;
   number: number;
   suffix: string;

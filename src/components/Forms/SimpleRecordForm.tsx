@@ -50,6 +50,14 @@ interface PaymentStatus {
   color?: string;
 }
 
+interface OfficeExpenseCategoryOption {
+  id: string;
+  label: string;
+  category?: string;
+  color?: string;
+  icon?: TPaymentTemplateIcon;
+}
+
 interface EntityOption {
   _id: string;
   name: string;
@@ -131,6 +139,7 @@ const SimpleRecordForm = ({
   const [loading, setLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<PaymentStatus[]>([]);
+  const [officeExpenseCategories, setOfficeExpenseCategories] = useState<OfficeExpenseCategoryOption[]>([]);
   const [entitySearchResults, setEntitySearchResults] = useState<
     EntityOption[]
   >([]);
@@ -171,6 +180,7 @@ const SimpleRecordForm = ({
       const res = await axios.get("/api/templates");
       setPaymentMethods(res.data?.paymentOptions || []);
       setPaymentStatuses(res.data?.paymentStatusOptions || []);
+      setOfficeExpenseCategories(res.data?.officeExpenseCategoryOptions || []);
     } catch (error) {
       console.error("Error fetching templates:", error);
     }
@@ -244,6 +254,7 @@ const SimpleRecordForm = ({
           data?.paymentStatusTemplate?._id ||
           data?.paymentStatusTemplate ||
           "",
+        category: data?.category?._id || data?.category || "",
         entity: data?.entity?._id || data?.entity || undefined,
       });
       if (data?.entity?._id || data?.entity?.name || typeof data?.entity === "string") {
@@ -1005,14 +1016,20 @@ const SimpleRecordForm = ({
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
                         Category
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="category"
                         value={formData.category || ""}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                        placeholder="Office Supplies, Utilities..."
-                      />
+                        required={needsCategory}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      >
+                        <option value="">Select office category...</option>
+                        {officeExpenseCategories.map((categoryOption) => (
+                          <option key={categoryOption.id} value={categoryOption.id}>
+                            {categoryOption.label || categoryOption.category}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
 

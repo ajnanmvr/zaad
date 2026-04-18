@@ -32,7 +32,12 @@ import {
   TDocumentCategory,
 } from "@/config/documentCategoryVisuals";
 
-type ManagerType = "document" | "credential" | "payment" | "payment-status";
+type ManagerType =
+  | "document"
+  | "credential"
+  | "payment"
+  | "payment-status"
+  | "office-expense-category";
 
 type ItemOption = {
   id: string;
@@ -44,6 +49,7 @@ type ItemOption = {
   color?: string;
   category?: TDocumentCategory;
   icon?: TPaymentTemplateIcon;
+  categoryName?: string;
   published?: boolean;
   unpublished?: boolean;
   createdAt?: string;
@@ -96,7 +102,9 @@ function TypePlatformManager({
         ? "credential-platforms"
         : type === "payment"
           ? "payment-methods"
-          : "payment-statuses",
+          : type === "payment-status"
+            ? "payment-statuses"
+            : "office-expense-categories",
   ];
 
   const { data: items = [], isLoading } = useQuery<ItemOption[]>({
@@ -141,7 +149,9 @@ function TypePlatformManager({
         ? item.platform || "Untitled"
         : type === "payment"
           ? item.method || "Untitled"
-          : item.status || "Untitled";
+          : type === "payment-status"
+            ? item.status || "Untitled"
+            : item.category || item.categoryName || "Untitled";
 
   const getPaymentIcon = (iconName?: TPaymentTemplateIcon) => {
     return getPaymentMethodIcon(iconName);
@@ -167,7 +177,9 @@ function TypePlatformManager({
           ? item.platform || ""
           : type === "payment"
             ? item.method || ""
-            : item.status || "",
+            : type === "payment-status"
+              ? item.status || ""
+              : item.category || item.categoryName || "",
     );
     setSelectedColor(item.color || "");
     setSelectedIcon((item.icon || DEFAULT_PAYMENT_TEMPLATE_ICON) as TPaymentTemplateIcon);
@@ -209,7 +221,9 @@ function TypePlatformManager({
             ? { platform: value.trim() }
             : type === "payment"
               ? { method: value.trim(), icon: selectedIcon }
-              : { status: value.trim(), appliesTo: selectedAppliesTo }),
+              : type === "payment-status"
+                ? { status: value.trim(), appliesTo: selectedAppliesTo }
+                : { category: value.trim(), icon: selectedIcon }),
       };
 
       if (editingId) {
@@ -364,22 +378,30 @@ function TypePlatformManager({
                 </button>
               </div>
 
-              {(type === "document" || type === "payment" || type === "payment-status") && (
+              {(type === "document" || type === "payment" || type === "payment-status" || type === "office-expense-category") && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                   <ColorPicker
                     key={colorPickerKey}
                     selectedColor={selectedColor}
                     onChange={(color) => setSelectedColor(color || "")}
-                    label={type === "document" ? "Template Color" : type === "payment" ? "Method Color" : "Status Color"}
+                    label={
+                      type === "document"
+                        ? "Template Color"
+                        : type === "payment"
+                          ? "Method Color"
+                          : type === "payment-status"
+                            ? "Status Color"
+                            : "Category Color"
+                    }
                     allowAutoAssign
                   />
                 </div>
               )}
 
-              {type === "payment" && (
+              {(type === "payment" || type === "office-expense-category") && (
                 <div>
                   <p className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    Payment Icon
+                    {type === "payment" ? "Payment Icon" : "Category Icon"}
                   </p>
                   <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
                     {PAYMENT_METHOD_ICON_OPTIONS.map(({ value: iconValue, label, Icon }) => (
@@ -473,6 +495,23 @@ function TypePlatformManager({
               <div>
                 <p className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200">
                   {type === "payment" &&
+                    (() => {
+                      const Icon = getPaymentIcon(item.icon);
+                      return (
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md"
+                          style={{
+                            backgroundColor: item.color
+                              ? `${item.color}1A`
+                              : undefined,
+                            color: item.color || undefined,
+                          }}
+                        >
+                          <Icon className="text-sm" />
+                        </span>
+                      );
+                    })()}
+                  {type === "office-expense-category" &&
                     (() => {
                       const Icon = getPaymentIcon(item.icon);
                       return (

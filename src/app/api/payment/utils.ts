@@ -8,6 +8,7 @@ export const PAYMENT_POPULATE_FIELDS = [
   "entity",
   "method",
   "status",
+  "category",
 ];
 
 export function getRecordClient(record: any) {
@@ -32,7 +33,7 @@ export function getRecordClient(record: any) {
     };
   }
 
-  if (String(record?.category || "").toLowerCase() === "office_records") {
+  if (String(record?.recordKind || "").toLowerCase() === "office_records") {
     return {
       name: "Office",
       id: "office",
@@ -88,7 +89,10 @@ export function mapRecordListItem(record: any) {
     status: record?.status?.status || record?.paymentStatusTemplate?.status || "",
     client: getRecordClient(record),
     particular: record.particular,
-    category: record.category,
+    category: record?.category?._id?.toString?.() || record?.category?.toString?.() || "",
+    categoryName: record?.category?.category || "",
+    categoryColor: record?.category?.color || "",
+    categoryIcon: record?.category?.icon || "",
     amount: record.amount?.toFixed(2),
     serviceFee: record.serviceFee?.toFixed(2),
     creator: record?.createdBy?.username,

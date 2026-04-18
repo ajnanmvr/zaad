@@ -6,6 +6,7 @@ import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
 import PaymentTemplate from "@/models/paymentTemplates";
 import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
+import OfficeExpenseCategory from "@/models/officeExpenseCategories";
 import EntityDocument from "@/models/entityDocuments";
 import EntityCredential from "@/models/entityCredentials";
 import Records from "@/models/records";
@@ -23,6 +24,10 @@ function normalizeHexColor(value?: string): string | undefined {
 
 function isValidPaymentIcon(value: string): boolean {
   return PAYMENT_TEMPLATE_ICON_KEYS.includes(value as (typeof PAYMENT_TEMPLATE_ICON_KEYS)[number]);
+}
+
+function isObjectIdString(value: string): boolean {
+  return /^[a-fA-F0-9]{24}$/.test(String(value || "").trim());
 }
 
 function colorFromSeed(seed: string): string {
@@ -199,7 +204,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [documentUsageRows, credentialUsageRows, paymentUsageRows, paymentStatusUsageRows] = await Promise.all([
+    if (type === "office-expense-category") {
+      const usageRows = await Records.aggregate([
+        { $match: { category: { $ne: null } } },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+      ]);
+
+      const usedIds = usageRows
+        .map((row: any) => (row?._id ? String(row._id) : ""))
+        .filter((value: string) => isObjectIdString(value));
+
+      const templates = await OfficeExpenseCategory.find({
+        $or: [{ published: { $ne: false } }, { _id: { $in: usedIds } }],
+      })
+        .select("category color icon published createdAt")
+        .sort({ category: 1 });
+
+      const usageMap = new Map<string, number>();
+      usageRows.forEach((row: any) => {
+        usageMap.set(String(row._id), row.count);
+      });
+
+      return Response.json(
+        {
+          options: templates.map((item: any) => ({
+            id: item._id.toString(),
+            label: item.category,
+            category: item.category,
+            color: item.color,
+            icon: item.icon,
+            published: item.published !== false,
+            unpublished: item.published === false,
+            createdAt: item.createdAt,
+            usageCount: usageMap.get(item._id.toString()) || 0,
+          })),
+        },
+        { status: 200 }
+      );
+    }
+
+    const [documentUsageRows, credentialUsageRows, paymentUsageRows, paymentStatusUsageRows, officeCategoryUsageRows] = await Promise.all([
       EntityDocument.aggregate([
         { $match: { documentTemplate: { $ne: null } } },
         { $group: { _id: "$documentTemplate", count: { $sum: 1 } } },
@@ -216,12 +260,17 @@ export async function GET(request: NextRequest) {
         { $match: { status: { $ne: null } } },
         { $group: { _id: "$status", count: { $sum: 1 } } },
       ]),
+      Records.aggregate([
+        { $match: { category: { $ne: null } } },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+      ]),
     ]);
 
     const documentUsageMap = new Map<string, number>();
     const credentialUsageMap = new Map<string, number>();
     const paymentUsageMap = new Map<string, number>();
     const paymentStatusUsageMap = new Map<string, number>();
+    const officeCategoryUsageMap = new Map<string, number>();
 
     documentUsageRows.forEach((row: any) => {
       documentUsageMap.set(row._id.toString(), row.count);
@@ -235,8 +284,11 @@ export async function GET(request: NextRequest) {
     paymentStatusUsageRows.forEach((row: any) => {
       paymentStatusUsageMap.set(String(row._id), row.count);
     });
+    officeCategoryUsageRows.forEach((row: any) => {
+      officeCategoryUsageMap.set(String(row._id), row.count);
+    });
 
-    const [documentTemplates, credentialTemplates, paymentTemplates, paymentStatusTemplates] = await Promise.all([
+    const [documentTemplates, credentialTemplates, paymentTemplates, paymentStatusTemplates, officeExpenseCategories] = await Promise.all([
       DocumentTemplate.find({
         $or: [
           { published: { $ne: false } },
@@ -269,6 +321,18 @@ export async function GET(request: NextRequest) {
       })
         .select("status color appliesTo published")
         .sort({ status: 1 }),
+      OfficeExpenseCategory.find({
+        $or: [
+          { published: { $ne: false } },
+          {
+            _id: {
+              $in: Array.from(officeCategoryUsageMap.keys()).filter((value: string) => isObjectIdString(value)),
+            },
+          },
+        ],
+      })
+        .select("category color icon published")
+        .sort({ category: 1 }),
     ]);
 
     return Response.json(
@@ -308,6 +372,15 @@ export async function GET(request: NextRequest) {
           published: item.published !== false,
           unpublished: item.published === false,
         })),
+        officeExpenseCategoryOptions: officeExpenseCategories.map((item: any) => ({
+          id: item._id.toString(),
+          label: item.category,
+          category: item.category,
+          color: item.color,
+          icon: item.icon,
+          published: item.published !== false,
+          unpublished: item.published === false,
+        })),
       },
       { status: 200 }
     );
@@ -337,7 +410,8 @@ export async function POST(request: NextRequest) {
       (type === "document" && !name?.trim()) ||
       (type === "credential" && !platform?.trim()) ||
       (type === "payment" && !body?.method?.trim()) ||
-      (type === "payment-status" && !body?.status?.trim())
+      (type === "payment-status" && !body?.status?.trim()) ||
+      (type === "office-expense-category" && !body?.category?.trim())
     ) {
       return Response.json(
         { message: "Invalid input: type and name/platform are required" },
@@ -570,6 +644,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (type === "office-expense-category") {
+      const categoryName = String(body?.category || "").trim();
+      const selectedIcon = String(body?.icon || DEFAULT_PAYMENT_TEMPLATE_ICON);
+      const selectedColor = normalizeHexColor(body?.color);
+
+      if (!isValidPaymentIcon(selectedIcon)) {
+        return Response.json({ message: "Invalid category icon" }, { status: 400 });
+      }
+
+      const exists = await OfficeExpenseCategory.findOne({ category: categoryName });
+      if (exists) {
+        if (exists.published === false) {
+          exists.published = true;
+          exists.icon = selectedIcon;
+          if (selectedColor) {
+            exists.color = selectedColor;
+          }
+          await exists.save();
+
+          return Response.json(
+            {
+              message: "Office expense category restored successfully",
+              template: {
+                id: exists._id.toString(),
+                category: exists.category,
+                color: exists.color,
+                icon: exists.icon,
+              },
+            },
+            { status: 200 }
+          );
+        }
+
+        return Response.json(
+          { message: "Office expense category already exists" },
+          { status: 409 }
+        );
+      }
+
+      const color = selectedColor
+        ? selectedColor
+        : await OfficeExpenseCategory.find({})
+            .select("color")
+            .lean()
+            .then((rows: any[]) => {
+              const existingColors = rows.map((row) => row?.color).filter(Boolean);
+              return generateEntityColor(existingColors);
+            });
+
+      const template = await OfficeExpenseCategory.create({
+        category: categoryName,
+        color,
+        icon: selectedIcon,
+        published: true,
+      });
+
+      return Response.json(
+        {
+          message: "Office expense category created successfully",
+          template: {
+            id: template._id.toString(),
+            category: template.category,
+            color: template.color,
+            icon: template.icon,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
     return Response.json(
       { message: "Invalid template type" },
       { status: 400 }
@@ -671,6 +815,24 @@ export async function DELETE(request: NextRequest) {
       }
       return Response.json(
         { message: "Payment status template unpublished successfully" },
+        { status: 200 }
+      );
+    }
+
+    if (type === "office-expense-category") {
+      const template = await OfficeExpenseCategory.findByIdAndUpdate(
+        templateId,
+        { published: false },
+        { new: true }
+      );
+      if (!template) {
+        return Response.json(
+          { message: "Office expense category not found" },
+          { status: 404 }
+        );
+      }
+      return Response.json(
+        { message: "Office expense category unpublished successfully" },
         { status: 200 }
       );
     }
@@ -931,6 +1093,71 @@ export async function PUT(request: NextRequest) {
             status: template.status,
             color: template.color,
             appliesTo: template.appliesTo,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (type === "office-expense-category") {
+      const categoryName = String(body?.category || "").trim();
+      if (!categoryName) {
+        return Response.json(
+          { message: "Category name is required" },
+          { status: 400 }
+        );
+      }
+
+      const selectedIcon = String(body?.icon || DEFAULT_PAYMENT_TEMPLATE_ICON);
+      if (!isValidPaymentIcon(selectedIcon)) {
+        return Response.json(
+          { message: "Invalid category icon" },
+          { status: 400 }
+        );
+      }
+
+      const existingByName = await OfficeExpenseCategory.findOne({
+        category: categoryName,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByName) {
+        return Response.json(
+          { message: "Office expense category already exists" },
+          { status: 409 }
+        );
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+      const update: Record<string, unknown> = {
+        category: categoryName,
+        icon: selectedIcon,
+      };
+      if (selectedColor) {
+        update.color = selectedColor;
+      }
+
+      const template = await OfficeExpenseCategory.findByIdAndUpdate(
+        templateId,
+        update,
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Office expense category not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Office expense category updated successfully",
+          template: {
+            id: template._id.toString(),
+            category: template.category,
+            color: template.color,
+            icon: template.icon,
           },
         },
         { status: 200 }

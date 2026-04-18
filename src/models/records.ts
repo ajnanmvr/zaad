@@ -6,8 +6,9 @@ const RecordSchema = new Schema(
     number: Number,
     particular: { type: String, required: true, trim: true },
     category: {
-      type: String,
-      trim: true,
+      type: Schema.Types.ObjectId,
+      ref: "officeExpenseCategories",
+      index: true,
     },
     serviceFee: Number,
     amount: {
