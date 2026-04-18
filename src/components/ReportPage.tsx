@@ -1,6 +1,49 @@
+import PrintReportButton from "@/components/common/PrintReportButton";
+
+const toTitleCase = (value: string) =>
+  value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+
 const ReportPage = ({ profitsData, accountsData }: { profitsData: any, accountsData: any }) => {
+  const dynamicRows = (() => {
+    if (Array.isArray(accountsData?.methodBreakdown) && accountsData.methodBreakdown.length > 0) {
+      return accountsData.methodBreakdown.map((row: any) => ({
+        method: toTitleCase(row.method),
+        income: Number(row.income || 0),
+        expense: Number(row.expense || 0),
+        balance: Number(row.balance || 0),
+      }));
+    }
+
+    const incomeSummary = accountsData?.summary?.income || {};
+    const expenseSummary = accountsData?.summary?.expense || {};
+    const methods = Array.from(
+      new Set([...Object.keys(incomeSummary), ...Object.keys(expenseSummary)])
+    ).sort((a, b) => a.localeCompare(b));
+
+    return methods.map((method) => {
+      const income = Number(incomeSummary[method] || 0);
+      const expense = Number(expenseSummary[method] || 0);
+      return {
+        method: toTitleCase(method),
+        income,
+        expense,
+        balance: income - expense,
+      };
+    });
+  })();
+
   return (
-    <div>
+    <div id="generic-financial-report-root">
+      <div className="mb-3 flex justify-end">
+        <PrintReportButton
+          targetId="generic-financial-report-root"
+          reportTitle="Financial Report"
+        />
+      </div>
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2">General Information</h2>
         <table className="w-full bg-white border border-gray-300">
@@ -52,56 +95,23 @@ const ReportPage = ({ profitsData, accountsData }: { profitsData: any, accountsD
         <table className="w-full bg-white border border-gray-300">
           <thead>
             <tr className="bg-primary text-white">
-              <th className="px-4 py-2 text-left">Category</th>
+              <th className="px-4 py-2 text-left">Method</th>
               <th className="px-4 py-2 text-left">Income (AED)</th>
-              <th className="px-4 py-2 text-left">Category</th>
               <th className="px-4 py-2 text-left">Expense (AED)</th>
-              <th className="px-4 py-2 text-left">Category</th>
               <th className="px-4 py-2 text-left">Balance (AED)</th>
             </tr>
           </thead>
           <tbody>
+            {dynamicRows.map((row: any) => (
+              <tr key={row.method} className="border-b border-gray-300">
+                <td className="px-4 py-2 whitespace-nowrap">{row.method}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{row.income.toFixed(2)}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{row.expense.toFixed(2)}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{row.balance.toFixed(2)}</td>
+              </tr>
+            ))}
             <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Cash Income</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.CashIncome.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Cash Expense</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.CashExpense.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Cash Balance</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.cashBalance.toFixed(2)}</td>
-
-            </tr>
-            <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Bank Income</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.BankIncome.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Bank Expense</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.BankExpense.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Bank Balance</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.bankBalance.toFixed(2)}</td>
-
-            </tr>
-            <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Tasdeed Income</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.TasdeedIncome.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Tasdeed Expense</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.TasdeedExpense.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Tasdeed Balance</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.tasdeedBalance.toFixed(2)}</td>
-
-            </tr>
-            <tr className="border-b border-gray-300">
-              <td className="px-4 py-2 whitespace-nowrap">Swiper Income</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.SwiperIncome.toFixed(2)}</td>
-
-              <td className="px-4 py-2 whitespace-nowrap">Swiper Expense</td>
-              <td className="px-4 py-2 whitespace-nowrap">{accountsData.SwiperExpense.toFixed(2)}</td>
-
-              <td className="px-4 font-bold bg-black text-white py-2 whitespace-nowrap">Total Balance</td>
+              <td className="px-4 font-bold bg-black text-white py-2 whitespace-nowrap" colSpan={3}>Total Balance</td>
               <td className="px-4 font-bold bg-black text-white py-2 whitespace-nowrap">{accountsData.totalBalance.toFixed(2)}</td>
             </tr>
           </tbody>

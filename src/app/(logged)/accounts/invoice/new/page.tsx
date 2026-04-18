@@ -1,7 +1,10 @@
 import AddInvoice from "@/components/Forms/AddInvoice";
+import { Suspense } from "react";
 const TablesPage = () => {
     return (
-        <AddInvoice />
+        <Suspense fallback={null}>
+            <AddInvoice />
+        </Suspense>
     );
 };
 

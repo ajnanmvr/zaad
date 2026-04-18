@@ -3,16 +3,21 @@ export type TUser = {
   username: string;
   password?: string;
   fullname?: string;
-  role?: "partner" | "employee";
+  role?: string;
 };
 export type TPasswordData = {
+  credentialTemplate?: string;
   platform: string;
   username: string;
-  password: string;
+  notes?: string;
+  credential?: string;
+  password?: string;
 };
 export type TCompanyData = {
   _id?: string;
   name: string;
+  color?: string;
+  entityType?: "company" | "employee" | "individual";
   licenseNo?: string;
   companyType?: string;
   emirates?: string;
@@ -22,8 +27,9 @@ export type TCompanyData = {
   transactionNo?: string;
   isMainland?: "mainland" | "freezone";
   remarks?: string;
+  credentials?: TPasswordData[];
   password?: TPasswordData[];
-  documents: TDocuments[];
+  documents?: TDocuments[];
   transactions?: [];
   balance?: number;
   totalIncomes?: number;
@@ -32,11 +38,16 @@ export type TCompanyData = {
 export type TDocuments = {
   _id: string;
   id?: string;
+  documentTemplate?: string;
   name?: string;
+  templateCategory?: "visa" | "license" | "other";
   status?: string;
   issueDate?: string;
   expiryDate: string;
-  attachment?: string;
+  notes?: string;
+  archived?: boolean;
+  archiveNotes?: string;
+  archivedAt?: string;
 };
 
 export type TCompanyList = {
@@ -50,17 +61,71 @@ export type TCompanyList = {
 export type TBaseData = {
   _id?: string;
   name: string;
+  color?: string;
+  entityType?: "company" | "employee" | "individual";
 };
 
 export type TEmployeeList = TCompanyList & {
   company: TBaseData;
 };
 
+export type TEntityListItem = {
+  _id: string;
+  id: string;
+  name: string;
+  color?: string;
+  entityType: "company" | "employee" | "individual";
+  createdAt?: string;
+  company?: TBaseData;
+  documentStatusCounts?: {
+    expired: number;
+    renewal: number;
+    valid: number;
+  };
+};
+
+export type TPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type TPaginatedResponse<T> = {
+  data: T[];
+  pagination: TPagination;
+};
+
+export type TExpiryDocumentItem = {
+  id: string;
+  documentTemplate?: string;
+  name?: string;
+  templateColor?: string;
+  templateCategory?: "visa" | "license" | "other";
+  issueDate?: string;
+  expiryDate?: string;
+  notes?: string;
+  archived?: boolean;
+  archiveNotes?: string;
+  archivedAt?: string;
+  status: "valid" | "expired" | "renewal" | "unknown";
+  daysLeft: number | null;
+  entity: {
+    id: string;
+    name: string;
+    color?: string;
+    entityType: "company" | "employee" | "individual";
+  };
+};
+
 export type TEmployeeData = {
   _id: string;
   name: string;
-  password: TPasswordData[];
-  company: TCompanyData;
+  color?: string;
+  entityType?: "employee" | "individual";
+  credentials?: TPasswordData[];
+  password?: TPasswordData[];
+  company?: TCompanyData;
   isActive: boolean;
   emiratesId?: string;
   nationality?: string;
@@ -69,9 +134,44 @@ export type TEmployeeData = {
   email?: string;
   designation?: string;
   remarks?: string;
-  documents: TDocuments[];
+  documents?: TDocuments[];
   transactions?: [];
   balance?: number;
   totalIncomes?: number;
   totalExpenses?: number;
+};
+
+export type TIndividualData = Omit<TEmployeeData, "company" | "entityType"> & {
+  entityType?: "individual";
+  company?: undefined;
+};
+
+export type TPhysicalHandover = {
+  id: string;
+  entity: {
+    id: string;
+    name: string;
+    type: string;
+    color?: string;
+  };
+  documentName: string;
+  receivedAt: string | Date;
+  returnedAt?: string | Date;
+  status: "received" | "returned";
+  receiveNote?: string;
+  returnNote?: string;
+  // Backward compatibility for older records.
+  remarks?: string;
+  receivedBy?: {
+    id: string;
+    username?: string;
+    fullname: string;
+  };
+  returnedBy?: {
+    id: string;
+    username?: string;
+    fullname: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 };

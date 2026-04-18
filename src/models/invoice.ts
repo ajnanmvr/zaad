@@ -5,6 +5,16 @@ const InvoiceSchema = new Schema(
     suffix: String,
     invoiceNo: Number,
     client: String,
+    entityId: {
+      type: Schema.Types.ObjectId,
+      ref: "entities",
+      default: null,
+    },
+    entityType: {
+      type: String,
+      enum: ["company", "employee", "individual", null],
+      default: null,
+    },
     location: String,
     trn: String,
     purpose: String,

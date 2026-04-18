@@ -1,11 +1,19 @@
 "use client";
-import EditRecord from "@/components/Forms/AddRecord";
+import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import SimpleRecordForm from "@/components/Forms/SimpleRecordForm";
 import { useParams } from "next/navigation";
 
 function EditTransaction() {
-  const { type } = useParams();
+  const { id } = useParams();
 
-  return <EditRecord type={type.toString()} edit={true} />;
+  return (
+    <div>
+      <Breadcrumb pageName="Edit Record" />
+      <div className="grid grid-cols-1">
+        <SimpleRecordForm recordId={id?.toString()} isEdit={true} />
+      </div>
+    </div>
+  );
 }
 
 export default EditTransaction;

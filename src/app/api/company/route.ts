@@ -1,16 +1,31 @@
 import connect from "@/db/mongo";
-import Company from "@/models/companies";
-import { TCompanyData, TCompanyList } from "@/types/types";
-import calculateStatus from "@/utils/calculateStatus";
-import processDocuments from "@/helpers/processDocuments";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
+import {
+  createCompanyEntity,
+  listCompanyEntities,
+  splitEntityPayload,
+} from "@/services/entityService";
+import { replaceEntityDocuments } from "@/services/entityDocumentService";
+import { replaceEntityCredentials } from "@/services/entityCredentialService";
+import { PAGINATION, parsePaginationParams } from "@/config/pagination";
+
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.write");
     const reqBody = await request.json();
-    const data = await Company.create(reqBody);
+    const { entityData, documents, credentials } = splitEntityPayload(reqBody);
+
+    const data = await createCompanyEntity(entityData);
+
+    if (documents) {
+      await replaceEntityDocuments(data._id.toString(), documents);
+    }
+    if (credentials) {
+      await replaceEntityCredentials(data._id.toString(), credentials);
+    }
+
     return Response.json(
       { message: "Created new company", data },
       { status: 201 }
@@ -19,33 +34,37 @@ export async function POST(request: NextRequest) {
     return Response.json(error);
   }
 }
+
 export async function GET(request: NextRequest) {
   await connect();
-  await isAuthenticated(request);
-  const companies: TCompanyData[] = await Company.find({
-    published: true,
-  }).select("name documents");
-  const data: TCompanyList[] = [];
+  await requirePermission(request, "entities.read");
 
-  companies.forEach((company) => {
-    const { expiryDate, docsCount } = processDocuments(company.documents);
-    const status = calculateStatus(expiryDate);
-    data.push({
-      id: company._id,
-      name: company.name,
-      expiryDate,
-      docs: docsCount,
-      status,
-    });
-  });
-
-  data.sort((a, b) =>
-    a.expiryDate === "---"
-      ? 1
-      : b.expiryDate === "---"
-        ? -1
-        : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
+  const { page, limit } = parsePaginationParams(
+    request.nextUrl.searchParams,
+    PAGINATION.LIMITS.ENTITY_LIST
   );
 
-  return Response.json({ count: companies.length, data }, { status: 200 });
+  const search = request.nextUrl.searchParams.get("search")?.trim();
+  const sortByParam = request.nextUrl.searchParams.get("sortBy");
+  const createdWithinDaysParam = request.nextUrl.searchParams.get("createdWithinDays");
+  const createdWithinDays = createdWithinDaysParam
+    ? Number(createdWithinDaysParam)
+    : undefined;
+
+  const response = await listCompanyEntities(page, limit, {
+    search: search || undefined,
+    sortBy:
+      sortByParam === "newest" ||
+      sortByParam === "oldest" ||
+      sortByParam === "name-asc" ||
+      sortByParam === "name-desc"
+        ? sortByParam
+        : undefined,
+    createdWithinDays:
+      typeof createdWithinDays === "number" && Number.isFinite(createdWithinDays)
+        ? createdWithinDays
+        : undefined,
+  });
+
+  return Response.json(response, { status: 200 });
 }

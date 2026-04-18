@@ -1,25 +1,24 @@
 import connect from "@/db/mongo";
-import Company from "@/models/companies";
-import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
+import { getCompanyEntityById } from "@/services/entityService";
+import { createEntityDocument } from "@/services/entityDocumentService";
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; doc: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
-    const { id, doc } = params;
+    await requirePermission(request, "documents.write");
+    const { id } = params;
     const reqBody = await request.json();
-    const Data = await Company.findById(id);
-
-    const { data } = await fetchDocuments(id, doc, Data);
-    if (!data) {
-      return Response.json({ message: "Company not found" });
+    const company = await getCompanyEntityById(id);
+    if (!company) {
+      return Response.json({ message: "Company not found" }, { status: 404 });
     }
-    data.documents.push(reqBody);
-    await data.save();
+
+    const data = await createEntityDocument(id, reqBody);
     return Response.json({ message: "Document added successfully", data });
   } catch (err) {
     console.error(err);

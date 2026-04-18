@@ -1,22 +1,18 @@
-import getUserFromCookie from "@/helpers/getUserFromCookie";
 import connect from "@/db/mongo";
-import User from "@/models/users";
 import { NextRequest } from "next/server";
+import { getCurrentUserFromRequest } from "@/services/userAuthService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    const userId = await getUserFromCookie(request);
-    const user = await User.findOne({ _id: userId, published: true }).select(
-      "username role"
-    );
-    if (!user) {
-      return Response.json({ message: "No user found" }, { status: 404 });
-    }
+    const user = await getCurrentUserFromRequest(request);
+
     return Response.json({ message: "found current user", user });
   } catch (error) {
-    return Response.json(
-      { message: "An error occurred", error },
-      { status: 500 }
-    );
+    return Response.json({
+      message: getServiceErrorMessage(error, "An error occurred"),
+    }, {
+      status: getServiceErrorStatus(error),
+    });
   }
 }

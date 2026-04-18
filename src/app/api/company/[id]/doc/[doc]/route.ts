@@ -1,38 +1,39 @@
 import connect from "@/db/mongo";
-import Company from "@/models/companies";
-import { fetchDocuments } from "@/helpers/fetchDocuments";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
+import { getCompanyEntityById } from "@/services/entityService";
+import {
+  deleteEntityDocument,
+  updateEntityDocument,
+} from "@/services/entityDocumentService";
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
-
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "documents.write");
     const { id, doc } = params;
-    const { name, issueDate, expiryDate, attachment } = await request.json();
-    const Data = await Company.findById(id);
+    const { documentTemplate, issueDate, expiryDate, notes, archived, archiveNotes } = await request.json();
+    const company = await getCompanyEntityById(id);
+    if (!company) {
+      return Response.json({ message: "Company not found" }, { status: 404 });
+    }
 
+    const data = await updateEntityDocument(id, doc, {
+      documentTemplate,
+      issueDate,
+      expiryDate,
+      notes,
+      archived,
+      archiveNotes,
+    });
 
-
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
 
-    if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
-    }
-
-    // Update the document fields
-    if (name) data.documents[documentIndex].name = name;
-    if (issueDate) data.documents[documentIndex].issueDate = issueDate;
-    if (expiryDate) data.documents[documentIndex].expiryDate = expiryDate;
-    if (attachment) data.documents[documentIndex].attachment = attachment;
-
-    await data.save();
     return Response.json({ message: "Document updated successfully", data });
   } catch (err) {
     console.error(err);
@@ -44,27 +45,19 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; doc: string } }
 ) {
-
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "documents.write");
     const { id, doc } = params;
-    const Data = await Company.findById(id);
+    const company = await getCompanyEntityById(id);
+    if (!company) {
+      return Response.json({ message: "Company not found" }, { status: 404 });
+    }
 
-    const { data, documentIndex } = await fetchDocuments(id, doc, Data);
+    const data = await deleteEntityDocument(id, doc);
     if (!data) {
-      return Response.json({ message: "Company not found" });
+      return Response.json({ message: "Document not found" }, { status: 404 });
     }
-
-    if (documentIndex === null) {
-      return Response.json({ message: "Document not found" });
-    }
-
-    // Remove the document from the array
-    data.documents.splice(documentIndex, 1);
-
-    // Save the updated company without the deleted document
-    await data.save();
 
     return Response.json({ message: "Document deleted successfully" });
   } catch (err) {

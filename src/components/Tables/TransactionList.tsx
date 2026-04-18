@@ -3,823 +3,1114 @@ import { TRecordList } from "@/types/records";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import SkeletonList from "../common/SkeletonList";
 import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
-import SelfDepositModal from "../Modals/SelfDepositModal";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import EntityAvatar from "../common/EntityAvatar";
+import PaymentMethodBadge from "../common/PaymentMethodBadge";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
+import { useUserContext } from "@/contexts/UserContext";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import {
+  FiFilter,
+  FiArrowUpRight,
+  FiArrowDownLeft,
+  FiArrowRight,
+  FiPlus,
+  FiInfo,
+  FiTrash2,
+  FiX,
+  FiChevronLeft,
+  FiChevronRight,
+  FiSearch,
+  FiDownload,
+  FiFileText,
+} from "react-icons/fi";
+
+type TPaymentMethodOption = {
+  value: string;
+  label: string;
+  color?: string;
+  icon?: string;
+};
+
+type ExportScope = "selected" | "all";
+type ExportFormat = "csv" | "excel" | "pdf";
+
 const baseData = {
   t: "",
   m: "",
 };
-const generateQuery = (filter: typeof baseData) => {
-  let query = "";
-  if (filter.t) {
-    query += `&t=${filter.t}`;
+
+type LedgerCategory = "office_records";
+
+const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
+
+const formatTransactionListDate = (dateString: string | null | undefined) => {
+  if (!dateString) return "N/A";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "N/A";
+
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
   }
-  if (filter.m) {
-    query += `&m=${filter.m}`;
+
+  if (isYesterday) {
+    return "Yesterday";
   }
-  return query;
+
+  return formatRelativeDate(dateString);
+};
+
+const getEditCountText = (count: number): string => {
+  if (count === 1) return "edited once";
+  if (count === 2) return "edited twice";
+  return `edited ${count} times`;
+};
+
+const getTransactionAvatar = (record: TRecordList) => {
+  const status = (record?.status || "").toLowerCase();
+  const particular = (record?.particular || "").toLowerCase();
+  const isSelf = record?.client?.type === "self";
+
+  const isSelfTransfer =
+    status.includes("self deposit") ||
+    particular.includes("money removed from") ||
+    particular.includes("money recieved as exchange") ||
+    particular.includes("money received as exchange");
+
+  // Office record: always use logo.svg
+  if (record?.recordKind === "office_records") {
+    return (
+      <div className="flex items-center justify-center">
+        <Image
+          src="/images/logo/logo-icon.svg"
+          className="h-8 w-8 rounded-xl"
+          alt="Office"
+          width={24}
+          height={24}
+        />
+      </div>
+    );
+  }
+
+  // Self-deposit: use swap icon
+  if (isSelfTransfer) {
+    return (
+      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-200 dark:bg-slate-700 shadow-inner ring-1 ring-white/20">
+        <FiArrowRight className="h-4 w-4 text-slate-600 dark:text-slate-400 rotate-45" />
+      </div>
+    );
+  }
+
+  // Default: use entity avatar with initials
+  return (
+    <EntityAvatar
+      name={record?.client?.name || "Unknown"}
+      color={record?.client?.color}
+      size="sm"
+    />
+  );
+};
+
+const getTransactionVisual = (record: TRecordList) => {
+  const status = (record?.status || "").toLowerCase();
+  const particular = (record?.particular || "").toLowerCase();
+  const isSelf = record?.client?.type === "self";
+  const isOfficeRecord = record?.recordKind === "office_records";
+
+  const isSelfTransfer =
+    status.includes("self deposit") ||
+    particular.includes("money removed from") ||
+    particular.includes("money recieved as exchange") ||
+    particular.includes("money received as exchange");
+
+  const isInstantProfit = status === "profit";
+  const isLiability = status.includes("liability");
+  const isOfficeExpense =
+    status.includes("office expense") || particular.includes("office expense");
+  const isCompanyExpense =
+    isSelf &&
+    record?.type === "expense" &&
+    (isOfficeExpense || status.includes("debit"));
+
+  if (isOfficeRecord) {
+    if (record?.type === "income") {
+      return {
+        label: "Office Income",
+        badgeClass:
+          "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+        amountClass: "text-emerald-600 dark:text-emerald-400",
+      };
+    }
+
+    return {
+      label: "Office Expense",
+      badgeClass:
+        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+      amountClass: "text-rose-600 dark:text-rose-400",
+    };
+  }
+
+  if (isSelfTransfer) {
+    if (record?.type === "income") {
+      return {
+        label: "Self Transfer In",
+        badgeClass:
+          "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-500/30",
+        amountClass: "text-cyan-600 dark:text-cyan-400",
+      };
+    }
+
+    return {
+      label: "Self Transfer Out",
+      badgeClass:
+        "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30",
+      amountClass: "text-blue-600 dark:text-blue-400",
+    };
+  }
+
+  if (isInstantProfit) {
+    if (record?.type === "income") {
+      return {
+        label: "Instant Profit In",
+        badgeClass:
+          "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+        amountClass: "text-emerald-600 dark:text-emerald-400",
+      };
+    }
+
+    return {
+      label: "Instant Profit Out",
+      badgeClass:
+        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+      amountClass: "text-rose-600 dark:text-rose-400",
+    };
+  }
+
+  if (isCompanyExpense) {
+    return {
+      label: "Office Expense",
+      badgeClass:
+        "bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-500/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:ring-fuchsia-500/30",
+      amountClass: "text-fuchsia-600 dark:text-fuchsia-400",
+    };
+  }
+
+  if (isLiability) {
+    return {
+      label: "Liability",
+      badgeClass:
+        "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
+      amountClass: "text-amber-600 dark:text-amber-400",
+    };
+  }
+
+  if (record?.type === "income") {
+    return {
+      label: "Income",
+      badgeClass:
+        "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+      amountClass: "text-emerald-600 dark:text-emerald-400",
+    };
+  }
+
+  return {
+    label: "Expense",
+    badgeClass:
+      "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+    amountClass: "text-rose-600 dark:text-rose-400",
+  };
 };
 
 const TransactionList = ({
   type,
   id,
+  category,
+  embedded = false,
+  lockEntityType,
+  lockEntityId,
+  lockEntityName,
+  returnTo,
 }: {
   type?: string | string[];
   id?: string | string[];
+  category?: LedgerCategory;
+  embedded?: boolean;
+  lockEntityType?: string;
+  lockEntityId?: string;
+  lockEntityName?: string;
+  returnTo?: string;
 }) => {
-  const queryClient = useQueryClient();
-
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<TRecordList | null>(
-    null
+  const router = useRouter();
+  const { user } = useUserContext();
+  const isAdmin = ["admin", "superadmin"].includes(
+    (user?.role || "").toLowerCase(),
   );
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [isSecondConfirmationOpen, setIsSecondConfirmationOpen] =
-    useState(false);
+
   const [pageNumber, setPageNumber] = useState(0);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [isSelfOpen, setSelfOpen] = useState(false);
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [filterDummy, setFilterDummy] = useState({ ...baseData });
   const [filter, setFilter] = useState({ ...baseData });
   const [hasMore, setHasMore] = useState(true);
   const [records, setRecords] = useState<TRecordList[]>([]);
-  const [recordsWithBalance, setRecordsWithBalance] = useState<(TRecordList & { runningBalance?: number })[]>([]);
+  const [recordsWithBalance, setRecordsWithBalance] = useState<
+    (TRecordList & { runningBalance?: number })[]
+  >([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [exportScope, setExportScope] = useState<ExportScope>("selected");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
 
-
-  const query = generateQuery(filter)
+  const currentType = Array.isArray(type) ? type[0] : type;
+  const hasLedgerContext = Boolean(currentType || category);
 
   const { data: paymentData, isLoading } = useQuery({
-    queryKey: ["payment", pageNumber, type, id, filter],
+    queryKey: ["payment", pageNumber, type, id, category, filter],
     queryFn: async () => {
-      const res = await axios.get(`/api/payment${type ? ("/" + (type === "self" ? type : (type + "/" + id))) : ""}?page=${pageNumber + query}`)
+      const routeSegment = currentType
+        ? currentType === "self" || currentType === "self-deposit"
+          ? `/${currentType}`
+          : `/${currentType}/${id}`
+        : "";
+      const params = new URLSearchParams();
+      params.set("page", String(pageNumber));
+      if (filter.t) params.set("t", filter.t);
+      if (filter.m) params.set("m", filter.m);
+      if (category) params.set("category", category);
+      const res = await axios.get(
+        `/api/payment${routeSegment}?${params.toString()}`,
+      );
       return res.data;
     },
     placeholderData: keepPreviousData,
+  });
 
-  })
+  const { data: paymentMethodOptions = [] } = useQuery<TPaymentMethodOption[]>({
+    queryKey: ["payment-method-templates"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/templates", {
+        params: { type: "payment" },
+      });
+      return (data?.options || []).map((item: any) => ({
+        value: item.id,
+        label: item.label || item.method,
+        color: item.color,
+        icon: item.icon,
+      }));
+    },
+  });
 
-  console.log(paymentData);
+  const paymentMethodMap = useMemo(() => {
+    return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>(
+      (acc, item) => {
+        acc[item.value] = item;
+        return acc;
+      },
+      {},
+    );
+  }, [paymentMethodOptions]);
 
   useEffect(() => {
     if (paymentData) {
       setRecords(paymentData.records);
       setHasMore(paymentData.hasMore);
 
-      // Calculate running balance if type exists (showing individual account transactions)
-      if (type && paymentData.records?.length > 0) {
-        const { balance, totalIncome, totalExpense, totalTransactions } = paymentData;
+      if (hasLedgerContext && paymentData.records?.length > 0) {
+        const { balance, totalIncome, totalExpense, totalTransactions } =
+          paymentData;
         setCards([balance, totalIncome, totalExpense, totalTransactions]);
 
-        // Calculate running balance from top to bottom (latest to oldest)
         const recordsWithRunningBalance = [...paymentData.records];
-        let runningBalance = balance; // Start with the current balance for the latest transaction
+        let runningBalance = balance;
 
-        // Work forwards through the records (latest first)
         for (let i = 0; i < recordsWithRunningBalance.length; i++) {
           const record = recordsWithRunningBalance[i];
           recordsWithRunningBalance[i] = { ...record, runningBalance };
 
-          // Adjust running balance for the next iteration (going to older transactions)
           const amount = parseFloat(record.amount) || 0;
           const serviceFee = parseFloat(record.serviceFee) || 0;
 
-          if (record.type === "income" && record.method !== "liability") {
-            runningBalance -= amount; // Subtract income to get balance before this transaction
+          if (
+            record.type === "income" &&
+            !(record.status || "").toLowerCase().includes("liability")
+          ) {
+            runningBalance -= amount;
           } else if (record.type === "expense") {
-            runningBalance += amount + serviceFee; // Add back expense and service fee to get balance before this transaction
+            runningBalance += amount + serviceFee;
           }
         }
-
         setRecordsWithBalance(recordsWithRunningBalance);
       } else {
         setRecordsWithBalance(paymentData.records || []);
       }
     }
-  }, [paymentData, type]);
+  }, [paymentData, hasLedgerContext]);
 
+  const visibleRecords = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (!normalizedSearch) return recordsWithBalance;
+
+    return recordsWithBalance.filter((record) => {
+      const haystack = [
+        `${record?.suffix || ""}${record?.number || ""}`,
+        record?.client?.name || (record?.recordKind === "office_records" ? record?.categoryName || "" : ""),
+        record?.client?.type || "",
+        record?.particular || "",
+        record?.method || "",
+        record?.status || "",
+        record?.amount || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [recordsWithBalance, searchTerm]);
+
+  const selectedRecords = useMemo(
+    () =>
+      visibleRecords.filter(
+        (record) => record?.id && selectedRecordIds.includes(record.id),
+      ),
+    [selectedRecordIds, visibleRecords],
+  );
+
+  const allVisibleSelected =
+    visibleRecords.length > 0 &&
+    visibleRecords.every(
+      (record) => record?.id && selectedRecordIds.includes(record.id),
+    );
+
+  const isInnerEntityRecords =
+    embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
+
+  const toggleSelectVisible = (checked: boolean) => {
+    if (!checked) {
+      const visibleIds = new Set(visibleRecords.map((record) => record.id));
+      setSelectedRecordIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+      return;
+    }
+
+    const visibleIds = visibleRecords.map((record) => record.id);
+    setSelectedRecordIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const toggleRecordSelection = (recordId: string, checked: boolean) => {
+    if (!recordId) return;
+    setSelectedRecordIds((prev) => {
+      if (checked) {
+        return prev.includes(recordId) ? prev : [...prev, recordId];
+      }
+      return prev.filter((id) => id !== recordId);
+    });
+  };
+
+  const mapRecordsForExport = (rows: (TRecordList & { runningBalance?: number })[]) =>
+    rows.map((record) => {
+      const amount = Number(record.amount || 0);
+      const serviceFee = Number(record.serviceFee || 0);
+      return {
+        "Record ID": `${record.suffix || ""}${record.number || ""}`,
+        Client: record.recordKind === "office_records" ? record.categoryName || "Office Record" : record.client?.name || "",
+        "Client Type": record.client?.type || "",
+        Type: record.type || "",
+        Particular: record.particular || "",
+        Method: record.method || "",
+        Status: record.status || "",
+        "Amount (AED)": amount.toFixed(2),
+        "Service Fee (AED)": serviceFee.toFixed(2),
+        "Effective Total (AED)":
+          record.type === "expense"
+            ? (amount + serviceFee).toFixed(2)
+            : amount.toFixed(2),
+        Date: formatDateTime(record.createdAt || record.dateTime || null),
+      };
+    });
+
+  const handleExport = async () => {
+    const sourceRows = exportScope === "selected" ? selectedRecords : visibleRecords;
+
+    if (!sourceRows.length) {
+      toast.error(
+        exportScope === "selected"
+          ? "Select records to export"
+          : "No records available to export",
+      );
+      return;
+    }
+
+    const rows = mapRecordsForExport(sourceRows);
+    const filePrefix = `${lockEntityName || currentType || "records"}-records`;
+
+    if (exportFormat === "csv") {
+      exportRowsCsv(rows, filePrefix);
+      toast.success("CSV exported");
+      return;
+    }
+
+    if (exportFormat === "excel") {
+      exportRowsExcel(rows, filePrefix);
+      toast.success("Excel exported");
+      return;
+    }
+
+    await exportRowsPdf(rows, filePrefix);
+    toast.success("PDF exported");
+  };
+
+  const handleConvertSelectedToInvoice = async () => {
+    if (!selectedRecords.length) {
+      toast.error("Select records first");
+      return;
+    }
+
+    const expenseItems = selectedRecords
+      .filter((record) => record.type === "expense")
+      .map((record) => {
+        const amount = Number(record.amount || 0);
+        const serviceFee = Number(record.serviceFee || 0);
+        const total = amount + serviceFee;
+
+        const descriptionParts: string[] = [];
+        if (record.client?.type === "employee" || record.client?.type === "individual") {
+          descriptionParts.push(`Employee: ${record.client?.name || "Unknown"}`);
+        } else {
+          descriptionParts.push(`Company: ${record.client?.name || "Unknown"}`);
+          if (record.employeeName) {
+            descriptionParts.push(`Employee: ${record.employeeName}`);
+          }
+        }
+        descriptionParts.push(record.method || "Unknown method");
+
+        return {
+          title: record.particular || `Expense ${record.suffix || ""}${record.number || ""}`,
+          desc: descriptionParts.join(" | "),
+          rate: Number(total.toFixed(2)),
+          quantity: 1,
+        };
+      });
+
+    if (!expenseItems.length) {
+      toast.error("Selected records must include at least one expense record");
+      return;
+    }
+
+    const advance = selectedRecords
+      .filter((record) => record.type === "income")
+      .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+    const today = new Date();
+    const validTo = new Date(today);
+    validTo.setDate(validTo.getDate() + 30);
+
+    const entityType =
+      lockEntityType === "company" ||
+      lockEntityType === "employee" ||
+      lockEntityType === "individual"
+        ? lockEntityType
+        : null;
+
+    const prefillPayload = {
+      connectionMode: entityType ? "connected" : "detached",
+      selectedEntityType: entityType,
+      selectedEntitySummary:
+        entityType && lockEntityId
+          ? {
+              id: lockEntityId,
+              name: lockEntityName || selectedRecords[0]?.client?.name || "Client",
+              type: entityType,
+            }
+          : null,
+      invoiceData: {
+        quotation: "false",
+        message: "",
+        trn: "",
+        createdBy: user?._id,
+        client: lockEntityName || selectedRecords[0]?.client?.name || "Client",
+        entityId: lockEntityId || null,
+        entityType,
+        date: today.toISOString().split("T")[0],
+        validTo: validTo.toISOString().split("T")[0],
+        items: expenseItems,
+        remarks: `Generated from ${selectedRecords.length} selected record(s)`,
+        advance: Number(advance.toFixed(2)),
+        location: "",
+        purpose: "Records to Invoice",
+        amount: 0,
+        showBalance: "show",
+        balance: 0,
+      },
+      createdAt: Date.now(),
+    };
+
+    try {
+      sessionStorage.setItem(INVOICE_PREFILL_STORAGE_KEY, JSON.stringify(prefillPayload));
+      setSelectedRecordIds([]);
+      toast.success("Invoice draft prepared from selected records");
+
+      const params = new URLSearchParams();
+      params.set("prefill", "records");
+      if (returnTo) {
+        params.set("returnTo", returnTo);
+      }
+
+      router.push(`/accounts/invoice/new?${params.toString()}`);
+    } catch (error) {
+      toast.error("Failed to prepare invoice draft from selected records");
+      console.error(error);
+    }
+  };
 
   const handlePageChange = (page: number) => {
     setPageNumber(page);
-  };
-
-  const handleDelete = (id: string) => {
-    setSelectedRecordId(id);
-    setIsConfirmationOpen(true);
-  };
-  const handleInfo = (record: TRecordList) => {
-    setSelectedRecord(record);
-    setIsInfoOpen(true);
-  };
-  const confirmDelete = async () => {
-    setIsConfirmationOpen(false);
-    setIsSecondConfirmationOpen(true);
-  };
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => {
-      return axios.delete(`/api/payment/${id}`);
-    },
-    onMutate: () => {
-      toast.loading("Deleting payment record...");
-    },
-    onSuccess: () => {
-      toast.dismiss();
-      toast.success("Record deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["payment"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["profits"] });
-    },
-    onError: () => {
-      toast.dismiss();
-      toast.error("Failed to delete record");
-    }
-  });
-
-  const secondConfirmDelete = async () => {
-    deleteMutation.mutate(selectedRecordId!);
-    setIsSecondConfirmationOpen(false);
-  };
-
-  const cancelAction = () => {
-    setSelectedRecordId(null);
-    setIsConfirmationOpen(false);
-    setIsSecondConfirmationOpen(false);
-    setIsInfoOpen(false);
+    setSelectedRecordIds([]);
   };
 
   const handleFilter = () => {
     setFilter(filterDummy);
     setFilterOpen(false);
+    setPageNumber(0);
+    setSelectedRecordIds([]);
   };
+
   const handleCancelFilter = () => {
     setFilterDummy({ ...filter });
     setFilterOpen(false);
   };
 
+  const renderBadge = (status: string | undefined, colorClass: string) => (
+    <span
+      className={clsx(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+        colorClass,
+      )}
+    >
+      {status}
+    </span>
+  );
+
+  const incomeHref =
+    embedded && lockEntityType && lockEntityId
+      ? `/accounts/income?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
+      : "/accounts/income";
+
+  const expenseHref =
+    embedded && lockEntityType && lockEntityId
+      ? `/accounts/expense?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
+      : "/accounts/expense";
+
   return (
     <>
-      {type && (
+      {type && !embedded && (
         <>
           <Breadcrumb
-            pageName={`${recordsWithBalance[0]?.client?.name || type}'s transactions`}
+            pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`}
           />
-          <div className="my-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats loading={isLoading} title="Total Transactions" total={`${cards[3]}`} />
+          <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats
+              loading={isLoading}
+              title="Total Transactions"
+              total={`${cards[3]}`}
+            >
+              <FiInfo className="text-xl" />
+            </CardDataStats>
             <CardDataStats
               loading={isLoading}
               title="Total Income"
               total={`${cards[1].toFixed(2)} AED`}
-              color="meta-3"
-            />
+              color="emerald-500"
+            >
+              <FiArrowDownLeft className="text-xl text-emerald-500" />
+            </CardDataStats>
             <CardDataStats
               loading={isLoading}
               title="Total Expense"
               total={`${cards[2].toFixed(2)} AED`}
-              color="red"
-            />
+              color="rose-500"
+            >
+              <FiArrowUpRight className="text-xl text-rose-500" />
+            </CardDataStats>
             <CardDataStats
               loading={isLoading}
               title="Balance"
               total={`${cards[0].toFixed(2)} AED`}
-            />
+            >
+              <FiFilter className="text-xl text-emerald-500" />
+            </CardDataStats>
           </div>
         </>
       )}
-      <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
-        <ConfirmationModal
-          isOpen={isConfirmationOpen}
-          message="Are you sure you want to delete this payment record?"
-          onConfirm={confirmDelete}
-          onCancel={cancelAction}
-        />
-        <ConfirmationModal
-          isOpen={isSecondConfirmationOpen}
-          message="Are you really sure you want to delete this payment record? This action cannot be undone."
-          onConfirm={secondConfirmDelete}
-          onCancel={cancelAction}
-        />
-        <SelfDepositModal
-          isOpen={isSelfOpen}
-          cancel={() => setSelfOpen(false)}
-        />
+
+      {/* Main Table Card */}
+      <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
+        {/* Filter Modal Overlay */}
         {isFilterOpen && (
-          <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-999">
-            <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
-              <p className="text-center font-bold text-xl my-2 text-primary">
-                Filter Transaction Data
-              </p>
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Type
-                  </label>
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
-                    <select
-                      title="filter by transaction type"
-                      value={filterDummy.t}
-                      name="type"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, t: e.target.value });
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-                    >
-                      <option value="" className="text-body dark:text-bodydark">
-                        All
-                      </option>
-                      <option
-                        value="income"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Income
-                      </option>
-                      <option
-                        value="expense"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Expense
-                      </option>
-                    </select>
+          <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 relative">
+              <button
+                onClick={handleCancelFilter}
+                className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <FiX className="text-xl" />
+              </button>
 
-                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                      <svg
-                        className="fill-current"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.8">
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                          ></path>
-                        </g>
-                      </svg>
-                    </span>
-                  </div>
+              <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <FiFilter className="text-emerald-500" />
+                Filter Transactions
+              </h3>
+
+              <div className="mb-6 flex flex-col gap-6 sm:flex-row">
+                <div className="w-full sm:w-1/2">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Transaction Type
+                  </label>
+                  <select
+                    value={filterDummy.t}
+                    name="type"
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, t: e.target.value })
+                    }
+                    className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All Types</option>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                  </select>
                 </div>
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Method
+                <div className="w-full sm:w-1/2">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Payment Method
                   </label>
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
-                    <select
-                      value={filterDummy.m}
-                      title="filter by transaction method"
-                      name="method"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, m: e.target.value });
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-                    >
-                      <option value="" className="text-body dark:text-bodydark">
-                        All
+                  <select
+                    value={filterDummy.m}
+                    name="method"
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, m: e.target.value })
+                    }
+                    className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All Methods</option>
+                    {paymentMethodOptions.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
                       </option>
-                      <option
-                        value="cash"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Cash
-                      </option>
-                      <option
-                        value="bank"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Bank
-                      </option>
-                      <option
-                        value="tasdeed"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Tasdeed{" "}
-                      </option>
-                      <option
-                        value="swiper"
-                        className="text-body dark:text-bodydark"
-                      >
-                        Swiper{" "}
-                      </option>
-                    </select>
-
-                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                      <svg
-                        className="fill-current"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.8">
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                          ></path>
-                        </g>
-                      </svg>
-                    </span>
-                  </div>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="flex justify-between">
-                <div className="inline-flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setFilter(baseData);
-                      setFilterDummy(baseData);
-                      setFilterOpen(false);
-                    }}
-                    className="text-red hover:bg-red hover:text-white px-2 py-1 rounded"
-                  >
-                    Clear Filter
-                  </button>
-                </div>
-                <div>
+              <div className="flex items-center justify-between mt-8">
+                <button
+                  onClick={() => {
+                    setFilter(baseData);
+                    setFilterDummy(baseData);
+                    setFilterOpen(false);
+                    setPageNumber(0);
+                  }}
+                  className="text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  Clear Filters
+                </button>
+                <div className="flex gap-3">
                   <button
                     onClick={handleCancelFilter}
-                    className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg"
+                    className="rounded-xl bg-slate-100 px-6 py-2.5 font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleFilter}
-                    className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg"
+                    className="rounded-xl bg-emerald-600 px-6 py-2.5 font-medium text-white transition hover:bg-emerald-700 shadow-sm shadow-emerald-600/30"
                   >
-                    Apply
+                    Apply Filter
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
-        {isInfoOpen && selectedRecord && (
-          <div className="fixed z-999 inset-0 flex justify-center items-center bg-black bg-opacity-50">
-            <div className="bg-white capitalize dark:bg-black flex flex-col items-center justify-center p-5 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Payment Details</h2>
 
-              <table className="table-auto w-full">
+        <div
+          className={clsx(
+            "border-b border-slate-200/80 p-6 dark:border-slate-800 sm:p-7",
+            embedded
+              ? "bg-white dark:bg-slate-900"
+              : "relative overflow-hidden bg-gradient-to-br from-cyan-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900",
+          )}
+        >
+          {!embedded && (
+            <>
+              <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-200/40 blur-2xl dark:bg-cyan-500/10" />
+              <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-200/50 blur-xl dark:bg-emerald-500/10" />
+            </>
+          )}
+
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">
+                  Transaction History
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">
+                  {filter.m || filter.t
+                    ? `Filtered by: ${filter.t} ${filter.m}`
+                    : "All recent transactions"}
+                </p>
+                {(filter.m || filter.t) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {filter.t && (
+                      <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {filter.t}
+                      </span>
+                    )}
+                    {filter.m && (
+                      <PaymentMethodBadge
+                        label={paymentMethodMap[filter.m]?.label || filter.m}
+                        color={paymentMethodMap[filter.m]?.color}
+                        icon={paymentMethodMap[filter.m]?.icon}
+                        size="sm"
+                        muted
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                {visibleRecords.length} Records
+                {isInnerEntityRecords && selectedRecordIds.length > 0
+                  ? ` • ${selectedRecordIds.length} selected`
+                  : ""}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
+              {isInnerEntityRecords && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <select
+                    value={exportScope}
+                    onChange={(event) => setExportScope(event.target.value as ExportScope)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <option value="selected">Export selected</option>
+                    <option value="all">Export all (visible)</option>
+                  </select>
+                  <select
+                    value={exportFormat}
+                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                  <button
+                    onClick={handleExport}
+                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700/40 dark:bg-cyan-900/20 dark:text-cyan-300"
+                  >
+                    <FiDownload /> Export
+                  </button>
+                  <button
+                    onClick={handleConvertSelectedToInvoice}
+                    className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
+                  >
+                    <FiFileText /> To Invoice
+                  </button>
+                </div>
+              )}
+              <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+                <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search transactions..."
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                />
+              </div>
+              <button
+                onClick={() => setFilterOpen(true)}
+                className={clsx(
+                  "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                  filter.m || filter.t
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
+                )}
+              >
+                <FiFilter /> Filter
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+            <div className="max-w-full overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                    {isInnerEntityRecords && (
+                      <th className="w-[48px] pb-3 pl-4">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={(event) => toggleSelectVisible(event.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </th>
+                    )}
+                    <th className="min-w-[120px] pb-3 pl-4">Record ID</th>
+                    <th className="min-w-[200px] px-4 pb-3">Client Details</th>
+                    <th className="min-w-[150px] px-4 pb-3">Method</th>
+                    <th className="min-w-[150px] px-4 pb-3">Amount</th>
+                    <th className="min-w-[150px] px-4 pb-3">Date/Time</th>
+                    {(type || category) && (
+                      <th className="min-w-[120px] px-4 pb-3">Balance</th>
+                    )}
+                    <th className="px-4 pb-3 text-center">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {selectedRecord.number && (
+                  {isLoading ? (
                     <tr>
-                      <th className="px-4 py-2 border">Transaction ID</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.suffix + selectedRecord.number}
+                      <td colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6} className="py-8">
+                        <SkeletonList />
                       </td>
                     </tr>
-                  )}
-                  {selectedRecord.client && (
-                    <>
-                      <tr>
-                        <th className="px-4 py-2 border">Client Name</th>
-                        <td className="px-4 py-2 border">
-                          {selectedRecord.client.name}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="px-4 py-2 border">Client Type</th>
-                        <td className="px-4 py-2 border">
-                          {selectedRecord.client?.type}
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                  {selectedRecord.particular && (
+                  ) : visibleRecords.length === 0 ? (
                     <tr>
-                      <th className="px-4 py-2 border">Particular</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.particular}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.invoiceNo && (
-                    <tr>
-                      <th className="px-4 py-2 border">Invoice No</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.invoiceNo}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.type && (
-                    <tr>
-                      <th className="px-4 py-2 border">Income/ Expense</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.type}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.method && (
-                    <tr>
-                      <th className="px-4 py-2 border">Method</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.method}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.date && (
-                    <tr>
-                      <th className="px-4 py-2 border">Date</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.date}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.status && (
-                    <tr>
-                      <th className="px-4 py-2 border">Status</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.status}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.creator && (
-                    <tr>
-                      <th className="px-4 py-2 border">Creator</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.creator}
-                      </td>
-                    </tr>
-                  )}
-                  {selectedRecord.serviceFee &&
-                    selectedRecord.serviceFee < 1 ? (
-                    <tr>
-                      <th className="px-4 py-2 border">Profit</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.serviceFee}
+                      <td
+                        colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6}
+                        className="py-12 text-center text-slate-500 dark:text-slate-400"
+                      >
+                        No transactions found.
                       </td>
                     </tr>
                   ) : (
-                    <></>
-                  )}
-                  {selectedRecord.amount && (
-                    <tr>
-                      <th className="px-4 py-2 border">Amount</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.amount} AED
-                      </td>
-                    </tr>
-                  )}{" "}
-                  {selectedRecord.remarks && (
-                    <tr>
-                      <th className="px-4 py-2 border">Remarks</th>
-                      <td className="px-4 py-2 border">
-                        {selectedRecord.remarks}
-                      </td>
-                    </tr>
+                    visibleRecords.map((record, key) =>
+                      (() => {
+                        const transactionVisual = getTransactionVisual(record);
+
+                        return (
+                          <tr
+                            key={key}
+                            className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                          >
+                            {isInnerEntityRecords && (
+                              <td className="py-4 pl-4 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRecordIds.includes(record.id)}
+                                  onChange={(event) =>
+                                    toggleRecordSelection(record.id, event.target.checked)
+                                  }
+                                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                />
+                              </td>
+                            )}
+                            <td className="py-4 pl-4 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">
+                                  {(record?.suffix || "") +
+                                    (record?.number || "")}
+                                </span>
+                                {Number(record?.version || 0) > 0 && (
+                                  <span className="inline-flex w-fit items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400">
+                                    {getEditCountText(
+                                      Number(record?.version || 0),
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex items-start gap-3">
+                                {getTransactionAvatar(record)}
+                                <Link
+                                  href={
+                                    record?.client?.type &&
+                                    record.client.type !== "self" &&
+                                    record.client.type !== "office"
+                                      ? `/${record.client.type}/${record.client.id}`
+                                      : "#"
+                                  }
+                                  onClick={(event) => {
+                                    if (
+                                      !record?.client?.type ||
+                                      record.client.type === "self" ||
+                                      record.client.type === "office"
+                                    ) {
+                                      event.preventDefault();
+                                    }
+                                  }}
+                                  className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
+                                >
+                                  <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
+                                    {record?.recordKind === "office_records"
+                                      ? record?.categoryName || "Office Record"
+                                      : record?.client?.name || "Unknown"}
+                                  </p>
+                                  <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
+                                    {record?.particular}
+                                  </p>
+                                </Link>
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                  <PaymentMethodBadge
+                                    label={
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                        ?.label ||
+                                      record?.method ||
+                                      "Unknown"
+                                    }
+                                    color={
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                        ?.color
+                                    }
+                                    icon={
+                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                        ?.icon
+                                    }
+                                    size="sm"
+                                  />
+                                </div>
+                                {renderBadge(
+                                  transactionVisual.label,
+                                  transactionVisual.badgeClass,
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top">
+                              <div className="flex flex-col items-start gap-1">
+                                <span
+                                  className={clsx(
+                                    "font-bold",
+                                    transactionVisual.amountClass,
+                                  )}
+                                >
+                                  {record?.amount}{" "}
+                                  <span className="text-xs font-medium">
+                                    AED
+                                  </span>
+                                </span>
+                                {record?.type === "expense" &&
+                                  record?.serviceFee &&
+                                  record.serviceFee != 0 && (
+                                    <span
+                                      className={clsx(
+                                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                      )}
+                                    >
+                                      <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
+                                      Fee {record.serviceFee}
+                                    </span>
+                                  )}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 align-top text-sm text-slate-600 dark:text-slate-400">
+                              <span
+                                title={formatDateTime(
+                                  record.createdAt || record.dateTime || null,
+                                )}
+                              >
+                                {formatTransactionListDate(
+                                  record.createdAt || record.dateTime || null,
+                                )}
+                              </span>
+                            </td>
+
+                            {(type || category) && (
+                              <td className="py-4 px-4 align-top">
+                                <span
+                                  className={clsx(
+                                    "font-semibold",
+                                    (record.runningBalance || 0) >= 0
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-rose-600 dark:text-rose-400",
+                                  )}
+                                >
+                                  {record.runningBalance?.toFixed(2)}{" "}
+                                  <span className="text-xs font-medium">
+                                    AED
+                                  </span>
+                                </span>
+                              </td>
+                            )}
+
+                            <td className="py-4 pr-4 pl-2 align-top text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                                <Link
+                                  title="Open Transaction Details"
+                                  href={`/accounts/transactions/details/${record?.id}`}
+                                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
+                                >
+                                  <FiArrowRight className="text-lg" />
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })(),
+                    )
                   )}
                 </tbody>
               </table>
-              <Link
-                className="mt-4 text-meta-5 border py-1 hover:bg-meta-5 hover:bg-opacity-10 rounded px-4"
-                href={`/accounts/transactions/edit/${selectedRecord?.type}/${selectedRecord.id}`}
+            </div>
+          </div>
+        </div>
+
+        {/* Pagination Container */}
+        {!isLoading && (
+          <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
+            <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
+              Showing page{" "}
+              <span className="font-semibold text-slate-800 dark:text-white">
+                {pageNumber + 1}
+              </span>
+            </p>
+            <div className="flex flex-1 justify-between sm:justify-end gap-3">
+              <button
+                onClick={() => handlePageChange(pageNumber - 1)}
+                disabled={pageNumber === 0 || isLoading}
+                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
               >
-                Edit
-              </Link>
-              <Link
-                className="mt-4"
-                href={`/${selectedRecord?.client?.type}/${selectedRecord?.client?.id}`}
+                <FiChevronLeft /> Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(pageNumber + 1)}
+                disabled={isLoading || !hasMore || !recordsWithBalance.length}
+                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
               >
-                Go to Client Page
-              </Link>
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={cancelAction}
-                  className="px-4 py-2 bg-red hover:bg-red-600 text-white rounded-lg"
-                >
-                  Close
-                </button>
-              </div>
+                Next <FiChevronRight />
+              </button>
             </div>
           </div>
         )}
-        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">
-          <p className="text-lg">Payments List</p>
-          <div className="gap-1 flex">
-            <div
-              onClick={() => setFilterOpen(true)}
-              className="inline-flex capitalize justify-center items-center gap-1 hover:bg-meta-5 cursor-pointer rounded hover:bg-opacity-10 px-4 py-1 text-center font-medium text-primary"
-            >
-              {" "}
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M9.65811 19.7806L9.81622 20.255H9.81622L9.65811 19.7806ZM14.6581 18.114L14.8162 18.5883H14.8162L14.6581 18.114ZM19.7071 7.29289L20.0607 7.64645L19.7071 7.29289ZM15.2929 11.7071L14.9393 11.3536L15.2929 11.7071ZM5 4.5H19V3.5H5V4.5ZM4.5 6.58579V5H3.5V6.58579H4.5ZM9.06065 11.3535L4.64645 6.93934L3.93934 7.64645L8.35355 12.0607L9.06065 11.3535ZM8.49999 12.4142V19.3063H9.49999V12.4142H8.49999ZM8.49999 19.3063C8.49999 19.9888 9.16869 20.4708 9.81622 20.255L9.49999 19.3063V19.3063H8.49999ZM9.81622 20.255L14.8162 18.5883L14.5 17.6396L9.49999 19.3063L9.81622 20.255ZM14.8162 18.5883C15.2246 18.4522 15.5 18.0701 15.5 17.6396H14.5L14.8162 18.5883ZM15.5 17.6396V12.4142H14.5V17.6396H15.5ZM19.3536 6.93934L14.9393 11.3536L15.6464 12.0607L20.0607 7.64645L19.3536 6.93934ZM19.5 5V6.58579H20.5V5H19.5ZM20.0607 7.64645C20.342 7.36514 20.5 6.98361 20.5 6.58579H19.5C19.5 6.71839 19.4473 6.84557 19.3536 6.93934L20.0607 7.64645ZM15.5 12.4142C15.5 12.2816 15.5527 12.1544 15.6464 12.0607L14.9393 11.3536C14.658 11.6349 14.5 12.0164 14.5 12.4142H15.5ZM8.35355 12.0607C8.44731 12.1544 8.49999 12.2816 8.49999 12.4142H9.49999C9.49999 12.0164 9.34196 11.6349 9.06065 11.3535L8.35355 12.0607ZM3.5 6.58579C3.5 6.98361 3.65804 7.36514 3.93934 7.64645L4.64645 6.93934C4.55268 6.84557 4.5 6.71839 4.5 6.58579H3.5ZM19 4.5C19.2761 4.5 19.5 4.72386 19.5 5H20.5C20.5 4.17157 19.8284 3.5 19 3.5V4.5ZM5 3.5C4.17157 3.5 3.5 4.17157 3.5 5H4.5C4.5 4.72386 4.72386 4.5 5 4.5V3.5Z"
-                  fill="gray"
-                />
-              </svg>
-              {filter.m || filter.t ? filter.m + " " + filter.t : "Filter"}
-            </div>
-            <div
-              onClick={() => setSelfOpen(true)}
-              className="inline-flex cursor-pointer items-center justify-center rounded-md bg-meta-5 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-3 mr-1 h-3 fill-white"
-                viewBox="0 0 448 512"
-              >
-                <path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" />
-              </svg>
-              Self Deposit
-            </div>
-            <Link
-              href={"/accounts/income"}
-              className="inline-flex items-center justify-center rounded-md bg-meta-3 px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-3 mr-1 h-3 fill-white"
-                viewBox="0 0 448 512"
-              >
-                <path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" />
-              </svg>
-              Income
-            </Link>
-            <Link
-              href={"/accounts/expense"}
-              className="inline-flex items-center justify-center rounded-md bg-red px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-3 mr-1 h-3 fill-white"
-                viewBox="0 0 448 512"
-              >
-                <path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" />
-              </svg>
-              Expense
-            </Link>
-          </div>
-        </h4>
-
-        <div className="flex flex-col capitalize">
-          <div className={`grid grid-cols-3 rounded-sm bg-slate-200 dark:bg-meta-4 ${type ? 'sm:grid-cols-9' : 'sm:grid-cols-8'}`}>
-            <div className="p-2.5 xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                ID
-              </h5>
-            </div>
-            <div className="p-2.5 xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Client
-              </h5>
-            </div>
-            <div className="p-2.5 xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Particular
-              </h5>
-            </div>
-
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Method
-              </h5>
-            </div>
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Amount
-              </h5>
-            </div>
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Profit
-              </h5>
-            </div>
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Time
-              </h5>
-            </div>
-
-            {type && (
-              <div className="p-2.5 text-center xl:p-5">
-                <h5 className="text-sm font-medium uppercase xsm:text-base">
-                  Balance
-                </h5>
-              </div>
-            )}
-
-            <div className="hidden p-2.5 text-center sm:block xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Actions
-              </h5>
-            </div>
-          </div>
-          <div>
-            {isLoading ? (
-              <SkeletonList />
-            ) : (
-              recordsWithBalance?.map((record, key) => (
-                <div
-                  className={`grid grid-cols-3 ${type ? 'sm:grid-cols-9' : 'sm:grid-cols-8'} ${key % 2 !== 0 ? "bg-gray dark:bg-slate-800" : ""} ${key === recordsWithBalance.length - 1
-                    ? ""
-                    : "border-b border-stroke dark:border-strokedark"
-                    }`}
-                  key={key}
-                >
-                  <div className="flex justify-center flex-col gap-1 p-2.5 xl:p-5">
-                    <p className="hidden uppercase text-black dark:text-white sm:block">
-                      {(record?.suffix || "") + (record?.number || "")}
-                    </p>
-                    {record?.edited && (
-                      <p className="hidden uppercase text-red text-xs sm:block">
-                        Edited
-                      </p>
-                    )}
-                  </div>
-                  <Link
-                    href={`/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "accounts/transactions/self"}`}
-                    className="flex items-center gap-3 p-2.5 xl:p-5"
-                  >
-                    <p className="hidden capitalize text-black dark:text-white sm:block">
-                      {record?.client?.name}
-                    </p>
-                  </Link>
-
-                  <div className="hidden items-center p-2.5 sm:flex xl:p-5">
-                    <p className="text-meta-5">{record?.particular}</p>
-                  </div>
-                  <div className="flex items-center justify-center p-2.5 xl:p-5">
-                    {record?.method}
-                    {record?.status && (
-                      <span className="text-sm border bordr-meta-5 text-meta-5 rounded-md bg-opacity-10 px-1 ml-2">
-                        {record.status}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-center p-2.5 xl:p-5">
-                    <p
-                      className={clsx(
-                        record?.type === "expense"
-                          ? "text-red"
-                          : record.method === "liability"
-                            ? "text-meta-6"
-                            : "text-meta-3"
-                      )}
-                    >
-                      {record?.amount}
-                      <span className="text-xs"> AED</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-center p-2.5 xl:p-5">
-                    {record?.type === "expense" &&
-                      record?.serviceFee &&
-                      record?.serviceFee != 0 && (
-                        <div className="text-center">
-                          <p
-                            className={clsx(
-                              (record?.serviceFee || 0) > 0
-                                ? "bg-meta-3"
-                                : "bg-red",
-                              "ml-2 px-2 text-white dark:text-black rounded-md"
-                            )}
-                          >
-                            {" "}
-                            {record?.serviceFee}{" "}
-                            <span className="text-xs">AED</span>
-                          </p>
-                          <p>{+record.serviceFee + +record.amount}</p>
-                        </div>
-                      )}
-                  </div>
-                  <div className="flex items-center text-center justify-center p-2.5 xl:p-5">
-                    <p> {record.date}</p>
-                  </div>
-
-                  {type && (
-                    <div className="flex items-center text-center justify-center p-2.5 xl:p-5">
-                      <p className={clsx(
-                        (record.runningBalance || 0) >= 0 ? "text-meta-3" : "text-red"
-                      )}>
-                        {record.runningBalance?.toFixed(2)}
-                        <span className="text-xs"> AED</span>
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-center items-center">
-                    {!type && !id && (
-                      <Link
-                        href={`/accounts/transactions/${record?.client?.type !== "self" ? `${record?.client?.type}/${record?.client?.id}` : "self"}`}
-                        className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1"
-                      >
-                        <svg
-                          width="22"
-                          height="22"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M9.65811 19.7806L9.81622 20.255H9.81622L9.65811 19.7806ZM14.6581 18.114L14.8162 18.5883H14.8162L14.6581 18.114ZM19.7071 7.29289L20.0607 7.64645L19.7071 7.29289ZM15.2929 11.7071L14.9393 11.3536L15.2929 11.7071ZM5 4.5H19V3.5H5V4.5ZM4.5 6.58579V5H3.5V6.58579H4.5ZM9.06065 11.3535L4.64645 6.93934L3.93934 7.64645L8.35355 12.0607L9.06065 11.3535ZM8.49999 12.4142V19.3063H9.49999V12.4142H8.49999ZM8.49999 19.3063C8.49999 19.9888 9.16869 20.4708 9.81622 20.255L9.49999 19.3063V19.3063H8.49999ZM9.81622 20.255L14.8162 18.5883L14.5 17.6396L9.49999 19.3063L9.81622 20.255ZM14.8162 18.5883C15.2246 18.4522 15.5 18.0701 15.5 17.6396H14.5L14.8162 18.5883ZM15.5 17.6396V12.4142H14.5V17.6396H15.5ZM19.3536 6.93934L14.9393 11.3536L15.6464 12.0607L20.0607 7.64645L19.3536 6.93934ZM19.5 5V6.58579H20.5V5H19.5ZM20.0607 7.64645C20.342 7.36514 20.5 6.98361 20.5 6.58579H19.5C19.5 6.71839 19.4473 6.84557 19.3536 6.93934L20.0607 7.64645ZM15.5 12.4142C15.5 12.2816 15.5527 12.1544 15.6464 12.0607L14.9393 11.3536C14.658 11.6349 14.5 12.0164 14.5 12.4142H15.5ZM8.35355 12.0607C8.44731 12.1544 8.49999 12.2816 8.49999 12.4142H9.49999C9.49999 12.0164 9.34196 11.6349 9.06065 11.3535L8.35355 12.0607ZM3.5 6.58579C3.5 6.98361 3.65804 7.36514 3.93934 7.64645L4.64645 6.93934C4.55268 6.84557 4.5 6.71839 4.5 6.58579H3.5ZM19 4.5C19.2761 4.5 19.5 4.72386 19.5 5H20.5C20.5 4.17157 19.8284 3.5 19 3.5V4.5ZM5 3.5C4.17157 3.5 3.5 4.17157 3.5 5H4.5C4.5 4.72386 4.72386 4.5 5 4.5V3.5Z"
-                            fill="gray"
-                          />
-                        </svg>
-                      </Link>
-                    )}
-                    <button
-                      title="view transaction details"
-                      onClick={() => handleInfo(record)}
-                      className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1"
-                    >
-                      <svg
-                        width="22"
-                        height="22"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <circle cx="12" cy="12" r="9" stroke="gray" />
-                        <path
-                          d="M12.5 7.5C12.5 7.77614 12.2761 8 12 8C11.7239 8 11.5 7.77614 11.5 7.5C11.5 7.22386 11.7239 7 12 7C12.2761 7 12.5 7.22386 12.5 7.5Z"
-                          fill="gray"
-                        />
-                        <path d="M12 17V10" stroke="gray" />
-                      </svg>
-                    </button>
-                    <button
-                      title="delete transaction record"
-                      onClick={() => handleDelete(record?.id)}
-                      className="hover:bg-red rounded hover:bg-opacity-10 p-1"
-                    >
-                      <svg
-                        className="hover:text-primary"
-                        width="22"
-                        height="22"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M9.5 14.5L9.5 11.5"
-                          stroke="#FB5454"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M14.5 14.5L14.5 11.5"
-                          stroke="#FB5454"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z"
-                          stroke="#FB5454"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5"
-                          stroke="#FB5454"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="pagination-container flex justify-center items-center my-6">
-        <button
-          onClick={() => handlePageChange(pageNumber - 1)}
-          disabled={pageNumber === 0 || isLoading}
-          className={clsx(
-            "px-3 py-1 mr-2 rounded-md",
-            isLoading || pageNumber === 0
-              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-              : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
-          )}
-        >
-          Back
-        </button>
-        <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
-        <button
-          onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isLoading || !hasMore || !recordsWithBalance.length}
-          className={clsx(
-            "px-3 py-1 ml-2 rounded-md",
-            isLoading || !hasMore || !recordsWithBalance.length
-              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-              : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
-          )}
-        >
-          Next
-        </button>
       </div>
     </>
   );

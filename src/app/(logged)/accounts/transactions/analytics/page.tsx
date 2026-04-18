@@ -1,507 +1,644 @@
 "use client";
-import React, { useRef } from "react";
-import ChartOne from "@/components/Charts/ChartOne";
-import ChartTwo from "@/components/Charts/ChartTwo";
-import CardDataStats from "@/components/CardDataStats";
-import DefaultLayout from "@/components/Layouts/DefaultLayout";
+
+import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import axios from "axios";
-import { useState } from "react";
-import Link from "next/link";
-import ReactToPrint from "react-to-print";
-import ReportPage from "@/components/ReportPage";
-import { TAccountsData, TProfitsData } from "@/types/dashboard";
 import { useQuery } from "@tanstack/react-query";
-const baseData = {
-  y: "", m: ""
-}
-export default function AccountsDashboard() {
+import { ApexOptions } from "apexcharts";
+import { TAccountsData } from "@/types/dashboard";
+import {
+  FiActivity,
+  FiBarChart2,
+  FiCalendar,
+  FiChevronDown,
+  FiFilter,
+  FiPieChart,
+  FiRefreshCw,
+  FiTrendingDown,
+  FiTrendingUp,
+  FiUsers,
+} from "react-icons/fi";
+import clsx from "clsx";
+
+const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+
+const baseFilter = {
+  mode: "current" as "current" | "year" | "month" | "range",
+  m: "",
+  y: "",
+  from: "",
+  to: "",
+};
+
+const formatCurrency = (value: number) => `${(value || 0).toFixed(2)} AED`;
+
+const toTitleCase = (value: string) =>
+  value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+
+const currentMonthYearLabel = new Date().toLocaleString("en-US", {
+  month: "long",
+  year: "numeric",
+});
+const currentYear = new Date().getFullYear();
+const startYear = 2024;
+const yearOptions = Array.from(
+  { length: Math.max(currentYear - startYear + 1, 1) },
+  (_, index) => String(startYear + index),
+);
+
+const monthLabel = (m: string) => {
+  const map: Record<string, string> = {
+    "1": "January",
+    "2": "February",
+    "3": "March",
+    "4": "April",
+    "5": "May",
+    "6": "June",
+    "7": "July",
+    "8": "August",
+    "9": "September",
+    "10": "October",
+    "11": "November",
+    "12": "December",
+  };
+  return map[m] ?? "Unknown";
+};
+
+const queryFromFilter = (filter: typeof baseFilter) => {
+  if (filter.mode === "range") {
+    if (filter.from && filter.to) return `?from=${filter.from}&to=${filter.to}`;
+    if (filter.from) return `?from=${filter.from}`;
+    if (filter.to) return `?to=${filter.to}`;
+  }
+
+  if (filter.mode === "year" && filter.y) {
+    return `?y=${filter.y}`;
+  }
+
+  if (filter.mode === "month") {
+    if (filter.m && filter.y) return `?m=${filter.m}&y=${filter.y}`;
+    if (filter.m) return `?m=${filter.m}`;
+    if (filter.y) return `?y=${filter.y}`;
+  }
+
+  return "";
+};
+
+export default function AccountsAnalyticsPage() {
   const [isFilterOpen, setFilterOpen] = useState(false);
-  const [isPrint, setIsPrint] = useState(false);
-  const [filterDummy, setFilterDummy] = useState({ ...baseData });
-  const [filter, setFilter] = useState({ ...baseData });
-  const componentRef = useRef(null)
+  const [draft, setDraft] = useState({ ...baseFilter });
+  const [filter, setFilter] = useState({ ...baseFilter });
 
-  const generateQuery = (filter: { m: string; y: string }) => {
-    let query = "";
+  const query = useMemo(() => queryFromFilter(filter), [filter]);
 
-    if (filter.m !== "current" && filter.m && filter.y) {
-      query = `?m=${filter.m}&y=${filter.y}`;
-    } else if (!filter.m && filter.y) {
-      query = `?y=${filter.y}`;
-    } else if (filter.m && filter.m !== "current") {
-      query = `?m=${filter.m}`;
-    } else if (filter.m === "current") {
-      query = `?m=current`;
+  const { data: accountsData, isLoading } = useQuery<TAccountsData>({
+    queryKey: ["accounts-analytics-immersive", query],
+    queryFn: async () => {
+      const { data } = await axios.get(`/api/payment/accounts${query}`);
+      return data;
+    },
+  });
+
+  const filterDisplay = useMemo(() => {
+    if (filter.mode === "range" && filter.from && filter.to) {
+      return `${filter.from} to ${filter.to}`;
     }
-    return query;
+    if (filter.mode === "year" && filter.y) {
+      return `Year ${filter.y}`;
+    }
+    if (filter.mode === "month") {
+      if (filter.m && filter.y) return `${monthLabel(filter.m)} ${filter.y}`;
+      if (filter.m) return `${monthLabel(filter.m)} (current year)`;
+      if (filter.y) return `Year ${filter.y}`;
+    }
+    return currentMonthYearLabel;
+  }, [filter]);
+
+  const rangeInvalid =
+    draft.mode === "range" &&
+    ((!draft.from && !draft.to) || (draft.from && draft.to && draft.from > draft.to));
+  const yearInvalid = draft.mode === "year" && !draft.y.trim();
+  const monthInvalid = draft.mode === "month" && !draft.m && !draft.y.trim();
+  const disableApply = rangeInvalid || yearInvalid || monthInvalid;
+
+  const applyFilter = () => {
+    setFilter({ ...draft });
+    setFilterOpen(false);
   };
 
-  const { data: accountsData, isLoading: accountsLoading } = useQuery<TAccountsData>({
-    queryKey: ["accounts", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/payment/accounts' + generateQuery(filter))
-      return data
-    }
-  })
-  const { data: profitsData, isLoading: profitsLoading } = useQuery<TProfitsData>({
-    queryKey: ["profits", generateQuery(filter)], queryFn: async () => {
-      const { data } = await axios.get('/api/payment/profits' + generateQuery(filter))
-      return data
-    }
-  })
+  const resetCurrentMonth = () => {
+    setFilter({ ...baseFilter });
+    setDraft({ ...baseFilter });
+    setFilterOpen(false);
+  };
 
+  const methodRows = useMemo(() => {
+    const rows = accountsData?.methodBreakdown || [];
+    return rows.map((row) => ({
+      key: row.method,
+      method: toTitleCase(row.method),
+      income: row.income,
+      expense: row.expense,
+      balance: row.balance,
+    }));
+  }, [accountsData?.methodBreakdown]);
 
-  const handleFilter = () => {
-    setFilter(filterDummy)
-    setFilterOpen(false)
-  }
-  const handleCancelFilter = () => {
-    setFilterDummy({ ...filter })
-    setFilterOpen(false)
-  }
-  const handleCurrentFilter = () => {
-    setFilter({ m: "current", y: "" })
-    setFilterDummy({ m: "current", y: "" })
-    setFilterOpen(false)
-  }
-  const handleAllFilter = () => {
-    setFilter({ m: "", y: "" })
-    setFilterDummy({ m: "", y: "" })
-    setFilterOpen(false)
+  const incomeAmount = accountsData?.totalIncomeAmount ?? 0;
+  const expenseAmount = accountsData?.totalExpenseAmount ?? 0;
+  const netBalance = accountsData?.totalBalance ?? 0;
+  const netProfit = accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0;
+  const grossProfit = accountsData?.grossProfit ?? accountsData?.profit ?? 0;
+
+  const ratioOptions: ApexOptions = {
+    chart: { type: "donut", toolbar: { show: false } },
+    labels: ["Income", "Expense"],
+    colors: ["#10B981", "#F43F5E"],
+    legend: { position: "bottom", fontSize: "12px" },
+    dataLabels: { enabled: false },
+    stroke: { colors: ["#ffffff"], width: 2 },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "70%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: "Net",
+              formatter: () => formatCurrency(netBalance),
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const methodBarOptions: ApexOptions = {
+    chart: { type: "bar", toolbar: { show: false }, stacked: false },
+    colors: ["#10B981", "#F43F5E"],
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        borderRadius: 6,
+        columnWidth: "48%",
+      },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: methodRows.map((item) => item.method),
+      labels: { rotate: -20 },
+    },
+    yaxis: {
+      labels: {
+        formatter: (value) => `${Math.round(value)}`,
+      },
+    },
+    legend: { position: "top", horizontalAlign: "left" },
+    grid: { borderColor: "#E2E8F0" },
+  };
+
+  const dailyTrend = accountsData?.dailyTrend || [];
+  const dailyTrendOptions: ApexOptions = {
+    chart: { type: "area", toolbar: { show: false }, zoom: { enabled: false } },
+    colors: ["#10B981", "#F43F5E"],
+    stroke: { curve: "smooth", width: 2 },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: dailyTrend.map((item) => item.date.slice(5)),
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.35,
+        opacityTo: 0.05,
+      },
+    },
+    legend: { position: "top", horizontalAlign: "left" },
+    grid: { borderColor: "#E2E8F0" },
+  };
+
+  const statusRows = accountsData?.statusBreakdown || [];
+  const statusOptions: ApexOptions = {
+    chart: { type: "bar", stacked: true, toolbar: { show: false } },
+    colors: ["#0EA5E9", "#F97316"],
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+      },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: statusRows.map((item) => toTitleCase(item.status)),
+    },
+    legend: { position: "top", horizontalAlign: "left" },
+    grid: { borderColor: "#E2E8F0" },
+  };
+
+  const topEntities = accountsData?.topEntities || [];
+  const topEntityOptions: ApexOptions = {
+    chart: { type: "bar", toolbar: { show: false } },
+    colors: ["#6366F1"],
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 5,
+      },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: topEntities.map((item) => item.label),
+    },
+    grid: { borderColor: "#E2E8F0" },
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+      </div>
+    );
   }
 
   return (
-    <DefaultLayout>
-      {accountsLoading && profitsLoading ? (
-        <div className="flex justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-        </div>
-      ) : isPrint ?
-        <>
-          <button onClick={() => setIsPrint(false)} className="items-center justify-center rounded-md border-red px-4 py-3 mb-3 hover:bg-red hover:bg-opacity-10 text-center font-medium text-red w-full transition-colors duration-300 cursor-pointer border">
-            Cancel
-          </button>
-          <ReactToPrint trigger={() =>
-            <p className="items-center justify-center rounded-t-md bg-primary px-4 py-3 text-center font-medium border-primary  text-white transition-colors duration-300 cursor-pointer border hover:bg-opacity-90">
-              Download / Print
+    <div className="space-y-6">
+      <section className="relative overflow-hidden rounded-3xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-5 shadow-sm dark:border-sky-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-sky-300/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/60 bg-sky-100/80 px-3 py-1 text-xs font-black uppercase tracking-wider text-sky-700 dark:border-sky-700/40 dark:bg-sky-900/30 dark:text-sky-300">
+              <FiBarChart2 />
+              Immersive Finance Analytics
             </p>
-          } content={() => componentRef.current} />
-          <div className="relative" ref={componentRef}>
-            <img src="/images/invoice.jpg" alt="Invoice Bg" />
-            <div className="absolute top-0 text-[#000000] mt-[35%] uppercase px-20">
-              <h1 className="text-center text-2xl font-bold">{filter.m && filter.y ? filter.m + " / " + filter.y : filter.m || filter.y ? filter.m + filter.y : "All Time"} Report</h1>
-              <ReportPage accountsData={accountsData} profitsData={profitsData} />
-            </div>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+              Transactions Intelligence Hub
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600 dark:text-slate-400">
+              Live visual analytics connected to payment APIs with trend, ratio, method, status, and counterparty insights.
+            </p>
           </div>
-        </>
-        :
-        <>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-title-md2 capitalize font-semibold text-black dark:text-white">
-              Accounts Report</h2>
-            <div>
-              <button type="button" onClick={() => setIsPrint(true)} className=" text-primary mr-5 hover:text-meta-10">
-                Export Report
+
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="inline-flex min-w-[250px] items-center justify-between gap-3 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FiFilter />
+              {filterDisplay}
+            </span>
+            <FiChevronDown />
+          </button>
+        </div>
+      </section>
+
+      {isFilterOpen && (
+        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-8">
+            <h3 className="mb-6 text-xl font-black text-slate-900 dark:text-white">Analytics Filter</h3>
+
+            <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-4">
+              <button
+                onClick={() => setDraft({ ...draft, mode: "current", m: "", y: "", from: "", to: "" })}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                  draft.mode === "current"
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }`}
+              >
+                {currentMonthYearLabel}
               </button>
-              <button onClick={() => setFilterOpen(true)} className=" inline-flex gap-3 border-primary border font-semibold text-white bg-primary transition-colors duration-300 rounded hover:bg-opacity-90 p-3 capitalize">
-
-                {filter.m && filter.y ? filter.m + " / " + filter.y : filter.m || filter.y ? filter.m + filter.y : "All Time"}
-
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 12L5 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M19 20L19 18" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M5 20L5 16" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M19 12L19 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M12 7L12 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <path d="M12 20L12 12" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="5" cy="14" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="9" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="19" cy="15" r="2" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+              <button
+                onClick={() => setDraft({ ...draft, mode: "year", m: "", from: "", to: "" })}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                  draft.mode === "year"
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }`}
+              >
+                Year
+              </button>
+              <button
+                onClick={() => setDraft({ ...draft, mode: "month", from: "", to: "" })}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                  draft.mode === "month"
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }`}
+              >
+                Month / Year
+              </button>
+              <button
+                onClick={() => setDraft({ ...draft, mode: "range", m: "", y: "" })}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+                  draft.mode === "range"
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                }`}
+              >
+                Custom Date Range
               </button>
             </div>
-          </div>
 
-          {isFilterOpen && <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-999">
-            <div className="bg-white dark:bg-black p-5 rounded-lg shadow-lg">
-              <p className='text-center font-bold text-xl my-2 text-primary'>Filter Accounts Data</p>
-              <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Month</label>
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
-
-                    <select
-                      title="Select Month"
-                      value={filterDummy.m}
-                      name="from"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, m: e.target.value })
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-
-                    >
-                      <option value="" className="text-body dark:text-bodydark">
-                        None
-                      </option>
-                      <option value="current" className="text-body dark:text-bodydark">
-                        This Month
-                      </option>
-                      <option value="1" className="text-body dark:text-bodydark">
-                        Jan
-                      </option>
-                      <option value="2" className="text-body dark:text-bodydark">
-                        Feb                      </option>
-                      <option value="3" className="text-body dark:text-bodydark">
-                        Mar                      </option>
-                      <option value="4" className="text-body dark:text-bodydark">
-                        Apr                      </option>
-                      <option value="5" className="text-body dark:text-bodydark">
-                        May                      </option>
-                      <option value="6" className="text-body dark:text-bodydark">
-                        Jun                      </option>
-                      <option value="7" className="text-body dark:text-bodydark">
-                        Jul                      </option>
-                      <option value="8" className="text-body dark:text-bodydark">
-                        Aug                      </option>
-                      <option value="9" className="text-body dark:text-bodydark">
-                        Sep                      </option>
-                      <option value="10" className="text-body dark:text-bodydark">
-                        Oct                      </option>
-                      <option value="11" className="text-body dark:text-bodydark">
-                        Nov                      </option>
-                      <option value="12" className="text-body dark:text-bodydark">
-                        Dec                      </option>
-                    </select>
-
-                    <span className="absolute right-4 top-1/2 z-30 -translate-y-1/2">
-                      <svg className="fill-current"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <g opacity="0.8">
-                          <path
-                            fillRule="evenodd"
-                            clipRule="evenodd"
-                            d="M5.29289 8.29289C5.68342 7.90237 6.31658 7.90237 6.70711 8.29289L12 13.5858L17.2929 8.29289C17.6834 7.90237 18.3166 7.90237 18.7071 8.29289C19.0976 8.68342 19.0976 9.31658 18.7071 9.70711L12.7071 15.7071C12.3166 16.0976 11.6834 16.0976 11.2929 15.7071L5.29289 9.70711C4.90237 9.31658 4.90237 8.68342 5.29289 8.29289Z"
-                          ></path>
-                        </g>
-                      </svg>
-                    </span>
-
-                  </div>
-                </div>
-
-                <div className="w-full xl:w-1/2">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">Year</label>
-
-                  <div className="relative z-20 bg-transparent dark:bg-form-input">
-                    <input type="text"
-                      placeholder="Enter Year"
-                      value={filterDummy.y}
-                      name="y"
-                      onChange={(e) => {
-                        setFilterDummy({ ...filterDummy, y: e.target.value })
-                      }}
-                      className="relative z-20 w-full appearance-none rounded border border-stroke bg-transparent px-5 py-3 outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary"
-                    />
-
-                  </div>
-                </div>
-
+            {draft.mode === "year" && (
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Year</label>
+                <select
+                  value={draft.y}
+                  onChange={(e) => setDraft({ ...draft, y: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Select year</option>
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
 
-              <div className="flex justify-between">
-                <div className="inline-flex items-center gap-2">
-                  <button type="button" onClick={handleCurrentFilter} className="text-primary hover:text-meta-10">
-                    This Month
-                  </button>  | <button type="button" onClick={handleAllFilter} className=" text-primary hover:text-meta-10">
-                    All Time
-                  </button>
+            {draft.mode === "month" && (
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Month</label>
+                  <select
+                    value={draft.m}
+                    onChange={(e) => setDraft({ ...draft, m: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Current Month</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
                 </div>
                 <div>
-                  <button type="button" onClick={handleCancelFilter} className="mr-2 px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">
-                    Cancel
-                  </button>
-                  <button type="button" onClick={handleFilter} className="px-4 py-2 bg-primary hover:bg-opacity-90 text-white rounded-lg">
-                    Apply
-                  </button>
+                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Year</label>
+                  <select
+                    value={draft.y}
+                    onChange={(e) => setDraft({ ...draft, y: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Current year</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+            )}
+
+            {draft.mode === "range" && (
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">From</label>
+                  <input
+                    type="date"
+                    value={draft.from}
+                    onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">To</label>
+                  <input
+                    type="date"
+                    value={draft.to}
+                    onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={resetCurrentMonth}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                <FiRefreshCw />
+                Reset to {currentMonthYearLabel}
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFilterOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-slate-100 px-5 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={applyFilter}
+                  disabled={disableApply}
+                  className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400"
+                >
+                  Apply
+                </button>
               </div>
             </div>
-          </div>}
+          </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard label="Total Income" value={formatCurrency(incomeAmount)} tone="emerald" icon={<FiTrendingUp />} />
+        <MetricCard label="Total Expense" value={formatCurrency(expenseAmount)} tone="rose" icon={<FiTrendingDown />} />
+        <MetricCard label="Net Balance" value={formatCurrency(netBalance)} tone="sky" icon={<FiActivity />} />
+        <MetricCard label="Gross Profit" value={formatCurrency(grossProfit)} tone="violet" icon={<FiTrendingUp />} />
+        <MetricCard label="Net Profit" value={formatCurrency(netProfit)} tone="amber" icon={<FiPieChart />} />
+      </section>
 
-            <CardDataStats
-              title="Total Transactions"
-              total={`${(accountsData?.expenseCount ?? 0) + (accountsData?.incomeCount ?? 0)}`}
-            />
-            <CardDataStats
-              title="Net Profit"
-              total={`${(accountsData?.netProfit ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Total Credit"
-              total={`${((profitsData?.totalToGet ?? 0) * -1).toFixed(2)} AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Total Debit"
-              total={`${(profitsData?.totalToGive ?? 0).toFixed(2)} AED`}
-              color="red"
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-1">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Income vs Expense Ratio</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Visual split of current filtered amounts.</p>
+          <div className="mt-4">
+            <ReactApexChart
+              type="donut"
+              height={320}
+              options={ratioOptions}
+              series={[incomeAmount, expenseAmount]}
             />
           </div>
+        </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Total Balance"
-              total={`${(accountsData?.totalBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Cash Balance"
-              total={`${(accountsData?.cashBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Balance"
-              total={`${(accountsData?.bankBalance ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Balance"
-              total={`${(accountsData?.tasdeedBalance ?? 0).toFixed(2)} AED`}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Daily Trend</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Income and expense movement by date.</p>
+          <div className="mt-4">
+            <ReactApexChart
+              type="area"
+              height={320}
+              options={dailyTrendOptions}
+              series={[
+                { name: "Income", data: dailyTrend.map((item) => item.income) },
+                { name: "Expense", data: dailyTrend.map((item) => item.expense) },
+              ]}
             />
           </div>
+        </div>
+      </section>
 
-          <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-            <ChartOne
-              months={accountsData?.monthNames ?? []}
-              profit={accountsData?.last12MonthsProfit ?? []}
-              expense={accountsData?.last12MonthsExpenses ?? []}
-            />
-            <ChartTwo
-              dates={accountsData?.daysOfWeekInitials ?? []}
-              profit={accountsData?.profitLast7DaysTotal ?? []}
-              expense={accountsData?.expensesLast7DaysTotal ?? []}
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Payment Method Performance</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Method-level income and expense comparison.</p>
+          <div className="mt-4">
+            <ReactApexChart
+              type="bar"
+              height={330}
+              options={methodBarOptions}
+              series={[
+                { name: "Income", data: methodRows.map((item) => item.income) },
+                { name: "Expense", data: methodRows.map((item) => item.expense) },
+              ]}
             />
           </div>
+        </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Office Expense"
-              total={`${accountsData?.zaadExpenseTotal.toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Total Profit"
-              total={`${(accountsData?.profit ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Profit This Month"
-              total={`${accountsData?.last12MonthsProfit[11].toFixed(2)
-                } AED`}
-            />
-            <CardDataStats
-              title="Today Profit"
-              total={`${accountsData?.profitLast7DaysTotal[6].toFixed(2)
-                } AED`}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Status Distribution</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Top statuses with income/expense stack.</p>
+          <div className="mt-4">
+            <ReactApexChart
+              type="bar"
+              height={330}
+              options={statusOptions}
+              series={[
+                { name: "Income", data: statusRows.map((item) => item.income) },
+                { name: "Expense", data: statusRows.map((item) => item.expense) },
+              ]}
             />
           </div>
+        </div>
+      </section>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Cash Income"
-              total={`${(accountsData?.CashIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Income"
-              total={`${(accountsData?.BankIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Income"
-              total={`${(accountsData?.TasdeedIncome ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Swiper Income"
-              total={`${(accountsData?.SwiperIncome ?? 0).toFixed(2)} AED`}
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Top Counterparties by Volume</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Most active entities in selected period.</p>
+          <div className="mt-4">
+            <ReactApexChart
+              type="bar"
+              height={340}
+              options={topEntityOptions}
+              series={[
+                { name: "Volume", data: topEntities.map((item) => item.volume) },
+              ]}
             />
           </div>
+        </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Cash Expense"
-              total={`${(accountsData?.CashExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Bank Expense"
-              total={`${(accountsData?.BankExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Tasdeed Expense"
-              total={`${(accountsData?.TasdeedExpense ?? 0).toFixed(2)} AED`}
-            />
-            <CardDataStats
-              title="Swiper Expense"
-              total={`${(accountsData?.SwiperExpense ?? 0).toFixed(2)} AED`}
-            />
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Quick Insights</h3>
+          <div className="mt-4 space-y-3 text-sm">
+            <InsightRow label="Income Records" value={String(accountsData?.incomeCount ?? 0)} icon={<FiTrendingUp />} tone="emerald" />
+            <InsightRow label="Expense Records" value={String(accountsData?.expenseCount ?? 0)} icon={<FiTrendingDown />} tone="rose" />
+            <InsightRow label="Tracked Statuses" value={String(statusRows.length)} icon={<FiActivity />} tone="sky" />
+            <InsightRow label="Top Entities" value={String(topEntities.length)} icon={<FiUsers />} tone="violet" />
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
-            <CardDataStats
-              title="Companies Credit"
-              total={`${((profitsData?.totalToGetCompanies ?? 0) * -1).toFixed(2)}
-                AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Companies Debit"
-              total={`${(profitsData?.totalToGiveCompanies ?? 0).toFixed(2)} AED`}
-              color="red"
-            />
-            <CardDataStats
-              title="Individual Credit"
-              total={`${((profitsData?.totalToGetEmployees ?? 0) * -1).toFixed(2)}
-                AED`}
-              color="meta-3"
-            />
-            <CardDataStats
-              title="Individual Debit"
-              total={`${(profitsData?.totalToGiveEmployees ?? 0).toFixed(2)} AED`}
-              color="red"
-            />
-          </div>
-
-          <div className="mt-4 flex flex-col gap-4">
-            {(profitsData?.over0balanceCompanies ?? []).length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Company Debit List
-                </h4>
-
-                <div>
-                  {profitsData?.over0balanceCompanies.map((data, key) => (
-                    <Link
-                      href={`/company/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-                      key={key}
-                    >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-red">
-                            {data.balance.toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Method Snapshot</p>
+            <div className="mt-2 space-y-2">
+              {methodRows.slice(0, 4).map((row) => (
+                <div key={row.key} className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{row.method}</span>
+                  <span
+                    className={clsx(
+                      "rounded-full px-2 py-0.5 font-bold",
+                      row.balance >= 0
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+                    )}
+                  >
+                    {formatCurrency(row.balance)}
+                  </span>
                 </div>
-              </div>
-            )}
-            {profitsData?.under0balanceCompanies?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Company Credit List
-                </h4>
-
-                <div>
-                  {profitsData?.under0balanceCompanies?.map((data, key) => (
-                    <Link
-                      href={`/company/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-                      key={key}
-                    >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-meta-3">
-                            {(data.balance * -1).toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-            {profitsData?.over0balanceEmployees?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Individual Debit List
-                </h4>
-
-                <div>
-                  {(profitsData?.over0balanceEmployees ?? []).map((data, key) => (
-                    <Link
-                      href={`/employee/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-                      key={key}
-                    >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-red"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-red">
-                            {data.balance.toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-            {profitsData?.under0balanceEmployees?.length !== 0 && (
-              <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-                <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-                  Individual Credit List
-                </h4>
-
-                <div>
-                  {(profitsData?.under0balanceEmployees ?? []).map((data, key) => (
-                    <Link
-                      href={`/employee/${data.id}`}
-                      className="flex capitalize items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-                      key={key}
-                    >
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-meta-3"></div>
-
-                      <div className="flex flex-1 items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-black dark:text-white">
-                            {data.name}
-                          </h5>
-                        </div>
-                        <div>
-                          <h5 className="font-medium text-meta-3">
-                            {(data.balance * -1).toFixed(2)} AED
-                          </h5>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </>
-      }
-    </DefaultLayout>
-  )
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  tone,
+  icon,
+}: {
+  label: string;
+  value: string;
+  tone: "emerald" | "rose" | "sky" | "violet" | "amber";
+  icon: React.ReactNode;
+}) {
+  const toneMap: Record<string, string> = {
+    emerald: "border-emerald-200/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-950/20 dark:text-emerald-300",
+    rose: "border-rose-200/70 bg-rose-50/70 text-rose-700 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-rose-300",
+    sky: "border-sky-200/70 bg-sky-50/70 text-sky-700 dark:border-sky-900/30 dark:bg-sky-950/20 dark:text-sky-300",
+    violet: "border-violet-200/70 bg-violet-50/70 text-violet-700 dark:border-violet-900/30 dark:bg-violet-950/20 dark:text-violet-300",
+    amber: "border-amber-200/70 bg-amber-50/70 text-amber-700 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300",
+  };
+
+  return (
+    <div className={clsx("rounded-2xl border p-4", toneMap[tone])}>
+      <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em]">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function InsightRow({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: "emerald" | "rose" | "sky" | "violet";
+}) {
+  const toneMap: Record<string, string> = {
+    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    sky: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+    violet: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  };
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900/70">
+      <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+        <span className={clsx("inline-flex h-6 w-6 items-center justify-center rounded-lg", toneMap[tone])}>
+          {icon}
+        </span>
+        {label}
+      </p>
+      <p className="text-sm font-black text-slate-900 dark:text-slate-100">{value}</p>
+    </div>
+  );
 }

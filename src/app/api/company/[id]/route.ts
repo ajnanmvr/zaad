@@ -1,37 +1,74 @@
 import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
-import Company from "@/models/companies";
 import { TCompanyData } from "@/types/types";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
+import {
+  getCompanyEntityById,
+  softDeleteCompanyEntity,
+  splitEntityPayload,
+  updateCompanyEntity,
+} from "@/services/entityService";
+import {
+  listEntityDocuments,
+  replaceEntityDocuments,
+} from "@/services/entityDocumentService";
+import {
+  listEntityCredentials,
+  replaceEntityCredentials,
+} from "@/services/entityCredentialService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await isAuthenticated(request);
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
 
-  const { id } = params;
-  const reqBody = await request.json();
-  await Company.findByIdAndUpdate(id, reqBody);
-  return Response.json(
-    { message: "data updated successfully" },
-    { status: 201 }
-  );
+    const { id } = params;
+    const reqBody = await request.json();
+    const { entityData, documents, credentials } = splitEntityPayload(reqBody);
+    await updateCompanyEntity(id, entityData);
+
+    if (documents) {
+      await replaceEntityDocuments(id, documents);
+    }
+    if (credentials) {
+      await replaceEntityCredentials(id, credentials);
+    }
+
+    return Response.json(
+      { message: "data updated successfully" },
+      { status: 201 }
+    );
+  } catch (error) {
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error updating company data") },
+      { status: getServiceErrorStatus(error) }
+    );
+  }
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await isAuthenticated(request);
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
 
-  const { id } = params;
-  await Company.findByIdAndUpdate(id, { published: false });
-  return Response.json({ message: "data deleted" }, { status: 200 });
+    const { id } = params;
+    await softDeleteCompanyEntity(id);
+    return Response.json({ message: "data deleted" }, { status: 200 });
+  } catch (error) {
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error deleting company data") },
+      { status: getServiceErrorStatus(error) }
+    );
+  }
 }
 
 export async function GET(
@@ -40,20 +77,29 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
-    const company: TCompanyData | null = await Company.findById(params.id);
+    const company: TCompanyData | null = await getCompanyEntityById(params.id);
+    const [documents, credentials] = await Promise.all([
+      listEntityDocuments(params.id),
+      listEntityCredentials(params.id),
+    ]);
 
     if (!company) {
       return Response.json({ message: "Company not found" }, { status: 404 });
     }
 
-    const modifiedDocuments = company.documents.map(
-      ({ _id, name, issueDate, expiryDate }) => ({
+    const modifiedDocuments = documents.map(
+      ({ _id, documentTemplate, name, issueDate, expiryDate, notes, archived, archiveNotes, archivedAt }) => ({
         _id,
+        documentTemplate,
         name,
         issueDate,
         expiryDate,
+        notes,
+        archived,
+        archiveNotes,
+        archivedAt,
         status: calculateStatus(expiryDate),
       })
     );
@@ -66,6 +112,7 @@ export async function GET(
     const responseData = {
       id: company._id,
       name: company.name,
+      color: company.color,
       licenseNo: company.licenseNo,
       companyType: company.companyType,
       emirates: company.emirates,
@@ -75,15 +122,16 @@ export async function GET(
       transactionNo: company.transactionNo,
       isMainland: company.isMainland,
       remarks: company.remarks,
-      password: company.password,
+      credentials,
+      password: credentials,
       documents: modifiedDocuments,
     };
 
     return Response.json({ data: responseData }, { status: 200 });
   } catch (error) {
     return Response.json(
-      { message: "Error fetching company data", error },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error fetching company data") },
+      { status: getServiceErrorStatus(error) }
     );
   }
 }

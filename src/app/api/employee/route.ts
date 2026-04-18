@@ -1,21 +1,43 @@
 import connect from "@/db/mongo";
-import { TEmployeeData, TEmployeeList } from "@/types/types";
-import Employee from "@/models/employees";
-import calculateStatus from "@/utils/calculateStatus";
-import processDocuments from "@/helpers/processDocuments";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
+import {
+  createEmployeeOrIndividualEntity,
+  listEmployeeEntities,
+  splitEntityPayload,
+} from "@/services/entityService";
+import { replaceEntityDocuments } from "@/services/entityDocumentService";
+import { replaceEntityCredentials } from "@/services/entityCredentialService";
+import { PAGINATION, parsePaginationParams } from "@/config/pagination";
+
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.write");
 
     const reqBody = await request.json();
-    console.log(reqBody);
-    const data = await Employee.create(reqBody);
+    const { entityData, documents, credentials } = splitEntityPayload(reqBody);
+
+    const data = await createEmployeeOrIndividualEntity(
+      entityData,
+      reqBody?.entityType
+    );
+
+    if (documents) {
+      await replaceEntityDocuments(data._id.toString(), documents);
+    }
+    if (credentials) {
+      await replaceEntityCredentials(data._id.toString(), credentials);
+    }
 
     return Response.json(
-      { message: "Created new employee", data },
+      {
+        message:
+          reqBody?.entityType === "individual"
+            ? "Created new individual"
+            : "Created new employee",
+        data,
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -26,38 +48,15 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
-    const employees: TEmployeeData[] = await Employee.find({
-      published: true,
-    })
-      .select("name company documents")
-      .populate("company");
-
-    const data: TEmployeeList[] = [];
-
-    employees.forEach((employee) => {
-      const { expiryDate, docsCount } = processDocuments(employee.documents);
-      const status = calculateStatus(expiryDate);
-      data.push({
-        id: employee._id,
-        name: employee.name,
-        company: employee.company,
-        expiryDate,
-        docs: docsCount,
-        status,
-      });
-    });
-
-    data.sort((a, b) =>
-      a.expiryDate === "---"
-        ? 1
-        : b.expiryDate === "---"
-          ? -1
-          : new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime()
+    const { page, limit } = parsePaginationParams(
+      request.nextUrl.searchParams,
+      PAGINATION.LIMITS.ENTITY_LIST
     );
+    const response = await listEmployeeEntities(page, limit);
 
-    return Response.json({ count: employees.length, data }, { status: 200 });
+    return Response.json(response, { status: 200 });
   } catch (error) {
     console.error("Error fetching employees:", error);
     return Response.json(

@@ -1,15 +1,36 @@
 import UserActivity from "@/models/userActivity";
 import { NextRequest } from "next/server";
+import { PAGINATION } from "@/config/pagination";
 
 export interface LogUserActivityOptions {
     targetUserId: string;
     performedById: string;
-    action: "create" | "update" | "delete" | "password_change" | "role_change" | "reactivate";
+    action:
+        | "create"
+        | "update"
+        | "delete"
+        | "password_change"
+        | "role_change"
+        | "reactivate"
+        | "login"
+        | "logout"
+        | "logout_all"
+        | "token_refresh"
+        | "session_revoke"
+        | "auth_denied";
     details?: Record<string, any>;
     previousValues?: Record<string, any>;
     newValues?: Record<string, any>;
     request?: NextRequest;
 }
+
+const AUTH_ACTIVITY_ACTIONS_TO_SKIP = new Set([
+    "login",
+    "logout",
+    "token_refresh",
+    "session_revoke",
+    "auth_denied",
+]);
 
 export async function logUserActivity(options: LogUserActivityOptions) {
     try {
@@ -22,6 +43,10 @@ export async function logUserActivity(options: LogUserActivityOptions) {
             newValues = {},
             request
         } = options;
+
+        if (AUTH_ACTIVITY_ACTIONS_TO_SKIP.has(action)) {
+            return;
+        }
 
         let ipAddress = "";
         let userAgent = "";
@@ -56,7 +81,7 @@ export async function logUserActivity(options: LogUserActivityOptions) {
 export async function getUserActivityHistory(
     userId: string,
     page: number = 0,
-    limit: number = 10
+    limit: number = PAGINATION.LIMITS.USER_ACTIVITY
 ) {
     try {
         const skip = page * limit;

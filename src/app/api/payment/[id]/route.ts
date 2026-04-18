@@ -1,17 +1,23 @@
-import Records from "@/models/records";
 import connect from "@/db/mongo";
-import { isPartner } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
+import {
+  deletePaymentRecord,
+  getPaymentRecordById,
+  isAdminRole,
+  recoverPaymentRecord,
+  updatePaymentRecord,
+} from "@/services/paymentService";
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isPartner(request);
+  const principal = await requirePermission(request, "payments.write");
   const { id } = params;
-  await Records.findByIdAndUpdate(id, { published: false });
-  return Response.json({ message: "data deleted" }, { status: 200 });
+  const response = await deletePaymentRecord(id, principal);
+  return Response.json(response.body, { status: response.status });
 }
 
 export async function GET(
@@ -19,10 +25,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isPartner(request);
+  await requirePermission(request, "payments.read");
   try {
     const { id } = params;
-    const data = await Records.findById(id);
+    const data = await getPaymentRecordById(id);
     return Response.json(data, { status: 200 });
   } catch (error) {
     return Response.json(error, { status: 401 });
@@ -33,17 +39,39 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await connect();
-  await isPartner(request);
-  const { id } = params;
   try {
+    await connect();
+    const principal = await requirePermission(request, "payments.write");
+    const { id } = params;
     const reqBody = await request.json();
-    const data = await Records.findByIdAndUpdate(id, {
-      ...reqBody,
-      edited: true,
-    });
-    return Response.json({ message: "data updated", data }, { status: 200 });
-  } catch (error) {
-    return Response.json(error, { status: 401 });
+    const response = await updatePaymentRecord(id, reqBody, principal);
+    return Response.json(response.body, { status: response.status });
+  } catch (error: any) {
+    return Response.json(
+      { error: error?.message || "Failed to update payment record" },
+      { status: error?.status || 500 }
+    );
   }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  await connect();
+  const principal = await requirePermission(request, "payments.write");
+
+  if (!isAdminRole(principal.role)) {
+    return Response.json({ error: "Admin role required" }, { status: 403 });
+  }
+
+  const { id } = params;
+  const reqBody = await request.json();
+
+  if (reqBody?.action !== "recover") {
+    return Response.json({ error: "Unsupported action" }, { status: 400 });
+  }
+
+  const response = await recoverPaymentRecord(id, principal);
+  return Response.json(response.body, { status: response.status });
 }

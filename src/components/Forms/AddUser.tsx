@@ -5,6 +5,9 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
+import { FiEye, FiEyeOff, FiUserPlus, FiUserCheck, FiLock, FiUser, FiHash } from "react-icons/fi";
+import clsx from "clsx";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 interface AddUserProps {
     editUserId?: string;
@@ -15,25 +18,66 @@ interface AddUserProps {
     };
 }
 
+type RoleOption = {
+    name: string;
+    permissions: string[];
+};
+
 const AddUser = ({ editUserId, initialData }: AddUserProps) => {
     const router = useRouter();
     const { user: currentUser } = useUserContext();
     const [isLoading, setIsLoading] = useState(false);
+    const [confirmContext, setConfirmContext] = useState<
+        null | "create-admin" | "promote-admin" | "edit-admin"
+    >(null);
     const [showPassword, setShowPassword] = useState(false);
     const [targetUserData, setTargetUserData] = useState(initialData);
+    const [roles, setRoles] = useState<RoleOption[]>([]);
     const [formData, setFormData] = useState({
         username: initialData?.username || "",
         fullname: initialData?.fullname || "",
-        role: initialData?.role || "employee",
+        role: initialData?.role || "",
         password: "",
         confirmPassword: ""
     });
 
     const isEditMode = Boolean(editUserId);
-    const isEditingOtherPartner = isEditMode &&
-        targetUserData?.role === "partner" &&
-        currentUser?.role === "partner" &&
+    const initialRole = initialData?.role;
+    const currentUserIsAdmin = Array.isArray(currentUser?.permissions) && currentUser.permissions.includes("admin.access");
+    const targetRoleIsAdmin = Boolean(
+        targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
+    );
+    const isEditingOtherAdmin = isEditMode &&
+        targetRoleIsAdmin &&
+        currentUserIsAdmin &&
         editUserId !== currentUser?._id;
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const { data } = await axios.get("/api/roles");
+                const fetchedRoles = Array.isArray(data?.roles)
+                    ? data.roles.map((role: any) => ({
+                          name: role.name,
+                          permissions: Array.isArray(role.permissions)
+                              ? role.permissions
+                              : [],
+                      }))
+                    : [];
+
+                setRoles(fetchedRoles);
+
+                if (!initialRole && fetchedRoles.length > 0) {
+                    setFormData((prev) => ({ ...prev, role: fetchedRoles[0].name }));
+                }
+            } catch {
+                setRoles([]);
+                toast.error("Unable to load roles. Please try again.");
+            }
+        };
+
+        fetchRoles();
+    }, [initialRole]);
 
     // Fetch target user data if not provided (for edit mode)
     useEffect(() => {
@@ -64,15 +108,17 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
             return false;
         }
 
-        // Check if trying to change password of another partner
-        if (isEditingOtherPartner && formData.password) {
-            toast.error("Partners cannot change passwords of other partners");
+        // Prevent password changes for another admin account from this form
+        if (isEditingOtherAdmin && formData.password) {
+            toast.error("Admin users cannot change passwords of other admin users");
             return false;
         }
 
-        // Check if trying to downgrade another partner to employee
-        if (isEditingOtherPartner && formData.role === "employee") {
-            toast.error("Partners cannot downgrade other partners to employee role");
+        const selectedRole = roles.find((role) => role.name === formData.role);
+        const selectedIsAdmin = Boolean(selectedRole?.permissions?.includes("admin.access"));
+
+        if (isEditingOtherAdmin && !selectedIsAdmin) {
+            toast.error("Admin users cannot downgrade other admin users");
             return false;
         }
 
@@ -96,46 +142,7 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         return true;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) return;
-
-        // Additional confirmation for sensitive partner operations
-        const isCreatingPartner = !isEditMode && formData.role === "partner";
-        const isChangingToPartner = isEditMode && targetUserData?.role !== "partner" && formData.role === "partner";
-        const isEditingPartner = isEditingOtherPartner;
-
-        if (isCreatingPartner) {
-            const confirmPartnerCreation = confirm(
-                `⚠️ CREATING NEW PARTNER ⚠️\n\nYou are about to create a new PARTNER account: "${formData.username}"\n\nPartners have full administrative privileges including:\n- Managing all users\n- Accessing sensitive data\n- System configuration\n\nAre you sure you want to create this partner account?`
-            );
-            if (!confirmPartnerCreation) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        if (isChangingToPartner) {
-            const confirmPromotion = confirm(
-                `⚠️ PROMOTING TO PARTNER ⚠️\n\nYou are about to promote "${formData.username}" from ${targetUserData?.role} to PARTNER.\n\nThis will grant them full administrative privileges.\n\nAre you sure you want to proceed?`
-            );
-            if (!confirmPromotion) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        if (isEditingPartner) {
-            const confirmPartnerEdit = confirm(
-                `⚠️ EDITING PARTNER ACCOUNT ⚠️\n\nYou are about to modify another PARTNER account: "${targetUserData?.username}"\n\nThis is a sensitive operation. Are you sure you want to proceed?`
-            );
-            if (!confirmPartnerEdit) {
-                setIsLoading(false);
-                return;
-            }
-        }
-
+    const executeSubmit = async () => {
         setIsLoading(true);
 
         try {
@@ -168,151 +175,236 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
         }
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        const targetIsAdmin = Boolean(
+            targetUserData?.role && roles.find((role) => role.name === targetUserData.role)?.permissions?.includes("admin.access")
+        );
+        const selectedIsAdmin = Boolean(
+            roles.find((role) => role.name === formData.role)?.permissions?.includes("admin.access")
+        );
+
+        const isCreatingAdmin = !isEditMode && selectedIsAdmin;
+        const isChangingToAdmin = isEditMode && !targetIsAdmin && selectedIsAdmin;
+        const isEditingAdmin = isEditingOtherAdmin;
+
+        if (isCreatingAdmin) {
+            setConfirmContext("create-admin");
+            return;
+        }
+
+        if (isChangingToAdmin) {
+            setConfirmContext("promote-admin");
+            return;
+        }
+
+        if (isEditingAdmin) {
+            setConfirmContext("edit-admin");
+            return;
+        }
+
+        await executeSubmit();
+    };
+
+    const confirmMessage =
+        confirmContext === "create-admin"
+            ? `You are about to create an ADMIN account: "${formData.username}".`
+            : confirmContext === "promote-admin"
+                ? `You are about to promote "${formData.username}" from ${targetUserData?.role} to ${formData.role}.`
+                : confirmContext === "edit-admin"
+                    ? `You are about to modify another ADMIN account: "${targetUserData?.username}".`
+                    : "";
+
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
 
+    // UI Styles
+    const inputClass = "w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
+    const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300";
+
     return (
-        <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-                <h3 className="font-medium text-black dark:text-white">
-                    {isEditMode ? "Edit User" : "Add New User"}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900/50 dark:ring-slate-800/50">
+            <ConfirmationModal
+                isOpen={Boolean(confirmContext)}
+                title="Sensitive Admin Operation"
+                message={`${confirmMessage} This action affects administrative access. Continue?`}
+                confirmLabel="Proceed"
+                cancelLabel="Cancel"
+                variant="warning"
+                isLoading={isLoading}
+                onCancel={() => setConfirmContext(null)}
+                onConfirm={() => {
+                    setConfirmContext(null);
+                    void executeSubmit();
+                }}
+            />
+
+            {/* Header */}
+            <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-5 rounded-t-2xl dark:border-slate-800 dark:bg-slate-800/50">
+                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    {isEditMode ? <FiUserCheck className="text-emerald-500" /> : <FiUserPlus className="text-emerald-500" />} 
+                    {isEditMode ? "Edit User Account" : "Add New User"}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {isEditMode ? "Update user information" : "Create a new user account"}
-                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6.5">
-                {/* Username */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Username <span className="text-meta-1">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        placeholder="Enter username"
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
-                        required
-                    />
-                </div>
+            <form onSubmit={handleSubmit} className="p-6">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Username */}
+                    <div>
+                        <label className={labelClass}>
+                            Username <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiHash />
+                            </span>
+                            <input
+                                type="text"
+                                name="username"
+                                value={formData.username}
+                                onChange={handleChange}
+                                placeholder="Enter username"
+                                className={clsx(inputClass, "pl-11")}
+                                disabled={isLoading}
+                                required
+                            />
+                        </div>
+                    </div>
 
-                {/* Full Name */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Full Name
-                    </label>
-                    <input
-                        type="text"
-                        name="fullname"
-                        value={formData.fullname}
-                        onChange={handleChange}
-                        placeholder="Enter full name (optional)"
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
-                    />
+                    {/* Full Name */}
+                    <div>
+                        <label className={labelClass}>
+                            Full Name
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiUser />
+                            </span>
+                            <input
+                                type="text"
+                                name="fullname"
+                                value={formData.fullname}
+                                onChange={handleChange}
+                                placeholder="Optional full name"
+                                className={clsx(inputClass, "pl-11")}
+                                disabled={isLoading}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Role */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Role <span className="text-meta-1">*</span>
-                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(cannot downgrade other partners)</span>}
+                <div className="mb-6">
+                    <label className={labelClass}>
+                        Account Role <span className="text-rose-500">*</span>
+                        {isEditingOtherAdmin && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot downgrade other admin users)</span>}
                     </label>
                     <select
                         name="role"
                         value={formData.role}
                         onChange={handleChange}
-                        className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                        disabled={isLoading}
+                        className={inputClass}
+                        disabled={isLoading || isEditingOtherAdmin}
                         required
                     >
-                        <option value="employee" disabled={isEditingOtherPartner}>Employee</option>
-                        <option value="partner">Partner</option>
+                        {roles.length === 0 && (
+                            <option value="" disabled>
+                                No roles available
+                            </option>
+                        )}
+                        {roles.map((role) => (
+                            <option key={role.name} value={role.name}>
+                                {role.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
-                {/* Password */}
-                <div className="mb-4.5">
-                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                        Password {!isEditMode && <span className="text-meta-1">*</span>}
-                        {isEditMode && !isEditingOtherPartner && <span className="text-xs text-gray-500 ml-2">(leave empty to keep current)</span>}
-                        {isEditingOtherPartner && <span className="text-xs text-red-500 ml-2">(partners cannot change other partners&apos; passwords)</span>}
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder={
-                                isEditingOtherPartner
-                                    ? "Password editing disabled"
-                                    : isEditMode
-                                        ? "Enter new password (optional)"
-                                        : "Enter password (min. 6 characters)"
-                            }
-                            className={`w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 pr-12 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${isEditingOtherPartner ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-                            disabled={isLoading || isEditingOtherPartner}
-                            required={!isEditMode}
-                            minLength={6}
-                        />
-                        <button
-                            type="button"
-                            onClick={togglePasswordVisibility}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                            disabled={isEditingOtherPartner}
-                        >
-                            {showPassword ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M9.878 9.878A3 3 0 1015.12 15.12m-5.242 5.242l-4.242-4.242m0 0a10.05 10.05 0 01-5.986-4.985m0 0L3.707 20.293m0-10.586L20.293 3.707" />
-                                </svg>
-                            ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            )}
-                        </button>
+                <hr className="my-6 border-slate-200 dark:border-slate-700" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Password */}
+                    <div>
+                        <label className={labelClass}>
+                            Password {!isEditMode && <span className="text-rose-500">*</span>}
+                            {isEditMode && !isEditingOtherAdmin && <span className="text-xs text-slate-500 ml-2 font-normal">(Leave blank to keep current)</span>}
+                            {isEditingOtherAdmin && <span className="text-xs text-rose-500 ml-2 font-normal">(Cannot edit admin password)</span>}
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <FiLock />
+                            </span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder={
+                                    isEditingOtherAdmin
+                                        ? "Disabled"
+                                        : isEditMode
+                                            ? "New password"
+                                            : "Min. 6 characters"
+                                }
+                                className={clsx(inputClass, "pl-11 pr-12")}
+                                disabled={isLoading || isEditingOtherAdmin}
+                                required={!isEditMode}
+                                minLength={6}
+                            />
+                            <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                                disabled={isEditingOtherAdmin}
+                            >
+                                {showPassword ? <FiEyeOff className="text-lg" /> : <FiEye className="text-lg" />}
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Confirm Password */}
+                    {(!isEditMode || (formData.password && !isEditingOtherAdmin)) && (
+                        <div>
+                            <label className={labelClass}>
+                                Confirm Password <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                    <FiLock />
+                                </span>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Confirm password"
+                                    className={clsx(inputClass, "pl-11 pr-12")}
+                                    disabled={isLoading}
+                                    required={!isEditMode || Boolean(formData.password)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Confirm Password */}
-                {(!isEditMode || (formData.password && !isEditingOtherPartner)) && (
-                    <div className="mb-6">
-                        <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                            Confirm Password <span className="text-meta-1">*</span>
-                        </label>
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Confirm password"
-                            className="w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                            disabled={isLoading}
-                            required={!isEditMode || Boolean(formData.password)}
-                        />
-                    </div>
-                )}
-
                 {/* Action Buttons */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="flex justify-center rounded bg-primary px-6 py-2 font-medium text-gray hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isLoading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update User" : "Create User")}
+                        {isLoading ? (isEditMode ? "Updating User..." : "Creating User...") : (isEditMode ? "Update User Configuration" : "Create User")}
                     </button>
 
                     <Link
                         href="/users"
-                        className="flex justify-center rounded border border-stroke px-6 py-2 font-medium text-black hover:bg-gray-50 dark:border-strokedark dark:text-white dark:hover:bg-boxdark"
+                        className="flex-shrink-0 text-center rounded-xl bg-slate-100 px-8 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     >
                         Cancel
                     </Link>

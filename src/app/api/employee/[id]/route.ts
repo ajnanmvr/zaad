@@ -1,20 +1,42 @@
 import connect from "@/db/mongo";
 import calculateStatus from "@/utils/calculateStatus";
-import Employee from "@/models/employees";
 import { TEmployeeData } from "@/types/types";
 import { NextRequest } from "next/server";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
+import { requirePermission } from "@/auth/guards";
+import {
+  getEmployeeEntityById,
+  softDeleteEmployeeEntity,
+  splitEntityPayload,
+  updateEmployeeEntity,
+} from "@/services/entityService";
+import {
+  listEntityDocuments,
+  replaceEntityDocuments,
+} from "@/services/entityDocumentService";
+import {
+  listEntityCredentials,
+  replaceEntityCredentials,
+} from "@/services/entityCredentialService";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isAuthenticated(request);
+  await requirePermission(request, "entities.write");
 
   const { id } = params;
   const reqBody = await request.json();
-  await Employee.findByIdAndUpdate(id, reqBody);
+  const { entityData, documents, credentials } = splitEntityPayload(reqBody);
+  await updateEmployeeEntity(id, entityData);
+
+  if (documents) {
+    await replaceEntityDocuments(id, documents);
+  }
+  if (credentials) {
+    await replaceEntityCredentials(id, credentials);
+  }
+
   return Response.json(
     { message: "data updated successfully" },
     { status: 201 }
@@ -26,10 +48,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   await connect();
-  await isAuthenticated(request);
+  await requirePermission(request, "entities.write");
 
   const { id } = params;
-  await Employee.findByIdAndUpdate(id, { published: false });
+  await softDeleteEmployeeEntity(id);
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
@@ -39,21 +61,31 @@ export async function GET(
 ) {
   try {
     await connect();
-    await isAuthenticated(request);
+    await requirePermission(request, "entities.read");
 
-    const employee = (await Employee.findById(params.id).populate(
-      "company"
+    const employee = (await getEmployeeEntityById(
+      params.id,
+      true
     )) as TEmployeeData;
+    const [documents, credentials] = await Promise.all([
+      listEntityDocuments(params.id),
+      listEntityCredentials(params.id),
+    ]);
 
     if (!employee) {
       return Response.json({ message: "employee not found" }, { status: 404 });
     }
 
-    const modifiedDocuments = employee.documents.map((document) => ({
+    const modifiedDocuments = documents.map((document: any) => ({
       _id: document._id,
+      documentTemplate: document.documentTemplate,
       name: document.name,
       issueDate: document.issueDate,
       expiryDate: document.expiryDate,
+      notes: document.notes,
+      archived: document.archived,
+      archiveNotes: document.archiveNotes,
+      archivedAt: document.archivedAt,
       status: calculateStatus(document.expiryDate),
     }));
 
@@ -73,7 +105,8 @@ export async function GET(
       email: employee.email,
       designation: employee.designation,
       remarks: employee.remarks,
-      password: employee.password,
+      credentials,
+      password: credentials,
       documents: modifiedDocuments,
     };
 

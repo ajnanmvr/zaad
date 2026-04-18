@@ -1,250 +1,413 @@
-"use client"
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FiChevronLeft, FiChevronRight, FiEdit2, FiEye, FiFileText, FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { TInvoiceList } from "@/types/invoice";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import ConfirmationModal from "../Modals/ConfirmationModal";
-import { useEffect, useState } from "react";
-import SkeletonList from "../common/SkeletonList";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
-const InvoiceList = () => {
-  const queryClient = useQueryClient()
-  const [invoices, setInvoices] = useState<TInvoiceList[]>([])
+import ConfirmationModal from "../Modals/ConfirmationModal";
+import SkeletonList from "../common/SkeletonList";
+import EntityAvatar from "../common/EntityAvatar";
+import ExportActionsMenu from "../common/ExportActionsMenu";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+
+type InvoiceSort = "newest" | "oldest" | "client-asc" | "client-desc" | "invoice-asc" | "invoice-desc";
+
+type InvoicePagination = {
+  currentPage: number;
+  totalPages: number;
+  totalInvoices: number;
+  hasMore: boolean;
+};
+
+const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: string; embedded?: boolean; returnTo?: string } = {}) => {
+  const queryClient = useQueryClient();
+  const [invoices, setInvoices] = useState<TInvoiceList[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [pageNumber, setPageNumber] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState<InvoiceSort>("newest");
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
-
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['invoices', pageNumber, searchQuery], queryFn: async () => {
-      const { data } = await axios.get(`/api/invoice?page=${pageNumber}&search=${searchQuery}`)
-      return data
-    }, placeholderData: keepPreviousData,
-
-  })
+    queryKey: ["invoices", pageNumber, pageSize, sortBy, searchQuery, entityId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(pageNumber),
+        limit: String(pageSize),
+        sortBy,
+        search: searchQuery || "",
+      });
+      if (entityId) params.set("entityId", entityId);
+      const response = await axios.get(`/api/invoice?${params.toString()}`);
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+  });
 
   useEffect(() => {
     if (data) {
-      setInvoices(data.invoices)
-      setHasMore(data.hasMore)
+      setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      setHasMore(Boolean(data.pagination?.hasMore ?? data.hasMore));
     }
-  }, [data])
+  }, [data]);
 
-
-  const handlePageChange = (page: number) => {
-    setPageNumber(page);
+  const pagination: InvoicePagination = data?.pagination || {
+    currentPage: pageNumber,
+    totalPages: 0,
+    totalInvoices: data?.count || 0,
+    hasMore,
   };
 
-  const handleDelete = (id: string) => {
-    setSelectedRecordId(id);
-    setIsConfirmationOpen(true);
-  }
-
+  const totalAmount = useMemo(
+    () => invoices.reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
+    [invoices],
+  );
 
   const { mutate } = useMutation({
-    mutationFn: async (id: string | null) => await axios.delete(`/api/invoice/${id}`),
+    mutationFn: async (id: string | null) => axios.delete(`/api/invoice/${id}`),
     onMutate: () => toast.loading("Deleting invoice..."),
     onSuccess: () => {
-      toast.dismiss()
-      toast.success("Invoice deleted successfully")
-      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.dismiss();
+      toast.success("Invoice deleted successfully");
+      setSelectedRecordId(null);
+      setIsConfirmationOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
     onError: () => {
-      toast.dismiss()
-      toast.error("Failed to delete invoice")
-    }
-  })
+      toast.dismiss();
+      toast.error("Failed to delete invoice");
+    },
+  });
 
-
-  const confirmDelete = async () => {
-    mutate(selectedRecordId)
-    setIsConfirmationOpen(false);
-  }
-
-  const cancelAction = () => {
-    setSelectedRecordId(null);
-    setIsConfirmationOpen(false);
-  }
-
-  const handleSearch = (e: any) => {
-    const value = e.target.value;
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setSearchInput(value);
     clearTimeout((window as any).searchDebounceTimeout);
     (window as any).searchDebounceTimeout = setTimeout(() => {
       setSearchQuery(value);
-      setPageNumber(0)
+      setPageNumber(0);
+      setSelectedInvoiceIds([]);
     }, 1000);
-  }
+  };
+
+  const allSelected = invoices.length > 0 && invoices.every((record) => selectedInvoiceIds.includes(record.id));
+  const selectedRows = invoices.filter((record) => selectedInvoiceIds.includes(record.id));
+
+  const mapExportRows = (rows: TInvoiceList[]) =>
+    rows.map((row) => ({
+      InvoiceNo: row.invoiceNo,
+      Client: row.client,
+      Purpose: row.purpose,
+      Date: row.date,
+      Amount: Number(row.amount || 0).toFixed(2),
+    }));
+
+  const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
+    const sourceRows = mode === "selected" ? selectedRows : invoices;
+    const rows = mapExportRows(sourceRows);
+    if (!rows.length) {
+      toast.error(mode === "selected" ? "Select invoices first" : "No invoices to export");
+      return;
+    }
+
+    if (format === "csv") {
+      exportRowsCsv(rows, "invoices");
+    } else if (format === "excel") {
+      exportRowsExcel(rows, "invoices");
+    } else {
+      await exportRowsPdf(rows, "invoices");
+    }
+
+    toast.success(`${mode === "selected" ? "Selected" : "Visible"} invoices exported as ${format.toUpperCase()}`);
+  };
 
   return (
-    <>
-      <div className="rounded-sm border  border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
-        <ConfirmationModal
-          isOpen={isConfirmationOpen}
-          message="Are you sure you want to delete this invoice?"
-          onConfirm={confirmDelete}
-          onCancel={cancelAction}
-        />
-        <h4 className="mb-6 font-semibold text-black dark:text-white flex justify-between items-center">  <p className="text-lg">Invoice List</p>
-          <div className="gap-1 flex items-center">
-            <input
-              type="text"
-              name="search"
-              onChange={handleSearch}
-              placeholder="Search client or purpose"
-              className="rounded border py-1 font-normal md:w-80  border-stroke bg-transparent px-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-            />
-            {searchQuery && <button
-              onClick={() => {
-                setSearchQuery("");
-                setPageNumber(0);
-                (document.querySelector('input[name="search"]') as HTMLInputElement).value = "";
-              }}
-              className="inline-flex bg-red text-sm -ml-14 items-center justify-center rounded-md bg-gray-300 px-1 h-min text-center font-medium text-white mr-5 hover:bg-gray-400"
-            >
-              Clear
-            </button>}
-            <Link
-              href={"invoice/new"}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-1 text-center font-medium text-white hover:bg-opacity-90"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 mr-1 h-3 fill-white" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z" /></svg>
-              New Invoice
-            </Link>
-          </div>
-        </h4>
-        <div className="flex flex-col capitalize">
-          <div className="grid grid-cols-3 rounded-sm bg-gray-2 dark:bg-meta-4 sm:grid-cols-6">
+    <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
+      <ConfirmationModal
+        isOpen={isConfirmationOpen}
+        message="Are you sure you want to securely delete this invoice? This action cannot be reversed."
+        onConfirm={() => mutate(selectedRecordId)}
+        onCancel={() => {
+          setSelectedRecordId(null);
+          setIsConfirmationOpen(false);
+        }}
+      />
 
-            <div className="p-2.5 xl:p-5</Link>">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Invoice No
-              </h5>
-            </div>
-            <div className="p-2.5 xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Client
-              </h5>
-            </div>
-            <div className="p-2.5 xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Purpose
-              </h5>
-            </div>
+      {!embedded && (
+        <div className="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-violet-50 via-white to-cyan-50 p-6 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 sm:p-7">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-violet-200/40 blur-2xl dark:bg-violet-500/10" />
+          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-cyan-200/50 blur-xl dark:bg-cyan-500/10" />
 
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Date
-              </h5>
-            </div>
-            <div className="p-2.5 text-center xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Amount
-              </h5>
-            </div>
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">Invoice Directory</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">
+                  Manage issued invoices, view details, and track billing totals.
+                </p>
+              </div>
 
-            <div className="hidden p-2.5 text-center sm:block xl:p-5">
-              <h5 className="text-sm font-medium uppercase xsm:text-base">
-                Actions
-              </h5>
-            </div>
-          </div>
-          <div>
-
-
-
-            {isLoading ? <SkeletonList /> : invoices?.map((record, key) => (
-              <div
-                className={`grid grid-cols-3 sm:grid-cols-6 ${key === invoices.length - 1
-                  ? ""
-                  : "border-b border-stroke dark:border-strokedark"
-                  }`}
-                key={key}
-              >
-                <div className="flex items-center gap-3 p-2.5 xl:p-5">
-                  <p className="hidden uppercase text-meta-5 sm:block">
-                    {record?.invoiceNo}
-                  </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  {invoices.length} Visible
                 </div>
-                <div className="flex items-center gap-3 p-2.5 xl:p-5">
-
-
-                  <div className="hidden capitalize text-black dark:text-white sm:block">
-                    {record?.client}
-                  </div>
-                </div>
-
-
-
-                <div className="hidden items-center p-2.5 sm:flex xl:p-5">
-                  <p className="text-meta-5">{record?.purpose}</p>
-                </div>
-                <div className="flex items-center justify-center gap-3 p-2.5 xl:p-5">
-                  <p className="hidden capitalize text-black dark:text-white sm:block">
-                    {record?.date || "N/A"}
-                  </p>
-                </div>
-                <div className="flex items-center justify-center gap-3 p-2.5 xl:p-5">
-                  <p className="hidden capitalize text-meta-3 sm:block">
-                    {record?.amount || 0} AED
-                  </p>
-                </div>
-                <div className="flex justify-center items-center">
-                  <Link href={`/accounts/invoice/${record?.id}`} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="3.5" stroke="gray" />
-                      <path d="M20.188 10.9343C20.5762 11.4056 20.7703 11.6412 20.7703 12C20.7703 12.3588 20.5762 12.5944 20.188 13.0657C18.7679 14.7899 15.6357 18 12 18C8.36427 18 5.23206 14.7899 3.81197 13.0657C3.42381 12.5944 3.22973 12.3588 3.22973 12C3.22973 11.6412 3.42381 11.4056 3.81197 10.9343C5.23206 9.21014 8.36427 6 12 6C15.6357 6 18.7679 9.21014 20.188 10.9343Z" stroke="gray" />
-                    </svg>
-                  </Link>
-
-                  <Link href={`/accounts/invoice/${record?.id}/edit`} className="hover:bg-slate-500 rounded hover:bg-opacity-10 p-1">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5.92971 19.283L5.92972 19.283L5.95149 19.2775L5.95151 19.2775L8.58384 18.6194C8.59896 18.6156 8.61396 18.6119 8.62885 18.6082C8.85159 18.5528 9.04877 18.5037 9.2278 18.4023C9.40683 18.301 9.55035 18.1571 9.71248 17.9947C9.72332 17.9838 9.73425 17.9729 9.74527 17.9618L16.9393 10.7678L16.9393 10.7678L16.9626 10.7445C17.2761 10.4311 17.5461 10.1611 17.7333 9.91573C17.9339 9.65281 18.0858 9.36038 18.0858 9C18.0858 8.63961 17.9339 8.34719 17.7333 8.08427C17.5461 7.83894 17.276 7.5689 16.9626 7.2555L16.9393 7.23223L16.5858 7.58579L16.9393 7.23223L16.7678 7.06066L16.7445 7.03738C16.4311 6.72395 16.1611 6.45388 15.9157 6.2667C15.6528 6.0661 15.3604 5.91421 15 5.91421C14.6396 5.91421 14.3472 6.0661 14.0843 6.2667C13.8389 6.45388 13.5689 6.72395 13.2555 7.03739L13.2322 7.06066L6.03816 14.2547C6.02714 14.2658 6.01619 14.2767 6.00533 14.2875C5.84286 14.4496 5.69903 14.5932 5.59766 14.7722C5.4963 14.9512 5.44723 15.1484 5.39179 15.3711C5.38809 15.386 5.38435 15.401 5.38057 15.4162L4.71704 18.0703C4.71483 18.0791 4.7126 18.088 4.71036 18.097C4.67112 18.2537 4.62921 18.421 4.61546 18.5615C4.60032 18.7163 4.60385 18.9773 4.81326 19.1867C5.02267 19.3961 5.28373 19.3997 5.43846 19.3845C5.57899 19.3708 5.74633 19.3289 5.90301 19.2896C5.91195 19.2874 5.92085 19.2852 5.92971 19.283Z" stroke="#259AE6" />
-                      <path d="M12.5 7.5L15.5 5.5L18.5 8.5L16.5 11.5L12.5 7.5Z" fill="#259AE6" />
-                    </svg>
-                  </Link>
-
-                  <button title="delete invoice" onClick={() => handleDelete(record?.id)} className="hover:bg-red rounded hover:bg-opacity-10 p-1">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9.5 14.5L9.5 11.5" stroke="#FB5454" strokeLinecap="round" />
-                      <path d="M14.5 14.5L14.5 11.5" stroke="#FB5454" strokeLinecap="round" />
-                      <path d="M3 6.5H21V6.5C19.5955 6.5 18.8933 6.5 18.3889 6.83706C18.1705 6.98298 17.983 7.17048 17.8371 7.38886C17.5 7.89331 17.5 8.59554 17.5 10V15.5C17.5 17.3856 17.5 18.3284 16.9142 18.9142C16.3284 19.5 15.3856 19.5 13.5 19.5H10.5C8.61438 19.5 7.67157 19.5 7.08579 18.9142C6.5 18.3284 6.5 17.3856 6.5 15.5V10C6.5 8.59554 6.5 7.89331 6.16294 7.38886C6.01702 7.17048 5.82952 6.98298 5.61114 6.83706C5.10669 6.5 4.40446 6.5 3 6.5V6.5Z" stroke="#FB5454" strokeLinecap="round" />
-                      <path d="M9.5 3.50024C9.5 3.50024 10 2.5 12 2.5C14 2.5 14.5 3.5 14.5 3.5" stroke="#FB5454" strokeLinecap="round" />
-                    </svg>
-                  </button>
-
+                <div className="inline-flex items-center rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-bold text-violet-700 dark:border-violet-700/40 dark:bg-violet-900/30 dark:text-violet-300">
+                  {totalAmount.toFixed(2)} AED
                 </div>
               </div>
-            ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
+              <div className="relative min-w-[240px] flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <FiSearch />
+                </span>
+                <input
+                  type="text"
+                  name="search"
+                  value={searchInput}
+                  onChange={handleSearch}
+                  placeholder="Search invoices..."
+                  className="w-full sm:w-64 rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearchQuery("");
+                      setPageNumber(0);
+                        setSelectedInvoiceIds([]);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                  >
+                    <FiX />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPageNumber(0);
+                  setSelectedInvoiceIds([]);
+                }}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                title="Rows per page"
+              >
+                {[10, 20, 30, 50].map((size) => (
+                  <option key={size} value={size}>
+                    Show {size}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(event) => {
+                  setSortBy(event.target.value as InvoiceSort);
+                  setPageNumber(0);
+                  setSelectedInvoiceIds([]);
+                }}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                title="Sort invoices"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="client-asc">Client A-Z</option>
+                <option value="client-desc">Client Z-A</option>
+                <option value="invoice-asc">Invoice Number Asc</option>
+                <option value="invoice-desc">Invoice Number Desc</option>
+              </select>
+
+              <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
+
+              <Link
+                href={`/accounts/invoice/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+                className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 hover:shadow-emerald-500/30"
+              >
+                <FiPlus className="text-lg transition-transform group-hover:rotate-90" />
+                <span className="hidden sm:inline">Create Invoice</span>
+                <span className="sm:hidden">Create</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-6 sm:p-7">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
+          <div className="max-w-full overflow-x-auto custom-scrollbar">
+            <table className="w-full whitespace-nowrap text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                  <th className="w-[44px] px-6 py-4">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all invoices"
+                      checked={allSelected}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          setSelectedInvoiceIds(invoices.map((record) => record.id));
+                        } else {
+                          setSelectedInvoiceIds([]);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Invoice No</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Client</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Purpose</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">Amount</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="p-0">
+                      <SkeletonList />
+                    </td>
+                  </tr>
+                ) : invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="rounded-full bg-slate-100 p-3 dark:bg-slate-800">
+                          <FiFileText className="text-2xl text-slate-400" />
+                        </div>
+                        <p className="text-base font-medium text-slate-700 dark:text-slate-300">No invoices found</p>
+                        <p className="text-sm">Try adjusting your search criteria or create a new invoice.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((record) => (
+                    <tr key={record.id} className="group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${record.invoiceNo}`}
+                          checked={selectedInvoiceIds.includes(record.id)}
+                          onChange={(event) => {
+                            setSelectedInvoiceIds((prev) =>
+                              event.target.checked
+                                ? Array.from(new Set([...prev, record.id]))
+                                : prev.filter((id) => id !== record.id),
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          {record?.invoiceNo || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <EntityAvatar
+                            name={record?.entityName || record?.client || "Unknown"}
+                            color={record?.entityColor || undefined}
+                            size="sm"
+                          />
+                          <div className="font-semibold capitalize text-slate-800 dark:text-slate-200">{record?.client}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{record?.purpose}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{record?.date || "N/A"}</td>
+                      <td className="px-6 py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                        {(record?.amount || 0).toFixed(2)} <span className="ml-0.5 text-xs text-emerald-500/70">AED</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2 opacity-100 transition-opacity">
+                          <Link
+                            href={`/accounts/invoice/${record?.id}`}
+                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                            title="View Details"
+                          >
+                            <FiEye className="text-lg" />
+                          </Link>
+                          <Link
+                            href={`/accounts/invoice/${record?.id}/edit`}
+                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                            title="Edit Invoice"
+                          >
+                            <FiEdit2 className="text-lg" />
+                          </Link>
+                          <button
+                            title="Delete Invoice"
+                            onClick={() => {
+                              setSelectedRecordId(record?.id);
+                              setIsConfirmationOpen(true);
+                            }}
+                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                          >
+                            <FiTrash2 className="text-lg" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Showing page <span className="font-bold text-slate-800 dark:text-slate-200">{pagination.currentPage + 1}</span>
+            {" "}of <span className="font-bold text-slate-800 dark:text-slate-200">{Math.max(1, pagination.totalPages)}</span>
+            {" "}({pagination.totalInvoices} total)
+          </p>
+          <div className="inline-flex items-center gap-2">
+            <button
+              onClick={() => {
+                setPageNumber((prev) => Math.max(prev - 1, 0));
+                setSelectedInvoiceIds([]);
+              }}
+              disabled={pageNumber === 0 || isLoading}
+              className={clsx(
+                "flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                pageNumber === 0 || isLoading
+                  ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                  : "bg-white text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+              )}
+            >
+              <FiChevronLeft /> Back
+            </button>
+            <button
+              onClick={() => {
+                setPageNumber((prev) => prev + 1);
+                setSelectedInvoiceIds([]);
+              }}
+              disabled={isLoading || !hasMore || invoices.length === 0}
+              className={clsx(
+                "flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                isLoading || !hasMore || invoices.length === 0
+                  ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                  : "bg-white text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700",
+              )}
+            >
+              Next <FiChevronRight />
+            </button>
           </div>
         </div>
       </div>
-      <div className="pagination-container flex justify-center items-center my-6">
-        <button
-          onClick={() => handlePageChange(pageNumber - 1)}
-          disabled={pageNumber === 0 || isLoading}
-          className={clsx(
-            "px-3 py-1 mr-2 rounded-md",
-            isLoading || pageNumber === 0 ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
-          )}
-        >
-          Back
-        </button>
-        <span className="text-xl font-bold  mx-5">{pageNumber + 1}</span>
-        <button
-          onClick={() => handlePageChange(pageNumber + 1)}
-          disabled={isLoading || !hasMore || !invoices.length}
-          className={clsx(
-            "px-3 py-1 ml-2 rounded-md",
-            (isLoading || !hasMore || !invoices.length) ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "border-primary border text-primary bg-primary bg-opacity-10 hover:bg-primary hover:text-white"
-          )}
-        >
-          Next
-        </button>
-      </div></>
+    </div>
   );
 };
 

@@ -1,18 +1,14 @@
 import connect from "@/db/mongo";
-import { isAuthenticated } from "@/helpers/isAuthenticated";
-import Records from "@/models/records";
+import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
+import { getPreviousPaymentSequence } from "@/services/paymentService";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await isAuthenticated(request);
-    let { suffix, number } = await Records.findOne({
-      published: true,
-    })
-      .sort({ createdAt: -1 })
-      .select("suffix number");
+    await requirePermission(request, "payments.read");
+    const { suffix, number } = await getPreviousPaymentSequence();
     return Response.json({ suffix, number: number || 0 }, { status: 201 });
   } catch (error) {
     return Response.json(error, { status: 401 });
