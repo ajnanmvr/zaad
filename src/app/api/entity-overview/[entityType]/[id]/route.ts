@@ -10,6 +10,7 @@ import EntityCredential from "@/models/entityCredentials";
 import PhysicalHandover from "@/models/physicalHandover";
 import Records from "@/models/records";
 import Invoice from "@/models/invoice";
+import Task from "@/models/tasks";
 
 type EntityTypeParam = "company" | "employee" | "individual";
 
@@ -61,6 +62,7 @@ export async function GET(
       handoversCount,
       recordsCount,
       employeesCount,
+      tasksCount,
     ] = await Promise.all([
       EntityDocument.countDocuments({ entity: entityId }),
       EntityCredential.countDocuments({ entity: entityId }),
@@ -80,6 +82,15 @@ export async function GET(
             entityType: "employee",
           })
         : Promise.resolve(0),
+      Task.countDocuments({
+        published: true,
+        linkedTargets: {
+          $elemMatch: {
+            targetType: entityType,
+            targetId: entityId,
+          },
+        },
+      }),
     ]);
 
     const invoicesCount = await Invoice.countDocuments({
@@ -112,6 +123,7 @@ export async function GET(
             documents: documentsCount,
             credentials: credentialsCount,
             handovers: handoversCount,
+            tasks: tasksCount,
             employees: employeesCount,
             invoices: invoicesCount,
             records: recordsCount,

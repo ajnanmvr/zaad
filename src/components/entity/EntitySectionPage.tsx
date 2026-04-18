@@ -127,6 +127,7 @@ type OverviewResponse = {
       documents: number;
       credentials: number;
       handovers: number;
+      tasks: number;
       employees: number;
       invoices: number;
       records: number;
@@ -146,6 +147,8 @@ function sectionDescription(section: Section) {
       return "Platform credentials and usernames connected to this profile.";
     case "handovers":
       return "Physical handover history tied to the selected profile.";
+    case "tasks":
+      return "Tasks linked to this profile for follow-up and delivery.";
     case "employees":
       return "Employees tied to the company profile.";
     case "records":
@@ -772,16 +775,11 @@ export default function EntitySectionPage({
             documents: counts?.documents || 0,
             credentials: counts?.credentials || 0,
             handovers: counts?.handovers || 0,
+            tasks: counts?.tasks || 0,
             employees: counts?.employees || 0,
             records: counts?.records || 0,
             invoices: counts?.invoices || 0,
           }}
-        />
-
-        <RelatedTasksPanel
-          targetType={entityType}
-          targetId={id}
-          targetLabel={entityName}
         />
 
         <div
@@ -840,14 +838,19 @@ export default function EntitySectionPage({
               )}
             </>
           ) : (
-            <SectionCard
-              title={sectionTitle}
-              description={sectionDescription(section)}
-            >
+            <SectionCard title={sectionTitle} description={sectionDescription(section)}>
               {isSectionLoading && (
                 <div className="flex justify-center py-8">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent" />
                 </div>
+              )}
+
+              {!isSectionLoading && section === "tasks" && (
+                <RelatedTasksPanel
+                  targetType={entityType}
+                  targetId={id}
+                  targetLabel={entityName}
+                />
               )}
 
               {!isSectionLoading && section === "details" && (

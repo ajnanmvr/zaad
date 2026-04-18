@@ -68,7 +68,10 @@ function toDisplayValue(value: any) {
 const getClientHref = (record?: TRecordList) => {
   if (!record?.client) return "/accounts/transactions";
   if (record.client.type === "self") return "/accounts/transactions/self";
-  return `/${record.client.type}/${record.client.id}`;
+  if (["company", "employee", "individual"].includes(String(record.client.type || ""))) {
+    return `/${record.client.type}/${record.client.id}/details`;
+  }
+  return "/accounts/transactions";
 };
 
 const TransactionDetailsPage = () => {
@@ -170,7 +173,7 @@ const TransactionDetailsPage = () => {
               href={getClientHref(record)}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
-              <FiExternalLink /> View Client
+              <FiExternalLink /> View Entity
             </Link>
             <Link
               href={`/accounts/transactions/edit/${record?.type}/${record?.id}`}
@@ -260,10 +263,24 @@ const TransactionDetailsPage = () => {
 
                     {renderTableRow(
                       "Client / Entity",
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {record.recordKind === "office_records" ? record.categoryName || "Office Record" : record.client?.name || "Unknown"}
-                        {record.client?.type && <span className="ml-2 text-[10px] uppercase tracking-widest text-slate-400">({record.client.type})</span>}
-                      </span>,
+                      record.recordKind === "office_records" ? (
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {record.categoryName || "Office Record"}
+                        </span>
+                      ) : (
+                        <Link
+                          href={getClientHref(record)}
+                          className="inline-flex items-center gap-2 font-semibold text-cyan-700 transition hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        >
+                          {record.client?.name || "Unknown"}
+                          <FiExternalLink className="h-3.5 w-3.5" />
+                          {record.client?.type && (
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                              ({record.client.type})
+                            </span>
+                          )}
+                        </Link>
+                      ),
                       <FiUser />
                     )}
 

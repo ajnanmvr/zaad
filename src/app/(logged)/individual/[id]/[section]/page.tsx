@@ -4,7 +4,7 @@ import { notFound, useParams } from "next/navigation";
 
 import EntitySectionPage from "@/components/entity/EntitySectionPage";
 
-const VALID_SECTIONS = ["details", "documents", "credentials", "handovers"] as const;
+const VALID_SECTIONS = ["details", "documents", "credentials", "handovers", "tasks"] as const;
 
 export default function IndividualSectionPage() {
   const params = useParams<{ id: string; section: string }>();

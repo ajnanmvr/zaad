@@ -9,6 +9,7 @@ import {
   FiFolder,
   FiKey,
   FiList,
+  FiTarget,
   FiTrash2,
   FiUsers,
 } from "react-icons/fi";
@@ -20,6 +21,7 @@ export type EntitySectionKey =
   | "documents"
   | "credentials"
   | "handovers"
+  | "tasks"
   | "employees"
   | "records"
   | "invoices";
@@ -128,6 +130,11 @@ export function getEntitySectionLinks(entityType: EntityType, id: string): Entit
       label: "Handovers",
       active: false,
     },
+    {
+      href: `/${entityType}/${id}/tasks`,
+      label: "Tasks",
+      active: false,
+    },
   ];
 
   if (entityType === "company") {
@@ -178,6 +185,8 @@ export function getSectionTitle(section: EntitySectionKey) {
       return "Credentials";
     case "handovers":
       return "Handovers";
+    case "tasks":
+      return "Tasks";
     case "employees":
       return "Employees";
     case "records":
@@ -286,6 +295,7 @@ export function EntityProfileTabs({
     documents: <FiFolder className="text-base" />,
     credentials: <FiKey className="text-base" />,
     handovers: <FiFileText className="text-base" />,
+    tasks: <FiTarget className="text-base" />,
     employees: <FiUsers className="text-base" />,
     records: <FiList className="text-base" />,
     invoices: <FiFileText className="text-base" />,

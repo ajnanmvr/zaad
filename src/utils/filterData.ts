@@ -12,7 +12,7 @@ export function filterData(searchParams: URLSearchParams, considerStart: boolean
 
   let filter: any = {
     published: true,
-    status: { $not: /^liability$/i },
+    recordKind: { $ne: "liability" },
   };
 
   function convertToUAE(date: Date): Date {

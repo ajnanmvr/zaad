@@ -94,6 +94,13 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      if (!ALLOWED_LINK_TARGET_TYPES.has(linkType)) {
+        return Response.json(
+          { error: "Unsupported linkType for related scope" },
+          { status: 400 },
+        );
+      }
+
       query.linkedTargets = {
         $elemMatch: {
           targetType: linkType,

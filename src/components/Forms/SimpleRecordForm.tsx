@@ -240,9 +240,18 @@ const SimpleRecordForm = ({
     try {
       const res = await axios.get(`/api/payment/${recordId}`);
       const data = res.data;
+      const normalizedAmount = Number(data?.amount || 0);
+      const normalizedServiceFee = Number(data?.serviceFee || 0);
+      const normalizedType = String(data?.type || "").toLowerCase();
+      const normalizedRecordKind = String(data?.recordKind || "").toLowerCase();
+      const supportsClientFee =
+        normalizedType === "expense" &&
+        ["standard", "instant_profit"].includes(normalizedRecordKind);
 
       setFormData({
         ...data,
+        amount: normalizedAmount,
+        serviceFee: normalizedServiceFee,
         method:
           data?.method?._id ||
           data?.method ||
@@ -258,6 +267,12 @@ const SimpleRecordForm = ({
         category: data?.category?._id || data?.category || "",
         entity: data?.entity?._id || data?.entity || undefined,
       });
+
+      if (supportsClientFee) {
+        setClientFee(Number((normalizedAmount + normalizedServiceFee).toFixed(2)));
+      } else {
+        setClientFee("");
+      }
       if (data?.entity?._id || data?.entity?.name || typeof data?.entity === "string") {
         const fallbackEntity: EntityOption = {
           _id: data?.entity?._id || data?.entity || "",
@@ -725,6 +740,31 @@ const SimpleRecordForm = ({
           strong: isDarkMode ? "#ef4444" : "#dc2626",
         };
 
+  const createHeader = useMemo(() => {
+    const kind = String(formData.recordKind || "").toLowerCase();
+    const type = String(formData.type || "income").toLowerCase();
+
+    if (kind === "instant_profit") {
+      return {
+        title: "Add Instant Profit",
+        icon: <FiTrendingUp className="h-5 w-5" />,
+      };
+    }
+
+    if (kind === "self_transfer") {
+      return {
+        title: "New Self Transfer",
+        icon: <FiRefreshCw className="h-5 w-5" />,
+      };
+    }
+
+    const isExpense = type === "expense";
+    return {
+      title: isExpense ? "New Expense" : "New Income",
+      icon: isExpense ? <FiTrendingDown className="h-5 w-5" /> : <FiTrendingUp className="h-5 w-5" />,
+    };
+  }, [formData.recordKind, formData.type]);
+
   const buildRecordPayload = useCallback(() => {
     const visibility = getFormVisibility(formData.recordKind, formData.type);
 
@@ -829,8 +869,17 @@ const SimpleRecordForm = ({
                 </button>
               ) : null}
             </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              {isEdit ? "Edit Transaction" : "New Transaction"}
+            <h1 className="mt-3 flex items-center gap-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              {isEdit ? (
+                "Edit Transaction"
+              ) : (
+                <>
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900/10 text-slate-700 dark:bg-slate-100/10 dark:text-slate-200">
+                    {createHeader.icon}
+                  </span>
+                  {createHeader.title}
+                </>
+              )}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
               Clean, solid-color UI with strong contrast and a modern dashboard
