@@ -95,28 +95,26 @@ const getTransactionAvatar = (record: TRecordList) => {
     particular.includes("money recieved as exchange") ||
     particular.includes("money received as exchange");
 
-  // Office expense: self client + expense type
-  const isOfficeExpense = isSelf && record?.type === "expense";
+  // Office record: always use logo.svg
+  if (record?.recordKind === "office_records") {
+    return (
+      <div className="flex items-center justify-center">
+        <Image
+          src="/images/logo/logo-icon.svg"
+          className="h-8 w-8 rounded-xl"
+          alt="Office"
+          width={24}
+          height={24}
+        />
+      </div>
+    );
+  }
 
   // Self-deposit: use swap icon
   if (isSelfTransfer) {
     return (
       <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-200 dark:bg-slate-700 shadow-inner ring-1 ring-white/20">
         <FiArrowRight className="h-4 w-4 text-slate-600 dark:text-slate-400 rotate-45" />
-      </div>
-    );
-  }
-
-  // Office expense: use logo icon
-  if (isOfficeExpense) {
-    return (
-      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 shadow-inner ring-1 ring-white/20">
-        <Image
-          src="/images/logo/logo-icon.svg"
-          alt="Office"
-          width={20}
-          height={20}
-        />
       </div>
     );
   }
@@ -373,7 +371,7 @@ const TransactionList = ({
     return recordsWithBalance.filter((record) => {
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
-        record?.client?.name || (record?.recordKind === "office_records" ? "Office" : ""),
+        record?.client?.name || (record?.recordKind === "office_records" ? record?.categoryName || "" : ""),
         record?.client?.type || "",
         record?.particular || "",
         record?.method || "",
@@ -431,7 +429,7 @@ const TransactionList = ({
       const serviceFee = Number(record.serviceFee || 0);
       return {
         "Record ID": `${record.suffix || ""}${record.number || ""}`,
-        Client: record.client?.name || "",
+        Client: record.recordKind === "office_records" ? record.categoryName || "Office Record" : record.client?.name || "",
         "Client Type": record.client?.type || "",
         Type: record.type || "",
         Particular: record.particular || "",
@@ -967,7 +965,9 @@ const TransactionList = ({
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
                                   <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
-                                    {record?.client?.name || "Unknown"}
+                                    {record?.recordKind === "office_records"
+                                      ? record?.categoryName || "Office Record"
+                                      : record?.client?.name || "Unknown"}
                                   </p>
                                   <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
                                     {record?.particular}

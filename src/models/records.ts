@@ -34,9 +34,6 @@ const RecordSchema = new Schema(
     status: {
       type: Schema.Types.ObjectId,
       ref: "paymentStatusTemplates",
-      required: function (this: any) {
-        return this.recordKind !== "liability";
-      },
       index: true,
     },
     recordKind: {

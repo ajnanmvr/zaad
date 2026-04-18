@@ -23,6 +23,7 @@ import {
   FiRefreshCw,
   FiEdit2,
   FiX,
+  FiTrendingDown,
 } from "react-icons/fi";
 import { debounce } from "lodash";
 
@@ -154,7 +155,7 @@ const SimpleRecordForm = ({
     useState(false);
   const [clientFee, setClientFee] = useState<number | "">("");
 
-  const [formData, setFormData] = useState<Partial<TRecordData>>({
+  const [formData, setFormData] = useState<Partial<TRecordData> & { from?: string; to?: string }>({
     type: "income",
     amount: undefined,
     particular: "",
@@ -460,18 +461,20 @@ const SimpleRecordForm = ({
       return {
         needsEntity: ["standard", "instant_profit", "liability"].includes(nextRecordKind),
         needsPaymentStatus: nextRecordKind === "standard",
-        needsTransferGroupId: ["instant_profit", "self_transfer"].includes(nextRecordKind),
         needsCategory: nextRecordKind === "office_records",
         allowsServiceFee: nextType === "expense" && ["standard", "instant_profit"].includes(nextRecordKind),
+        needsParticular: nextRecordKind !== "self_transfer",
+        needsMethod: nextRecordKind !== "self_transfer",
+        needsSwapMethods: nextRecordKind === "self_transfer",
       };
     },
     [],
   );
 
   const sanitizeFormDataByVisibility = useCallback(
-    (draft: Partial<TRecordData>) => {
+    (draft: Partial<TRecordData> & { from?: string; to?: string }) => {
       const visibility = getFormVisibility(draft.recordKind, draft.type);
-      const nextDraft: Partial<TRecordData> = { ...draft };
+      const nextDraft: Partial<TRecordData> & { from?: string; to?: string } = { ...draft };
 
       if (!visibility.needsEntity) {
         nextDraft.entity = undefined;
@@ -481,16 +484,25 @@ const SimpleRecordForm = ({
         nextDraft.status = "";
       }
 
-      if (!visibility.needsTransferGroupId) {
-        nextDraft.transferGroupId = "";
-      }
-
       if (!visibility.needsCategory) {
         nextDraft.category = "";
       }
 
       if (!visibility.allowsServiceFee) {
         nextDraft.serviceFee = 0;
+      }
+
+      if (!visibility.needsParticular) {
+        nextDraft.particular = "";
+      }
+
+      if (!visibility.needsMethod) {
+        nextDraft.method = "";
+      }
+
+      if (!visibility.needsSwapMethods) {
+        nextDraft.from = "";
+        nextDraft.to = "";
       }
 
       return nextDraft;
@@ -588,17 +600,28 @@ const SimpleRecordForm = ({
       return;
     }
 
-    if (!formData.particular || formData.particular.trim() === "") {
+    const { needsParticular, needsMethod, needsSwapMethods, needsPaymentStatus } = getFormVisibility(formData.recordKind, formData.type);
+
+    if (needsParticular && (!formData.particular || formData.particular.trim() === "")) {
       toast.error("Description/Particular is required");
       return;
     }
 
-    if (!formData.method) {
+    if (needsMethod && !formData.method) {
       toast.error("Payment method is required");
       return;
     }
 
-    const needsPaymentStatus = formData.recordKind === "standard";
+    if (needsSwapMethods && (!formData.from || !formData.to)) {
+      toast.error("From and To payment methods are required");
+      return;
+    }
+
+    if (needsSwapMethods && formData.from === formData.to) {
+      toast.error("From and To payment methods must be different");
+      return;
+    }
+
     if (needsPaymentStatus && !formData.status) {
       toast.error("Payment status is required");
       return;
@@ -615,11 +638,15 @@ const SimpleRecordForm = ({
         await axios.put(`/api/payment/${recordId}`, recordData);
         successMessage = "Record updated successfully!";
       } else {
-        const endpoint =
+        let endpoint = "/api/payment";
+        if (formData.recordKind === "self_transfer") {
+          endpoint = "/api/payment/self-deposit";
+        } else if (
           formData.type === "expense" &&
           formData.recordKind === "instant_profit"
-            ? "/api/payment/profit"
-            : "/api/payment";
+        ) {
+          endpoint = "/api/payment/profit";
+        }
         await axios.post(endpoint, recordData);
       }
 
@@ -636,18 +663,15 @@ const SimpleRecordForm = ({
     }
   };
 
-  const needsEntity = ["standard", "instant_profit", "liability"].includes(
-    formData.recordKind || "",
-  );
-  const needsPaymentStatus = formData.recordKind === "standard";
-  const needsTransferGroupId = ["instant_profit", "self_transfer"].includes(
-    formData.recordKind || "",
-  );
-  const needsCategory = formData.recordKind === "office_records";
+  const visibility = getFormVisibility(formData.recordKind, formData.type);
+  const needsEntity = visibility.needsEntity;
+  const needsPaymentStatus = visibility.needsPaymentStatus;
+  const needsCategory = visibility.needsCategory;
+  const allowsServiceFee = visibility.allowsServiceFee;
+  const needsParticular = visibility.needsParticular;
+  const needsMethod = visibility.needsMethod;
+  const needsSwapMethods = visibility.needsSwapMethods;
   const showCurrentEntityInEdit = isEdit && !needsEntity && !!selectedEntity;
-  const allowsServiceFee =
-    formData.type === "expense" &&
-    ["standard", "instant_profit"].includes(formData.recordKind || "");
   const amountValue = Number(formData.amount || 0);
   const clientFeeValue = typeof clientFee === "number" ? clientFee : 0;
   const autoServiceFee = allowsServiceFee
@@ -704,12 +728,10 @@ const SimpleRecordForm = ({
   const buildRecordPayload = useCallback(() => {
     const visibility = getFormVisibility(formData.recordKind, formData.type);
 
-    const payload: Partial<TRecordData> = {
+    const payload: any = {
       suffix: formData.suffix,
       number: formData.number,
-      particular: formData.particular,
       amount: formData.amount,
-      method: formData.method,
       type: formData.type,
       recordKind: formData.recordKind,
       remarks: formData.remarks,
@@ -717,16 +739,26 @@ const SimpleRecordForm = ({
       serviceFee: visibility.allowsServiceFee ? autoServiceFee : 0,
     };
 
+    if (visibility.needsParticular) {
+      payload.particular = formData.particular;
+    }
+
+    if (visibility.needsMethod) {
+      payload.method = formData.method;
+    }
+
+    if (visibility.needsSwapMethods) {
+      payload.from = formData.from;
+      payload.to = formData.to;
+    }
+
     if (visibility.needsEntity && formData.entity) {
       payload.entity = formData.entity;
     }
 
+    // Only send status if present and valid
     if (visibility.needsPaymentStatus && formData.status) {
       payload.status = formData.status;
-    }
-
-    if (visibility.needsTransferGroupId && formData.transferGroupId) {
-      payload.transferGroupId = formData.transferGroupId;
     }
 
     if (visibility.needsCategory && formData.category) {
@@ -1059,45 +1091,47 @@ const SimpleRecordForm = ({
                     </div>
                   ) : null}
 
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                      Particular
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={formData.particular || ""}
-                        onChange={(e) => handleParticularSearch(e.target.value)}
-                        onFocus={() => setShowParticularDropdown(true)}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-9 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                        placeholder="Search particular templates..."
-                      />
-                      {particularLoading && (
-                        <FiLoader
-                          className="absolute right-3 top-3 h-4 w-4 animate-spin"
-                          style={{ color: theme.strong }}
+                  {needsParticular && (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                        Particular
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.particular || ""}
+                          onChange={(e) => handleParticularSearch(e.target.value)}
+                          onFocus={() => setShowParticularDropdown(true)}
+                          required
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-9 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                          placeholder="Search particular templates..."
                         />
-                      )}
-                      {showParticularDropdown &&
-                        particularSuggestions.length > 0 && (
-                          <div className="absolute left-0 right-0 top-full z-10 mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
-                            {particularSuggestions.map((suggestion) => (
-                              <button
-                                key={suggestion}
-                                type="button"
-                                onClick={() =>
-                                  handleSelectParticular(suggestion)
-                                }
-                                className="w-full border-b border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 last:border-b-0 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
-                          </div>
+                        {particularLoading && (
+                          <FiLoader
+                            className="absolute right-3 top-3 h-4 w-4 animate-spin"
+                            style={{ color: theme.strong }}
+                          />
                         )}
+                        {showParticularDropdown &&
+                          particularSuggestions.length > 0 && (
+                            <div className="absolute left-0 right-0 top-full z-10 mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+                              {particularSuggestions.map((suggestion) => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  onClick={() =>
+                                    handleSelectParticular(suggestion)
+                                  }
+                                  className="w-full border-b border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 last:border-b-0 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
@@ -1167,59 +1201,147 @@ const SimpleRecordForm = ({
               </div>
             </div>
 
-            <div className="space-y-5 my-6">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
-                <FiCreditCard className="h-4 w-4" />
-                Payment Method
+            {needsMethod && (
+              <div className="space-y-5 my-6">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
+                  <FiCreditCard className="h-4 w-4" />
+                  Payment Method
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {paymentMethods.map((method) => {
+                    const Icon = getPaymentMethodIcon(
+                      (method.icon || "card") as TPaymentTemplateIcon,
+                    );
+                    const selectedMethodColor = method.color || "#2563eb";
+                    const selectedTextClass =
+                      getReadableTextClass(selectedMethodColor);
+                    const selectedIconWrapClass =
+                      getReadableIconWrapClass(selectedMethodColor);
+
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, method: method.id }))
+                        }
+                        className={`rounded-xl border p-2 text-left transition-all duration-200 ${
+                          formData.method === method.id
+                            ? `border-transparent shadow-lg ${selectedTextClass}`
+                            : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
+                        }`}
+                        style={
+                          formData.method === method.id
+                            ? { backgroundColor: selectedMethodColor }
+                            : undefined
+                        }
+                      >
+                        <div className="flex flex-col items-center gap-1.5 text-center">
+                          <span
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.method === method.id ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span
+                            className={`text-[11px] font-semibold leading-tight ${formData.method === method.id ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
+                          >
+                            {method.label || method.method}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+            
+            {needsSwapMethods && (
+              <div className="space-y-6 my-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
+                      <FiArrowDownLeft className="h-4 w-4" />
+                      From Account
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+                      {paymentMethods.map((method) => {
+                        const Icon = getPaymentMethodIcon((method.icon || "card") as TPaymentTemplateIcon);
+                        const selectedMethodColor = method.color || "#dc2626";
+                        const selectedTextClass = getReadableTextClass(selectedMethodColor);
+                        const selectedIconWrapClass = getReadableIconWrapClass(selectedMethodColor);
+                        const methodValue = method.label || method.method;
+                        
+                        return (
+                          <button
+                            key={`from-${method.id}`}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, from: methodValue }))}
+                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${
+                              formData.from === methodValue
+                                ? `border-transparent shadow-lg ${selectedTextClass}`
+                                : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
+                            }`}
+                            style={formData.from === methodValue ? { backgroundColor: selectedMethodColor } : undefined}
+                          >
+                            <div className="flex flex-col items-center gap-1.5 text-center">
+                              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.from === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <span className={`text-[11px] font-semibold leading-tight ${formData.from === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}>
+                                {methodValue}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {paymentMethods.map((method) => {
-                  const Icon = getPaymentMethodIcon(
-                    (method.icon || "card") as TPaymentTemplateIcon,
-                  );
-                  const selectedMethodColor = method.color || "#2563eb";
-                  const selectedTextClass =
-                    getReadableTextClass(selectedMethodColor);
-                  const selectedIconWrapClass =
-                    getReadableIconWrapClass(selectedMethodColor);
-
-                  return (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, method: method.id }))
-                      }
-                      className={`rounded-xl border p-2 text-left transition-all duration-200 ${
-                        formData.method === method.id
-                          ? `border-transparent shadow-lg ${selectedTextClass}`
-                          : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
-                      }`}
-                      style={
-                        formData.method === method.id
-                          ? { backgroundColor: selectedMethodColor }
-                          : undefined
-                      }
-                    >
-                      <div className="flex flex-col items-center gap-1.5 text-center">
-                        <span
-                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.method === method.id ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                        </span>
-                        <span
-                          className={`text-[11px] font-semibold leading-tight ${formData.method === method.id ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}
-                        >
-                          {method.label || method.method}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
+                      <FiArrowUpRight className="h-4 w-4" />
+                      To Account
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+                      {paymentMethods.map((method) => {
+                        const Icon = getPaymentMethodIcon((method.icon || "card") as TPaymentTemplateIcon);
+                        const selectedMethodColor = method.color || "#16a34a";
+                        const selectedTextClass = getReadableTextClass(selectedMethodColor);
+                        const selectedIconWrapClass = getReadableIconWrapClass(selectedMethodColor);
+                        const methodValue = method.label || method.method;
+                        
+                        return (
+                          <button
+                            key={`to-${method.id}`}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, to: methodValue }))}
+                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${
+                              formData.to === methodValue
+                                ? `border-transparent shadow-lg ${selectedTextClass}`
+                                : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
+                            }`}
+                            style={formData.to === methodValue ? { backgroundColor: selectedMethodColor } : undefined}
+                          >
+                            <div className="flex flex-col items-center gap-1.5 text-center">
+                              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${formData.to === methodValue ? selectedIconWrapClass : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <span className={`text-[11px] font-semibold leading-tight ${formData.to === methodValue ? selectedTextClass : "text-slate-700 dark:text-slate-300"}`}>
+                                {methodValue}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
 
-              {needsPaymentStatus && (
+            {needsPaymentStatus && (
+              <div className="space-y-5 my-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
                     <FiCheckCircle className="h-4 w-4" />
@@ -1261,28 +1383,10 @@ const SimpleRecordForm = ({
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {needsTransferGroupId && (
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                      Transfer Group ID
-                    </label>
-                    <input
-                      type="text"
-                      name="transferGroupId"
-                      value={formData.transferGroupId || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                      placeholder="Link related transfers..."
-                    />
-                  </div>
-                )}
-              </div>
-
               <div className="mt-3">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
                   Notes

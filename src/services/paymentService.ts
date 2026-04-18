@@ -327,12 +327,7 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     missingFields.push("method");
   }
   
-  if (
-    recordKind !== "liability" &&
-    (!normalizedPayload.status || String(normalizedPayload.status).trim() === "")
-  ) {
-    missingFields.push("status");
-  }
+  // status is no longer required for any record kind
   
   if (missingFields.length > 0) {
     throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
@@ -417,8 +412,10 @@ export async function getPreviousPaymentSequence() {
   const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", {
     createdAt: -1,
   });
-  return { suffix: latest?.suffix, number: latest?.number || 0 };
-}
+return { 
+  suffix: latest?.suffix, 
+  number: (latest?.number || 0) + 1 
+};}
 
 export async function createSwapTransfer(payload: { amount: any; to: string; from: string }, principal: TPrincipal) {
   const { amount, to, from } = payload;
@@ -440,19 +437,6 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   const newNumber = latest?.number || 0;
   const transferGroupId = generateGroupId();
 
-  const [fromTemplate, toTemplate, selfDepositStatus] = await Promise.all([
-    findPaymentTemplateByMethodName(from),
-    findPaymentTemplateByMethodName(to),
-    findPaymentStatusTemplateByStatusName("Self Deposit"),
-  ]);
-
-  if (!fromTemplate || !toTemplate || !selfDepositStatus) {
-    return {
-      status: 400,
-      body: { message: "Missing payment templates/status templates for self transfer" },
-    };
-  }
-
   await createRecord({
     createdBy: principal.userId,
     type: "expense",
@@ -462,8 +446,6 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     suffix: newSuffix,
     number: newNumber + 1,
     particular: `Money removed from ${from} to add in ${to}`,
-    method: fromTemplate._id,
-    status: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -485,8 +467,6 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     suffix: newSuffix,
     number: newNumber + 2,
     particular: `Money recieved as exchange from ${from}`,
-    method: toTemplate._id,
-    status: selfDepositStatus._id,
     activityLog: [
       {
         action: "create",
@@ -670,6 +650,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     throw new Error("Service fee payment template not found");
   }
 
+  const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
   const transferGroupId = generateGroupId();
 
   const normalizedPayload = normalizeEntityFields({
@@ -677,6 +658,10 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     recordKind: "instant_profit",
     transferGroupId,
   });
+
+  if (profitStatusTemplate) {
+    normalizedPayload.status = profitStatusTemplate._id;
+  }
 
   await createRecord({
     ...normalizedPayload,
@@ -694,21 +679,24 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     ],
   });
 
-  let { amount, number, type, ...rest } = normalizedPayload;
-  const serviceFee = amount;
-  amount = 0;
-  type = "expense";
-  number = +number + 1;
+  const {
+    amount: originalAmount,
+    number,
+    type: originalType,
+    serviceFee: originalServiceFee,
+    method: originalMethod,
+    ...rest
+  } = normalizedPayload;
 
   await createRecord({
-    serviceFee,
-    amount,
-    type,
+    ...rest,
+    serviceFee: originalServiceFee || 0,
+    amount: 0,
+    type: "expense",
     recordKind: "instant_profit",
     method: serviceFeeTemplate._id,
-    number,
+    number: +number + 1,
     transferGroupId,
-    ...rest,
     createdBy: principal.userId,
     activityLog: [
       {

@@ -1,7 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
-import { listSelfDepositPayments } from "@/services/paymentService";
+import { createSwapTransfer, listSelfDepositPayments } from "@/services/paymentService";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,3 +27,17 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    await connect();
+    const principal = await requirePermission(request, "payments.write");
+    const reqBody = await request.json();
+    const result = await createSwapTransfer(reqBody, principal);
+
+    return Response.json(result.body, { status: result.status });
+  } catch (error: any) {
+    return Response.json({ error: error.message || "Failed to create self transfer" }, { status: 500 });
+  }
+}
+

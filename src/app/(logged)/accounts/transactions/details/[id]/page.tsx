@@ -4,15 +4,14 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { TRecordList } from "@/types/records";
 import axios from "axios";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import clsx from "clsx";
 import PaymentMethodBadge from "@/components/common/PaymentMethodBadge";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
-import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
-import { useRouter } from "next/navigation";
+
 import toast from "react-hot-toast";
 import {
   FiActivity,
@@ -26,13 +25,15 @@ import {
   FiHash,
   FiInfo,
   FiLoader,
-  FiChevronDown,
-  FiChevronUp,
   FiTag,
   FiTrendingDown,
   FiTrendingUp,
   FiUser,
   FiTrash2,
+  FiMessageSquare,
+  FiBox,
+  FiFileText,
+  FiBookmark
 } from "react-icons/fi";
 
 const renderBadge = (status: string | undefined, colorClass: string) => (
@@ -64,20 +65,6 @@ function toDisplayValue(value: any) {
   return String(value);
 }
 
-const definitionMap: Record<string, string> = {
-  createdBy: "System user who initially created this transaction.",
-  method: "Payment channel used for this transaction (cash, bank, tasdeed, etc.).",
-  status: "Operational state of this transaction used by accounting workflows.",
-  amount: "Final transaction amount in AED.",
-  serviceFee: "Fee captured separately, usually on expense-type records.",
-  particular: "Business context or purpose note of the transaction.",
-  type: "Income increases inflow; expense captures outflow.",
-};
-
-function getDefinition(field: string) {
-  return definitionMap[field] || "Audited transaction field captured for traceability.";
-}
-
 const getClientHref = (record?: TRecordList) => {
   if (!record?.client) return "/accounts/transactions";
   if (record.client.type === "self") return "/accounts/transactions/self";
@@ -88,7 +75,6 @@ const TransactionDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [showGuide, setShowGuide] = useState(false);
 
   const { data: paymentMethodOptions = [] } = useQuery<Array<{ value: string; label: string; color?: string; icon?: string }>>({
     queryKey: ["payment-method-templates"],
@@ -108,7 +94,7 @@ const TransactionDetailsPage = () => {
     return acc;
   }, {});
 
-  const { data, isLoading, isError } = useQuery<{ record: TRecordList }>({
+  const { data, isLoading, isError } = useQuery<{ record: TRecordList & Record<string, any> }>({
     queryKey: ["payment-details", id],
     queryFn: async () => {
       const response = await axios.get(`/api/payment/${id}/details`);
@@ -137,6 +123,22 @@ const TransactionDetailsPage = () => {
     },
   });
 
+  const renderTableRow = (label: string, value: React.ReactNode, icon: React.ReactNode) => (
+    <tr className="group border-b border-slate-200 transition-colors hover:bg-slate-50/50 last:border-b-0 dark:border-slate-800/80 dark:hover:bg-slate-800/30">
+      <td className="w-1/3 py-4 pl-6 pr-4 align-top text-sm font-semibold text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400 opacity-70 group-hover:text-cyan-500 group-hover:opacity-100 transition-colors">
+            {icon}
+          </span>
+          {label}
+        </div>
+      </td>
+      <td className="py-4 pr-6 text-sm font-medium text-slate-900 dark:text-slate-100">
+        {value}
+      </td>
+    </tr>
+  );
+
   return (
     <>
       <Breadcrumb pageName="Transaction Details" />
@@ -149,14 +151,11 @@ const TransactionDetailsPage = () => {
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-cyan-100/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
               <FiInfo />
-              Transaction Insight
+              Record Data
             </p>
             <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Payment Details
+              Payment Record Detail
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Complete timeline and field-level change history for this record.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -196,208 +195,231 @@ const TransactionDetailsPage = () => {
         </div>
       </section>
 
-      {id ? (
-        <RelatedTasksPanel
-          className="mt-6"
-          targetType="record"
-          targetId={id}
-          targetLabel={`${record?.suffix || ""}${record?.number || ""}`.trim() || undefined}
-        />
-      ) : null}
 
-      <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+
+      <section className="mt-6">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-slate-500 dark:text-slate-400">
-            <FiLoader className="animate-spin" />
-            Loading transaction details...
+          <div className="flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white py-20 text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+            <FiLoader className="animate-spin text-2xl" />
+            <span className="font-medium">Loading full record detail...</span>
           </div>
         ) : isError || !record ? (
-          <div className="py-16 text-center text-sm text-rose-600 dark:text-rose-400">
+          <div className="rounded-3xl border border-rose-200 bg-white py-20 text-center text-sm font-medium text-rose-600 shadow-sm dark:border-rose-900/50 dark:bg-slate-900/50 dark:text-rose-400">
             Failed to load transaction details.
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Transaction ID</p>
-                <p className="mt-1 inline-flex items-center gap-2 text-sm font-black uppercase text-slate-900 dark:text-slate-100">
-                  <FiHash className="text-slate-400" />
-                  {(record.suffix || "") + (record.number || "")}
-                </p>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-800/80 dark:bg-slate-800/20">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Detailed Data Table
+                </h3>
               </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/10">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Amount</p>
-                <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-300">
-                  <FiDollarSign className="text-emerald-500" />
-                  {record.amount} AED
-                </p>
-              </div>
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4 dark:border-cyan-800/40 dark:bg-cyan-900/10">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Type</p>
-                <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-slate-900 dark:text-slate-100">
-                  {record.type === "income" ? <FiTrendingUp className="text-emerald-500" /> : <FiTrendingDown className="text-rose-500" />}
-                  {record.type}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800/40 dark:bg-amber-900/10">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Activity Events</p>
-                <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-slate-900 dark:text-slate-100">
-                  <FiActivity className="text-amber-500" />
-                  {record.activityLog?.length || 0}
-                </p>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-left">
+                  <tbody>
+                    {renderTableRow(
+                      "Transaction ID",
+                      <span className="inline-flex items-center gap-2 font-black text-cyan-600 dark:text-cyan-400">
+                        <FiHash className="text-cyan-400 dark:text-cyan-600" />
+                        {(record.suffix || "") + (record.number || "")}
+                      </span>,
+                      <FiHash />
+                    )}
+                    
+                    {renderTableRow(
+                      "Record Kind",
+                      <span className="capitalize">{record.recordKind?.replace(/_/g, " ") || "-"}</span>,
+                      <FiBox />
+                    )}
+
+                    {renderTableRow(
+                      "Type",
+                      <span className={clsx("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase", record.type === "income" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300")}>
+                        {record.type === "income" ? <FiTrendingUp /> : <FiTrendingDown />}
+                        {record.type}
+                      </span>,
+                      record.type === "income" ? <FiTrendingUp /> : <FiTrendingDown />
+                    )}
+
+                    {renderTableRow(
+                      "Amount",
+                      <span className="font-black text-slate-900 dark:text-white">
+                        {record.amount} <span className="text-slate-500 dark:text-slate-400">AED</span>
+                      </span>,
+                      <FiDollarSign />
+                    )}
+
+                    {record.serviceFee !== undefined && record.serviceFee !== null && renderTableRow(
+                      "Service Fee",
+                      <span className="font-medium">
+                        {record.serviceFee} <span className="text-slate-500 dark:text-slate-400">AED</span>
+                      </span>,
+                      <FiTag />
+                    )}
+
+                    {renderTableRow(
+                      "Client / Entity",
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {record.recordKind === "office_records" ? record.categoryName || "Office Record" : record.client?.name || "Unknown"}
+                        {record.client?.type && <span className="ml-2 text-[10px] uppercase tracking-widest text-slate-400">({record.client.type})</span>}
+                      </span>,
+                      <FiUser />
+                    )}
+
+                    {renderTableRow(
+                      "Particular",
+                      <div className="max-w-prose whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300">
+                        {record.particular || "-"}
+                      </div>,
+                      <FiFileText />
+                    )}
+
+                    {renderTableRow(
+                      "Remarks",
+                      <div className="max-w-prose whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300">
+                        {record.remarks || "-"}
+                      </div>,
+                      <FiMessageSquare />
+                    )}
+
+                    {renderTableRow(
+                      "Payment Method",
+                      record.method ? (
+                        <PaymentMethodBadge
+                          label={paymentMethodMap[record.method]?.label || record.method || "-"}
+                          color={paymentMethodMap[record.method]?.color}
+                          icon={paymentMethodMap[record.method]?.icon}
+                          size="sm"
+                        />
+                      ) : "-",
+                      <FiCreditCard />
+                    )}
+
+                    {renderTableRow(
+                      "Status",
+                      record.status ? renderBadge(record.status, "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700") : "-",
+                      <FiBookmark />
+                    )}
+
+                    {record.transferGroupId && renderTableRow(
+                      "Transfer Group ID",
+                      <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                        {record.transferGroupId}
+                      </span>,
+                      <FiHash />
+                    )}
+
+                    {renderTableRow(
+                      "Date",
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{formatDateTime(record.createdAt || record.dateTime || null)}</span>
+                        <span className="text-xs text-slate-500">{formatRelativeDate(record.createdAt || record.dateTime || null)}</span>
+                      </div>,
+                      <FiCalendar />
+                    )}
+
+                    {renderTableRow(
+                      "Created By",
+                      <UsernameWithIcon
+                        username={record.creator}
+                        fullname={record.creatorFullname}
+                        fallback="Unknown"
+                        className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                        iconClassName="text-amber-600 dark:text-amber-300"
+                      />,
+                      <FiUser />
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="space-y-4 rounded-2xl border border-fuchsia-200/70 bg-gradient-to-br from-fuchsia-50 via-white to-cyan-50 p-5 shadow-sm dark:border-fuchsia-800/30 dark:from-slate-800 dark:via-slate-900 dark:to-cyan-950/20 lg:col-span-1">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-fuchsia-700 dark:text-fuchsia-300">Record Summary</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowGuide((prev) => !prev)}
-                    className="inline-flex items-center gap-1 rounded-full border border-fuchsia-300/60 bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-fuchsia-700 transition hover:bg-fuchsia-50 dark:border-fuchsia-700/40 dark:bg-slate-900/70 dark:text-fuchsia-300"
-                    title="Show quick definitions for highlighted fields"
-                  >
-                    <FiInfo /> Guide {showGuide ? <FiChevronUp /> : <FiChevronDown />}
-                  </button>
-                </div>
-
-                {showGuide && (
-                  <div className="rounded-xl border border-fuchsia-200 bg-white/90 p-3 text-xs dark:border-fuchsia-700/40 dark:bg-slate-900/70">
-                    <p className="mb-2 font-bold uppercase tracking-wide text-fuchsia-700 dark:text-fuchsia-300">Field Definitions</p>
-                    <div className="space-y-1 text-slate-600 dark:text-slate-300">
-                      <p><span className="font-semibold">Created By</span>: {getDefinition("createdBy")}</p>
-                      <p><span className="font-semibold">Method</span>: {getDefinition("method")}</p>
-                      <p><span className="font-semibold">Status</span>: {getDefinition("status")}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500"><FiUser className="text-slate-400" /> Client</span>
-                    <span className="max-w-[65%] text-right font-semibold capitalize text-slate-900 dark:text-slate-100">{record.client?.name || "Unknown"}</span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500" title={getDefinition("method")}><FiTag className="text-slate-400" /> Method</span>
-                    <PaymentMethodBadge
-                      label={paymentMethodMap[record.method || ""]?.label || record.method || "-"}
-                      color={paymentMethodMap[record.method || ""]?.color}
-                      icon={paymentMethodMap[record.method || ""]?.icon}
-                      size="sm"
-                    />
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500"><FiCalendar className="text-slate-400" /> Date</span>
-                    <span className="max-w-[65%] text-right font-medium text-slate-900 dark:text-slate-100">{formatDateTime(record.createdAt || record.dateTime || null)}</span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500"><FiClock className="text-slate-400" /> Relative</span>
-                    <span className="font-medium text-slate-900 dark:text-slate-100">{formatRelativeDate(record.createdAt || record.dateTime || null)}</span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500" title={getDefinition("createdBy")}><FiUser className="text-slate-400" /> Created By</span>
-                    <UsernameWithIcon
-                      username={record.creator}
-                      fullname={record.creatorFullname}
-                      fallback="Unknown"
-                      className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                      iconClassName="text-amber-600 dark:text-amber-300"
-                    />
-                  </div>
-
-                  {record.status && (
-                    <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-2 dark:border-slate-700">
-                      <span className="inline-flex items-center gap-1.5 text-slate-500" title={getDefinition("status")}><FiCreditCard className="text-slate-400" /> Status</span>
-                      {renderBadge(record.status, "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700")}
-                    </div>
-                  )}
-
-                  {record.particular && (
-                    <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900/60">
-                      <p className="mb-1 font-semibold uppercase tracking-wide text-slate-500">Particular</p>
-                      <p className="text-slate-700 dark:text-slate-300">{record.particular}</p>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-700 dark:bg-slate-800/30 lg:col-span-2">
-                <h3 className="mb-5 flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-500">
-                  <FiActivity /> Activity Timeline
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-800/80 dark:bg-slate-800/20">
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  <FiActivity className="text-cyan-500" />
+                  Activity Timeline
                 </h3>
-
+              </div>
+              <div className="p-6">
                 {!record.activityLog?.length ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-12 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/30 dark:text-slate-400">
                     No activity recorded for this transaction yet.
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {record.activityLog
-                      .slice()
-                      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-                      .map((entry, index) => {
-                        const actionClass = actionColorMap[entry.action] || "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
+                  <div className="relative border-l border-slate-200 pl-6 dark:border-slate-700">
+                    <div className="space-y-8">
+                      {record.activityLog
+                        .slice()
+                        .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+                        .map((entry, index) => {
+                          const actionClass = actionColorMap[entry.action] || "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
 
-                        return (
-                          <div key={`${entry.action}-${entry.at}-${index}`} className="relative rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60">
-                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                              <span className={clsx("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider", actionClass)}>
-                                {entry.action}
-                              </span>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">{formatDateTime(entry.at)}</span>
-                            </div>
+                          return (
+                            <div key={`${entry.action}-${entry.at}-${index}`} className="relative">
+                              <div className="absolute -left-[35px] mt-1.5 h-4 w-4 rounded-full border-4 border-white bg-slate-300 dark:border-slate-900 dark:bg-slate-600"></div>
+                              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800/40">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                  <span className={clsx("inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider", actionClass)}>
+                                    {entry.action}
+                                  </span>
+                                  <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    <FiClock />
+                                    {formatDateTime(entry.at)}
+                                  </span>
+                                </div>
 
-                            <p className="text-sm text-slate-700 dark:text-slate-300">
-                              By{" "}
-                              <UsernameWithIcon
-                                username={entry.byUsername}
-                                fullname={entry.byFullname}
-                                fallback="Unknown"
-                                className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                                iconClassName="text-amber-600 dark:text-amber-300"
-                              />
-                            </p>
+                                <div className="mb-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                  <span className="font-semibold text-slate-500">Actor:</span>
+                                  <UsernameWithIcon
+                                    username={entry.byUsername}
+                                    fullname={entry.byFullname}
+                                    fallback="Unknown"
+                                    className="rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                                    iconClassName="text-slate-500 dark:text-slate-400"
+                                  />
+                                </div>
 
-                            {entry.details && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{entry.details}</p>}
+                                {entry.details && (
+                                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                                    <span className="font-semibold text-slate-500 dark:text-slate-500">Note: </span>
+                                    {entry.details}
+                                  </p>
+                                )}
 
-                            {!!entry.previousValues && !!entry.newValues && (
-                              <div className="mt-3 space-y-2">
-                                {Object.keys(entry.newValues).map((field) => {
-                                  const previousValue = entry.previousValues?.[field];
-                                  const newValue = entry.newValues?.[field];
+                                {!!entry.previousValues && !!entry.newValues && (
+                                  <div className="mt-4 space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Property Changes</p>
+                                    <div className="grid gap-3">
+                                      {Object.keys(entry.newValues).map((field) => {
+                                        const previousValue = entry.previousValues?.[field];
+                                        const newValue = entry.newValues?.[field];
 
-                                  return (
-                                    <div key={`${entry.at}-${field}`} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-                                      <p
-                                        className="mb-2 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                                        title={getDefinition(field)}
-                                      >
-                                        {toLabel(field)} <FiInfo className="text-slate-400" />
-                                      </p>
-                                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                                        <div className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1.5 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
-                                          <span className="block text-[10px] uppercase tracking-wide opacity-80">Previous</span>
-                                          <span className="break-all">{toDisplayValue(previousValue)}</span>
-                                        </div>
-                                        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                          <span className="block text-[10px] uppercase tracking-wide opacity-80">New</span>
-                                          <span className="break-all">{toDisplayValue(newValue)}</span>
-                                        </div>
-                                      </div>
+                                        return (
+                                          <div key={`${entry.at}-${field}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-sm">
+                                            <div className="flex flex-col gap-1 rounded-lg border border-rose-100 bg-white p-3 shadow-sm dark:border-rose-900/30 dark:bg-slate-800">
+                                              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">{toLabel(field)} (Old)</span>
+                                              <span className="font-medium text-slate-700 line-through opacity-70 dark:text-slate-300">{toDisplayValue(previousValue)}</span>
+                                            </div>
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                                              <FiArrowLeft className="rotate-180" />
+                                            </div>
+                                            <div className="flex flex-col gap-1 rounded-lg border border-emerald-100 bg-white p-3 shadow-sm dark:border-emerald-900/30 dark:bg-slate-800">
+                                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500">{toLabel(field)} (New)</span>
+                                              <span className="font-medium text-slate-900 dark:text-slate-100">{toDisplayValue(newValue)}</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
-                                  );
-                                })}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>

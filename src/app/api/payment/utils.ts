@@ -89,8 +89,11 @@ export function mapRecordListItem(record: any) {
     status: record?.status?.status || record?.paymentStatusTemplate?.status || "",
     client: getRecordClient(record),
     particular: record.particular,
-    category: record?.category?._id?.toString?.() || record?.category?.toString?.() || "",
-    categoryName: record?.category?.category || "",
+    category: record?.category?.category || (record?.recordKind === "office_records" ? "Office" : ""),
+    // For office_records, always provide a category label fallback
+    categoryName:
+      record?.category?.category ||
+      (record?.recordKind === "office_records" ? "Office" : ""),
     categoryColor: record?.category?.color || "",
     categoryIcon: record?.category?.icon || "",
     amount: record.amount?.toFixed(2),

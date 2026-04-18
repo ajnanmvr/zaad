@@ -9,7 +9,6 @@ const PaymentParticularTemplateSchema = new Schema(
     },
     category: {
       type: [String],
-      default: ["office_records"],
       index: true,
     },
     published: {

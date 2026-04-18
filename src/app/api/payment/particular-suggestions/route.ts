@@ -54,7 +54,7 @@ function buildRecordCategoryFilter(category: ParticularCategory) {
       return { type: "expense" };
     case "office_records":
     default:
-      return { category: "office_records" };
+      return { recordKind: "office_records" };
   }
 }
 

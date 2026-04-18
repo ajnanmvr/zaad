@@ -328,6 +328,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
               <li>
                 <NavItem
+                  href="/accounts/add-record"
+                  icon={<FiFolderPlus />}
+                  label="Add Record"
+                  active={pathname === "/accounts/add-record"}
+                />
+              </li>
+              <li>
+                <NavItem
                   href="/accounts/transactions/self"
                   icon={<FiBookOpen />}
                   label="Office Records"
