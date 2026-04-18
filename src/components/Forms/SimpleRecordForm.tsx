@@ -62,6 +62,14 @@ interface PreviousPaymentSequence {
   number?: number;
 }
 
+interface EntityDetailResponse {
+  data?: {
+    id?: string;
+    name?: string;
+    color?: string;
+  };
+}
+
 interface SimpleRecordFormProps {
   recordId?: string;
   isEdit?: boolean;
@@ -156,6 +164,7 @@ const SimpleRecordForm = ({
   const [selectedEntity, setSelectedEntity] = useState<EntityOption | null>(
     null,
   );
+  const createdById = user?._id;
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -183,6 +192,39 @@ const SimpleRecordForm = ({
     }
   }, []);
 
+  const fetchEntityDetailsById = useCallback(async (entityId: string) => {
+    const id = String(entityId || "").trim();
+    if (!id) return null;
+
+    const sources: Array<{
+      type: EntityOption["entityType"];
+      url: string;
+    }> = [
+      { type: "company", url: `/api/company/${id}` },
+      { type: "employee", url: `/api/employee/${id}` },
+      { type: "individual", url: `/api/individual/${id}` },
+    ];
+
+    for (const source of sources) {
+      try {
+        const res = await axios.get<EntityDetailResponse>(source.url);
+        const entityData = res.data?.data;
+        if (!entityData?.id || !entityData?.name) continue;
+
+        return {
+          _id: String(entityData.id),
+          name: String(entityData.name),
+          color: entityData.color,
+          entityType: source.type,
+        } as EntityOption;
+      } catch {
+        // Try next entity source when ID doesn't match this type.
+      }
+    }
+
+    return null;
+  }, []);
+
   const loadExistingRecord = useCallback(async () => {
     try {
       const res = await axios.get(`/api/payment/${recordId}`);
@@ -204,20 +246,34 @@ const SimpleRecordForm = ({
           "",
         entity: data?.entity?._id || data?.entity || undefined,
       });
-      if (data?.entity?._id || data?.entity?.name) {
-        setSelectedEntity({
-          _id: data?.entity?._id || data?.entity,
-          name: data?.entity?.name || "Selected entity",
+      if (data?.entity?._id || data?.entity?.name || typeof data?.entity === "string") {
+        const fallbackEntity: EntityOption = {
+          _id: data?.entity?._id || data?.entity || "",
+          name: data?.entity?.name || "Current entity",
           color: data?.entity?.color,
           entityType: data?.entity?.entityType || "company",
-        });
-        setEntitySearch(data?.entity?.name || "");
+        };
+
+        setSelectedEntity(fallbackEntity);
+        setEntitySearch(data?.entity?.name || "Current entity");
+
+        const entityId = data?.entity?._id || data?.entity;
+        const shouldFetchEntityDetails =
+          typeof entityId === "string" && (!data?.entity?.name || !data?.entity?.entityType);
+
+        if (shouldFetchEntityDetails) {
+          const detailedEntity = await fetchEntityDetailsById(entityId);
+          if (detailedEntity) {
+            setSelectedEntity(detailedEntity);
+            setEntitySearch(detailedEntity.name);
+          }
+        }
       }
     } catch (error) {
       console.error("Error loading record:", error);
       toast.error("Failed to load record");
     }
-  }, [recordId]);
+  }, [recordId, fetchEntityDetailsById]);
 
   useEffect(() => {
     fetchTemplates();
@@ -385,12 +441,77 @@ const SimpleRecordForm = ({
     }
   };
 
+  const getFormVisibility = useCallback(
+    (recordKind?: Partial<TRecordData>["recordKind"], type?: Partial<TRecordData>["type"]) => {
+      const nextRecordKind = String(recordKind || "");
+      const nextType = String(type || "");
+
+      return {
+        needsEntity: ["standard", "instant_profit", "liability"].includes(nextRecordKind),
+        needsPaymentStatus: nextRecordKind === "standard",
+        needsTransferGroupId: ["instant_profit", "self_transfer"].includes(nextRecordKind),
+        needsCategory: nextRecordKind === "office_records",
+        allowsServiceFee: nextType === "expense" && ["standard", "instant_profit"].includes(nextRecordKind),
+      };
+    },
+    [],
+  );
+
+  const sanitizeFormDataByVisibility = useCallback(
+    (draft: Partial<TRecordData>) => {
+      const visibility = getFormVisibility(draft.recordKind, draft.type);
+      const nextDraft: Partial<TRecordData> = { ...draft };
+
+      if (!visibility.needsEntity) {
+        nextDraft.entity = undefined;
+      }
+
+      if (!visibility.needsPaymentStatus) {
+        nextDraft.status = "";
+      }
+
+      if (!visibility.needsTransferGroupId) {
+        nextDraft.transferGroupId = "";
+      }
+
+      if (!visibility.needsCategory) {
+        nextDraft.category = "";
+      }
+
+      if (!visibility.allowsServiceFee) {
+        nextDraft.serviceFee = 0;
+      }
+
+      return nextDraft;
+    },
+    [getFormVisibility],
+  );
+
   const handleRecordKindChange = (kind: RecordKind) => {
-    setFormData((prev) => ({ ...prev, recordKind: kind, status: "" }));
+    const visibility = getFormVisibility(kind, formData.type);
+
+    if (!visibility.needsEntity) {
+      setSelectedEntity(null);
+      setEntitySearch("");
+      setEntitySearchResults([]);
+      setShowEntityDropdown(false);
+    }
+
+    if (!visibility.allowsServiceFee) {
+      setClientFee("");
+    }
+
+    setFormData((prev) => sanitizeFormDataByVisibility({ ...prev, recordKind: kind }));
   };
 
   const handleTypeChange = (type: RecordType) => {
-    setFormData((prev) => ({ ...prev, type }));
+    const visibility = getFormVisibility(formData.recordKind, type);
+
+    if (!visibility.allowsServiceFee) {
+      setClientFee("");
+    }
+
+    setFormData((prev) => sanitizeFormDataByVisibility({ ...prev, type }));
   };
 
   const getApplicableStatuses = () => {
@@ -475,11 +596,7 @@ const SimpleRecordForm = ({
     setLoading(true);
 
     try {
-      const recordData = {
-        ...formData,
-        serviceFee: autoServiceFee,
-        createdBy: user?._id,
-      };
+      const recordData = buildRecordPayload();
 
       let successMessage = "Record created successfully!";
 
@@ -516,6 +633,7 @@ const SimpleRecordForm = ({
     formData.recordKind || "",
   );
   const needsCategory = formData.recordKind === "office_records";
+  const showCurrentEntityInEdit = isEdit && !needsEntity && !!selectedEntity;
   const allowsServiceFee =
     formData.type === "expense" &&
     ["standard", "instant_profit"].includes(formData.recordKind || "");
@@ -527,10 +645,19 @@ const SimpleRecordForm = ({
       : Number((clientFeeValue - amountValue).toFixed(2))
     : Number(formData.serviceFee || 0);
   const transactionNumber = `${String(formData.suffix || "")}${formData.number ?? ""}`;
+  const usesNeutralTheme = ["instant_profit", "self_transfer"].includes(
+    formData.recordKind || "",
+  );
   const nextType: RecordType =
     formData.type === "income" ? "expense" : "income";
   const switchTheme =
-    nextType === "expense"
+    usesNeutralTheme
+      ? {
+          bg: isDarkMode ? "#10223a" : "#eaf2ff",
+          border: isDarkMode ? "#1e3a5f" : "#bfdbfe",
+          text: isDarkMode ? "#93c5fd" : "#1d4ed8",
+        }
+      : nextType === "expense"
       ? {
           bg: isDarkMode ? "#3b0f12" : "#ffe7e7",
           border: isDarkMode ? "#7f1d1d" : "#fecaca",
@@ -542,7 +669,14 @@ const SimpleRecordForm = ({
           text: isDarkMode ? "#86efac" : "#166534",
         };
   const theme =
-    formData.type === "income"
+    usesNeutralTheme
+      ? {
+          panel: isDarkMode ? "#0f172a" : "#f8fbff",
+          border: isDarkMode ? "#1e293b" : "#dbeafe",
+          soft: isDarkMode ? "#172554" : "#eef4ff",
+          strong: isDarkMode ? "#60a5fa" : "#2563eb",
+        }
+      : formData.type === "income"
       ? {
           panel: isDarkMode ? "#0b1a13" : "#fbfefc",
           border: isDarkMode ? "#1f5138" : "#cdeed8",
@@ -555,6 +689,41 @@ const SimpleRecordForm = ({
           soft: isDarkMode ? "#241718" : "#fff4f4",
           strong: isDarkMode ? "#ef4444" : "#dc2626",
         };
+
+  const buildRecordPayload = useCallback(() => {
+    const visibility = getFormVisibility(formData.recordKind, formData.type);
+
+    const payload: Partial<TRecordData> = {
+      suffix: formData.suffix,
+      number: formData.number,
+      particular: formData.particular,
+      amount: formData.amount,
+      method: formData.method,
+      type: formData.type,
+      recordKind: formData.recordKind,
+      remarks: formData.remarks,
+      createdBy: createdById,
+      serviceFee: visibility.allowsServiceFee ? autoServiceFee : 0,
+    };
+
+    if (visibility.needsEntity && formData.entity) {
+      payload.entity = formData.entity;
+    }
+
+    if (visibility.needsPaymentStatus && formData.status) {
+      payload.status = formData.status;
+    }
+
+    if (visibility.needsTransferGroupId && formData.transferGroupId) {
+      payload.transferGroupId = formData.transferGroupId;
+    }
+
+    if (visibility.needsCategory && formData.category) {
+      payload.category = formData.category;
+    }
+
+    return payload;
+  }, [autoServiceFee, createdById, formData, getFormVisibility]);
 
   useEffect(() => {
     if (!allowsServiceFee) return;
@@ -593,27 +762,29 @@ const SimpleRecordForm = ({
               >
                 Transaction builder
               </p>
-              <button
-                type="button"
-                onClick={() =>
-                  handleTypeChange(
-                    formData.type === "income" ? "expense" : "income",
-                  )
-                }
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.06em] shadow-sm transition-opacity duration-200 hover:opacity-90"
-                style={{
-                  backgroundColor: switchTheme.bg,
-                  borderColor: switchTheme.border,
-                  color: switchTheme.text,
-                }}
-              >
-                {formData.type === "income" ? (
-                  <FiArrowUpRight className="h-3.5 w-3.5" />
-                ) : (
-                  <FiArrowDownLeft className="h-3.5 w-3.5" />
-                )}
-                Switch to {nextType}
-              </button>
+              {!usesNeutralTheme ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleTypeChange(
+                      formData.type === "income" ? "expense" : "income",
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.06em] shadow-sm transition-opacity duration-200 hover:opacity-90"
+                  style={{
+                    backgroundColor: switchTheme.bg,
+                    borderColor: switchTheme.border,
+                    color: switchTheme.text,
+                  }}
+                >
+                  {formData.type === "income" ? (
+                    <FiArrowUpRight className="h-3.5 w-3.5" />
+                  ) : (
+                    <FiArrowDownLeft className="h-3.5 w-3.5" />
+                  )}
+                  Switch to {nextType}
+                </button>
+              ) : null}
             </div>
             <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
               {isEdit ? "Edit Transaction" : "New Transaction"}
@@ -695,12 +866,16 @@ const SimpleRecordForm = ({
                 <button
                   key={tile.kind}
                   type="button"
-                  onClick={() => handleRecordKindChange(tile.kind)}
+                  onClick={() => {
+                    if (isEdit) return;
+                    handleRecordKindChange(tile.kind);
+                  }}
+                  disabled={isEdit}
                   className={`rounded-2xl border p-3 text-left transition-all duration-200 ${
                     selected
                       ? "border-transparent shadow-lg"
                       : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-                  }`}
+                  } ${isEdit ? "cursor-not-allowed opacity-70" : ""}`}
                   style={
                     selected
                       ? {
@@ -840,6 +1015,32 @@ const SimpleRecordForm = ({
                       />
                     </div>
                   )}
+
+                  {showCurrentEntityInEdit ? (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                        Current Entity
+                      </label>
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                          style={{
+                            backgroundColor: selectedEntity?.color || "#64748b",
+                          }}
+                        >
+                          {getEntityInitials(selectedEntity?.name || "EN")}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {selectedEntity?.name || "Current entity"}
+                          </p>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                            {selectedEntity?.entityType || "company"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">

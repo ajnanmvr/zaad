@@ -859,33 +859,6 @@ const TransactionList = ({
               >
                 <FiFilter /> Filter
               </button>
-              <Link
-                href="/accounts/transactions/self-deposit"
-                className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-              >
-                <FiArrowDownLeft /> Self Deposit
-              </Link>
-              <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
-              <Link
-                href={incomeHref}
-                className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600 shadow-sm shadow-emerald-500/20"
-              >
-                <FiPlus /> Income
-              </Link>
-              <Link
-                href={expenseHref}
-                className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-600 shadow-sm shadow-rose-500/20"
-              >
-                <FiPlus /> Expense
-              </Link>
-              {isAdmin && (
-                <Link
-                  href="/accounts/transactions/bin"
-                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
-                >
-                  <FiTrash2 /> Bin
-                </Link>
-              )}
             </div>
           </div>
         </div>
