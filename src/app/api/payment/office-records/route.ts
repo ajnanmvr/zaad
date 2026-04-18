@@ -15,6 +15,9 @@ export async function GET(request: NextRequest) {
     const page = Math.max(Number(searchParams.get("page") || "0"), 0);
     const limit = Math.min(Math.max(Number(searchParams.get("limit") || "20"), 1), 100);
     const search = String(searchParams.get("search") || "").trim();
+    const type = String(searchParams.get("type") || "").trim().toLowerCase();
+    const method = String(searchParams.get("method") || "").trim().toLowerCase();
+    const sort = String(searchParams.get("sort") || "newest").trim().toLowerCase();
 
     const query: Record<string, any> = {
       recordKind: "office_records",
@@ -28,82 +31,92 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const [records, total, groupedRows] = await Promise.all([
-      Records.find(query)
+    const baseRecords = await Records.find(query)
         .populate(PAYMENT_POPULATE_FIELDS)
         .sort({ createdAt: -1 })
-        .skip(page * limit)
-        .limit(limit)
-        .lean(),
-      Records.countDocuments(query),
-      Records.aggregate([
-        {
-          $match: {
-            recordKind: "office_records",
-            deletedAt: null,
-          },
-        },
-        {
-          $lookup: {
-            from: "officeExpenseCategories",
-            localField: "category",
-            foreignField: "_id",
-            as: "categoryRef",
-          },
-        },
-        {
-          $unwind: {
-            path: "$categoryRef",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $project: {
-            type: 1,
-            categoryName: { $ifNull: ["$categoryRef.category", "Office"] },
-            effectiveAmount: {
-              $cond: [
-                { $eq: ["$type", "expense"] },
-                { $add: ["$amount", { $ifNull: ["$serviceFee", 0] }] },
-                "$amount",
-              ],
-            },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              type: "$type",
-              categoryName: "$categoryName",
-            },
-            total: { $sum: "$effectiveAmount" },
-            count: { $sum: 1 },
-          },
-        },
-      ]),
-    ]);
+        .lean();
 
-    const incomeByCategory = groupedRows
-      .filter((row: any) => row?._id?.type === "income")
-      .map((row: any) => ({
-        category: row._id.categoryName,
-        total: Number((row.total || 0).toFixed(2)),
-        count: row.count || 0,
-      }))
-      .sort((a: any, b: any) => b.total - a.total);
+    const mappedRows = baseRecords.map(mapRecordListItem);
 
-    const expenseByCategory = groupedRows
-      .filter((row: any) => row?._id?.type === "expense")
-      .map((row: any) => ({
-        category: row._id.categoryName,
-        total: Number((row.total || 0).toFixed(2)),
-        count: row.count || 0,
+    const filteredRows = mappedRows.filter((row: any) => {
+      const typeMatch = !type || row.type === type;
+      const methodMatch = !method || String(row.method || "").toLowerCase() === method;
+      const searchMatch =
+        !search ||
+        [
+          `${row.suffix || ""}${row.number || ""}`,
+          row.particular || "",
+          row.categoryName || "",
+          row.method || "",
+          row.remarks || "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(search.toLowerCase());
+
+      return typeMatch && methodMatch && searchMatch;
+    });
+
+    const sortedRows = [...filteredRows].sort((a: any, b: any) => {
+      if (sort === "amount-desc") return Number(b.amount || 0) - Number(a.amount || 0);
+      if (sort === "amount-asc") return Number(a.amount || 0) - Number(b.amount || 0);
+      if (sort === "particular-asc") return String(a.particular || "").localeCompare(String(b.particular || ""));
+      if (sort === "particular-desc") return String(b.particular || "").localeCompare(String(a.particular || ""));
+      if (sort === "oldest") {
+        return new Date(String(a.createdAt || 0)).getTime() - new Date(String(b.createdAt || 0)).getTime();
+      }
+      return new Date(String(b.createdAt || 0)).getTime() - new Date(String(a.createdAt || 0)).getTime();
+    });
+
+    const total = sortedRows.length;
+    const pagedRows = sortedRows.slice(page * limit, page * limit + limit);
+
+    const groupedByCategory = filteredRows.reduce(
+      (acc: Record<string, { incomeTotal: number; incomeCount: number; expenseTotal: number; expenseCount: number }>, row: any) => {
+        const categoryKey = String(row.categoryName || "Office");
+        if (!acc[categoryKey]) {
+          acc[categoryKey] = {
+            incomeTotal: 0,
+            incomeCount: 0,
+            expenseTotal: 0,
+            expenseCount: 0,
+          };
+        }
+        const amount = Number(row.amount || 0);
+        const serviceFee = Number(row.serviceFee || 0);
+        if (row.type === "income") {
+          acc[categoryKey].incomeTotal += amount;
+          acc[categoryKey].incomeCount += 1;
+        } else {
+          acc[categoryKey].expenseTotal += amount + serviceFee;
+          acc[categoryKey].expenseCount += 1;
+        }
+        return acc;
+      },
+      {},
+    );
+
+    const incomeByCategory = Object.entries(groupedByCategory)
+      .filter(([, bucket]) => bucket.incomeCount > 0)
+      .map(([category, bucket]) => ({
+        category,
+        total: Number(bucket.incomeTotal.toFixed(2)),
+        count: bucket.incomeCount,
       }))
-      .sort((a: any, b: any) => b.total - a.total);
+      .sort((a, b) => b.total - a.total);
+
+    const expenseByCategory = Object.entries(groupedByCategory)
+      .filter(([, bucket]) => bucket.expenseCount > 0)
+      .map(([category, bucket]) => ({
+        category,
+        total: Number(bucket.expenseTotal.toFixed(2)),
+        count: bucket.expenseCount,
+      }))
+      .sort((a, b) => b.total - a.total);
 
     return Response.json(
       {
-        records: records.map(mapRecordListItem),
+        records: pagedRows,
         summary: {
           incomeByCategory,
           expenseByCategory,

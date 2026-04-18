@@ -86,6 +86,8 @@ export function mapRecordListItem(record: any) {
     paymentMethodTemplate: record?.method?._id?.toString?.() || record?.method?.toString?.() || record?.paymentMethodTemplate?._id?.toString?.() || record?.paymentMethodTemplate?.toString?.() || "",
     paymentStatusTemplate: record?.status?._id?.toString?.() || record?.status?.toString?.() || record?.paymentStatusTemplate?._id?.toString?.() || record?.paymentStatusTemplate?.toString?.() || "",
     method: record?.method?.method || record?.paymentMethodTemplate?.method || "",
+    methodColor: record?.method?.color || record?.paymentMethodTemplate?.color || "",
+    methodIcon: record?.method?.icon || record?.paymentMethodTemplate?.icon || "",
     status: record?.status?.status || record?.paymentStatusTemplate?.status || "",
     client: getRecordClient(record),
     particular: record.particular,

@@ -4,7 +4,7 @@ import { TRecordData } from "@/types/records";
 import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
 import { TPaymentTemplateIcon } from "@/config/templateVisuals";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import {
@@ -135,6 +135,7 @@ const SimpleRecordForm = ({
   isEdit = false,
 }: SimpleRecordFormProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUserContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -524,6 +525,40 @@ const SimpleRecordForm = ({
     },
     [getFormVisibility],
   );
+
+  useEffect(() => {
+    if (isEdit) return;
+
+    const nextKind = String(searchParams.get("recordKind") || "").trim().toLowerCase();
+    const nextType = String(searchParams.get("type") || "").trim().toLowerCase();
+
+    const allowedKinds: RecordKind[] = [
+      "standard",
+      "office_records",
+      "liability",
+      "instant_profit",
+      "self_transfer",
+    ];
+    const allowedTypes: RecordType[] = ["income", "expense"];
+
+    const normalizedKind = allowedKinds.includes(nextKind as RecordKind)
+      ? (nextKind as RecordKind)
+      : undefined;
+    const normalizedType = allowedTypes.includes(nextType as RecordType)
+      ? (nextType as RecordType)
+      : undefined;
+
+    if (!normalizedKind && !normalizedType) return;
+
+    setFormData((prev) => {
+      const draft = {
+        ...prev,
+        recordKind: normalizedKind || prev.recordKind,
+        type: normalizedType || prev.type,
+      };
+      return sanitizeFormDataByVisibility(draft);
+    });
+  }, [isEdit, sanitizeFormDataByVisibility, searchParams]);
 
   const handleRecordKindChange = (kind: RecordKind) => {
     const visibility = getFormVisibility(kind, formData.type);
