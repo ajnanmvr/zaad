@@ -392,12 +392,17 @@ const SimpleRecordForm = ({
   );
 
   const getParticularCategory = useCallback(() => {
-    if (formData.recordKind === "office_records") return "office_records";
-    if (formData.recordKind === "liability")
+    const effectiveRecordKind =
+      isEdit && formData.recordKind === "instant_profit"
+        ? "standard"
+        : formData.recordKind;
+
+    if (effectiveRecordKind === "office_records") return "office_records";
+    if (effectiveRecordKind === "liability")
       return formData.type === "income" ? "liability_in" : "liability_out";
-    if (formData.recordKind === "instant_profit") return "instant_profit";
+    if (effectiveRecordKind === "instant_profit") return "instant_profit";
     return formData.type === "income" ? "income" : "expense";
-  }, [formData.recordKind, formData.type]);
+  }, [formData.recordKind, formData.type, isEdit]);
 
   const performParticularSearch = useCallback(
     async (searchValue: string) => {
@@ -486,7 +491,11 @@ const SimpleRecordForm = ({
       recordKind?: Partial<TRecordData>["recordKind"],
       type?: Partial<TRecordData>["type"],
     ) => {
-      const nextRecordKind = String(recordKind || "");
+      const rawRecordKind = String(recordKind || "");
+      const nextRecordKind =
+        isEdit && rawRecordKind === "instant_profit"
+          ? "standard"
+          : rawRecordKind;
       const nextType = String(type || "");
 
       return {
@@ -504,7 +513,7 @@ const SimpleRecordForm = ({
         needsSwapMethods: nextRecordKind === "self_transfer",
       };
     },
-    [],
+    [isEdit],
   );
 
   const sanitizeFormDataByVisibility = useCallback(
@@ -783,8 +792,12 @@ const SimpleRecordForm = ({
       : Number((clientFeeValue - amountValue).toFixed(2))
     : Number(formData.serviceFee || 0);
   const transactionNumber = `${String(formData.suffix || "")}${formData.number ?? ""}`;
+  const effectiveRecordKind =
+    isEdit && formData.recordKind === "instant_profit"
+      ? "standard"
+      : formData.recordKind;
   const usesNeutralTheme = ["instant_profit", "self_transfer"].includes(
-    formData.recordKind || "",
+    effectiveRecordKind || "",
   );
   const nextType: RecordType =
     formData.type === "income" ? "expense" : "income";

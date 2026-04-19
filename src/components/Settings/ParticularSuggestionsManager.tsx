@@ -531,6 +531,21 @@ export default function ParticularSuggestionsManager() {
         </div>
       </div>
 
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Suggestion"
+        message="Are you sure you want to delete this suggestion? This action cannot be undone."
+        confirmLabel="Delete Suggestion"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (modalSaving) return;
+          setIsDeleteModalOpen(false);
+          setSuggestionToDelete(null);
+        }}
+      />
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
           <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
@@ -570,15 +585,6 @@ export default function ParticularSuggestionsManager() {
                   {CATEGORY_ITEMS.map((item) => {
                     const selected = modalCategories.includes(item.value);
                     return (
-    <>
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        title="Delete Suggestion"
-        message="Are you sure you want to delete this suggestion? This action cannot be undone."
-        confirmLabel="Delete Suggestion"
-        onConfirm={confirmDelete}
-        onCancel={() => setIsDeleteModalOpen(false)}
-      />
                       <button
                         key={item.value}
                         type="button"

@@ -920,6 +920,9 @@ const TransactionList = ({
                     visibleRecords.map((record, key) =>
                       (() => {
                         const transactionVisual = getTransactionVisual(record);
+                        const isLiabilityRecord =
+                          record?.recordKind === "liability" ||
+                          (record?.status || "").toLowerCase().includes("liability");
 
                         return (
                           <tr
@@ -995,23 +998,30 @@ const TransactionList = ({
                             <td className="py-4 px-4 align-top">
                               <div className="flex flex-col items-start gap-1">
                                 <div className="flex items-center gap-2">
-                                  <PaymentMethodBadge
-                                    label={
-                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                        ?.label ||
-                                      record?.method ||
-                                      "Unknown"
-                                    }
-                                    color={
-                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                        ?.color
-                                    }
-                                    icon={
-                                      paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                        ?.icon
-                                    }
-                                    size="sm"
-                                  />
+                                  {isLiabilityRecord ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/30 dark:text-amber-300">
+                                      <FiInfo className="text-[11px]" />
+                                      Liability Record
+                                    </span>
+                                  ) : (
+                                    <PaymentMethodBadge
+                                      label={
+                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                          ?.label ||
+                                        record?.method ||
+                                        "Unknown"
+                                      }
+                                      color={
+                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                          ?.color
+                                      }
+                                      icon={
+                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
+                                          ?.icon
+                                      }
+                                      size="sm"
+                                    />
+                                  )}
                                 </div>
                                 {renderBadge(
                                   transactionVisual.label,
