@@ -1,6 +1,8 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import SimpleRecordForm from "@/components/Forms/SimpleRecordForm";
 
+export const dynamic = "force-dynamic";
+
 export default function AddRecordPage() {
   return (
     <>

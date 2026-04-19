@@ -96,18 +96,26 @@ export default function Home() {
   };
 
   const categoryRenewalsOptions: ApexOptions = {
-    chart: { type: "donut", toolbar: { show: false } },
-    colors: ["#3B82F6", "#8B5CF6", "#EC4899"],
-    labels: (data?.categoryRenewals || []).map((row) => row.category),
-    dataLabels: { enabled: false },
-    legend: { position: "bottom" },
+    chart: { type: "bar", toolbar: { show: false } },
+    colors: ["#EF4444", "#F59E0B"],
     plotOptions: {
-      pie: {
-        donut: {
-          size: "65%",
-        },
+      bar: {
+        horizontal: false,
+        borderRadius: 6,
+        columnWidth: "48%",
       },
     },
+    xaxis: {
+      categories: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.category),
+    },
+    yaxis: {
+      labels: {
+        formatter: (value) => `${Math.round(value)}`,
+      },
+    },
+    legend: { position: "top" },
+    dataLabels: { enabled: false },
+    grid: { borderColor: "#E2E8F0" },
   };
 
   const monthlyRenewalsOptions: ApexOptions = {
@@ -172,14 +180,23 @@ export default function Home() {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Renewal Distribution by Category</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Documents renewed by category (Visa, License, Other).</p>
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Category-wise Expired vs Renewal</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Comparison of expired and renewal documents across Visa, License, and Other categories.</p>
           <div className="mt-4">
             <ReactApexChart
-              type="donut"
+              type="bar"
               height={300}
               options={categoryRenewalsOptions}
-              series={(data?.categoryRenewals || []).map((row) => row.count)}
+              series={[
+                {
+                  name: "Expired",
+                  data: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.expired),
+                },
+                {
+                  name: "Renewal",
+                  data: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.renewal),
+                },
+              ]}
             />
           </div>
         </div>

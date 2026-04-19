@@ -26,10 +26,43 @@ export async function GET(request: NextRequest) {
     const method = String(searchParams.get("method") || "").trim().toLowerCase();
     const sort = String(searchParams.get("sort") || "newest").trim().toLowerCase();
 
+    // Date range parameters
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const month = searchParams.get("month");
+    const year = searchParams.get("y");
+
     const query: Record<string, any> = {
       recordKind: "office_records",
       deletedAt: null,
     };
+
+    // Add date range filtering
+    if (from || to) {
+      const dateQuery: Record<string, any> = {};
+      if (from) {
+        dateQuery.$gte = new Date(from);
+      }
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        dateQuery.$lte = toDate;
+      }
+      query.createdAt = dateQuery;
+    } else if (month || year) {
+      // Handle month/year filtering
+      const now = new Date();
+      const monthNum = month ? Number(month) : now.getMonth() + 1;
+      const yearNum = year ? Number(year) : now.getFullYear();
+      
+      const monthStart = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+      const monthEnd = new Date(yearNum, monthNum, 1, 0, 0, 0, 0);
+      
+      query.createdAt = {
+        $gte: monthStart,
+        $lt: monthEnd,
+      };
+    }
 
     if (search) {
       query.$or = [

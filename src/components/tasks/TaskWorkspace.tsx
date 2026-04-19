@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addDays,
   addMonths,
@@ -18,6 +17,8 @@ import {
 } from "date-fns";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -33,13 +34,12 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
-import toast from "react-hot-toast";
 
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
-import { useUserContext } from "@/contexts/UserContext";
 import { getDocumentCategoryLabel, normalizeDocumentCategory } from "@/config/documentCategoryVisuals";
+import { useUserContext } from "@/contexts/UserContext";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
@@ -242,6 +242,55 @@ export default function TaskWorkspace({
 
     return () => clearTimeout(handler);
   }, [linkSearch]);
+
+  // Prefill task form from URL parameters
+  useEffect(() => {
+    const prefillTitle = searchParams.get("title");
+    const prefillLinkedEntity = searchParams.get("linkedEntity");
+    const prefillCategory = searchParams.get("category");
+
+    if (prefillTitle || prefillLinkedEntity || prefillCategory) {
+      if (prefillTitle) {
+        setTaskTitle(prefillTitle);
+      }
+
+      if (prefillCategory && ["visa", "license", "other"].includes(prefillCategory)) {
+        setTaskCategory(prefillCategory as TaskCategory);
+      }
+
+      if (prefillLinkedEntity) {
+        // Format: "entityType:entityId:entityLabel"
+        const parts = prefillLinkedEntity.split(":");
+        if (parts.length >= 2) {
+          const entityType = parts[0];
+          const entityId = parts[1];
+          const entityLabel = parts.slice(2).join(":");
+
+          if (ALLOWED_LINK_TARGET_TYPES.has(entityType as LinkedTargetType)) {
+            setLinkTargetType(entityType as LinkedTargetType);
+            setTaskLinkedTargets([
+              {
+                targetType: entityType as LinkedTargetType,
+                targetId: entityId,
+                targetLabel: entityLabel || undefined,
+              },
+            ]);
+          }
+        }
+      }
+
+      // Auto-open the create modal
+      setShowCreateModal(true);
+
+      // Clean up URL parameters
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("title");
+      nextParams.delete("linkedEntity");
+      nextParams.delete("category");
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, []);
 
   const assigneesQuery = useQuery({
     queryKey: ["task-assignees", canManage],

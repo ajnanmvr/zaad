@@ -549,6 +549,10 @@ export async function listSelfDepositPayments(input: {
   method?: string | null;
   query?: string | null;
   sort?: string | null;
+  from?: string | null;
+  to?: string | null;
+  month?: string | null;
+  year?: string | null;
 }) {
   const contentPerSection = 10;
   const query: Record<string, any> = {
@@ -561,6 +565,33 @@ export async function listSelfDepositPayments(input: {
   }
   if (input.method) {
     query.method = await resolveMethodFilter(input.method);
+  }
+
+  // Add date range filtering
+  if (input.from || input.to) {
+    const dateQuery: Record<string, any> = {};
+    if (input.from) {
+      dateQuery.$gte = new Date(input.from);
+    }
+    if (input.to) {
+      const toDate = new Date(input.to);
+      toDate.setHours(23, 59, 59, 999);
+      dateQuery.$lte = toDate;
+    }
+    query.createdAt = dateQuery;
+  } else if (input.month || input.year) {
+    // Handle month/year filtering
+    const now = new Date();
+    const monthNum = input.month ? Number(input.month) : now.getMonth() + 1;
+    const yearNum = input.year ? Number(input.year) : now.getFullYear();
+    
+    const monthStart = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(yearNum, monthNum, 1, 0, 0, 0, 0);
+    
+    query.createdAt = {
+      $gte: monthStart,
+      $lt: monthEnd,
+    };
   }
 
   const records = await findRecords(query, {

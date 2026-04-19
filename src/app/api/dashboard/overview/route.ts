@@ -15,6 +15,8 @@ type MonthBucket = {
   count: number;
 };
 
+type DocumentCategory = "visa" | "license" | "other";
+
 function startOfDay(value: Date) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
@@ -45,6 +47,13 @@ function initRecentMonths(size: number, now: Date): string[] {
     const d = new Date(now.getFullYear(), now.getMonth() - (size - 1 - index), 1);
     return formatMonthKey(d);
   });
+}
+
+function normalizeCategory(value: unknown): DocumentCategory {
+  if (typeof value !== "string") return "other";
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "visa" || normalized === "license") return normalized;
+  return "other";
 }
 
 export async function GET(request: NextRequest) {
@@ -86,7 +95,10 @@ export async function GET(request: NextRequest) {
       canReadEntities ? Employee.countDocuments({ published: true }) : Promise.resolve(0),
       canReadEntities ? Individual.countDocuments({ published: true }) : Promise.resolve(0),
       canReadDocuments
-        ? EntityDocument.find({ archived: { $ne: true } }).select("issueDate expiryDate documentTemplate").populate("documentTemplate", "category")
+        ? EntityDocument.find({ archived: { $ne: true } })
+            .select("issueDate expiryDate documentTemplate")
+            .populate("documentTemplate", "category")
+            .lean()
         : Promise.resolve([]),
       canReadTasks
         ? Task.find({
@@ -147,6 +159,11 @@ export async function GET(request: NextRequest) {
     categoryRenewalsMap.set("license", 0);
     categoryRenewalsMap.set("other", 0);
 
+    const categoryExpiredMap = new Map<string, number>();
+    categoryExpiredMap.set("visa", 0);
+    categoryExpiredMap.set("license", 0);
+    categoryExpiredMap.set("other", 0);
+
     for (const row of documentsRaw as Array<{ issueDate?: string; expiryDate?: string; documentTemplate?: any }>) {
       const status = calculateStatus(row.expiryDate || "");
       const expiryDate = parseDate(row.expiryDate);
@@ -166,16 +183,18 @@ export async function GET(request: NextRequest) {
         documentStats.expiringNext30Days += 1;
       }
 
+      const normalizedCategory = normalizeCategory((row.documentTemplate as any)?.category);
+      if (status === "renewal") {
+        categoryRenewalsMap.set(normalizedCategory, (categoryRenewalsMap.get(normalizedCategory) || 0) + 1);
+      } else if (status === "expired") {
+        categoryExpiredMap.set(normalizedCategory, (categoryExpiredMap.get(normalizedCategory) || 0) + 1);
+      }
+
       if (issueDate) {
         const key = formatMonthKey(issueDate);
         if (monthlyRenewalsMap.has(key)) {
           monthlyRenewalsMap.set(key, (monthlyRenewalsMap.get(key) || 0) + 1);
         }
-
-        // Count by category
-        const category = (row.documentTemplate?.category || "other").toLowerCase();
-        const normalizedCategory = category === "visa" || category === "license" ? category : "other";
-        categoryRenewalsMap.set(normalizedCategory, (categoryRenewalsMap.get(normalizedCategory) || 0) + 1);
       }
     }
 
@@ -183,6 +202,24 @@ export async function GET(request: NextRequest) {
       { category: "Visa Related", count: categoryRenewalsMap.get("visa") || 0 },
       { category: "License Related", count: categoryRenewalsMap.get("license") || 0 },
       { category: "Other", count: categoryRenewalsMap.get("other") || 0 },
+    ];
+
+    const categoryExpiryRenewalBreakdown = [
+      {
+        category: "Visa Related",
+        expired: categoryExpiredMap.get("visa") || 0,
+        renewal: categoryRenewalsMap.get("visa") || 0,
+      },
+      {
+        category: "License Related",
+        expired: categoryExpiredMap.get("license") || 0,
+        renewal: categoryRenewalsMap.get("license") || 0,
+      },
+      {
+        category: "Other",
+        expired: categoryExpiredMap.get("other") || 0,
+        renewal: categoryRenewalsMap.get("other") || 0,
+      },
     ];
 
     const monthlyRenewals: MonthBucket[] = recentMonthKeys.map((key) => ({
@@ -200,6 +237,7 @@ export async function GET(request: NextRequest) {
         documentStats,
         monthlyRenewals,
         categoryRenewals,
+        categoryExpiryRenewalBreakdown,
         upcomingTasks: (upcomingTasks as Array<any>).map((task) => ({
           id: task._id.toString(),
           title: task.title,

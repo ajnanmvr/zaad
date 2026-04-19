@@ -14,6 +14,12 @@ export async function GET(request: NextRequest) {
     const method = searchParams.get("m");
     const query = searchParams.get("q");
     const sort = searchParams.get("sort") || "newest";
+    
+    // Date range parameters
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const month = searchParams.get("month");
+    const year = searchParams.get("y");
 
     const response = await listSelfDepositPayments({
       pageNumber,
@@ -21,6 +27,10 @@ export async function GET(request: NextRequest) {
       method,
       query,
       sort,
+      from,
+      to,
+      month,
+      year,
     });
 
     return Response.json(response, { status: 200 });

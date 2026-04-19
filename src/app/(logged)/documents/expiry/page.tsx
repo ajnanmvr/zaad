@@ -10,8 +10,9 @@ import { Fragment, useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
-import { FiAlertCircle, FiArchive, FiCalendar, FiEdit2, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiAlertCircle, FiArchive, FiCalendar, FiCheckSquare, FiEdit2, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
@@ -66,6 +67,7 @@ const ExpiryDocumentsPage = () => {
     "Merged into another document",
   ];
 
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
@@ -268,6 +270,22 @@ const ExpiryDocumentsPage = () => {
     } finally {
       setIsArchiving(false);
     }
+  };
+
+  const createTaskFromDocument = (item: TExpiryDocumentItem) => {
+    const entityType = item.entity?.entityType || "";
+    const entityId = item.entity?.id || "";
+    const entityName = item.entity?.name || "";
+    const documentTitle = item.name || "Untitled Document";
+    const documentCategory = item.templateCategory || "";
+
+    const params = new URLSearchParams({
+      title: documentTitle,
+      linkedEntity: `${entityType}:${entityId}:${entityName}`,
+      category: documentCategory,
+    });
+
+    router.push(`/tasks?${params.toString()}`);
   };
 
   return (
@@ -583,6 +601,14 @@ const ExpiryDocumentsPage = () => {
                               title="Edit document"
                             >
                               <FiEdit2 className="text-sm" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => createTaskFromDocument(item)}
+                              className="rounded-lg border border-cyan-300 p-2 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
+                              title="Create task from this document"
+                            >
+                              <FiCheckSquare className="text-sm" />
                             </button>
                             <button
                               type="button"

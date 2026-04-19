@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
@@ -7,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
 
-const TablesPage = () => {
+const TablesPageContent = () => {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const category = categoryParam === "office_records" || categoryParam === "liability" ? categoryParam : undefined;
@@ -73,10 +74,16 @@ const TablesPage = () => {
       </section>
 
       <div className="mt-6">
-      <TransactionList category={category} />
+        <TransactionList category={category} />
       </div>
     </>
   );
 };
 
-export default TablesPage;
+export default function TablesPage() {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="text-sm text-slate-500">Loading...</div></div>}>
+      <TablesPageContent />
+    </Suspense>
+  );
+}
