@@ -124,8 +124,98 @@ async function resolveMethodFilter(method?: string | null) {
   return template?._id?.toString?.() || value;
 }
 
+type PaymentRecordFilters = {
+  pageNumber?: number;
+  limit?: number;
+  sort?: string | null;
+  query?: string | null;
+  method?: string | null;
+  type?: string | null;
+  status?: string | null;
+  recordKind?: string | null;
+  entityIds?: string | null;
+  officeCategory?: string | null;
+  employeeCompanyId?: string | null;
+  category?: string | null;
+};
+
+async function applyPaymentRecordFilters(query: Record<string, any>, input: PaymentRecordFilters) {
+  if (input.method) {
+    query.method = await resolveMethodFilter(input.method);
+  }
+
+  if (input.type) {
+    query.type = input.type;
+  }
+
+  if (input.status) {
+    query.status = input.status;
+  }
+
+  if (input.recordKind) {
+    query.recordKind = input.recordKind;
+  }
+
+  if (input.entityIds) {
+    const ids = input.entityIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (ids.length > 0) {
+      query.entity = { $in: ids };
+    }
+  }
+
+  if (input.employeeCompanyId) {
+    const employeeIds = await distinctEmployeeIdsByCompany(input.employeeCompanyId);
+    const employeeIdStrings = employeeIds.map((id: any) => String(id));
+
+    if (query.entity?.$in) {
+      const intersection = query.entity.$in.filter((id: string) =>
+        employeeIdStrings.includes(String(id)),
+      );
+      query.entity = { $in: intersection };
+    } else {
+      query.entity = { $in: employeeIdStrings };
+    }
+  }
+
+  if (input.officeCategory) {
+    query.category = input.officeCategory;
+  }
+
+  if (input.query) {
+    const escapedQuery = String(input.query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escapedQuery, "i");
+    query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
+  }
+
+  if (input.category) {
+    if (input.category === "office_records") {
+      query.recordKind = "office_records";
+    } else if (input.category === "liability") {
+      query.recordKind = "liability";
+    } else {
+      query.category = input.category;
+    }
+  }
+
+  return query;
+}
+
 function generateGroupId() {
   return randomUUID();
+}
+
+function getPaymentSortMap(sort?: string | null) {
+  const sortMap: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    amount_asc: { amount: 1, createdAt: -1 },
+    amount_desc: { amount: -1, createdAt: -1 },
+  };
+
+  return sortMap[String(sort || "newest")] || sortMap.newest;
 }
 
 export function isAdminRole(role?: string) {
@@ -342,57 +432,7 @@ export async function listPaymentRecords(input: {
     amount_desc: { amount: -1, createdAt: -1 },
   };
 
-  if (input.method) {
-    query.method = await resolveMethodFilter(input.method);
-  }
-  if (input.type) {
-    query.type = input.type;
-  }
-  if (input.status) {
-    query.status = input.status;
-  }
-  if (input.recordKind) {
-    query.recordKind = input.recordKind;
-  }
-  if (input.entityIds) {
-    const ids = input.entityIds
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
-    if (ids.length > 0) {
-      query.entity = { $in: ids };
-    }
-  }
-  if (input.employeeCompanyId) {
-    const employeeIds = await distinctEmployeeIdsByCompany(input.employeeCompanyId);
-    const employeeIdStrings = employeeIds.map((id: any) => String(id));
-
-    if (query.entity?.$in) {
-      const intersection = query.entity.$in.filter((id: string) =>
-        employeeIdStrings.includes(String(id)),
-      );
-      query.entity = { $in: intersection };
-    } else {
-      query.entity = { $in: employeeIdStrings };
-    }
-  }
-  if (input.officeCategory) {
-    query.category = input.officeCategory;
-  }
-  if (input.query) {
-    const escapedQuery = String(input.query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(escapedQuery, "i");
-    query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
-  }
-  if (input.category) {
-    if (input.category === "office_records") {
-      query.recordKind = "office_records";
-    } else if (input.category === "liability") {
-      query.recordKind = "liability";
-    } else {
-      query.category = input.category;
-    }
-  }
+  await applyPaymentRecordFilters(query, input);
 
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
@@ -1052,171 +1092,6 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
   };
 }
 
-function aggregateEntityBalances(
-  rows: Array<{
-    entityId: string;
-    entityName: string;
-    balance: number;
-    serviceFee: number;
-    lastActivityAt?: string | Date | null;
-  }>
-) {
-  const over0balance: any[] = [];
-  const under0balance: any[] = [];
-
-  let totalProfitAll = 0;
-  let totalToGive = 0;
-  let totalToGet = 0;
-
-  for (const row of rows) {
-    if (row.balance > 0) {
-      over0balance.push({
-        id: row.entityId,
-        name: row.entityName,
-        balance: row.balance,
-        serviceFee: row.serviceFee,
-        lastActivityAt: row.lastActivityAt,
-      });
-      totalProfitAll += row.serviceFee;
-      totalToGive += row.balance;
-    } else if (row.balance < 0) {
-      under0balance.push({
-        id: row.entityId,
-        name: row.entityName,
-        balance: row.balance,
-        serviceFee: row.serviceFee,
-        lastActivityAt: row.lastActivityAt,
-      });
-      totalToGet += row.balance;
-    }
-  }
-
-  over0balance.sort((a, b) => a.name.localeCompare(b.name));
-  under0balance.sort((a, b) => a.name.localeCompare(b.name));
-
-  return { over0balance, under0balance, totalProfitAll, totalToGive, totalToGet };
-}
-
-export async function listProfitBalances(searchParams: URLSearchParams) {
-  const filter = filterData(searchParams, true);
-  const groupedBalances = await aggregateRecords<any>([
-    { $match: { ...filter, deletedAt: null } },
-    {
-      $project: {
-        type: 1,
-        amount: { $ifNull: ["$amount", 0] },
-        serviceFee: { $ifNull: ["$serviceFee", 0] },
-        createdAt: 1,
-        entityRef: "$entity",
-      },
-    },
-    { $match: { entityRef: { $ne: null } } },
-    {
-      $group: {
-        _id: { entityId: "$entityRef" },
-        incomeTotal: { $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] } },
-        expenseTotal: {
-          $sum: {
-            $cond: [{ $eq: ["$type", "expense"] }, { $add: ["$amount", "$serviceFee"] }, 0],
-          },
-        },
-        serviceFee: { $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$serviceFee", 0] } },
-        lastActivityAt: { $max: "$createdAt" },
-      },
-    },
-    {
-      $addFields: {
-        balance: { $subtract: ["$incomeTotal", "$expenseTotal"] },
-      },
-    },
-  ]);
-
-  if (!groupedBalances.length) {
-    return {
-      over0balanceCompanies: [],
-      under0balanceCompanies: [],
-      totalProfitAllCompanies: 0,
-      totalToGiveCompanies: 0,
-      totalToGetCompanies: 0,
-      over0balanceEmployees: [],
-      under0balanceEmployees: [],
-      totalProfitAllEmployees: 0,
-      totalToGiveEmployees: 0,
-      totalToGetEmployees: 0,
-      over0balanceIndividuals: [],
-      under0balanceIndividuals: [],
-      totalProfitAllIndividuals: 0,
-      totalToGiveIndividuals: 0,
-      totalToGetIndividuals: 0,
-      profit: 0,
-      totalToGive: 0,
-      totalToGet: 0,
-    };
-  }
-
-  const ids = groupedBalances.map((row: any) => row._id.entityId);
-  const entities = await findEntitiesByIds(ids);
-  const entityById = new Map((entities as any[]).map((entity: any) => [String(entity._id), entity]));
-
-  const companyRows: any[] = [];
-  const employeeRows: any[] = [];
-  const individualRows: any[] = [];
-
-  for (const row of groupedBalances as any[]) {
-    const entityId = String(row._id.entityId);
-    const entity = entityById.get(entityId);
-    if (!entity) continue;
-
-    const payload = {
-      entityId,
-      entityName: entity.name,
-      balance: row.balance,
-      serviceFee: row.serviceFee,
-      lastActivityAt: row.lastActivityAt,
-    };
-
-    if (entity.entityType === "company") {
-      companyRows.push(payload);
-    } else if (entity.entityType === "employee") {
-      employeeRows.push(payload);
-    } else if (entity.entityType === "individual") {
-      individualRows.push(payload);
-    }
-  }
-
-  const companies = aggregateEntityBalances(companyRows);
-  const employees = aggregateEntityBalances(employeeRows);
-  const individuals = aggregateEntityBalances(individualRows);
-
-  const profit =
-    employees.totalProfitAll + companies.totalProfitAll + individuals.totalProfitAll;
-  const totalToGive =
-    companies.totalToGive + employees.totalToGive + individuals.totalToGive;
-  const totalToGet =
-    companies.totalToGet + employees.totalToGet + individuals.totalToGet;
-
-  return {
-    over0balanceCompanies: companies.over0balance,
-    under0balanceCompanies: companies.under0balance,
-    totalProfitAllCompanies: companies.totalProfitAll,
-    totalToGiveCompanies: companies.totalToGive,
-    totalToGetCompanies: companies.totalToGet,
-    over0balanceEmployees: employees.over0balance,
-    under0balanceEmployees: employees.under0balance,
-    totalProfitAllEmployees: employees.totalProfitAll,
-    totalToGiveEmployees: employees.totalToGive,
-    totalToGetEmployees: employees.totalToGet,
-    over0balanceIndividuals: individuals.over0balance,
-    under0balanceIndividuals: individuals.under0balance,
-    totalProfitAllIndividuals: individuals.totalProfitAll,
-    totalToGiveIndividuals: individuals.totalToGive,
-    totalToGetIndividuals: individuals.totalToGet,
-    profit,
-    totalToGive,
-    totalToGet,
-  };
-}
-
 export async function listPaymentBin(input: {
   pageNumber: number;
   search?: string;
@@ -1246,21 +1121,29 @@ export async function listPaymentBin(input: {
   };
 }
 
-export async function listCompanyPaymentRecords(companyId: string, recordScope: "company" | "employees" | "mixed") {
+export async function listCompanyPaymentRecords(
+  companyId: string,
+  input: PaymentRecordFilters & { recordScope?: "company" | "employees" | "mixed" } = {},
+) {
+  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
   const employeeIds = await distinctEmployeeIdsByCompany(companyId);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
-  if (recordScope === "employees") {
+  if (input.recordScope === "employees") {
     query.entity = { $in: employeeIds };
-  } else if (recordScope === "mixed") {
+  } else if (input.recordScope === "mixed") {
     query.entity = { $in: [companyId, ...employeeIds] };
   } else {
     query.entity = companyId;
   }
 
+  await applyPaymentRecordFilters(query, input);
+
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    sort: { createdAt: -1 },
+    sort: getPaymentSortMap(input.sort),
+    skip: Number(input.pageNumber || 0) * pageSize,
+    limit: pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1276,7 +1159,8 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
     };
   }
 
-  const transformedData = records.map(mapRecordListItem);
+  const hasMore = records.length > pageSize;
+  const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
   const allRecords = await findRecords(query);
   const totals = buildTotals(allRecords);
 
@@ -1284,18 +1168,25 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
     count: transformedData.length,
     records: transformedData,
     ...totals,
-    hasMore: false,
+    hasMore,
   };
 }
 
-export async function listEmployeePaymentRecords(employeeId: string) {
-  const query = {
+export async function listEmployeePaymentRecords(
+  employeeId: string,
+  input: PaymentRecordFilters = {},
+) {
+  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
+  const query: Record<string, any> = {
     ...ACTIVE_RECORD_FILTER,
     entity: employeeId,
   };
+  await applyPaymentRecordFilters(query, input);
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    sort: { createdAt: -1 },
+    sort: getPaymentSortMap(input.sort),
+    skip: Number(input.pageNumber || 0) * pageSize,
+    limit: pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1310,7 +1201,8 @@ export async function listEmployeePaymentRecords(employeeId: string) {
     };
   }
 
-  const transformedData = records.map(mapRecordListItem);
+  const hasMore = records.length > pageSize;
+  const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
   const allRecords = await findRecords(query);
   const totals = buildTotals(allRecords);
 
@@ -1318,15 +1210,25 @@ export async function listEmployeePaymentRecords(employeeId: string) {
     count: transformedData.length,
     records: transformedData,
     ...totals,
+    hasMore,
   };
 }
 
-export async function listIndividualPaymentRecords(employeeId: string) {
+export async function listIndividualPaymentRecords(
+  employeeId: string,
+  input: PaymentRecordFilters = {},
+) {
+  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
   const records = await findRecords(
-    { ...ACTIVE_RECORD_FILTER, entity: employeeId },
+    await applyPaymentRecordFilters(
+      { ...ACTIVE_RECORD_FILTER, entity: employeeId },
+      input,
+    ),
     {
       populate: PAYMENT_POPULATE_FIELDS,
-      sort: { createdAt: -1 },
+      sort: getPaymentSortMap(input.sort),
+      skip: Number(input.pageNumber || 0) * pageSize,
+      limit: pageSize + 1,
     }
   );
 
@@ -1339,21 +1241,20 @@ export async function listIndividualPaymentRecords(employeeId: string) {
       totalIncome: 0,
       totalExpense: 0,
       totalTransactions: 0,
+      hasMore: false,
     };
   }
 
-  const individualRecords = records.filter((record: any) => {
-    const resolvedType = String(record?.entity?.entityType || "").toLowerCase();
-    return resolvedType === "individual";
-  });
-
+  const hasMore = records.length > pageSize;
+  const individualRecords = records.slice(0, pageSize);
   const transformedData = individualRecords.map(mapRecordListItem);
-  const totals = buildTotals(individualRecords);
+  const totals = buildTotals(await findRecords(await applyPaymentRecordFilters({ ...ACTIVE_RECORD_FILTER, entity: employeeId }, input)));
 
   return {
     count: transformedData.length,
     records: transformedData,
     ...totals,
+    hasMore,
   };
 }
 

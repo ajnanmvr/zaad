@@ -331,6 +331,55 @@ const SimpleRecordForm = ({
   ]);
 
   useEffect(() => {
+    if (isEdit) return;
+
+    const lockedEntityId = String(searchParams.get("lockEntityId") || "").trim();
+    if (!lockedEntityId) return;
+
+    const lockedEntityTypeRaw = String(searchParams.get("lockEntityType") || "")
+      .trim()
+      .toLowerCase();
+    const lockedEntityName = String(searchParams.get("lockEntityName") || "").trim();
+
+    const normalizedEntityType: EntityOption["entityType"] =
+      lockedEntityTypeRaw === "employee" || lockedEntityTypeRaw === "individual"
+        ? lockedEntityTypeRaw
+        : "company";
+
+    const applyLockedEntity = async () => {
+      let nextEntity: EntityOption | null = null;
+
+      if (lockedEntityName) {
+        nextEntity = {
+          _id: lockedEntityId,
+          name: lockedEntityName,
+          entityType: normalizedEntityType,
+        };
+      } else {
+        nextEntity = await fetchEntityDetailsById(lockedEntityId);
+      }
+
+      if (!nextEntity) {
+        nextEntity = {
+          _id: lockedEntityId,
+          name: lockedEntityName || "Selected entity",
+          entityType: normalizedEntityType,
+        };
+      }
+
+      setSelectedEntity(nextEntity);
+      setEntitySearch(nextEntity.name);
+      setShowEntityDropdown(false);
+      setFormData((prev) => ({
+        ...prev,
+        entity: nextEntity?._id,
+      }));
+    };
+
+    void applyLockedEntity();
+  }, [fetchEntityDetailsById, isEdit, searchParams]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
 
     const updateDarkMode = () => {

@@ -61,7 +61,7 @@ function SingleInvoice() {
 
           <div
             ref={componentRef}
-            className="text-black bg-white flex items-center w-full flex-col uppercase p-20 print:py-0 print:px-10 bg-invoice bg-contain"
+            className="text-black bg-white flex items-center w-full flex-col uppercase p-20 print:py-0 print:px-10 print:min-h-[275mm] print:box-border bg-invoice bg-contain"
           >
             <Image
               src="/images/invoice/header.png"

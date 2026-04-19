@@ -271,6 +271,41 @@ const getTransactionVisual = (record: TRecordList) => {
   };
 };
 
+const isLiabilityRecord = (record: TRecordList) =>
+  String(record?.recordKind || "").toLowerCase() === "liability" ||
+  String(record?.status || "").toLowerCase().includes("liability");
+
+const summarizeTransactionRecords = (
+  records: TRecordList[],
+  excludeLiabilities = false,
+) =>
+  records.reduce(
+    (summary, record) => {
+      if (excludeLiabilities && isLiabilityRecord(record)) {
+        return summary;
+      }
+
+      const amount = Number(record?.amount || 0);
+      const serviceFee = Number(record?.serviceFee || 0);
+
+      if (record?.type === "income" && !isLiabilityRecord(record)) {
+        summary.totalIncome += amount;
+      } else if (record?.type === "expense") {
+        summary.totalExpense += amount + serviceFee;
+      }
+
+      summary.totalTransactions += 1;
+      summary.balance = summary.totalIncome - summary.totalExpense;
+      return summary;
+    },
+    {
+      totalIncome: 0,
+      totalExpense: 0,
+      totalTransactions: 0,
+      balance: 0,
+    },
+  );
+
 const TransactionList = ({
   type,
   id,
@@ -312,6 +347,7 @@ const TransactionList = ({
   const [isSortOpen, setSortOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [entityRecordsType, setEntityRecordsType] = useState<"company" | "employees" | "both">( "company");
 
   const currentType = Array.isArray(type) ? type[0] : type;
   const hasLedgerContext = Boolean(currentType || category);
@@ -340,14 +376,15 @@ const TransactionList = ({
 
   const { data: paymentData, isLoading } = useQuery({
     queryKey: [
-      "payment",
-      pageNumber,
-      pageSize,
-      sortBy,
-      type,
-      id,
-      category,
-      filter,
+        "payment",
+        pageNumber,
+        pageSize,
+        sortBy,
+        type,
+        id,
+        category,
+        entityRecordsType,
+        filter,
     ],
     queryFn: async () => {
       const routeSegment = currentType
@@ -367,6 +404,9 @@ const TransactionList = ({
       if (filter.oc) params.set("oc", filter.oc);
       if (filter.ec) params.set("ec", filter.ec);
       if (category) params.set("category", category);
+        if (companyRecordScope) {
+          params.set("recordScope", companyRecordScope);
+        }
       const res = await axios.get(
         `/api/payment${routeSegment}?${params.toString()}`,
       );
@@ -429,17 +469,40 @@ const TransactionList = ({
     );
   }, [paymentMethodOptions]);
 
+  const isInnerEntityRecords =
+    embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
+
+  const companyRecordScope = useMemo(() => {
+    if (!embedded || lockEntityType !== "company" || !lockEntityId) {
+      return null;
+    }
+
+    if (entityRecordsType === "employees") {
+      return "employees";
+    }
+
+    if (entityRecordsType === "both") {
+      return "mixed";
+    }
+
+    return "company";
+  }, [entityRecordsType, isInnerEntityRecords, lockEntityType]);
+
   useEffect(() => {
     if (paymentData) {
-      setRecords(paymentData.records);
+      const nextRecords = isInnerEntityRecords
+        ? (paymentData.records || []).filter((record: TRecordList) => !isLiabilityRecord(record))
+        : paymentData.records || [];
+
+      setRecords(nextRecords);
       setHasMore(paymentData.hasMore);
 
-      if (hasLedgerContext && paymentData.records?.length > 0) {
+      if (hasLedgerContext) {
         const { balance, totalIncome, totalExpense, totalTransactions } =
-          paymentData;
+          summarizeTransactionRecords(nextRecords, isInnerEntityRecords);
         setCards([balance, totalIncome, totalExpense, totalTransactions]);
 
-        const recordsWithRunningBalance = [...paymentData.records];
+        const recordsWithRunningBalance = [...nextRecords];
         let runningBalance = balance;
 
         for (let i = 0; i < recordsWithRunningBalance.length; i++) {
@@ -460,16 +523,20 @@ const TransactionList = ({
         }
         setRecordsWithBalance(recordsWithRunningBalance);
       } else {
-        setRecordsWithBalance(paymentData.records || []);
+        setRecordsWithBalance(nextRecords);
       }
     }
-  }, [paymentData, hasLedgerContext]);
+  }, [hasLedgerContext, isInnerEntityRecords, paymentData]);
 
   const visibleRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    if (!normalizedSearch) return recordsWithBalance;
+    const recordsToSearch = isInnerEntityRecords
+      ? recordsWithBalance.filter((record) => !isLiabilityRecord(record))
+      : recordsWithBalance;
 
-    return recordsWithBalance.filter((record) => {
+    if (!normalizedSearch) return recordsToSearch;
+
+    return recordsToSearch.filter((record) => {
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
         record?.client?.name ||
@@ -487,7 +554,12 @@ const TransactionList = ({
 
       return haystack.includes(normalizedSearch);
     });
-  }, [recordsWithBalance, searchTerm]);
+  }, [isInnerEntityRecords, recordsWithBalance, searchTerm]);
+
+  const entitySummary = useMemo(
+    () => summarizeTransactionRecords(visibleRecords, true),
+    [visibleRecords],
+  );
 
   const selectedRecords = useMemo(
     () =>
@@ -503,8 +575,6 @@ const TransactionList = ({
       (record) => record?.id && selectedRecordIds.includes(record.id),
     );
 
-  const isInnerEntityRecords =
-    embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
   const enableSelection = true;
   const hasActiveFilter =
     Boolean(filter.m) ||
@@ -606,6 +676,9 @@ const TransactionList = ({
         if (filter.oc) params.set("oc", filter.oc);
         if (filter.ec) params.set("ec", filter.ec);
         if (category) params.set("category", category);
+        if (companyRecordScope) {
+          params.set("recordScope", companyRecordScope);
+        }
 
         const { data } = await axios.get(
           `/api/payment${routeSegment}?${params.toString()}`,
@@ -865,6 +938,41 @@ const TransactionList = ({
         </>
       )}
 
+      {isInnerEntityRecords && (
+        <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+          <CardDataStats
+            loading={isLoading}
+            title="Transactions"
+            total={`${entitySummary.totalTransactions}`}
+          >
+            <FiInfo className="text-xl" />
+          </CardDataStats>
+          <CardDataStats
+            loading={isLoading}
+            title="Total Income"
+            total={`${entitySummary.totalIncome.toFixed(2)} AED`}
+            color="emerald-500"
+          >
+            <FiArrowDownLeft className="text-xl text-emerald-500" />
+          </CardDataStats>
+          <CardDataStats
+            loading={isLoading}
+            title="Total Expense"
+            total={`${entitySummary.totalExpense.toFixed(2)} AED`}
+            color="rose-500"
+          >
+            <FiArrowUpRight className="text-xl text-rose-500" />
+          </CardDataStats>
+          <CardDataStats
+            loading={isLoading}
+            title="Balance"
+            total={`${entitySummary.balance.toFixed(2)} AED`}
+          >
+            <FiFilter className="text-xl text-emerald-500" />
+          </CardDataStats>
+        </div>
+      )}
+
       {/* Main Table Card */}
       <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
         <div
@@ -941,6 +1049,20 @@ const TransactionList = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {isInnerEntityRecords && lockEntityType === "company" && (
+                  <select
+                    value={entityRecordsType}
+                    onChange={(e) => {
+                      setEntityRecordsType(e.target.value as "company" | "employees" | "both");
+                      setPageNumber(0);
+                    }}
+                    className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    <option value="company">Company records only</option>
+                    <option value="employees">Employees only</option>
+                    <option value="both">Company & Employees</option>
+                  </select>
+                )}
                 <Link
                   href={incomeHref}
                   className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white/90 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-white dark:border-emerald-700 dark:bg-slate-900/80 dark:text-emerald-300"
@@ -953,6 +1075,21 @@ const TransactionList = ({
                 >
                   <FiPlusCircle /> Expense
                 </Link>
+                {isInnerEntityRecords && (
+                  <button
+                    type="button"
+                    onClick={handleConvertSelectedToInvoice}
+                    disabled={selectedRecordIds.length === 0}
+                    className={clsx(
+                      "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold transition",
+                      selectedRecordIds.length > 0
+                        ? "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
+                        : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500",
+                    )}
+                  >
+                    <FiFileText /> To Invoice
+                  </button>
+                )}
                 <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   <span>{visibleRecords.length} shown</span>
                   {selectedRecordIds.length > 0 && (
@@ -995,9 +1132,20 @@ const TransactionList = ({
                 )}
               </div>
 
-              <div className="order-3">
-                <ExportActionsMenu iconOnly onExport={handleExport} selectedCount={selectedRecordIds.length} />
-              </div>
+                                <div className="flex items-center gap-2">
+                    <select
+                      value={entityRecordsType}
+                      onChange={(e) => setEntityRecordsType(e.target.value as "company" | "employees" | "both")}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      <option value="company">Company Records</option>
+                      <option value="employees">Employee Records</option>
+                      <option value="both">All Records</option>
+                    </select>
+
+                  </div>
+
+                  <ExportActionsMenu iconOnly onExport={handleExport} selectedCount={selectedRecordIds.length} />
 
               <button
                 onClick={() => setFilterOpen(true)}
@@ -1094,16 +1242,6 @@ const TransactionList = ({
                     <option key={officeCategory.id} value={officeCategory.id}>{officeCategory.label}</option>
                   ))}
                 </select>
-
-                {isInnerEntityRecords ? (
-                  <button
-                    type="button"
-                    onClick={handleConvertSelectedToInvoice}
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
-                  >
-                    <FiFileText /> To Invoice
-                  </button>
-                ) : null}
 
                 <button
                   type="button"
@@ -1453,3 +1591,9 @@ const TransactionList = ({
 };
 
 export default TransactionList;
+
+
+
+
+
+

@@ -11,7 +11,19 @@ export async function GET(
   try {
     await connect();
     await requirePermission(request, "payments.read");
-    const response = await listIndividualPaymentRecords(params.id);
+    const searchParams = request.nextUrl.searchParams;
+    const response = await listIndividualPaymentRecords(params.id, {
+      pageNumber: Number(searchParams.get("page") || 0),
+      limit: Number(searchParams.get("limit") || 25),
+      sort: searchParams.get("sort"),
+      query: searchParams.get("q"),
+      method: searchParams.get("m"),
+      type: searchParams.get("t"),
+      status: searchParams.get("s"),
+      recordKind: searchParams.get("k"),
+      officeCategory: searchParams.get("oc"),
+      category: searchParams.get("category"),
+    });
     return Response.json(response, { status: 200 });
   } catch (error) {
     const status = getServiceErrorStatus(error);

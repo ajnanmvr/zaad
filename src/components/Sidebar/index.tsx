@@ -19,7 +19,6 @@ import {
   FiKey,
   FiLayers,
   FiLock,
-  FiPieChart,
   FiSettings,
   FiShield,
   FiTrendingDown,
@@ -308,16 +307,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Finance" />
             <ul className="space-y-1.5">
-              {can("payments.read") && (
-                <li>
-                  <NavItem
-                    href="/accounts/transactions/analytics"
-                    icon={<FiPieChart />}
-                    label="Analytics"
-                    active={pathname === "/accounts/transactions/analytics"}
-                  />
-                </li>
-              )}
               <li>
                 <NavItem
                   href="/accounts/transactions"
@@ -356,14 +345,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   icon={<FiTrendingDown />}
                   label="Liability"
                   active={pathname === "/accounts/transactions/liability"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/credit-debit"
-                  icon={<FiCreditCard />}
-                  label="Credit / Debit"
-                  active={pathname === "/accounts/transactions/credit-debit"}
                 />
               </li>
               <li>

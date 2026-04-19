@@ -18,8 +18,22 @@ export async function GET(
         ? scopeParam
         : "company";
 
+    const searchParams = request.nextUrl.searchParams;
+
     const companyId = params.id;
-    const response = await listCompanyPaymentRecords(companyId, recordScope);
+    const response = await listCompanyPaymentRecords(companyId, {
+      recordScope,
+      pageNumber: Number(searchParams.get("page") || 0),
+      limit: Number(searchParams.get("limit") || 25),
+      sort: searchParams.get("sort"),
+      query: searchParams.get("q"),
+      method: searchParams.get("m"),
+      type: searchParams.get("t"),
+      status: searchParams.get("s"),
+      recordKind: searchParams.get("k"),
+      officeCategory: searchParams.get("oc"),
+      category: searchParams.get("category"),
+    });
     return Response.json(response, { status: 200 });
   } catch (error) {
     const status = getServiceErrorStatus(error);

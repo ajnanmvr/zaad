@@ -38,8 +38,6 @@ const TransactionBinPage = () => {
       toast.success("Record recovered successfully");
       queryClient.invalidateQueries({ queryKey: ["payment-bin"] });
       queryClient.invalidateQueries({ queryKey: ["payment"] });
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["profits"] });
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || "Failed to recover record";

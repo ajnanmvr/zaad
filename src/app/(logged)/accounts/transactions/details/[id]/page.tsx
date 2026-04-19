@@ -123,8 +123,6 @@ const TransactionDetailsPage = () => {
       toast.success("Transaction moved to bin");
       await queryClient.invalidateQueries({ queryKey: ["payment-bin"] });
       await queryClient.invalidateQueries({ queryKey: ["payment"] });
-      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      await queryClient.invalidateQueries({ queryKey: ["profits"] });
       router.push("/accounts/transactions/bin");
     },
     onError: (error: any) => {

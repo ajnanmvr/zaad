@@ -356,7 +356,14 @@ export default function TaskWorkspace({
     staleTime: 30_000,
   });
 
-  const tasks = useMemo(() => tasksQuery.data?.tasks || [], [tasksQuery.data?.tasks]);
+  const tasks = useMemo(() => {
+    const allTasks = tasksQuery.data?.tasks || [];
+    // Hide completed/cancelled tasks unless we're explicitly viewing the closed tasks page
+    if (initialStatusGroup !== "closed") {
+      return allTasks.filter((task) => task.status !== "completed" && task.status !== "cancelled");
+    }
+    return allTasks;
+  }, [tasksQuery.data?.tasks, initialStatusGroup]);
   const pagination = tasksQuery.data?.pagination;
   const assignees = useMemo(() => assigneesQuery.data || [], [assigneesQuery.data]);
   const calendarTasks = useMemo(() => calendarQuery.data?.tasks || [], [calendarQuery.data?.tasks]);
@@ -696,9 +703,6 @@ export default function TaskWorkspace({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-                Scope
-              </span>
               <div className="inline-flex rounded-xl border border-slate-300 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
                 <button
                   type="button"
