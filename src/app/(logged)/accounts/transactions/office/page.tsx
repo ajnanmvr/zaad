@@ -137,17 +137,15 @@ export default function OfficeRecordsPage() {
     },
   });
 
-  const expenseByCategory = data?.summary?.expenseByCategory || [];
-  const incomeByCategory = data?.summary?.incomeByCategory || [];
-  const totalIncome = data?.summary?.totalIncome || 0;
-  const totalExpense = data?.summary?.totalExpense || 0;
+  const totalIncome = data?.summary?.totalIncome ?? 0;
+  const totalExpense = data?.summary?.totalExpense ?? 0;
   const net = useMemo(() => Number((totalIncome - totalExpense).toFixed(2)), [totalIncome, totalExpense]);
 
   const rows = useMemo(() => {
     const matrix = new Map<string, CategoryMatrixRow>();
-    
-    const income = incomeByCategory;
-    const expense = expenseByCategory;
+
+    const income = data?.summary?.incomeByCategory ?? [];
+    const expense = data?.summary?.expenseByCategory ?? [];
 
     for (const row of income) {
       matrix.set(row.category, {
@@ -170,7 +168,7 @@ export default function OfficeRecordsPage() {
     }
 
     return Array.from(matrix.values()).sort((a, b) => a.category.localeCompare(b.category));
-  }, [incomeByCategory, expenseByCategory]);
+  }, [data?.summary?.incomeByCategory, data?.summary?.expenseByCategory]);
 
   return (
     <div className="space-y-6">

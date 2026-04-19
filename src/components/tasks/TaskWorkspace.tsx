@@ -290,7 +290,7 @@ export default function TaskWorkspace({
       const nextQuery = nextParams.toString();
       router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
-  }, []);
+  }, [pathname, router, searchParams]);
 
   const assigneesQuery = useQuery({
     queryKey: ["task-assignees", canManage],

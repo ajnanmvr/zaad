@@ -154,7 +154,7 @@ export default function SelfTransfersPage() {
     },
   });
 
-  const rows = data?.records || [];
+  const rows = useMemo(() => data?.records ?? [], [data?.records]);
 
   const methodOptions = useMemo(() => {
     const recordRows = rows;

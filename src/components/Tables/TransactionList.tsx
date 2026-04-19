@@ -473,7 +473,7 @@ const TransactionList = ({
     embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
 
   const companyRecordScope = useMemo(() => {
-    if (!embedded || lockEntityType !== "company" || !lockEntityId) {
+    if (!isInnerEntityRecords || lockEntityType !== "company") {
       return null;
     }
 
