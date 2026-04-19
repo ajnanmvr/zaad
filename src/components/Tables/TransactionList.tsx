@@ -21,7 +21,7 @@ import {
   FiArrowUpRight,
   FiArrowDownLeft,
   FiArrowRight,
-  FiPlus,
+  FiPlusCircle,
   FiInfo,
   FiTrash2,
   FiX,
@@ -621,13 +621,13 @@ const TransactionList = ({
 
   const incomeHref =
     embedded && lockEntityType && lockEntityId
-      ? `/accounts/income?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
-      : "/accounts/income";
+      ? `/accounts/add-record?type=income&lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
+      : "/accounts/add-record?type=income";
 
   const expenseHref =
     embedded && lockEntityType && lockEntityId
-      ? `/accounts/expense?lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
-      : "/accounts/expense";
+      ? `/accounts/add-record?type=expense&lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
+      : "/accounts/add-record?type=expense";
 
   return (
     <>
@@ -806,12 +806,26 @@ const TransactionList = ({
                 )}
               </div>
 
-              <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                {visibleRecords.length} Records
-                {isInnerEntityRecords && selectedRecordIds.length > 0
-                  ? ` • ${selectedRecordIds.length} selected`
-                  : ""}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Link
+                  href={incomeHref}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white/90 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-white dark:border-emerald-700 dark:bg-slate-900/80 dark:text-emerald-300"
+                >
+                  <FiPlusCircle /> Income
+                </Link>
+                <Link
+                  href={expenseHref}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white/90 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-white dark:border-rose-700 dark:bg-slate-900/80 dark:text-rose-300"
+                >
+                  <FiPlusCircle /> Expense
+                </Link>
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  {visibleRecords.length} Records
+                  {isInnerEntityRecords && selectedRecordIds.length > 0
+                    ? ` • ${selectedRecordIds.length} selected`
+                    : ""}
+                </div>
               </div>
             </div>
 
