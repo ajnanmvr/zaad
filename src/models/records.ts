@@ -48,7 +48,6 @@ const RecordSchema = new Schema(
         "standard",
         "self_transfer",
         "liability",
-        "instant_profit",
         "office_records",
       ],
       default: "standard",

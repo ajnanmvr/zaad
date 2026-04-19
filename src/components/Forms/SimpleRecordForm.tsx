@@ -892,13 +892,17 @@ const SimpleRecordForm = ({
 
   const buildRecordPayload = useCallback(() => {
     const visibility = getFormVisibility(formData.recordKind, formData.type);
+    const effectiveRecordKind =
+      isEdit && formData.recordKind === "instant_profit"
+        ? "standard"
+        : formData.recordKind;
 
     const payload: any = {
       suffix: formData.suffix,
       number: formData.number,
       amount: formData.amount,
       type: formData.type,
-      recordKind: formData.recordKind,
+      recordKind: effectiveRecordKind,
       remarks: formData.remarks,
       createdBy: createdById,
       serviceFee: visibility.allowsServiceFee ? autoServiceFee : 0,
@@ -931,7 +935,7 @@ const SimpleRecordForm = ({
     }
 
     return payload;
-  }, [autoServiceFee, createdById, formData, getFormVisibility]);
+  }, [autoServiceFee, createdById, formData, getFormVisibility, isEdit]);
 
   useEffect(() => {
     if (!allowsServiceFee) return;

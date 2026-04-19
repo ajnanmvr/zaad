@@ -143,21 +143,23 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
   const linkedIds = new Set<string>([recordId]);
   const publicationFilter = includeArchived ? {} : ACTIVE_RECORD_FILTER;
 
-  if (recordKind === "self_transfer") {
-    if (record.transferGroupId) {
-      const partners = await findRecords(
-        {
-          ...publicationFilter,
-          transferGroupId: record.transferGroupId,
-          _id: { $ne: record._id },
-        },
-        { select: "_id" }
-      );
+  if (record.transferGroupId) {
+    const partners = await findRecords(
+      {
+        ...publicationFilter,
+        transferGroupId: record.transferGroupId,
+        _id: { $ne: record._id },
+      },
+      { select: "_id" }
+    );
 
-      partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
+    partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
+    if (linkedIds.size > 1) {
       return Array.from(linkedIds);
     }
+  }
 
+  if (recordKind === "self_transfer") {
     const partners = await findRecords({
       ...publicationFilter,
       recordKind: "self_transfer",
@@ -169,49 +171,6 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
 
     partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
     return Array.from(linkedIds);
-  }
-
-  if (recordKind === "instant_profit") {
-    const recordNumber = Number(record.number);
-
-    if (record.type === "income") {
-      const partner = await findOneRecord(
-        {
-          ...publicationFilter,
-          recordKind: "instant_profit",
-          createdBy: record.createdBy,
-          type: "expense",
-          serviceFee: record.amount,
-          amount: 0,
-          number: Number.isFinite(recordNumber) ? recordNumber + 1 : undefined,
-          _id: { $ne: record._id },
-        },
-        "_id"
-      );
-
-      if (partner) {
-        linkedIds.add(String(partner._id));
-      }
-    }
-
-    if (record.type === "expense") {
-      const partner = await findOneRecord(
-        {
-          ...publicationFilter,
-          recordKind: "instant_profit",
-          createdBy: record.createdBy,
-          type: "income",
-          amount: record.serviceFee,
-          number: Number.isFinite(recordNumber) ? recordNumber - 1 : undefined,
-          _id: { $ne: record._id },
-        },
-        "_id"
-      );
-
-      if (partner) {
-        linkedIds.add(String(partner._id));
-      }
-    }
   }
 
   return Array.from(linkedIds);
@@ -662,12 +621,11 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     : await findPaymentTemplateByMethodName("service fee");
 
   const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
-  const transferGroupId = generateGroupId();
 
   const normalizedPayload = normalizeEntityFields({
     ...reqBody,
-    recordKind: "instant_profit",
-    transferGroupId,
+    // Persist instant-profit pairs as standard records in DB.
+    recordKind: "standard",
   });
 
   if (profitStatusTemplate) {
@@ -676,7 +634,6 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
 
   await createRecord({
     ...normalizedPayload,
-    transferGroupId,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -710,10 +667,9 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     serviceFee: Number(originalAmount || 0),
     amount: 0,
     type: "expense",
-    recordKind: "instant_profit",
+    recordKind: "standard",
     method: mirrorMethod,
     number: +number + 1,
-    transferGroupId,
     createdBy: principal.userId,
     activityLog: [
       {
