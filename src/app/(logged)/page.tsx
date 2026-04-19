@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { ApexOptions } from "apexcharts";
 import { TDashboardOverview } from "@/types/dashboard";
+import { useUserContext } from "@/contexts/UserContext";
 import {
   FiAlertCircle,
   FiArrowUpRight,
@@ -48,18 +49,39 @@ const priorityBadgeMap: Record<string, string> = {
 };
 
 export default function Home() {
-  const { data, isLoading } = useQuery<TDashboardOverview>({
+  const { user, isUserLoading } = useUserContext();
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<TDashboardOverview>({
     queryKey: ["dashboard-overview"],
     queryFn: async () => {
       const response = await axios.get("/api/dashboard/overview");
       return response.data;
     },
+    enabled: !isUserLoading && Boolean(user),
+    retry: 2,
   });
 
-  if (isLoading) {
+  if (isUserLoading || isLoading || (!data && isFetching)) {
     return (
       <div className="flex h-[65vh] items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (isError && !data) {
+    return (
+      <div className="mx-auto flex h-[65vh] max-w-xl flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+          Dashboard data is still syncing after login. Please retry.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -119,7 +141,11 @@ export default function Home() {
   };
 
   const monthlyRenewalsOptions: ApexOptions = {
-    chart: { type: "line", toolbar: { show: false } },
+    chart: {
+      type: "line",
+      toolbar: { show: false },
+      zoom: { enabled: false },
+    },
     stroke: { curve: "smooth", width: 3 },
     colors: ["#06B6D4"],
     xaxis: {

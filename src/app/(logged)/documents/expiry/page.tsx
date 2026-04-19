@@ -19,7 +19,6 @@ import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTab
 import { toast } from "react-hot-toast";
 import AddExpiryDocumentModal from "@/components/Modals/AddExpiryDocumentModal";
 import { resolveAvatarColorWithFallback } from "@/components/entity/EntityProfileFrame";
-import PrintReportButton from "@/components/common/PrintReportButton";
 import {
   getDocumentCategoryIcon,
   getDocumentCategoryLabel,
@@ -387,11 +386,6 @@ const ExpiryDocumentsPage = () => {
             <FiFileText className="text-slate-500" />
             {isDocumentFiltered ? `Expiry Documents List - ${activeDocumentLabel}` : "Expiry Documents List"}
           </h3>
-
-          <PrintReportButton
-            targetId="expiry-documents-report-root"
-            reportTitle="Expiry Documents Report"
-          />
 
           <div className="flex items-center gap-2">
             <FiCalendar className="text-slate-400" />

@@ -542,6 +542,12 @@ export default function TaskWorkspace({
     createTaskMutation.mutate();
   };
 
+  const openCreateTaskModal = (prefillDate?: string) => {
+    if (!canManage) return;
+    setTaskDueDate(prefillDate || selectedDate || "");
+    setShowCreateModal(true);
+  };
+
   const onExport = async (formatType: "csv" | "excel" | "pdf", exportMode: "selected" | "all") => {
     const exportRows = mapTaskExportRows(tasks);
 
@@ -740,7 +746,7 @@ export default function TaskWorkspace({
               {canManage ? (
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => openCreateTaskModal()}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-700 hover:to-cyan-700"
                 >
                   <FiPlus />
@@ -1183,6 +1189,16 @@ export default function TaskWorkspace({
                   >
                     Clear
                   </button>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      onClick={() => openCreateTaskModal(selectedDate)}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                    >
+                      <FiPlus />
+                      Add Task
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : (
