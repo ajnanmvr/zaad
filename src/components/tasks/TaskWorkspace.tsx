@@ -163,9 +163,11 @@ function mapTaskExportRows(rows: TaskItem[]) {
 export default function TaskWorkspace({
   mode,
   initialView = "list",
+  initialStatusGroup = "",
 }: {
   mode: "mine" | "manage";
   initialView?: "list" | "calendar";
+  initialStatusGroup?: "" | "active" | "completed" | "cancelled" | "closed";
 }) {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
@@ -200,7 +202,6 @@ export default function TaskWorkspace({
 
   const [selectedDate, setSelectedDate] = useState(normalizedDateFromQuery);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
-  const [calendarShowAll, setCalendarShowAll] = useState(false);
   const [showDateBrief, setShowDateBrief] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -231,7 +232,6 @@ export default function TaskWorkspace({
   useEffect(() => {
     if (!canManage) {
       setScope("mine");
-      setCalendarShowAll(false);
     }
   }, [canManage]);
 
@@ -302,7 +302,7 @@ export default function TaskWorkspace({
   });
 
   const tasksQuery = useQuery({
-    queryKey: ["tasks", scope, status, priority, category, search, assignee, page, selectedDate],
+    queryKey: ["tasks", scope, status, initialStatusGroup, priority, category, search, assignee, page, selectedDate],
     queryFn: async () => {
       const params = new URLSearchParams({
         scope,
@@ -311,6 +311,7 @@ export default function TaskWorkspace({
       });
 
       if (status) params.set("status", status);
+      else if (initialStatusGroup) params.set("statusGroup", initialStatusGroup);
       if (priority) params.set("priority", priority);
       if (category) params.set("category", category);
       if (search.trim()) params.set("search", search.trim());
@@ -325,12 +326,12 @@ export default function TaskWorkspace({
   });
 
   const calendarQuery = useQuery({
-    queryKey: ["tasks-calendar", scope, monthKey, calendarShowAll],
+    queryKey: ["tasks-calendar", scope, monthKey],
     queryFn: async () => {
       const params = new URLSearchParams({
         scope,
         month: monthKey,
-        showAllUsers: String(canManage && calendarShowAll),
+        showAllUsers: String(canManage && scope === "manage"),
       });
 
       const { data } = await axios.get(`/api/tasks/calendar?${params.toString()}`);
@@ -729,6 +730,13 @@ export default function TaskWorkspace({
 
             <div className="flex flex-wrap items-center gap-2">
               <ExportActionsMenu onExport={onExport} />
+              <Link
+                href="/tasks/closed"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30"
+              >
+                <FiCheckCircle />
+                Closed Tasks
+              </Link>
               {canManage ? (
                 <button
                   type="button"
@@ -1036,37 +1044,6 @@ export default function TaskWorkspace({
             </div>
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarShowAll(false);
-                  setScope("mine");
-                }}
-                className={clsx(
-                  "rounded-full border px-3 py-1 text-xs font-semibold",
-                  !calendarShowAll
-                    ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                    : "border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300",
-                )}
-              >
-                My Tasks
-              </button>
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => {
-                  setCalendarShowAll(true);
-                  setScope("manage");
-                }}
-                className={clsx(
-                  "rounded-full border px-3 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50",
-                  calendarShowAll
-                    ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                    : "border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300",
-                )}
-              >
-                All Tasks
-              </button>
               <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
                 <FiAlertCircle />
                 Red marker means overdue

@@ -161,9 +161,22 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                 return;
             }
 
+            const normalizedItems = Array.isArray(invoiceData?.items)
+                ? invoiceData.items.map((item: any) => ({
+                    ...item,
+                    rate: Number(item?.rate || 0),
+                    quantity: Number(item?.quantity || 0),
+                }))
+                : [];
+
+            const normalizedInvoiceData = {
+                ...invoiceData,
+                items: normalizedItems,
+            };
+
             const payload = connectionMode === "connected"
-                ? invoiceData
-                : { ...invoiceData, entityId: null, entityType: null };
+                ? normalizedInvoiceData
+                : { ...normalizedInvoiceData, entityId: null, entityType: null };
 
             if (isEditMode) {
                 await axios.put(`/api/invoice/${edit}`, payload);
@@ -188,7 +201,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const handleAddDocument = (e: any) => {
         e.preventDefault()
-        const newItem = { quantity: 1, rate: 0, title: "", desc: "" };
+        const newItem = { quantity: "", rate: "", title: "", desc: "" };
         if (!invoiceData.items) {
             setInvoiceData({ ...invoiceData, items: [newItem] })
         }
@@ -199,7 +212,15 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const handleDocumentChange = (index: number, field: string, value: string | Date | number) => {
         const updateditems = [...invoiceData.items];
-        updateditems[index][field] = field === 'rate' || field === 'quantity' ? Number(value) : value;
+        if (field === 'rate' || field === 'quantity') {
+            if (value === "") {
+                updateditems[index][field] = "";
+            } else {
+                updateditems[index][field] = Number(value);
+            }
+        } else {
+            updateditems[index][field] = value;
+        }
         setInvoiceData({ ...invoiceData, items: updateditems });
     };
 

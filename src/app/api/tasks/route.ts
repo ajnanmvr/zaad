@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
       query.status = status;
     } else if (statusGroup === "active") {
       query.status = { $in: ["todo", "in_progress"] };
+    } else if (statusGroup === "closed") {
+      query.status = { $in: ["completed", "cancelled"] };
     } else if (statusGroup === "completed") {
       query.status = "completed";
     } else if (statusGroup === "cancelled") {
