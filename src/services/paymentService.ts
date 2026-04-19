@@ -320,18 +320,69 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
 
 export async function listPaymentRecords(input: {
   pageNumber: number;
+  limit?: number;
+  sort?: string | null;
+  query?: string | null;
   method?: string | null;
   type?: string | null;
+  status?: string | null;
+  recordKind?: string | null;
+  entityIds?: string | null;
+  officeCategory?: string | null;
+  employeeCompanyId?: string | null;
   category?: string | null;
 }) {
-  const contentPerSection = 25;
+  const contentPerSection = Math.min(Math.max(Number(input.limit || 25), 1), 200);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
+
+  const sortMap: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    amount_asc: { amount: 1, createdAt: -1 },
+    amount_desc: { amount: -1, createdAt: -1 },
+  };
 
   if (input.method) {
     query.method = await resolveMethodFilter(input.method);
   }
   if (input.type) {
     query.type = input.type;
+  }
+  if (input.status) {
+    query.status = input.status;
+  }
+  if (input.recordKind) {
+    query.recordKind = input.recordKind;
+  }
+  if (input.entityIds) {
+    const ids = input.entityIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (ids.length > 0) {
+      query.entity = { $in: ids };
+    }
+  }
+  if (input.employeeCompanyId) {
+    const employeeIds = await distinctEmployeeIdsByCompany(input.employeeCompanyId);
+    const employeeIdStrings = employeeIds.map((id: any) => String(id));
+
+    if (query.entity?.$in) {
+      const intersection = query.entity.$in.filter((id: string) =>
+        employeeIdStrings.includes(String(id)),
+      );
+      query.entity = { $in: intersection };
+    } else {
+      query.entity = { $in: employeeIdStrings };
+    }
+  }
+  if (input.officeCategory) {
+    query.category = input.officeCategory;
+  }
+  if (input.query) {
+    const escapedQuery = String(input.query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escapedQuery, "i");
+    query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
   }
   if (input.category) {
     if (input.category === "office_records") {
@@ -347,7 +398,7 @@ export async function listPaymentRecords(input: {
     populate: PAYMENT_POPULATE_FIELDS,
     skip: input.pageNumber * contentPerSection,
     limit: contentPerSection + 1,
-    sort: { createdAt: -1 },
+    sort: sortMap[String(input.sort || "newest")] || sortMap.newest,
   });
 
   if (!records || records.length === 0) {

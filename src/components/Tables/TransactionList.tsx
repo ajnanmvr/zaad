@@ -13,9 +13,13 @@ import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+import {
+  exportRowsCsv,
+  exportRowsExcel,
+  exportRowsPdf,
+} from "@/utils/exportTableData";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FiFilter,
   FiArrowUpRight,
@@ -39,12 +43,42 @@ type TPaymentMethodOption = {
   icon?: string;
 };
 
-type ExportScope = "selected" | "all";
+type TPaymentStatusOption = {
+  value: string;
+  label: string;
+  color?: string;
+};
+
+type TEntityOption = {
+  _id: string;
+  name: string;
+  entityType: "company" | "employee" | "individual";
+  color?: string;
+};
+
+type TOfficeCategoryOption = {
+  id: string;
+  label: string;
+};
+
+type TCompanyOption = {
+  _id: string;
+  name: string;
+  color?: string;
+  entityType?: "company";
+};
+
+type ExportScope = "selected" | "page" | "all";
 type ExportFormat = "csv" | "excel" | "pdf";
 
 const baseData = {
   t: "",
   m: "",
+  s: "",
+  k: "",
+  e: "",
+  oc: "",
+  ec: "",
 };
 
 type LedgerCategory = "office_records" | "liability";
@@ -271,6 +305,7 @@ const TransactionList = ({
   returnTo?: string;
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUserContext();
   const isAdmin = ["admin", "superadmin"].includes(
     (user?.role || "").toLowerCase(),
@@ -287,15 +322,63 @@ const TransactionList = ({
   >([]);
   const [cards, setCards] = useState([0, 0, 0, 0]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [exportScope, setExportScope] = useState<ExportScope>("selected");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [entitySearchInput, setEntitySearchInput] = useState("");
+  const [entitySearchResults, setEntitySearchResults] = useState<
+    TEntityOption[]
+  >([]);
+  const [entitySearchLoading, setEntitySearchLoading] = useState(false);
+  const [companySearchInput, setCompanySearchInput] = useState("");
+  const [companySearchResults, setCompanySearchResults] = useState<
+    TCompanyOption[]
+  >([]);
+  const [companySearchLoading, setCompanySearchLoading] = useState(false);
+  const [selectedEmployeeCompany, setSelectedEmployeeCompany] =
+    useState<TCompanyOption | null>(null);
+  const [selectedEntityMap, setSelectedEntityMap] = useState<
+    Record<string, TEntityOption>
+  >({});
 
   const currentType = Array.isArray(type) ? type[0] : type;
   const hasLedgerContext = Boolean(currentType || category);
 
+  useEffect(() => {
+    const nextFilter = {
+      t: String(searchParams.get("t") || "").trim(),
+      m: String(searchParams.get("m") || "").trim(),
+      s: String(searchParams.get("s") || "").trim(),
+      k: String(searchParams.get("k") || "").trim(),
+      e: String(searchParams.get("e") || "").trim(),
+      oc: String(searchParams.get("oc") || "").trim(),
+      ec: String(searchParams.get("ec") || "").trim(),
+    };
+    const nextSearch = String(searchParams.get("q") || "").trim();
+    const nextSort = String(searchParams.get("sort") || "newest").trim();
+    const nextLimit = Number(searchParams.get("limit") || "25");
+
+    setFilter(nextFilter);
+    setFilterDummy(nextFilter);
+    setSearchTerm(nextSearch);
+    setSortBy(nextSort || "newest");
+    setPageSize(Number.isFinite(nextLimit) && nextLimit > 0 ? nextLimit : 25);
+    setPageNumber(0);
+  }, [searchParams]);
+
   const { data: paymentData, isLoading } = useQuery({
-    queryKey: ["payment", pageNumber, type, id, category, filter],
+    queryKey: [
+      "payment",
+      pageNumber,
+      pageSize,
+      sortBy,
+      type,
+      id,
+      category,
+      filter,
+    ],
     queryFn: async () => {
       const routeSegment = currentType
         ? currentType === "self" || currentType === "self-deposit"
@@ -304,8 +387,15 @@ const TransactionList = ({
         : "";
       const params = new URLSearchParams();
       params.set("page", String(pageNumber));
+      params.set("limit", String(pageSize));
+      params.set("sort", sortBy);
       if (filter.t) params.set("t", filter.t);
       if (filter.m) params.set("m", filter.m);
+      if (filter.s) params.set("s", filter.s);
+      if (filter.k) params.set("k", filter.k);
+      if (filter.e) params.set("e", filter.e);
+      if (filter.oc) params.set("oc", filter.oc);
+      if (filter.ec) params.set("ec", filter.ec);
       if (category) params.set("category", category);
       const res = await axios.get(
         `/api/payment${routeSegment}?${params.toString()}`,
@@ -329,6 +419,101 @@ const TransactionList = ({
       }));
     },
   });
+
+  const { data: paymentStatusOptions = [] } = useQuery<TPaymentStatusOption[]>({
+    queryKey: ["payment-status-templates"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/templates", {
+        params: { type: "status" },
+      });
+      return (data?.options || data?.paymentStatusOptions || []).map(
+        (item: any) => ({
+          value: item.id || item._id || item.status,
+          label: item.label || item.status,
+          color: item.color,
+        }),
+      );
+    },
+  });
+
+  const { data: officeCategoryOptions = [] } = useQuery<
+    TOfficeCategoryOption[]
+  >({
+    queryKey: ["office-expense-category-options"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/templates");
+      return (data?.officeExpenseCategoryOptions || []).map((item: any) => ({
+        id: item.id,
+        label: item.label || item.category || "Office",
+      }));
+    },
+  });
+
+  useEffect(() => {
+    const keyword = entitySearchInput.trim();
+    if (!keyword || keyword.length < 2) {
+      setEntitySearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setEntitySearchLoading(true);
+      try {
+        const [companies, employees, individuals] = await Promise.all([
+          axios.get<TEntityOption[]>(`/api/company/search/${keyword}`),
+          axios.get<TEntityOption[]>(`/api/employee/search/${keyword}`),
+          axios.get<TEntityOption[]>(`/api/individual/search/${keyword}`),
+        ]);
+
+        const merged = [
+          ...(companies.data || []).map((row: any) => ({
+            ...row,
+            entityType: "company" as const,
+          })),
+          ...(employees.data || []).map((row: any) => ({
+            ...row,
+            entityType: "employee" as const,
+          })),
+          ...(individuals.data || []).map((row: any) => ({
+            ...row,
+            entityType: "individual" as const,
+          })),
+        ];
+
+        setEntitySearchResults(merged.slice(0, 12));
+      } catch {
+        setEntitySearchResults([]);
+      } finally {
+        setEntitySearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [entitySearchInput]);
+
+  useEffect(() => {
+    const keyword = companySearchInput.trim();
+    if (!keyword || keyword.length < 2) {
+      setCompanySearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCompanySearchLoading(true);
+      try {
+        const { data } = await axios.get<TCompanyOption[]>(
+          `/api/company/search/${keyword}`,
+        );
+        setCompanySearchResults((data || []).slice(0, 12));
+      } catch {
+        setCompanySearchResults([]);
+      } finally {
+        setCompanySearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [companySearchInput]);
 
   const paymentMethodMap = useMemo(() => {
     return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>(
@@ -383,7 +568,10 @@ const TransactionList = ({
     return recordsWithBalance.filter((record) => {
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
-        record?.client?.name || (record?.recordKind === "office_records" ? record?.categoryName || "" : ""),
+        record?.client?.name ||
+          (record?.recordKind === "office_records"
+            ? record?.categoryName || ""
+            : ""),
         record?.client?.type || "",
         record?.particular || "",
         record?.method || "",
@@ -413,6 +601,60 @@ const TransactionList = ({
 
   const isInnerEntityRecords =
     embedded && Boolean(lockEntityType) && Boolean(lockEntityId);
+  const enableSelection = true;
+  const hasActiveFilter =
+    Boolean(filter.m) ||
+    Boolean(filter.t) ||
+    Boolean(filter.s) ||
+    Boolean(filter.k) ||
+    Boolean(filter.e) ||
+    Boolean(filter.oc) ||
+    Boolean(filter.ec);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filter.t) count += 1;
+    if (filter.m) count += 1;
+    if (filter.s) count += 1;
+    if (filter.k) count += 1;
+    if (filter.oc) count += 1;
+    if (filter.e) count += filter.e.split(",").filter(Boolean).length;
+    if (filter.ec) count += 1;
+    return count;
+  }, [filter]);
+
+  const selectedEntityIds = useMemo(
+    () =>
+      (filterDummy.e || "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    [filterDummy.e],
+  );
+
+  useEffect(() => {
+    if (!entitySearchResults.length || !selectedEntityIds.length) return;
+    setSelectedEntityMap((prev) => {
+      const next = { ...prev };
+      for (const row of entitySearchResults) {
+        if (selectedEntityIds.includes(row._id)) {
+          next[row._id] = row;
+        }
+      }
+      return next;
+    });
+  }, [entitySearchResults, selectedEntityIds]);
+
+  useEffect(() => {
+    if (!filterDummy.ec) {
+      setSelectedEmployeeCompany(null);
+      return;
+    }
+    const found = companySearchResults.find((company) => company._id === filterDummy.ec);
+    if (found) {
+      setSelectedEmployeeCompany(found);
+    }
+  }, [companySearchResults, filterDummy.ec]);
 
   const toggleSelectVisible = (checked: boolean) => {
     if (!checked) {
@@ -422,7 +664,9 @@ const TransactionList = ({
     }
 
     const visibleIds = visibleRecords.map((record) => record.id);
-    setSelectedRecordIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    setSelectedRecordIds((prev) =>
+      Array.from(new Set([...prev, ...visibleIds])),
+    );
   };
 
   const toggleRecordSelection = (recordId: string, checked: boolean) => {
@@ -435,13 +679,18 @@ const TransactionList = ({
     });
   };
 
-  const mapRecordsForExport = (rows: (TRecordList & { runningBalance?: number })[]) =>
+  const mapRecordsForExport = (
+    rows: (TRecordList & { runningBalance?: number })[],
+  ) =>
     rows.map((record) => {
       const amount = Number(record.amount || 0);
       const serviceFee = Number(record.serviceFee || 0);
       return {
         "Record ID": `${record.suffix || ""}${record.number || ""}`,
-        Client: record.recordKind === "office_records" ? record.categoryName || "Office Record" : record.client?.name || "",
+        Client:
+          record.recordKind === "office_records"
+            ? record.categoryName || "Office Record"
+            : record.client?.name || "",
         "Client Type": record.client?.type || "",
         Type: record.type || "",
         Particular: record.particular || "",
@@ -458,7 +707,72 @@ const TransactionList = ({
     });
 
   const handleExport = async () => {
-    const sourceRows = exportScope === "selected" ? selectedRecords : visibleRecords;
+    let sourceRows: (TRecordList & { runningBalance?: number })[] = [];
+
+    if (exportScope === "selected") {
+      sourceRows = selectedRecords;
+    } else if (exportScope === "page") {
+      sourceRows = visibleRecords;
+    } else {
+      const routeSegment = currentType
+        ? currentType === "self" || currentType === "self-deposit"
+          ? `/${currentType}`
+          : `/${currentType}/${id}`
+        : "";
+
+      const allRows: (TRecordList & { runningBalance?: number })[] = [];
+      let cursor = 0;
+      let keepLoading = true;
+
+      while (keepLoading) {
+        const params = new URLSearchParams();
+        params.set("page", String(cursor));
+        params.set("limit", "100");
+        params.set("sort", sortBy);
+        if (filter.t) params.set("t", filter.t);
+        if (filter.m) params.set("m", filter.m);
+        if (filter.s) params.set("s", filter.s);
+        if (filter.k) params.set("k", filter.k);
+        if (filter.e) params.set("e", filter.e);
+        if (filter.oc) params.set("oc", filter.oc);
+        if (filter.ec) params.set("ec", filter.ec);
+        if (category) params.set("category", category);
+
+        const { data } = await axios.get(
+          `/api/payment${routeSegment}?${params.toString()}`,
+        );
+        const batch = (data?.records || []) as (TRecordList & {
+          runningBalance?: number;
+        })[];
+        allRows.push(...batch);
+        keepLoading = Boolean(data?.hasMore);
+        cursor += 1;
+      }
+
+      if (searchTerm.trim()) {
+        const normalizedSearch = searchTerm.trim().toLowerCase();
+        sourceRows = allRows.filter((record) => {
+          const haystack = [
+            `${record?.suffix || ""}${record?.number || ""}`,
+            record?.client?.name ||
+              (record?.recordKind === "office_records"
+                ? record?.categoryName || ""
+                : ""),
+            record?.client?.type || "",
+            record?.particular || "",
+            record?.method || "",
+            record?.status || "",
+            record?.amount || "",
+          ]
+            .join(" ")
+            .toLowerCase();
+
+          return haystack.includes(normalizedSearch);
+        });
+      } else {
+        sourceRows = allRows;
+      }
+    }
 
     if (!sourceRows.length) {
       toast.error(
@@ -502,8 +816,13 @@ const TransactionList = ({
         const total = amount + serviceFee;
 
         const descriptionParts: string[] = [];
-        if (record.client?.type === "employee" || record.client?.type === "individual") {
-          descriptionParts.push(`Employee: ${record.client?.name || "Unknown"}`);
+        if (
+          record.client?.type === "employee" ||
+          record.client?.type === "individual"
+        ) {
+          descriptionParts.push(
+            `Employee: ${record.client?.name || "Unknown"}`,
+          );
         } else {
           descriptionParts.push(`Company: ${record.client?.name || "Unknown"}`);
           if (record.employeeName) {
@@ -513,7 +832,9 @@ const TransactionList = ({
         descriptionParts.push(record.method || "Unknown method");
 
         return {
-          title: record.particular || `Expense ${record.suffix || ""}${record.number || ""}`,
+          title:
+            record.particular ||
+            `Expense ${record.suffix || ""}${record.number || ""}`,
           desc: descriptionParts.join(" | "),
           rate: Number(total.toFixed(2)),
           quantity: 1,
@@ -547,7 +868,8 @@ const TransactionList = ({
         entityType && lockEntityId
           ? {
               id: lockEntityId,
-              name: lockEntityName || selectedRecords[0]?.client?.name || "Client",
+              name:
+                lockEntityName || selectedRecords[0]?.client?.name || "Client",
               type: entityType,
             }
           : null,
@@ -574,7 +896,10 @@ const TransactionList = ({
     };
 
     try {
-      sessionStorage.setItem(INVOICE_PREFILL_STORAGE_KEY, JSON.stringify(prefillPayload));
+      sessionStorage.setItem(
+        INVOICE_PREFILL_STORAGE_KEY,
+        JSON.stringify(prefillPayload),
+      );
       setSelectedRecordIds([]);
       toast.success("Invoice draft prepared from selected records");
 
@@ -606,6 +931,31 @@ const TransactionList = ({
   const handleCancelFilter = () => {
     setFilterDummy({ ...filter });
     setFilterOpen(false);
+  };
+
+  const addEntityToFilter = (entity: TEntityOption) => {
+    if (!entity?._id) return;
+    const merged = Array.from(new Set([...selectedEntityIds, entity._id]));
+    setSelectedEntityMap((prev) => ({ ...prev, [entity._id]: entity }));
+    setFilterDummy((prev) => ({ ...prev, e: merged.join(",") }));
+  };
+
+  const removeEntityFromFilter = (entityId: string) => {
+    const next = selectedEntityIds.filter((id) => id !== entityId);
+    setSelectedEntityMap((prev) => {
+      const clone = { ...prev };
+      delete clone[entityId];
+      return clone;
+    });
+    setFilterDummy((prev) => ({ ...prev, e: next.join(",") }));
+  };
+
+  const selectEmployeeCompanyFilter = (company: TCompanyOption) => {
+    setFilterDummy((prev) => ({ ...prev, ec: company._id, e: "" }));
+    setSelectedEmployeeCompany(company);
+    setSelectedEntityMap({});
+    setCompanySearchInput(company.name);
+    setCompanySearchResults([]);
   };
 
   const renderBadge = (status: string | undefined, colorClass: string) => (
@@ -676,21 +1026,24 @@ const TransactionList = ({
         {/* Filter Modal Overlay */}
         {isFilterOpen && (
           <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 relative">
+            <div className="relative w-full max-w-2xl max-h-[86vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 sm:p-6">
               <button
                 onClick={handleCancelFilter}
-                className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <FiX className="text-xl" />
               </button>
 
-              <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <h3 className="mb-1 text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <FiFilter className="text-emerald-500" />
-                Filter Transactions
+                Refine Transactions
               </h3>
+              <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+                Keep only what you need on screen.
+              </p>
 
-              <div className="mb-6 flex flex-col gap-6 sm:flex-row">
-                <div className="w-full sm:w-1/2">
+              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                     Transaction Type
                   </label>
@@ -707,7 +1060,7 @@ const TransactionList = ({
                     <option value="expense">Expense</option>
                   </select>
                 </div>
-                <div className="w-full sm:w-1/2">
+                <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                     Payment Method
                   </label>
@@ -729,13 +1082,206 @@ const TransactionList = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mt-8">
+              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Payment Status
+                  </label>
+                  <select
+                    value={filterDummy.s}
+                    name="status"
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, s: e.target.value })
+                    }
+                    className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All Statuses</option>
+                    {paymentStatusOptions.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Record Kind
+                  </label>
+                  <select
+                    value={filterDummy.k}
+                    name="recordKind"
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, k: e.target.value })
+                    }
+                    className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All Kinds</option>
+                    <option value="standard">Standard</option>
+                    <option value="office_records">Office</option>
+                    <option value="liability">Liability</option>
+                    <option value="self_transfer">Self Transfer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Office Category
+                  </label>
+                  <select
+                    value={filterDummy.oc}
+                    name="officeCategory"
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, oc: e.target.value })
+                    }
+                    className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All Office Categories</option>
+                    {officeCategoryOptions.map((officeCategory) => (
+                      <option key={officeCategory.id} value={officeCategory.id}>
+                        {officeCategory.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Filter by Entities
+                </label>
+                <input
+                  value={entitySearchInput}
+                  onChange={(event) => setEntitySearchInput(event.target.value)}
+                  placeholder="Search company, employee, individual"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedEntityIds.map((entityId) => (
+                    <button
+                      key={entityId}
+                      type="button"
+                      onClick={() => removeEntityFromFilter(entityId)}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300"
+                    >
+                      <EntityAvatar
+                        name={selectedEntityMap[entityId]?.name || "Entity"}
+                        color={selectedEntityMap[entityId]?.color}
+                        size="sm"
+                      />
+                      <span className="max-w-[180px] truncate">
+                        {selectedEntityMap[entityId]?.name || entityId.slice(-6)}
+                      </span>
+                      <FiX className="text-[11px]" />
+                    </button>
+                  ))}
+                </div>
+                {entitySearchLoading ? (
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Searching entities...
+                  </p>
+                ) : entitySearchResults.length > 0 ? (
+                  <div className="mt-3 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+                    {entitySearchResults.map((entity) => (
+                      <button
+                        key={entity._id}
+                        type="button"
+                        onClick={() => addEntityToFilter(entity)}
+                        className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <span className="flex items-center gap-2">
+                          <EntityAvatar
+                            name={entity.name}
+                            color={entity.color}
+                            size="sm"
+                          />
+                          <span className="font-medium">{entity.name}</span>
+                        </span>
+                        <span className="capitalize text-slate-500 dark:text-slate-400">
+                          {entity.entityType}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Employees of Company
+                </label>
+                <input
+                  value={companySearchInput}
+                  onChange={(event) =>
+                    setCompanySearchInput(event.target.value)
+                  }
+                  placeholder="Search company name"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+                {filterDummy.ec && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-300">
+                      <EntityAvatar
+                        name={selectedEmployeeCompany?.name || "Company"}
+                        color={selectedEmployeeCompany?.color}
+                        size="sm"
+                      />
+                      Employees of{" "}
+                      {selectedEmployeeCompany?.name || "selected company"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterDummy((prev) => ({ ...prev, ec: "" }));
+                        setSelectedEmployeeCompany(null);
+                        setCompanySearchInput("");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/20 dark:text-rose-300"
+                    >
+                      <FiX className="text-[11px]" /> Clear
+                    </button>
+                  </div>
+                )}
+                {companySearchLoading ? (
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Searching companies...
+                  </p>
+                ) : companySearchResults.length > 0 ? (
+                  <div className="mt-3 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+                    {companySearchResults.map((company) => (
+                      <button
+                        key={company._id}
+                        type="button"
+                        onClick={() => selectEmployeeCompanyFilter(company)}
+                        className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <span className="flex items-center gap-2">
+                          <EntityAvatar
+                            name={company.name}
+                            color={company.color}
+                            size="sm"
+                          />
+                          <span className="font-medium">{company.name}</span>
+                        </span>
+                        <span className="text-slate-500 dark:text-slate-400">
+                          Company
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="sticky bottom-0 mt-4 flex items-center justify-between border-t border-slate-200 bg-white/95 pt-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
                 <button
                   onClick={() => {
                     setFilter(baseData);
                     setFilterDummy(baseData);
+                    setEntitySearchInput("");
+                    setCompanySearchInput("");
+                    setSelectedEmployeeCompany(null);
+                    setSelectedEntityMap({});
                     setFilterOpen(false);
                     setPageNumber(0);
+                    setSelectedRecordIds([]);
                   }}
                   className="text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
                 >
@@ -744,13 +1290,13 @@ const TransactionList = ({
                 <div className="flex gap-3">
                   <button
                     onClick={handleCancelFilter}
-                    className="rounded-xl bg-slate-100 px-6 py-2.5 font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleFilter}
-                    className="rounded-xl bg-emerald-600 px-6 py-2.5 font-medium text-white transition hover:bg-emerald-700 shadow-sm shadow-emerald-600/30"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm shadow-emerald-600/30"
                   >
                     Apply Filter
                   </button>
@@ -762,31 +1308,17 @@ const TransactionList = ({
 
         <div
           className={clsx(
-            "border-b border-slate-200/80 p-6 dark:border-slate-800 sm:p-7",
-            embedded
-              ? "bg-white dark:bg-slate-900"
-              : "relative overflow-hidden bg-gradient-to-br from-cyan-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900",
+            "border-b border-slate-200/80 p-5 dark:border-slate-800 sm:p-6",
+            "bg-white dark:bg-slate-900",
           )}
         >
-          {!embedded && (
-            <>
-              <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-200/40 blur-2xl dark:bg-cyan-500/10" />
-              <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-200/50 blur-xl dark:bg-emerald-500/10" />
-            </>
-          )}
-
-          <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-base font-black tracking-tight text-slate-800 dark:text-slate-200">
-                  Transaction History
+                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-200">
+                  Transactions
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500">
-                  {filter.m || filter.t
-                    ? `Filtered by: ${filter.t} ${filter.m}`
-                    : "All recent transactions"}
-                </p>
-                {(filter.m || filter.t) && (
+                {hasActiveFilter && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {filter.t && (
                       <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -801,6 +1333,49 @@ const TransactionList = ({
                         size="sm"
                         muted
                       />
+                    )}
+                    {filter.s && (
+                      <span className="inline-flex items-center rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-700/40 dark:bg-sky-900/20 dark:text-sky-300">
+                        {paymentStatusOptions.find(
+                          (status) => status.value === filter.s,
+                        )?.label || filter.s}
+                      </span>
+                    )}
+                    {filter.k && (
+                      <span className="inline-flex items-center rounded-full border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-700/40 dark:bg-indigo-900/20 dark:text-indigo-300">
+                        {filter.k.replace(/_/g, " ")}
+                      </span>
+                    )}
+                    {filter.oc && (
+                      <span className="inline-flex items-center rounded-full border border-fuchsia-300 bg-fuchsia-50 px-2.5 py-1 text-xs font-semibold text-fuchsia-700 dark:border-fuchsia-700/40 dark:bg-fuchsia-900/20 dark:text-fuchsia-300">
+                        {officeCategoryOptions.find(
+                          (officeCategory) => officeCategory.id === filter.oc,
+                        )?.label || "Office Category"}
+                      </span>
+                    )}
+                    {filter.e && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                        <EntityAvatar
+                          name="Entities"
+                          color="#10b981"
+                          size="sm"
+                        />
+                        {(
+                          filter.e.split(",").filter(Boolean).length || 0
+                        ).toString()}{" "}
+                        entities
+                      </span>
+                    )}
+                    {filter.ec && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-300">
+                        <EntityAvatar
+                          name={selectedEmployeeCompany?.name || "Company"}
+                          color={selectedEmployeeCompany?.color}
+                          size="sm"
+                        />
+                        Employees of{" "}
+                        {selectedEmployeeCompany?.name || "selected company"}
+                      </span>
                     )}
                   </div>
                 )}
@@ -819,50 +1394,133 @@ const TransactionList = ({
                 >
                   <FiPlusCircle /> Expense
                 </Link>
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  {visibleRecords.length} Records
-                  {isInnerEntityRecords && selectedRecordIds.length > 0
-                    ? ` • ${selectedRecordIds.length} selected`
-                    : ""}
+                <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <span>{visibleRecords.length} shown</span>
+                  {selectedRecordIds.length > 0 && (
+                    <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      {selectedRecordIds.length} selected
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/85">
-              {isInnerEntityRecords && (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800">
-                  <select
-                    value={exportScope}
-                    onChange={(event) => setExportScope(event.target.value as ExportScope)}
-                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    <option value="selected">Export selected</option>
-                    <option value="all">Export all (visible)</option>
-                  </select>
-                  <select
-                    value={exportFormat}
-                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    <option value="csv">CSV</option>
-                    <option value="excel">Excel</option>
-                    <option value="pdf">PDF</option>
-                  </select>
-                  <button
-                    onClick={handleExport}
-                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700/40 dark:bg-cyan-900/20 dark:text-cyan-300"
-                  >
-                    <FiDownload /> Export
-                  </button>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800">
+                <select
+                  value={sortBy}
+                  onChange={(event) => {
+                    setSortBy(event.target.value);
+                    setPageNumber(0);
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="newest">Sort: Newest</option>
+                  <option value="oldest">Sort: Oldest</option>
+                  <option value="amount_desc">Amount: High-Low</option>
+                  <option value="amount_asc">Amount: Low-High</option>
+                </select>
+                <select
+                  value={String(pageSize)}
+                  onChange={(event) => {
+                    const nextSize = Number(event.target.value);
+                    setPageSize(nextSize);
+                    setPageNumber(0);
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="10">Show 10</option>
+                  <option value="25">Show 25</option>
+                  <option value="50">Show 50</option>
+                  <option value="100">Show 100</option>
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800">
+                <button
+                  onClick={() => setExportScope("selected")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportScope === "selected"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  Sel
+                </button>
+                <button
+                  onClick={() => setExportScope("page")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportScope === "page"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  Page
+                </button>
+                <button
+                  onClick={() => setExportScope("all")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportScope === "all"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  All
+                </button>
+                <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+                <button
+                  onClick={() => setExportFormat("csv")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportFormat === "csv"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  CSV
+                </button>
+                <button
+                  onClick={() => setExportFormat("excel")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportFormat === "excel"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  XLS
+                </button>
+                <button
+                  onClick={() => setExportFormat("pdf")}
+                  className={clsx(
+                    "rounded-md px-2 py-1 text-[11px] font-semibold",
+                    exportFormat === "pdf"
+                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
+                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
+                  )}
+                >
+                  PDF
+                </button>
+                <button
+                  onClick={handleExport}
+                  title="Export"
+                  className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700/40 dark:bg-cyan-900/20 dark:text-cyan-300"
+                >
+                  <FiDownload />
+                  <span>Export</span>
+                </button>
+                {isInnerEntityRecords && (
                   <button
                     onClick={handleConvertSelectedToInvoice}
-                    className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
+                    className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
                   >
                     <FiFileText /> To Invoice
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
                 <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -875,13 +1533,18 @@ const TransactionList = ({
               <button
                 onClick={() => setFilterOpen(true)}
                 className={clsx(
-                  "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
-                  filter.m || filter.t
+                  "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+                  hasActiveFilter
                     ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700",
                 )}
               >
-                <FiFilter /> Filter
+                <FiFilter /> Filters
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white dark:bg-emerald-500">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -893,12 +1556,14 @@ const TransactionList = ({
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
-                    {isInnerEntityRecords && (
+                    {enableSelection && (
                       <th className="w-[48px] pb-3 pl-4">
                         <input
                           type="checkbox"
                           checked={allVisibleSelected}
-                          onChange={(event) => toggleSelectVisible(event.target.checked)}
+                          onChange={(event) =>
+                            toggleSelectVisible(event.target.checked)
+                          }
                           className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                         />
                       </th>
@@ -917,14 +1582,33 @@ const TransactionList = ({
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6} className="py-8">
+                      <td
+                        colSpan={
+                          type || category
+                            ? enableSelection
+                              ? 8
+                              : 7
+                            : enableSelection
+                              ? 7
+                              : 6
+                        }
+                        className="py-8"
+                      >
                         <SkeletonList />
                       </td>
                     </tr>
                   ) : visibleRecords.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={(type || category) ? (isInnerEntityRecords ? 8 : 7) : isInnerEntityRecords ? 7 : 6}
+                        colSpan={
+                          type || category
+                            ? enableSelection
+                              ? 8
+                              : 7
+                            : enableSelection
+                              ? 7
+                              : 6
+                        }
                         className="py-12 text-center text-slate-500 dark:text-slate-400"
                       >
                         No transactions found.
@@ -936,33 +1620,40 @@ const TransactionList = ({
                         const transactionVisual = getTransactionVisual(record);
                         const isLiabilityRecord =
                           record?.recordKind === "liability" ||
-                          (record?.status || "").toLowerCase().includes("liability");
+                          (record?.status || "")
+                            .toLowerCase()
+                            .includes("liability");
 
                         return (
                           <tr
                             key={key}
                             className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
                           >
-                            {isInnerEntityRecords && (
+                            {enableSelection && (
                               <td className="py-4 pl-4 align-top">
                                 <input
                                   type="checkbox"
-                                  checked={selectedRecordIds.includes(record.id)}
+                                  checked={selectedRecordIds.includes(
+                                    record.id,
+                                  )}
                                   onChange={(event) =>
-                                    toggleRecordSelection(record.id, event.target.checked)
+                                    toggleRecordSelection(
+                                      record.id,
+                                      event.target.checked,
+                                    )
                                   }
                                   className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                 />
                               </td>
                             )}
                             <td className="py-4 pl-4 align-top">
-                              <div className="flex flex-col gap-1">
+                              <div className="flex flex-col">
                                 <span className="font-semibold text-slate-700 dark:text-slate-200 uppercase text-sm">
                                   {(record?.suffix || "") +
                                     (record?.number || "")}
                                 </span>
                                 {Number(record?.version || 0) > 0 && (
-                                  <span className="inline-flex w-fit items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-600 ring-1 ring-inset ring-orange-500/20 dark:bg-orange-500/10 dark:text-orange-400">
+                                  <span className="inline-flex w-fit items-center text-xs font-medium text-orange-600 dark:text-orange-400">
                                     {getEditCountText(
                                       Number(record?.version || 0),
                                     )}
@@ -993,16 +1684,17 @@ const TransactionList = ({
                                   }}
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
-                                  <p className="font-semibold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">
+                                  <p className="font-semibold text-sm text-slate-900 dark:text-white capitalize truncate">
                                     {record?.recordKind === "self_transfer"
                                       ? record?.type === "expense"
                                         ? "Self Transfer Out"
                                         : "Self Transfer In"
                                       : record?.recordKind === "office_records"
-                                      ? record?.categoryName || "Office Record"
-                                      : record?.client?.name || "Unknown"}
+                                        ? record?.categoryName ||
+                                          "Office Record"
+                                        : record?.client?.name || "Unknown"}
                                   </p>
-                                  <p className="text-xs font-medium text-emerald-500 dark:text-emerald-400 mt-1 truncate max-w-[200px]">
+                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400">
                                     {record?.particular}
                                   </p>
                                 </Link>
@@ -1020,18 +1712,21 @@ const TransactionList = ({
                                   ) : (
                                     <PaymentMethodBadge
                                       label={
-                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                          ?.label ||
+                                        paymentMethodMap[
+                                          record?.paymentMethodTemplate || ""
+                                        ]?.label ||
                                         record?.method ||
                                         "Unknown"
                                       }
                                       color={
-                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                          ?.color
+                                        paymentMethodMap[
+                                          record?.paymentMethodTemplate || ""
+                                        ]?.color
                                       }
                                       icon={
-                                        paymentMethodMap[record?.paymentMethodTemplate || ""]
-                                          ?.icon
+                                        paymentMethodMap[
+                                          record?.paymentMethodTemplate || ""
+                                        ]?.icon
                                       }
                                       size="sm"
                                     />
@@ -1126,28 +1821,31 @@ const TransactionList = ({
 
         {/* Pagination Container */}
         {!isLoading && (
-          <div className="mt-6 flex items-center justify-between border-t border-slate-200 px-2 pt-6 dark:border-slate-800">
-            <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
-              Showing page{" "}
-              <span className="font-semibold text-slate-800 dark:text-white">
-                {pageNumber + 1}
-              </span>
-            </p>
-            <div className="flex flex-1 justify-between sm:justify-end gap-3">
+          <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>
+                  Page <span className="font-semibold text-slate-800 dark:text-slate-100">{pageNumber + 1}</span>
+                </span>
+                <span>•</span>
+                <span>{visibleRecords.length} rows on this page</span>
+              </div>
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(pageNumber - 1)}
                 disabled={pageNumber === 0 || isLoading}
-                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
               >
                 <FiChevronLeft /> Previous
               </button>
               <button
                 onClick={() => handlePageChange(pageNumber + 1)}
                 disabled={isLoading || !hasMore || !recordsWithBalance.length}
-                className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
               >
                 Next <FiChevronRight />
               </button>
+              </div>
             </div>
           </div>
         )}

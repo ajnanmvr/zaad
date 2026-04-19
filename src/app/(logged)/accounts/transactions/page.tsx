@@ -4,7 +4,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
+import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
 
 const TablesPage = () => {
@@ -31,27 +31,6 @@ const TablesPage = () => {
           <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
             Track all incoming and outgoing transactions with filters, quick actions, and clear client context.
           </p>
-
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Scope</p>
-              <p className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">All Accounts</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Actions</p>
-              <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                <FiBookOpen />
-                Income / Expense
-              </p>
-            </div>
-            <div className="rounded-2xl border border-cyan-200/80 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Review</p>
-              <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-cyan-600 dark:text-cyan-400">
-                <FiCreditCard />
-                Detailed History
-              </p>
-            </div>
-          </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link

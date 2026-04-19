@@ -381,11 +381,14 @@ export async function loginUser(
   password?: string,
   request?: NextRequest,
 ) {
-  if (!username || !password) {
+  const normalizedUsername = String(username || "").trim();
+  const normalizedPassword = String(password || "");
+
+  if (!normalizedUsername || !normalizedPassword) {
     throw new ServiceError("Username and password are required", 400);
   }
 
-  const existingUser = await User.findOne({ username, published: true });
+  const existingUser = await User.findOne({ username: normalizedUsername, published: true });
   if (!existingUser) {
     throw new ServiceError("user isn't available", 400);
   }
@@ -402,7 +405,7 @@ export async function loginUser(
     throw new ServiceError("Account temporarily locked. Try again later", 423);
   }
 
-  const validPassword = await bcryptjs.compare(password, existingUser.password);
+  const validPassword = await bcryptjs.compare(normalizedPassword, existingUser.password);
   if (!validPassword) {
     const nextFailedCount = (existingUser.failedLoginCount || 0) + 1;
     const shouldLock = nextFailedCount >= MAX_FAILED_LOGIN_ATTEMPTS;
