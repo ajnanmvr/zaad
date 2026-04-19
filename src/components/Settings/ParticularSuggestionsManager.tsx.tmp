@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import ConfirmationModal from "@/components/Modals/ConfirmationModal";
+import { useCallback, useEffect, useMemo, useState } from "react";`nimport ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import axios from "axios";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -52,9 +51,7 @@ const LIMIT_OPTIONS = [10, 20, 50];
 
 type ModalMode = "create" | "edit";
 
-export default function ParticularSuggestionsManager() {
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [suggestionToDelete, setSuggestionToDelete] = useState<string | null>(null);
+export default function ParticularSuggestionsManager() {`n  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);`n  const [suggestionToDelete, setSuggestionToDelete] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<TSuggestion[]>([]);
   const [pagination, setPagination] = useState<TPaginationInfo>({
     page: 0,
@@ -136,7 +133,7 @@ export default function ParticularSuggestionsManager() {
       setSearchText(searchInput.trim());
     }, 250);
 
-    return () => clearTimeout(timer);
+    <>`n      <ConfirmationModal`n        isOpen={isDeleteModalOpen}`n        title="Delete Suggestion"`n        message="Are you sure you want to delete this suggestion? This action cannot be undone."`n        confirmLabel="Delete Suggestion"`n        onConfirm={confirmDelete}`n        onCancel={() => setIsDeleteModalOpen(false)}`n      />`n      return () => clearTimeout(timer);
   }, [searchInput]);
 
   useEffect(() => {
@@ -234,16 +231,8 @@ export default function ParticularSuggestionsManager() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    setSuggestionToDelete(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!suggestionToDelete) return;
-    const id = suggestionToDelete;
-    setIsDeleteModalOpen(false);
-    setSuggestionToDelete(null);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this suggestion?")) return;
 
     try {
       await axios.delete("/api/payment/particular-suggestions", {
@@ -256,7 +245,7 @@ export default function ParticularSuggestionsManager() {
     }
   };
 
-  return (
+  <>`n      <ConfirmationModal`n        isOpen={isDeleteModalOpen}`n        title="Delete Suggestion"`n        message="Are you sure you want to delete this suggestion? This action cannot be undone."`n        confirmLabel="Delete Suggestion"`n        onConfirm={confirmDelete}`n        onCancel={() => setIsDeleteModalOpen(false)}`n      />`n      return (
     <>
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -300,7 +289,7 @@ export default function ParticularSuggestionsManager() {
                 <div className="flex max-h-28 flex-wrap gap-1 overflow-auto">
                   {CATEGORY_ITEMS.map((item) => {
                     const selected = filterCategories.includes(item.value);
-                    return (
+                    <>`n      <ConfirmationModal`n        isOpen={isDeleteModalOpen}`n        title="Delete Suggestion"`n        message="Are you sure you want to delete this suggestion? This action cannot be undone."`n        confirmLabel="Delete Suggestion"`n        onConfirm={confirmDelete}`n        onCancel={() => setIsDeleteModalOpen(false)}`n      />`n      return (
                       <button
                         key={item.value}
                         type="button"
@@ -569,16 +558,7 @@ export default function ParticularSuggestionsManager() {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {CATEGORY_ITEMS.map((item) => {
                     const selected = modalCategories.includes(item.value);
-                    return (
-    <>
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        title="Delete Suggestion"
-        message="Are you sure you want to delete this suggestion? This action cannot be undone."
-        confirmLabel="Delete Suggestion"
-        onConfirm={confirmDelete}
-        onCancel={() => setIsDeleteModalOpen(false)}
-      />
+                    <>`n      <ConfirmationModal`n        isOpen={isDeleteModalOpen}`n        title="Delete Suggestion"`n        message="Are you sure you want to delete this suggestion? This action cannot be undone."`n        confirmLabel="Delete Suggestion"`n        onConfirm={confirmDelete}`n        onCancel={() => setIsDeleteModalOpen(false)}`n      />`n      return (
                       <button
                         key={item.value}
                         type="button"
@@ -641,4 +621,3 @@ export default function ParticularSuggestionsManager() {
     </>
   );
 }
-

@@ -736,7 +736,11 @@ const SimpleRecordForm = ({
       let successMessage = "Record created successfully!";
 
       if (isEdit && recordId) {
-        await axios.put(`/api/payment/${recordId}`, recordData);
+        const editEndpoint =
+          formData.recordKind === "self_transfer"
+            ? `/api/payment/self-deposit/${recordId}`
+            : `/api/payment/${recordId}`;
+        await axios.put(editEndpoint, recordData);
         successMessage = "Record updated successfully!";
       } else {
         let endpoint = "/api/payment";

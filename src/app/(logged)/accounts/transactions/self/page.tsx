@@ -70,13 +70,13 @@ export default function OfficeRecordsPage() {
               href="/accounts/add-record?recordKind=office_records&type=income"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white/90 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-white dark:border-emerald-700 dark:bg-slate-900/80 dark:text-emerald-300"
             >
-              <FiPlusCircle /> + Income
+              <FiPlusCircle /> Income
             </Link>
             <Link
               href="/accounts/add-record?recordKind=office_records&type=expense"
               className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white/90 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-white dark:border-rose-700 dark:bg-slate-900/80 dark:text-rose-300"
             >
-              <FiPlusCircle /> + Expense
+              <FiPlusCircle /> Expense
             </Link>
             <Link
               href="/accounts/transactions?category=office_records"

@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { formatDateTime } from "@/utils/dateUtils";
 import { FiArrowLeft, FiEye, FiRefreshCw, FiRotateCcw, FiSearch, FiTrash2 } from "react-icons/fi";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 type TBinResponse = {
   records: TRecordList[];
@@ -21,6 +22,7 @@ const TransactionBinPage = () => {
   const queryClient = useQueryClient();
   const [pageNumber, setPageNumber] = useState(0);
   const [search, setSearch] = useState("");
+  const [recoverTarget, setRecoverTarget] = useState<{ id: string; isSelfTransfer: boolean } | null>(null);
 
   const { data, isLoading, isError } = useQuery<TBinResponse>({
     queryKey: ["payment-bin", pageNumber, search],
@@ -165,7 +167,12 @@ const TransactionBinPage = () => {
                           </Link>
                           <button
                             type="button"
-                            onClick={() => recoverMutation.mutate(record.id)}
+                            onClick={() => {
+                              setRecoverTarget({
+                                id: record.id,
+                                isSelfTransfer: record.recordKind === "self_transfer",
+                              });
+                            }}
                             className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                             disabled={recoverMutation.isPending}
                           >
@@ -205,6 +212,27 @@ const TransactionBinPage = () => {
           </div>
         </div>
       </section>
+
+      <ConfirmationModal
+        isOpen={Boolean(recoverTarget)}
+        title={recoverTarget?.isSelfTransfer ? "Recover Both Transfer Records" : "Recover Transaction"}
+        message={
+          recoverTarget?.isSelfTransfer
+            ? "This self transfer will restore both linked records from the bin."
+            : "This transaction will be restored from the bin."
+        }
+        confirmLabel={recoverTarget?.isSelfTransfer ? "Recover Both" : "Recover"}
+        cancelLabel="Cancel"
+        variant="warning"
+        isLoading={recoverMutation.isPending}
+        onCancel={() => setRecoverTarget(null)}
+        onConfirm={() => {
+          if (!recoverTarget) return;
+          const targetId = recoverTarget.id;
+          setRecoverTarget(null);
+          recoverMutation.mutate(targetId);
+        }}
+      />
     </>
   );
 };

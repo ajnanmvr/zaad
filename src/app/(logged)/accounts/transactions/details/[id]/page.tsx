@@ -11,6 +11,7 @@ import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import clsx from "clsx";
 import PaymentMethodBadge from "@/components/common/PaymentMethodBadge";
 import UsernameWithIcon from "@/components/common/UsernameWithIcon";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 import toast from "react-hot-toast";
 import {
@@ -108,10 +109,15 @@ const TransactionDetailsPage = () => {
 
   const record = data?.record;
   const isOfficeRecord = record?.recordKind === "office_records";
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await axios.delete(`/api/payment/${id}`);
+      const deleteEndpoint =
+        record?.recordKind === "self_transfer"
+          ? `/api/payment/self-deposit/group/${record.transferGroupId || id}`
+          : `/api/payment/${id}`;
+      await axios.delete(deleteEndpoint);
     },
     onSuccess: async () => {
       toast.success("Transaction moved to bin");
@@ -178,19 +184,18 @@ const TransactionDetailsPage = () => {
                 <FiExternalLink /> View Entity
               </Link>
             ) : null}
-            <Link
-              href={`/accounts/transactions/edit/${record?.type}/${record?.id}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-            >
-              <FiEdit3 /> Edit Record
-            </Link>
+            {record?.recordKind !== "self_transfer" ? (
+              <Link
+                href={`/accounts/transactions/edit/${record?.type}/${record?.id}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                <FiEdit3 /> Edit Record
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => {
-                const recordLabel = `${record?.suffix || ""}${record?.number || ""}`.trim() || "this transaction";
-                if (window.confirm(`Move ${recordLabel} to the bin?`)) {
-                  deleteMutation.mutate();
-                }
+                setIsDeleteConfirmOpen(true);
               }}
               disabled={deleteMutation.isPending}
               className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
@@ -200,6 +205,25 @@ const TransactionDetailsPage = () => {
           </div>
         </div>
       </section>
+
+      <ConfirmationModal
+        isOpen={isDeleteConfirmOpen}
+        title={record?.recordKind === "self_transfer" ? "Delete Both Transfer Records" : "Delete Transaction"}
+        message={
+          record?.recordKind === "self_transfer"
+            ? "This self transfer will move both linked records to the bin."
+            : "This transaction will be moved to the bin."
+        }
+        confirmLabel={record?.recordKind === "self_transfer" ? "Delete Both" : "Delete"}
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          setIsDeleteConfirmOpen(false);
+          deleteMutation.mutate();
+        }}
+      />
 
 
 

@@ -1292,6 +1292,44 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   return { status: 200, body: { message: "data deleted" } };
 }
 
+export async function deleteSelfTransferByGroupId(groupId: string, principal: TPrincipal) {
+  const normalizedGroupId = String(groupId || "").trim();
+
+  if (!normalizedGroupId) {
+    return { status: 400, body: { error: "Group ID is required" } };
+  }
+
+  const record = await findOneRecord({
+    ...ACTIVE_RECORD_FILTER,
+    recordKind: "self_transfer",
+    transferGroupId: normalizedGroupId,
+  });
+
+  if (!record) {
+    return { status: 404, body: { error: "Self transfer group not found" } };
+  }
+
+  const linkedIds = await resolveLinkedRecordIds(record);
+  await updateManyRecords(
+    { _id: { $in: linkedIds } },
+    {
+      deletedAt: new Date(),
+      $push: {
+        activityLog: {
+          action: "delete",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Self transfer pair moved to bin",
+        },
+      },
+    },
+  );
+
+  return { status: 200, body: { message: "Self transfer deleted", groupId: normalizedGroupId } };
+}
+
 export async function updatePaymentRecord(id: string, reqBody: any, principal: TPrincipal) {
   const {
     _id,
