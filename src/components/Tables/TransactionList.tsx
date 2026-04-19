@@ -750,6 +750,8 @@ const TransactionList = ({
       return;
     }
 
+    const isCompanyGeneratedInvoice = lockEntityType === "company";
+
     const expenseItems = selectedRecords
       .filter((record) => record.type === "expense")
       .map((record) => {
@@ -757,27 +759,16 @@ const TransactionList = ({
         const serviceFee = Number(record.serviceFee || 0);
         const total = amount + serviceFee;
 
-        const descriptionParts: string[] = [];
-        if (
-          record.client?.type === "employee" ||
-          record.client?.type === "individual"
-        ) {
-          descriptionParts.push(
-            `Employee: ${record.client?.name || "Unknown"}`,
-          );
-        } else {
-          descriptionParts.push(`Company: ${record.client?.name || "Unknown"}`);
-          if (record.employeeName) {
-            descriptionParts.push(`Employee: ${record.employeeName}`);
-          }
-        }
-        descriptionParts.push(record.method || "Unknown method");
+        const description =
+          isCompanyGeneratedInvoice && record.client?.type === "employee"
+            ? `Employee: ${record.client?.name || record.employeeName || "Unknown"}`
+            : "";
 
         return {
           title:
             record.particular ||
             `Expense ${record.suffix || ""}${record.number || ""}`,
-          desc: descriptionParts.join(" | "),
+          desc: description,
           rate: Number(total.toFixed(2)),
           quantity: 1,
         };
