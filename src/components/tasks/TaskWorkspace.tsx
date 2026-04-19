@@ -521,7 +521,7 @@ export default function TaskWorkspace({
     }
 
     const nextQuery = nextParams.toString();
-    router.push(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   };
 
   const selectDate = (nextDate: string) => {

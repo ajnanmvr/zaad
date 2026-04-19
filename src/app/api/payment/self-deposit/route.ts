@@ -12,11 +12,15 @@ export async function GET(request: NextRequest) {
     const pageNumber = Number(searchParams.get("page") || 0);
     const type = searchParams.get("t");
     const method = searchParams.get("m");
+    const query = searchParams.get("q");
+    const sort = searchParams.get("sort") || "newest";
 
     const response = await listSelfDepositPayments({
       pageNumber,
       type,
       method,
+      query,
+      sort,
     });
 
     return Response.json(response, { status: 200 });

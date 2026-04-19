@@ -336,9 +336,17 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
               <li>
                 <NavItem
-                  href="/accounts/transactions/self"
+                  href="/accounts/transactions/office"
                   icon={<FiBookOpen />}
                   label="Office Records"
+                  active={pathname === "/accounts/transactions/office"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/accounts/transactions/self"
+                  icon={<FiRepeat />}
+                  label="Self Transfers"
                   active={pathname === "/accounts/transactions/self"}
                 />
               </li>

@@ -547,6 +547,8 @@ export async function listSelfDepositPayments(input: {
   pageNumber: number;
   type?: string | null;
   method?: string | null;
+  query?: string | null;
+  sort?: string | null;
 }) {
   const contentPerSection = 10;
   const query: Record<string, any> = {
@@ -580,9 +582,48 @@ export async function listSelfDepositPayments(input: {
   }
 
   const groupedTransfers = buildTransfers(records);
+  const normalizedQuery = String(input.query || "")
+    .trim()
+    .toLowerCase();
+
+  const filteredTransfers = groupedTransfers.filter((transfer) => {
+    if (!normalizedQuery) return true;
+
+    const expense = transfer.expense;
+    const income = transfer.income;
+    const blob = [
+      expense?.method || "",
+      income?.method || "",
+      expense?.particular || "",
+      income?.particular || "",
+      expense?.remarks || "",
+      income?.remarks || "",
+      expense?.suffix || "",
+      expense?.number || "",
+      income?.suffix || "",
+      income?.number || "",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return blob.includes(normalizedQuery);
+  });
+
+  const sortedTransfers = [...filteredTransfers].sort((a, b) => {
+    const amountA = Number(a.expense?.amount || a.income?.amount || 0);
+    const amountB = Number(b.expense?.amount || b.income?.amount || 0);
+    const dateA = new Date(String(a.expense?.createdAt || a.income?.createdAt || 0)).getTime();
+    const dateB = new Date(String(b.expense?.createdAt || b.income?.createdAt || 0)).getTime();
+
+    if (input.sort === "amount-asc") return amountA - amountB;
+    if (input.sort === "amount-desc") return amountB - amountA;
+    if (input.sort === "oldest") return dateA - dateB;
+    return dateB - dateA;
+  });
+
   const start = input.pageNumber * contentPerSection;
-  const transformedData = groupedTransfers.slice(start, start + contentPerSection);
-  const hasMore = groupedTransfers.length > start + contentPerSection;
+  const transformedData = sortedTransfers.slice(start, start + contentPerSection);
+  const hasMore = sortedTransfers.length > start + contentPerSection;
   const allRecords = (await findRecords(query)) as PaymentTotalRecord[];
 
   const totalIncome = allRecords.reduce<number>(
@@ -596,6 +637,18 @@ export async function listSelfDepositPayments(input: {
     0
   );
 
+  const thisMonthStart = new Date();
+  thisMonthStart.setDate(1);
+  thisMonthStart.setHours(0, 0, 0, 0);
+
+  const thisMonthTransfers = filteredTransfers.filter((transfer) => {
+    const createdAt = transfer.expense?.createdAt || transfer.income?.createdAt;
+    if (!createdAt) return false;
+    const createdDate = new Date(createdAt);
+    if (Number.isNaN(createdDate.getTime())) return false;
+    return createdDate >= thisMonthStart;
+  }).length;
+
   return {
     count: transformedData.length,
     hasMore,
@@ -603,7 +656,11 @@ export async function listSelfDepositPayments(input: {
     balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
-    totalTransactions: groupedTransfers.length,
+    totalTransactions: filteredTransfers.length,
+    report: {
+      thisMonthTransfers,
+      allTimeTransfers: filteredTransfers.length,
+    },
   };
 }
 

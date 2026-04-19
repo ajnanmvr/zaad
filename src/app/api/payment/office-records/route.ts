@@ -78,6 +78,16 @@ export async function GET(request: NextRequest) {
     const total = sortedRows.length;
     const pagedRows = sortedRows.slice(page * limit, page * limit + limit);
 
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1);
+    thisMonthStart.setHours(0, 0, 0, 0);
+
+    const thisMonthRows = filteredRows.filter((row: any) => {
+      const createdAt = new Date(String(row.createdAt || 0));
+      if (Number.isNaN(createdAt.getTime())) return false;
+      return createdAt >= thisMonthStart;
+    });
+
     const groupedByCategory = filteredRows.reduce(
       (acc: Record<string, CategoryBucket>, row: any) => {
         const categoryKey = String(row.categoryName || "Office");
@@ -133,6 +143,22 @@ export async function GET(request: NextRequest) {
           expenseByCategory,
           totalIncome: Number(incomeByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2)),
           totalExpense: Number(expenseByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2)),
+        },
+        report: {
+          allTimeCount: filteredRows.length,
+          thisMonthCount: thisMonthRows.length,
+          thisMonthIncome: Number(
+            thisMonthRows
+              .filter((row: any) => row.type === "income")
+              .reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0)
+              .toFixed(2),
+          ),
+          thisMonthExpense: Number(
+            thisMonthRows
+              .filter((row: any) => row.type !== "income")
+              .reduce((sum: number, row: any) => sum + Number(row.amount || 0) + Number(row.serviceFee || 0), 0)
+              .toFixed(2),
+          ),
         },
         pagination: {
           page,

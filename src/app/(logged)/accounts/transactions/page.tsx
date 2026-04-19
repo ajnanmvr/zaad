@@ -41,11 +41,18 @@ const TablesPage = () => {
               Add Record
             </Link>
             <Link
-              href="/accounts/transactions/self"
+              href="/accounts/transactions/office"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
             >
               <FiDollarSign />
               Office Records
+            </Link>
+            <Link
+              href="/accounts/transactions/self"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+            >
+              <FiDollarSign />
+              Self Transfers
             </Link>
             <Link
               href="/accounts/transactions/liability"

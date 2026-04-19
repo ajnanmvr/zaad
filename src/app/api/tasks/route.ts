@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     const params = request.nextUrl.searchParams;
     const scope = params.get("scope") || "mine";
-    const statusGroup = params.get("statusGroup") || "active";
+    const statusGroup = params.get("statusGroup") || "";
     const status = params.get("status") || "";
     const priority = params.get("priority") || "";
     const assignee = params.get("assignee") || "";
