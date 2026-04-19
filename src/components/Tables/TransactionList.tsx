@@ -51,24 +51,11 @@ type TPaymentStatusOption = {
   color?: string;
 };
 
-type TEntityOption = {
-  _id: string;
-  name: string;
-  entityType: "company" | "employee" | "individual";
-  color?: string;
-};
-
 type TOfficeCategoryOption = {
   id: string;
   label: string;
 };
 
-type TCompanyOption = {
-  _id: string;
-  name: string;
-  color?: string;
-  entityType?: "company";
-};
 
 const baseData = {
   t: "",
@@ -325,21 +312,6 @@ const TransactionList = ({
   const [isSortOpen, setSortOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
-  const [entitySearchInput, setEntitySearchInput] = useState("");
-  const [entitySearchResults, setEntitySearchResults] = useState<
-    TEntityOption[]
-  >([]);
-  const [entitySearchLoading, setEntitySearchLoading] = useState(false);
-  const [companySearchInput, setCompanySearchInput] = useState("");
-  const [companySearchResults, setCompanySearchResults] = useState<
-    TCompanyOption[]
-  >([]);
-  const [companySearchLoading, setCompanySearchLoading] = useState(false);
-  const [selectedEmployeeCompany, setSelectedEmployeeCompany] =
-    useState<TCompanyOption | null>(null);
-  const [selectedEntityMap, setSelectedEntityMap] = useState<
-    Record<string, TEntityOption>
-  >({});
 
   const currentType = Array.isArray(type) ? type[0] : type;
   const hasLedgerContext = Boolean(currentType || category);
@@ -446,72 +418,6 @@ const TransactionList = ({
       }));
     },
   });
-
-  useEffect(() => {
-    const keyword = entitySearchInput.trim();
-    if (!keyword || keyword.length < 2) {
-      setEntitySearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setEntitySearchLoading(true);
-      try {
-        const [companies, employees, individuals] = await Promise.all([
-          axios.get<TEntityOption[]>(`/api/company/search/${keyword}`),
-          axios.get<TEntityOption[]>(`/api/employee/search/${keyword}`),
-          axios.get<TEntityOption[]>(`/api/individual/search/${keyword}`),
-        ]);
-
-        const merged = [
-          ...(companies.data || []).map((row: any) => ({
-            ...row,
-            entityType: "company" as const,
-          })),
-          ...(employees.data || []).map((row: any) => ({
-            ...row,
-            entityType: "employee" as const,
-          })),
-          ...(individuals.data || []).map((row: any) => ({
-            ...row,
-            entityType: "individual" as const,
-          })),
-        ];
-
-        setEntitySearchResults(merged.slice(0, 12));
-      } catch {
-        setEntitySearchResults([]);
-      } finally {
-        setEntitySearchLoading(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [entitySearchInput]);
-
-  useEffect(() => {
-    const keyword = companySearchInput.trim();
-    if (!keyword || keyword.length < 2) {
-      setCompanySearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setCompanySearchLoading(true);
-      try {
-        const { data } = await axios.get<TCompanyOption[]>(
-          `/api/company/search/${keyword}`,
-        );
-        setCompanySearchResults((data || []).slice(0, 12));
-      } catch {
-        setCompanySearchResults([]);
-      } finally {
-        setCompanySearchLoading(false);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [companySearchInput]);
 
   const paymentMethodMap = useMemo(() => {
     return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>(
@@ -620,39 +526,6 @@ const TransactionList = ({
     if (filter.ec) count += 1;
     return count;
   }, [filter]);
-
-  const selectedEntityIds = useMemo(
-    () =>
-      (filterDummy.e || "")
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean),
-    [filterDummy.e],
-  );
-
-  useEffect(() => {
-    if (!entitySearchResults.length || !selectedEntityIds.length) return;
-    setSelectedEntityMap((prev) => {
-      const next = { ...prev };
-      for (const row of entitySearchResults) {
-        if (selectedEntityIds.includes(row._id)) {
-          next[row._id] = row;
-        }
-      }
-      return next;
-    });
-  }, [entitySearchResults, selectedEntityIds]);
-
-  useEffect(() => {
-    if (!filterDummy.ec) {
-      setSelectedEmployeeCompany(null);
-      return;
-    }
-    const found = companySearchResults.find((company) => company._id === filterDummy.ec);
-    if (found) {
-      setSelectedEmployeeCompany(found);
-    }
-  }, [companySearchResults, filterDummy.ec]);
 
   const toggleSelectVisible = (checked: boolean) => {
     if (!checked) {
@@ -929,31 +802,6 @@ const TransactionList = ({
     setFilterOpen(false);
   };
 
-  const addEntityToFilter = (entity: TEntityOption) => {
-    if (!entity?._id) return;
-    const merged = Array.from(new Set([...selectedEntityIds, entity._id]));
-    setSelectedEntityMap((prev) => ({ ...prev, [entity._id]: entity }));
-    setFilterDummy((prev) => ({ ...prev, e: merged.join(",") }));
-  };
-
-  const removeEntityFromFilter = (entityId: string) => {
-    const next = selectedEntityIds.filter((id) => id !== entityId);
-    setSelectedEntityMap((prev) => {
-      const clone = { ...prev };
-      delete clone[entityId];
-      return clone;
-    });
-    setFilterDummy((prev) => ({ ...prev, e: next.join(",") }));
-  };
-
-  const selectEmployeeCompanyFilter = (company: TCompanyOption) => {
-    setFilterDummy((prev) => ({ ...prev, ec: company._id, e: "" }));
-    setSelectedEmployeeCompany(company);
-    setSelectedEntityMap({});
-    setCompanySearchInput(company.name);
-    setCompanySearchResults([]);
-  };
-
   const renderBadge = (status: string | undefined, colorClass: string) => (
     <span
       className={clsx(
@@ -1082,12 +930,10 @@ const TransactionList = ({
                     {filter.ec && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-300">
                         <EntityAvatar
-                          name={selectedEmployeeCompany?.name || "Company"}
-                          color={selectedEmployeeCompany?.color}
+                          name="Company"
                           size="sm"
                         />
-                        Employees of{" "}
-                        {selectedEmployeeCompany?.name || "selected company"}
+                        Company employees
                       </span>
                     )}
                   </div>
@@ -1249,20 +1095,6 @@ const TransactionList = ({
                   ))}
                 </select>
 
-                <input
-                  value={entitySearchInput}
-                  onChange={(event) => setEntitySearchInput(event.target.value)}
-                  placeholder="Entity"
-                  className="h-9 min-w-[140px] rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                />
-
-                <input
-                  value={companySearchInput}
-                  onChange={(event) => setCompanySearchInput(event.target.value)}
-                  placeholder="Company"
-                  className="h-9 min-w-[140px] rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                />
-
                 {isInnerEntityRecords ? (
                   <button
                     type="button"
@@ -1294,10 +1126,6 @@ const TransactionList = ({
                   onClick={() => {
                     setFilter(baseData);
                     setFilterDummy(baseData);
-                    setEntitySearchInput("");
-                    setCompanySearchInput("");
-                    setSelectedEmployeeCompany(null);
-                    setSelectedEntityMap({});
                     setFilterOpen(false);
                     setPageNumber(0);
                     setSelectedRecordIds([]);
@@ -1316,65 +1144,6 @@ const TransactionList = ({
                   <FiX />
                 </button>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                {selectedEntityIds.map((entityId) => (
-                  <button
-                    key={entityId}
-                    type="button"
-                    onClick={() => removeEntityFromFilter(entityId)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 font-semibold text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300"
-                  >
-                    <EntityAvatar name={selectedEntityMap[entityId]?.name || "Entity"} color={selectedEntityMap[entityId]?.color} size="sm" />
-                    <span className="max-w-[140px] truncate">{selectedEntityMap[entityId]?.name || entityId.slice(-6)}</span>
-                    <FiX className="text-[10px]" />
-                  </button>
-                ))}
-                {filterDummy.ec ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-50 px-2 py-1 font-semibold text-teal-700 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-300">
-                    <EntityAvatar name={selectedEmployeeCompany?.name || "Company"} color={selectedEmployeeCompany?.color} size="sm" />
-                    Employees of {selectedEmployeeCompany?.name || "selected company"}
-                  </span>
-                ) : null}
-              </div>
-
-              {entitySearchLoading ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Searching entities...</p>
-              ) : entitySearchResults.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {entitySearchResults.map((entity) => (
-                    <button
-                      key={entity._id}
-                      type="button"
-                      onClick={() => addEntityToFilter(entity)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <EntityAvatar name={entity.name} color={entity.color} size="sm" />
-                      <span>{entity.name}</span>
-                      <span className="capitalize text-slate-500 dark:text-slate-400">{entity.entityType}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              {companySearchLoading ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Searching companies...</p>
-              ) : companySearchResults.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {companySearchResults.map((company) => (
-                    <button
-                      key={company._id}
-                      type="button"
-                      onClick={() => selectEmployeeCompanyFilter(company)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <EntityAvatar name={company.name} color={company.color} size="sm" />
-                      <span>{company.name}</span>
-                      <span className="text-slate-500 dark:text-slate-400">Company</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </div>
         )}
