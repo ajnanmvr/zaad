@@ -511,6 +511,9 @@ const ExpiryDocumentsPage = () => {
                               >
                                 {item.name || "Unnamed document"}
                               </button>
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {getDocumentCategoryLabel(item.templateCategory)}
+                              </span>
                             </div>
                           </div>
                         </td>

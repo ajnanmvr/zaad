@@ -92,6 +92,11 @@ type CalendarTask = {
   category?: "visa" | "license" | "other";
   dueDate: string;
   assignedTo?: { _id: string; username?: string; fullname?: string };
+  linkedTargets?: Array<{
+    targetType: string;
+    targetId: string;
+    targetLabel?: string;
+  }>;
 };
 
 type UserOption = {
@@ -177,7 +182,7 @@ export default function TaskWorkspace({
       user.permissions.includes("tasks.manage"));
 
   const [activeView, setActiveView] = useState<"list" | "calendar">(initialView);
-  const [scope, setScope] = useState<"mine" | "manage">(mode === "manage" ? "manage" : "mine");
+  const [scope, setScope] = useState<"mine" | "manage">("mine");
 
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
@@ -832,13 +837,28 @@ export default function TaskWorkspace({
                             >
                               {task.title}
                             </Link>
-                            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                              <span>{task.assignedTo?.fullname || task.assignedTo?.username || "-"}</span>
-                              {task.category ? (
-                                <span className={clsx("rounded-full px-2 py-0.5 font-semibold", categoryBadgeMap[task.category])}>
-                                  {getDocumentCategoryLabel(task.category)}
-                                </span>
-                              ) : null}
+                            <div className="mt-1 flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span>{task.assignedTo?.fullname || task.assignedTo?.username || "-"}</span>
+                                {task.category ? (
+                                  <span className={clsx("rounded-full px-2 py-0.5 font-semibold", categoryBadgeMap[task.category])}>
+                                    {getDocumentCategoryLabel(task.category)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {task.linkedTargets && task.linkedTargets.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {task.linkedTargets.map((target, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700/50 dark:text-slate-300"
+                                    >
+                                      <FiTarget className="h-3 w-3" />
+                                      <span className="capitalize">{target.targetType}</span>: {target.targetLabel || target.targetId}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -1024,6 +1044,7 @@ export default function TaskWorkspace({
                     const dayTasks = calendarTasksByDay[dayKey] || [];
                     const muted = !isSameMonth(day, viewMonth);
                     const isToday = isSameDay(day, new Date());
+                    const isPast = day < new Date() && !isToday;
                     const overdueCount = dayTasks.filter((task) => {
                       if (task.status === "completed" || task.status === "cancelled") return false;
                       return new Date(task.dueDate).getTime() < Date.now();
@@ -1038,18 +1059,22 @@ export default function TaskWorkspace({
                           "min-h-[84px] rounded-lg border p-1.5 text-left transition",
                           muted
                             ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
-                          isToday && "border-cyan-300 bg-cyan-50/70 dark:border-cyan-700 dark:bg-cyan-900/20",
-                          selectedDate === dayKey && "ring-2 ring-cyan-400/60 dark:ring-cyan-500/60",
-                          overdueCount > 0 && "border-rose-300 dark:border-rose-700/70",
+                            : isPast
+                              ? "border-slate-200 bg-white text-slate-400 opacity-50 hover:opacity-75 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:opacity-75"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
+                          isToday && "border-cyan-400 bg-gradient-to-br from-cyan-50 to-cyan-100/50 ring-2 ring-cyan-300/60 dark:border-cyan-600 dark:from-cyan-900/30 dark:to-cyan-900/20 dark:ring-cyan-500/60",
+                          selectedDate === dayKey && !isToday && "ring-2 ring-emerald-400/60 dark:ring-emerald-500/60",
+                          overdueCount > 0 && !isToday && "border-rose-300 dark:border-rose-700/70",
                         )}
                         title={`View tasks on ${dayKey}`}
                       >
                         <div className="mb-1 flex items-center justify-between">
-                          <span className="text-[11px] font-bold">{format(day, "d")}</span>
-                          <span className="rounded-full bg-slate-900 px-1 py-0.5 text-[9px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
-                            {dayTasks.length}
-                          </span>
+                          <span className={clsx("text-[11px] font-bold", isToday && "text-cyan-700 dark:text-cyan-300")}>{format(day, "d")}</span>
+                          {dayTasks.length > 0 && (
+                            <span className={clsx("rounded-full px-1 py-0.5 text-[9px] font-bold", isToday ? "bg-cyan-600 text-white dark:bg-cyan-500" : "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900")}>
+                              {dayTasks.length}
+                            </span>
+                          )}
                         </div>
 
                         <div className="space-y-1">
@@ -1176,6 +1201,19 @@ export default function TaskWorkspace({
                         <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                           {task.assignedTo?.fullname || task.assignedTo?.username || "-"}
                         </p>
+                        {task.linkedTargets && task.linkedTargets.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {task.linkedTargets.map((target, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-0.5 rounded-full bg-slate-300/60 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600/50 dark:text-slate-200"
+                              >
+                                <FiTarget className="h-2.5 w-2.5" />
+                                <span className="capitalize">{target.targetType}</span>: {target.targetLabel || target.targetId}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })

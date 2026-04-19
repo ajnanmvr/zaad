@@ -95,6 +95,21 @@ export default function Home() {
     grid: { borderColor: "#E2E8F0" },
   };
 
+  const categoryRenewalsOptions: ApexOptions = {
+    chart: { type: "donut", toolbar: { show: false } },
+    colors: ["#3B82F6", "#8B5CF6", "#EC4899"],
+    labels: (data?.categoryRenewals || []).map((row) => row.category),
+    dataLabels: { enabled: false },
+    legend: { position: "bottom" },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "65%",
+        },
+      },
+    },
+  };
+
   const monthlyRenewalsOptions: ApexOptions = {
     chart: { type: "line", toolbar: { show: false } },
     stroke: { curve: "smooth", width: 3 },
@@ -157,19 +172,14 @@ export default function Home() {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Expiry Health</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Expired, in renewal window, and valid documents.</p>
+          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Renewal Distribution by Category</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Documents renewed by category (Visa, License, Other).</p>
           <div className="mt-4">
             <ReactApexChart
-              type="bar"
+              type="donut"
               height={300}
-              options={expiryBarOptions}
-              series={[
-                {
-                  name: "Documents",
-                  data: [documentStats.expired, documentStats.renewal, documentStats.valid],
-                },
-              ]}
+              options={categoryRenewalsOptions}
+              series={(data?.categoryRenewals || []).map((row) => row.count)}
             />
           </div>
         </div>

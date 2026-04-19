@@ -10,6 +10,7 @@ import CardDataStats from "../CardDataStats";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
+import ExportActionsMenu from "../common/ExportActionsMenu";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
@@ -32,7 +33,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiSearch,
-  FiDownload,
   FiFileText,
 } from "react-icons/fi";
 
@@ -67,9 +67,6 @@ type TCompanyOption = {
   color?: string;
   entityType?: "company";
 };
-
-type ExportScope = "selected" | "page" | "all";
-type ExportFormat = "csv" | "excel" | "pdf";
 
 const baseData = {
   t: "",
@@ -325,8 +322,6 @@ const TransactionList = ({
   const [sortBy, setSortBy] = useState("newest");
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
-  const [exportScope, setExportScope] = useState<ExportScope>("selected");
-  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
   const [entitySearchInput, setEntitySearchInput] = useState("");
   const [entitySearchResults, setEntitySearchResults] = useState<
     TEntityOption[]
@@ -706,14 +701,12 @@ const TransactionList = ({
       };
     });
 
-  const handleExport = async () => {
+  const handleExport = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
     let sourceRows: (TRecordList & { runningBalance?: number })[] = [];
 
-    if (exportScope === "selected") {
+    if (mode === "selected") {
       sourceRows = selectedRecords;
-    } else if (exportScope === "page") {
-      sourceRows = visibleRecords;
-    } else {
+    } else if (mode === "all") {
       const routeSegment = currentType
         ? currentType === "self" || currentType === "self-deposit"
           ? `/${currentType}`
@@ -776,7 +769,7 @@ const TransactionList = ({
 
     if (!sourceRows.length) {
       toast.error(
-        exportScope === "selected"
+        mode === "selected"
           ? "Select records to export"
           : "No records available to export",
       );
@@ -786,13 +779,13 @@ const TransactionList = ({
     const rows = mapRecordsForExport(sourceRows);
     const filePrefix = `${lockEntityName || currentType || "records"}-records`;
 
-    if (exportFormat === "csv") {
+    if (format === "csv") {
       exportRowsCsv(rows, filePrefix);
       toast.success("CSV exported");
       return;
     }
 
-    if (exportFormat === "excel") {
+    if (format === "excel") {
       exportRowsExcel(rows, filePrefix);
       toast.success("Excel exported");
       return;
@@ -1436,91 +1429,16 @@ const TransactionList = ({
                 </select>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800">
+              <ExportActionsMenu onExport={handleExport} selectedCount={selectedRecordIds.length} />
+
+              {isInnerEntityRecords && (
                 <button
-                  onClick={() => setExportScope("selected")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportScope === "selected"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
+                  onClick={handleConvertSelectedToInvoice}
+                  className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
                 >
-                  Sel
+                  <FiFileText /> To Invoice
                 </button>
-                <button
-                  onClick={() => setExportScope("page")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportScope === "page"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
-                >
-                  Page
-                </button>
-                <button
-                  onClick={() => setExportScope("all")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportScope === "all"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
-                >
-                  All
-                </button>
-                <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
-                <button
-                  onClick={() => setExportFormat("csv")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportFormat === "csv"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
-                >
-                  CSV
-                </button>
-                <button
-                  onClick={() => setExportFormat("excel")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportFormat === "excel"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
-                >
-                  XLS
-                </button>
-                <button
-                  onClick={() => setExportFormat("pdf")}
-                  className={clsx(
-                    "rounded-md px-2 py-1 text-[11px] font-semibold",
-                    exportFormat === "pdf"
-                      ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700",
-                  )}
-                >
-                  PDF
-                </button>
-                <button
-                  onClick={handleExport}
-                  title="Export"
-                  className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700/40 dark:bg-cyan-900/20 dark:text-cyan-300"
-                >
-                  <FiDownload />
-                  <span>Export</span>
-                </button>
-                {isInnerEntityRecords && (
-                  <button
-                    onClick={handleConvertSelectedToInvoice}
-                    className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300"
-                  >
-                    <FiFileText /> To Invoice
-                  </button>
-                )}
-              </div>
+              )}
               <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
                 <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input

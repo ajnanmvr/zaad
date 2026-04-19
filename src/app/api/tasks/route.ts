@@ -1,9 +1,13 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
+import Company from "@/models/companies";
+import Employee from "@/models/employees";
+import Individual from "@/models/individuals";
 
 const ALLOWED_LINK_TARGET_TYPES = new Set(["company", "employee", "individual"]);
 
@@ -149,10 +153,15 @@ export async function GET(request: NextRequest) {
       query.dueDate = { $gte: start, $lt: end };
     }
 
+    const aggregateMatch: Record<string, any> = { ...query };
+    if (typeof aggregateMatch.assignedTo === "string" && mongoose.Types.ObjectId.isValid(aggregateMatch.assignedTo)) {
+      aggregateMatch.assignedTo = new mongoose.Types.ObjectId(aggregateMatch.assignedTo);
+    }
+
     const farFutureDate = new Date("9999-12-31T23:59:59.999Z");
     const [tasks, total] = await Promise.all([
       Task.aggregate([
-        { $match: query },
+        { $match: aggregateMatch },
         {
           $addFields: {
             priorityRank: {
@@ -231,9 +240,43 @@ export async function GET(request: NextRequest) {
       Task.countDocuments(query),
     ]);
 
+    // Enrich linkedTargets with entity details
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task: any) => {
+        if (!task.linkedTargets || task.linkedTargets.length === 0) {
+          return task;
+        }
+
+        const enrichedTargets = await Promise.all(
+          task.linkedTargets.map(async (target: any) => {
+            try {
+              let entity: any = null;
+
+              if (target.targetType === "company") {
+                entity = await Company.findById(target.targetId).select("name").lean();
+              } else if (target.targetType === "employee") {
+                entity = await Employee.findById(target.targetId).select("name").lean();
+              } else if (target.targetType === "individual") {
+                entity = await Individual.findById(target.targetId).select("name").lean();
+              }
+
+              return {
+                ...target,
+                targetLabel: entity?.name || target.targetLabel || target.targetId,
+              };
+            } catch (err) {
+              return target;
+            }
+          })
+        );
+
+        return { ...task, linkedTargets: enrichedTargets };
+      })
+    );
+
     return Response.json(
       {
-        tasks,
+        tasks: enrichedTasks,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(total / limit),
