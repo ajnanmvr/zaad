@@ -6,6 +6,7 @@ import {
   getPaymentRecordById,
   updatePaymentRecord,
 } from "@/services/paymentService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(
   request: NextRequest,
@@ -19,9 +20,10 @@ export async function GET(
     const data = await getPaymentRecordById(id);
     return Response.json(data, { status: 200 });
   } catch (error: any) {
+    const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: error?.message || "Failed to load self transfer record" },
-      { status: error?.status || 500 },
+      { error: getServiceErrorMessage(error, "Failed to load self transfer record") },
+      { status },
     );
   }
 }
@@ -38,9 +40,10 @@ export async function PUT(
     const response = await updatePaymentRecord(id, reqBody, principal);
     return Response.json(response.body, { status: response.status });
   } catch (error: any) {
+    const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: error?.message || "Failed to update self transfer" },
-      { status: error?.status || 500 },
+      { error: getServiceErrorMessage(error, "Failed to update self transfer") },
+      { status },
     );
   }
 }

@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 function normalizeValues(values: unknown[]) {
   const cleaned = values
@@ -41,10 +42,15 @@ export async function GET(request: NextRequest) {
 
     return Response.json({ message: "Invalid type", options: [] }, { status: 400 });
   } catch (error) {
-    console.error("Error fetching category names:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching category names:", error);
+    }
+
     return Response.json(
-      { message: "Error fetching category names", options: [] },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error fetching category names"), options: [] },
+      { status }
     );
   }
 }
+

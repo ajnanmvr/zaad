@@ -1,3 +1,4 @@
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
@@ -11,7 +12,12 @@ export async function GET(request: NextRequest): Promise<Response> {
     const response = await listPaymentAccounts(request.nextUrl.searchParams);
     return Response.json(response, { status: 200 });
   } catch (error) {
-    console.error("Error fetching records:", error);
-    return Response.json({ error: "Error fetching records" }, { status: 500 });
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching records:", error);
+    }
+    return Response.json({ error: getServiceErrorMessage(error, "Error fetching records") }, { status });
   }
 }
+
+

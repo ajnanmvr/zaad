@@ -1,3 +1,4 @@
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +12,10 @@ export async function GET(request: NextRequest) {
     const response = await listLiabilitySummary();
     return NextResponse.json(response);
   } catch (error) {
-    return NextResponse.json({ message: "Error retrieving records", error }, { status: 500 });
+    const status = getServiceErrorStatus(error);
+    const message = getServiceErrorMessage(error, "Error retrieving records");
+    return NextResponse.json({ message, error: message }, { status });
   }
 }
+
+

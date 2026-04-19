@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import {
   deletePaymentRecord,
   getPaymentRecordById,
@@ -31,7 +32,11 @@ export async function GET(
     const data = await getPaymentRecordById(id);
     return Response.json(data, { status: 200 });
   } catch (error) {
-    return Response.json(error, { status: 401 });
+    const status = getServiceErrorStatus(error);
+    return Response.json(
+      { error: getServiceErrorMessage(error, "Failed to fetch payment record") },
+      { status }
+    );
   }
 }
 
@@ -47,9 +52,10 @@ export async function PUT(
     const response = await updatePaymentRecord(id, reqBody, principal);
     return Response.json(response.body, { status: response.status });
   } catch (error: any) {
+    const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: error?.message || "Failed to update payment record" },
-      { status: error?.status || 500 }
+      { error: getServiceErrorMessage(error, "Failed to update payment record") },
+      { status }
     );
   }
 }

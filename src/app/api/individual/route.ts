@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { listIndividualEntities } from "@/services/entityService";
 import { PAGINATION, parsePaginationParams } from "@/config/pagination";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,10 +18,15 @@ export async function GET(request: NextRequest) {
 
     return Response.json(response, { status: 200 });
   } catch (error) {
-    console.error("Error fetching individuals:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching individuals:", error);
+    }
+
     return Response.json(
-      { error: "Error fetching individuals" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "Error fetching individuals") },
+      { status }
     );
   }
 }
+

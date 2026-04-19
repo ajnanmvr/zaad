@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import Company from "@/models/companies";
 import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -14,7 +15,15 @@ export async function GET(request: NextRequest) {
     const employees = await Employee.find({ name: { $regex: keyword, $options: "i" }, published: true }).select("name");
     return Response.json({ companies, employees }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching data:", error);
-    return Response.json({ error: "An error occurred while fetching data" }, { status: 500 });
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching data:", error);
+    }
+
+    return Response.json(
+      { error: getServiceErrorMessage(error, "An error occurred while fetching data") },
+      { status }
+    );
   }
 }
+

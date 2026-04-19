@@ -1,3 +1,4 @@
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
@@ -37,9 +38,12 @@ export async function GET(request: NextRequest) {
 
     return Response.json(response, { status: 200 });
   } catch (error) {
+    const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: "An unexpected error occurred", details: error },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "An unexpected error occurred") },
+      { status }
     );
   }
 }
+
+

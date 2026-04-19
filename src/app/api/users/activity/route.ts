@@ -1,3 +1,4 @@
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
@@ -46,9 +47,12 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: "Failed to fetch activity audit logs" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "Failed to fetch activity audit logs") },
+      { status }
     );
   }
 }
+
+

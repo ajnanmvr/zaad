@@ -112,7 +112,7 @@ const ExpiryDocumentsPage = () => {
   const activeDocumentLabel = nameFilter === "unnamed" ? "Unnamed" : nameFilter;
 
   const statusCounts = useMemo(() => {
-    return rows.reduce(
+    return filteredRows.reduce(
       (acc, item) => {
         const status = item.status || calculateStatus(item.expiryDate || "");
         if (status === "expired") acc.expired += 1;
@@ -122,7 +122,7 @@ const ExpiryDocumentsPage = () => {
       },
       { expired: 0, renewal: 0, valid: 0 }
     );
-  }, [rows]);
+  }, [filteredRows]);
 
   const allSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.includes(row.id));
   const selectedRows = filteredRows.filter((row) => selectedIds.includes(row.id));
@@ -357,7 +357,7 @@ const ExpiryDocumentsPage = () => {
           </div>
           <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
-            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{rows.length}</p>
+            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{filteredRows.length}</p>
           </div>
         </div>
 
