@@ -56,7 +56,6 @@ type TOfficeCategoryOption = {
   label: string;
 };
 
-
 const baseData = {
   t: "",
   m: "",
@@ -273,7 +272,9 @@ const getTransactionVisual = (record: TRecordList) => {
 
 const isLiabilityRecord = (record: TRecordList) =>
   String(record?.recordKind || "").toLowerCase() === "liability" ||
-  String(record?.status || "").toLowerCase().includes("liability");
+  String(record?.status || "")
+    .toLowerCase()
+    .includes("liability");
 
 const summarizeTransactionRecords = (
   records: TRecordList[],
@@ -347,7 +348,9 @@ const TransactionList = ({
   const [isSortOpen, setSortOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
-  const [entityRecordsType, setEntityRecordsType] = useState<"company" | "employees" | "both">( "company");
+  const [entityRecordsType, setEntityRecordsType] = useState<
+    "company" | "employees" | "both"
+  >("company");
 
   const currentType = Array.isArray(type) ? type[0] : type;
   const hasLedgerContext = Boolean(currentType || category);
@@ -376,15 +379,15 @@ const TransactionList = ({
 
   const { data: paymentData, isLoading } = useQuery({
     queryKey: [
-        "payment",
-        pageNumber,
-        pageSize,
-        sortBy,
-        type,
-        id,
-        category,
-        entityRecordsType,
-        filter,
+      "payment",
+      pageNumber,
+      pageSize,
+      sortBy,
+      type,
+      id,
+      category,
+      entityRecordsType,
+      filter,
     ],
     queryFn: async () => {
       const routeSegment = currentType
@@ -404,9 +407,9 @@ const TransactionList = ({
       if (filter.oc) params.set("oc", filter.oc);
       if (filter.ec) params.set("ec", filter.ec);
       if (category) params.set("category", category);
-        if (companyRecordScope) {
-          params.set("recordScope", companyRecordScope);
-        }
+      if (companyRecordScope) {
+        params.set("recordScope", companyRecordScope);
+      }
       const res = await axios.get(
         `/api/payment${routeSegment}?${params.toString()}`,
       );
@@ -491,7 +494,9 @@ const TransactionList = ({
   useEffect(() => {
     if (paymentData) {
       const nextRecords = isInnerEntityRecords
-        ? (paymentData.records || []).filter((record: TRecordList) => !isLiabilityRecord(record))
+        ? (paymentData.records || []).filter(
+            (record: TRecordList) => !isLiabilityRecord(record),
+          )
         : paymentData.records || [];
 
       setRecords(nextRecords);
@@ -647,7 +652,10 @@ const TransactionList = ({
       };
     });
 
-  const handleExport = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
+  const handleExport = async (
+    format: "csv" | "excel" | "pdf",
+    mode: "selected" | "all",
+  ) => {
     let sourceRows: (TRecordList & { runningBalance?: number })[] = [];
 
     if (mode === "selected") {
@@ -1028,10 +1036,7 @@ const TransactionList = ({
                     )}
                     {filter.ec && (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-300">
-                        <EntityAvatar
-                          name="Company"
-                          size="sm"
-                        />
+                        <EntityAvatar name="Company" size="sm" />
                         Company employees
                       </span>
                     )}
@@ -1044,7 +1049,9 @@ const TransactionList = ({
                   <select
                     value={entityRecordsType}
                     onChange={(e) => {
-                      setEntityRecordsType(e.target.value as "company" | "employees" | "both");
+                      setEntityRecordsType(
+                        e.target.value as "company" | "employees" | "both",
+                      );
                       setPageNumber(0);
                     }}
                     className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -1110,33 +1117,72 @@ const TransactionList = ({
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                   title="Sort options"
                 >
-                  <FiChevronDown className={clsx("transition-transform", isSortOpen && "rotate-180")} />
+                  <FiChevronDown
+                    className={clsx(
+                      "transition-transform",
+                      isSortOpen && "rotate-180",
+                    )}
+                  />
                 </button>
 
                 {isSortOpen && (
                   <div className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                    <button type="button" onClick={() => { setSortBy("newest"); setPageNumber(0); setSortOpen(false); }} className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">Newest</button>
-                    <button type="button" onClick={() => { setSortBy("oldest"); setPageNumber(0); setSortOpen(false); }} className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">Oldest</button>
-                    <button type="button" onClick={() => { setSortBy("amount_desc"); setPageNumber(0); setSortOpen(false); }} className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">Amount High-Low</button>
-                    <button type="button" onClick={() => { setSortBy("amount_asc"); setPageNumber(0); setSortOpen(false); }} className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">Amount Low-High</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSortBy("newest");
+                        setPageNumber(0);
+                        setSortOpen(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Newest
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSortBy("oldest");
+                        setPageNumber(0);
+                        setSortOpen(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Oldest
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSortBy("amount_desc");
+                        setPageNumber(0);
+                        setSortOpen(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Amount High-Low
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSortBy("amount_asc");
+                        setPageNumber(0);
+                        setSortOpen(false);
+                      }}
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Amount Low-High
+                    </button>
                   </div>
                 )}
               </div>
 
-                                <div className="flex items-center gap-2">
-                    <select
-                      value={entityRecordsType}
-                      onChange={(e) => setEntityRecordsType(e.target.value as "company" | "employees" | "both")}
-                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                    >
-                      <option value="company">Company Records</option>
-                      <option value="employees">Employee Records</option>
-                      <option value="both">All Records</option>
-                    </select>
 
-                  </div>
 
-                  <ExportActionsMenu iconOnly onExport={handleExport} selectedCount={selectedRecordIds.length} />
+              <ExportActionsMenu
+                iconOnly
+                className="order-3"
+                onExport={handleExport}
+                selectedCount={selectedRecordIds.length}
+              />
 
               <button
                 onClick={() => setFilterOpen(true)}
@@ -1181,7 +1227,9 @@ const TransactionList = ({
 
                 <select
                   value={filterDummy.t}
-                  onChange={(e) => setFilterDummy({ ...filterDummy, t: e.target.value })}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, t: e.target.value })
+                  }
                   className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">All types</option>
@@ -1191,29 +1239,39 @@ const TransactionList = ({
 
                 <select
                   value={filterDummy.m}
-                  onChange={(e) => setFilterDummy({ ...filterDummy, m: e.target.value })}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, m: e.target.value })
+                  }
                   className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">All methods</option>
                   {paymentMethodOptions.map((method) => (
-                    <option key={method.value} value={method.value}>{method.label}</option>
+                    <option key={method.value} value={method.value}>
+                      {method.label}
+                    </option>
                   ))}
                 </select>
 
                 <select
                   value={filterDummy.s}
-                  onChange={(e) => setFilterDummy({ ...filterDummy, s: e.target.value })}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, s: e.target.value })
+                  }
                   className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">All statuses</option>
                   {paymentStatusOptions.map((status) => (
-                    <option key={status.value} value={status.value}>{status.label}</option>
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
                   ))}
                 </select>
 
                 <select
                   value={filterDummy.k}
-                  onChange={(e) => setFilterDummy({ ...filterDummy, k: e.target.value })}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, k: e.target.value })
+                  }
                   className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">All kinds</option>
@@ -1225,12 +1283,16 @@ const TransactionList = ({
 
                 <select
                   value={filterDummy.oc}
-                  onChange={(e) => setFilterDummy({ ...filterDummy, oc: e.target.value })}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, oc: e.target.value })
+                  }
                   className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">Office category</option>
                   {officeCategoryOptions.map((officeCategory) => (
-                    <option key={officeCategory.id} value={officeCategory.id}>{officeCategory.label}</option>
+                    <option key={officeCategory.id} value={officeCategory.id}>
+                      {officeCategory.label}
+                    </option>
                   ))}
                 </select>
 
@@ -1552,26 +1614,29 @@ const TransactionList = ({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <span>
-                  Page <span className="font-semibold text-slate-800 dark:text-slate-100">{pageNumber + 1}</span>
+                  Page{" "}
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    {pageNumber + 1}
+                  </span>
                 </span>
                 <span>•</span>
                 <span>{visibleRecords.length} rows on this page</span>
               </div>
               <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePageChange(pageNumber - 1)}
-                disabled={pageNumber === 0 || isLoading}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-              >
-                <FiChevronLeft /> Previous
-              </button>
-              <button
-                onClick={() => handlePageChange(pageNumber + 1)}
-                disabled={isLoading || !hasMore || !recordsWithBalance.length}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-              >
-                Next <FiChevronRight />
-              </button>
+                <button
+                  onClick={() => handlePageChange(pageNumber - 1)}
+                  disabled={pageNumber === 0 || isLoading}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                >
+                  <FiChevronLeft /> Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(pageNumber + 1)}
+                  disabled={isLoading || !hasMore || !recordsWithBalance.length}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                >
+                  Next <FiChevronRight />
+                </button>
               </div>
             </div>
           </div>
@@ -1582,9 +1647,3 @@ const TransactionList = ({
 };
 
 export default TransactionList;
-
-
-
-
-
-
