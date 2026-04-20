@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
 import Records from "@/models/records";
 import { PAYMENT_POPULATE_FIELDS, mapRecordListItem } from "@/app/api/payment/utils";
+import { getOfficeRecordCategorySummaryFromStats } from "@/services/paymentService";
 
 type CategoryBucket = {
   incomeTotal: number;
@@ -122,52 +123,79 @@ export async function GET(request: NextRequest) {
       return createdAt >= thisMonthStart;
     });
 
-    const groupedByCategory = filteredRows.reduce(
-      (acc: Record<string, CategoryBucket>, row: any) => {
-        const categoryKey = String(row.categoryName || "Office");
-        if (!acc[categoryKey]) {
-          acc[categoryKey] = {
-            incomeTotal: 0,
-            incomeCount: 0,
-            expenseTotal: 0,
-            expenseCount: 0,
-          };
-        }
-        const amount = Number(row.amount || 0);
-        const serviceFee = Number(row.serviceFee || 0);
-        if (row.type === "income") {
-          acc[categoryKey].incomeTotal += amount;
-          acc[categoryKey].incomeCount += 1;
-        } else {
-          acc[categoryKey].expenseTotal += amount + serviceFee;
-          acc[categoryKey].expenseCount += 1;
-        }
-        return acc;
-      },
-      {},
-    );
+    const canUsePrecomputedSummary =
+      !search && !type && !method && !from && !to && !month && !year;
 
-    const categoryEntries = Object.entries(groupedByCategory) as Array<
-      [string, CategoryBucket]
-    >;
+    let incomeByCategory: Array<{ category: string; total: number; count: number }> = [];
+    let expenseByCategory: Array<{ category: string; total: number; count: number }> = [];
+    let totalIncome = 0;
+    let totalExpense = 0;
 
-    const incomeByCategory = categoryEntries
-      .filter(([, bucket]) => bucket.incomeCount > 0)
-      .map(([category, bucket]) => ({
-        category,
-        total: Number(bucket.incomeTotal.toFixed(2)),
-        count: bucket.incomeCount,
-      }))
-      .sort((a, b) => b.total - a.total);
+    if (canUsePrecomputedSummary) {
+      const precomputedSummary = await getOfficeRecordCategorySummaryFromStats();
+      incomeByCategory = precomputedSummary.incomeByCategory.map((row) => ({
+        category: row.category,
+        total: row.total,
+        count: row.count,
+      }));
+      expenseByCategory = precomputedSummary.expenseByCategory.map((row) => ({
+        category: row.category,
+        total: row.total,
+        count: row.count,
+      }));
+      totalIncome = precomputedSummary.totalIncome;
+      totalExpense = precomputedSummary.totalExpense;
+    } else {
+      const groupedByCategory = filteredRows.reduce(
+        (acc: Record<string, CategoryBucket>, row: any) => {
+          const categoryKey = String(row.categoryName || "Office");
+          if (!acc[categoryKey]) {
+            acc[categoryKey] = {
+              incomeTotal: 0,
+              incomeCount: 0,
+              expenseTotal: 0,
+              expenseCount: 0,
+            };
+          }
+          const amount = Number(row.amount || 0);
+          const serviceFee = Number(row.serviceFee || 0);
+          if (row.type === "income") {
+            acc[categoryKey].incomeTotal += amount;
+            acc[categoryKey].incomeCount += 1;
+          } else {
+            acc[categoryKey].expenseTotal += amount + serviceFee;
+            acc[categoryKey].expenseCount += 1;
+          }
+          return acc;
+        },
+        {},
+      );
 
-    const expenseByCategory = categoryEntries
-      .filter(([, bucket]) => bucket.expenseCount > 0)
-      .map(([category, bucket]) => ({
-        category,
-        total: Number(bucket.expenseTotal.toFixed(2)),
-        count: bucket.expenseCount,
-      }))
-      .sort((a, b) => b.total - a.total);
+      const categoryEntries = Object.entries(groupedByCategory) as Array<
+        [string, CategoryBucket]
+      >;
+
+      incomeByCategory = categoryEntries
+        .filter(([, bucket]) => bucket.incomeCount > 0)
+        .map(([category, bucket]) => ({
+          category,
+          total: Number(bucket.incomeTotal.toFixed(2)),
+          count: bucket.incomeCount,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      expenseByCategory = categoryEntries
+        .filter(([, bucket]) => bucket.expenseCount > 0)
+        .map(([category, bucket]) => ({
+          category,
+          total: Number(bucket.expenseTotal.toFixed(2)),
+          count: bucket.expenseCount,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      totalIncome = Number(incomeByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2));
+      totalExpense = Number(expenseByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2));
+    }
 
     return Response.json(
       {
@@ -175,8 +203,8 @@ export async function GET(request: NextRequest) {
         summary: {
           incomeByCategory,
           expenseByCategory,
-          totalIncome: Number(incomeByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2)),
-          totalExpense: Number(expenseByCategory.reduce((sum: number, row: any) => sum + row.total, 0).toFixed(2)),
+          totalIncome,
+          totalExpense,
         },
         report: {
           allTimeCount: filteredRows.length,

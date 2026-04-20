@@ -636,7 +636,8 @@ export default function TaskWorkspace({
         }}
       />
 
-      <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.18),transparent_46%),linear-gradient(135deg,#f0fdfa,#ffffff_48%,#eff6ff)] p-6 shadow-sm dark:border-cyan-900/30 dark:bg-[radial-gradient(circle_at_0%_0%,rgba(6,182,212,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.12),transparent_46%),linear-gradient(135deg,#0f172a,#0b1120_48%,#0a1726)]">
+      {initialStatusGroup !== "closed" ? (
+        <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.18),transparent_46%),linear-gradient(135deg,#f0fdfa,#ffffff_48%,#eff6ff)] p-6 shadow-sm dark:border-cyan-900/30 dark:bg-[radial-gradient(circle_at_0%_0%,rgba(6,182,212,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.12),transparent_46%),linear-gradient(135deg,#0f172a,#0b1120_48%,#0a1726)]">
         <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-cyan-700 dark:border-cyan-700/50 dark:bg-cyan-900/20 dark:text-cyan-300">
@@ -697,7 +698,24 @@ export default function TaskWorkspace({
             <p className="mt-1 text-2xl font-black text-rose-600 dark:text-rose-300">{stats.overdue}</p>
           </div>
         </div>
-      </section>
+        </section>
+      ) : null}
+
+      {initialStatusGroup === "closed" ? (
+        <div className="rounded-2xl border-l-4 border-amber-400 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
+          <div className="flex items-center gap-3">
+            <FiAlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                Completed & Cancelled Tasks
+              </p>
+              <p className="mt-0.5 text-sm text-amber-800 dark:text-amber-200">
+                You are viewing archived tasks. These tasks have been completed or cancelled.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-5">
         <div className="flex flex-col gap-4">
@@ -1026,27 +1044,47 @@ export default function TaskWorkspace({
           )}
         </section>
       ) : (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-3xl border border-sky-200/70 bg-[radial-gradient(circle_at_10%_0%,rgba(56,189,248,0.24),transparent_38%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.12),transparent_44%),linear-gradient(140deg,#f8fbff,#ffffff_44%,#f5fffa)] p-4 shadow-sm dark:border-sky-900/30 dark:bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.22),transparent_38%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.1),transparent_44%),linear-gradient(140deg,#0f172a,#0b1120_44%,#0a1726)] sm:p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Calendar</p>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">Task Due Dates</h3>
+                <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/60 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-sky-700 dark:border-sky-700/40 dark:bg-sky-900/20 dark:text-sky-300">
+                  <FiCalendar />
+                  Due Date Calendar
+                </p>
+                <h3 className="mt-2 text-base font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
+                  Visual Task Planner
+                </h3>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  Pick a day to inspect tasks, overdue items, and assignment details.
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => {
+                    setViewMonth(startOfMonth(new Date()));
+                    selectDate(todayKey);
+                  }}
+                  className="inline-flex h-9 items-center rounded-xl border border-cyan-300 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/40"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <FiChevronLeft />
                 </button>
-                <p className="min-w-[130px] text-center text-sm font-bold text-slate-700 dark:text-slate-200">{format(viewMonth, "MMMM yyyy")}</p>
+                <p className="min-w-[140px] text-center text-sm font-black text-slate-800 dark:text-slate-100">
+                  {format(viewMonth, "MMMM yyyy")}
+                </p>
                 <button
                   type="button"
                   onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <FiChevronRight />
                 </button>
@@ -1054,27 +1092,33 @@ export default function TaskWorkspace({
             </div>
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
                 <FiAlertCircle />
-                Red marker means overdue
+                Overdue day
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:border-cyan-800/40 dark:bg-cyan-900/20 dark:text-cyan-300">
+                <FiTarget />
+                Selected day
               </span>
             </div>
 
             {calendarQuery.isLoading ? (
-              <div className="rounded-2xl border border-slate-200 p-8 text-center text-slate-500 dark:border-slate-700">Loading calendar...</div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900/50">
+                Loading calendar...
+              </div>
             ) : (
               <>
-                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">
-                  <div>Mon</div>
-                  <div>Tue</div>
-                  <div>Wed</div>
-                  <div>Thu</div>
-                  <div>Fri</div>
-                  <div>Sat</div>
-                  <div>Sun</div>
+                <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Mon</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Tue</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Wed</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Thu</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Fri</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Sat</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Sun</div>
                 </div>
 
-                <div className="mt-1 grid grid-cols-7 gap-1">
+                <div className="mt-2 grid grid-cols-7 gap-2">
                   {calendarDays.map((day) => {
                     const dayKey = format(day, "yyyy-MM-dd");
                     const dayTasks = calendarTasksByDay[dayKey] || [];
@@ -1092,29 +1136,38 @@ export default function TaskWorkspace({
                         type="button"
                         onClick={() => selectDate(dayKey)}
                         className={clsx(
-                          "min-h-[84px] rounded-lg border p-1.5 text-left transition",
+                          "min-h-[108px] rounded-xl border p-2 text-left shadow-[0_1px_0_rgba(15,23,42,0.02)] transition",
                           muted
-                            ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
+                            ? "border-slate-200/60 bg-slate-50/70 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
                             : isPast
-                              ? "border-slate-200 bg-white text-slate-400 opacity-50 hover:opacity-75 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:opacity-75"
-                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
-                          isToday && "border-cyan-400 bg-gradient-to-br from-cyan-50 to-cyan-100/50 ring-2 ring-cyan-300/60 dark:border-cyan-600 dark:from-cyan-900/30 dark:to-cyan-900/20 dark:ring-cyan-500/60",
-                          selectedDate === dayKey && !isToday && "ring-2 ring-emerald-400/60 dark:ring-emerald-500/60",
+                              ? "border-slate-200 bg-white/90 text-slate-500 opacity-70 hover:opacity-90 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400"
+                              : "border-slate-200 bg-white text-slate-700 hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/75 dark:text-slate-200 dark:hover:bg-slate-800/80",
+                          isToday && "border-cyan-400 bg-gradient-to-br from-cyan-50 to-sky-100/70 ring-2 ring-cyan-300/60 dark:border-cyan-600 dark:from-cyan-900/30 dark:to-sky-900/20 dark:ring-cyan-500/60",
+                          selectedDate === dayKey && !isToday && "ring-2 ring-cyan-400/70 dark:ring-cyan-500/70",
                           overdueCount > 0 && !isToday && "border-rose-300 dark:border-rose-700/70",
                         )}
                         title={`View tasks on ${dayKey}`}
                       >
-                        <div className="mb-1 flex items-center justify-between">
-                          <span className={clsx("text-[11px] font-bold", isToday && "text-cyan-700 dark:text-cyan-300")}>{format(day, "d")}</span>
-                          {dayTasks.length > 0 && (
-                            <span className={clsx("rounded-full px-1 py-0.5 text-[9px] font-bold", isToday ? "bg-cyan-600 text-white dark:bg-cyan-500" : "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900")}>
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <span className={clsx("text-xs font-black", isToday && "text-cyan-700 dark:text-cyan-300")}>
+                            {format(day, "d")}
+                          </span>
+                          {dayTasks.length > 0 ? (
+                            <span
+                              className={clsx(
+                                "rounded-full px-1.5 py-0.5 text-[10px] font-black",
+                                isToday
+                                  ? "bg-cyan-600 text-white dark:bg-cyan-500"
+                                  : "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900",
+                              )}
+                            >
                               {dayTasks.length}
                             </span>
-                          )}
+                          ) : null}
                         </div>
 
                         <div className="space-y-1">
-                          {dayTasks.slice(0, 2).map((task) => {
+                          {dayTasks.slice(0, 3).map((task) => {
                             const overdue =
                               task.status !== "completed" &&
                               task.status !== "cancelled" &&
@@ -1124,7 +1177,7 @@ export default function TaskWorkspace({
                               <div
                                 key={task._id}
                                 className={clsx(
-                                  "truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                                  "truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold",
                                   overdue
                                     ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
                                     : statusBadgeMap[task.status],
@@ -1134,8 +1187,10 @@ export default function TaskWorkspace({
                               </div>
                             );
                           })}
-                          {dayTasks.length > 2 ? (
-                            <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">+{dayTasks.length - 2} more</p>
+                          {dayTasks.length > 3 ? (
+                            <p className="pl-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              +{dayTasks.length - 3} more
+                            </p>
                           ) : null}
                         </div>
                       </button>
@@ -1146,9 +1201,14 @@ export default function TaskWorkspace({
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">{selectedDate ? "Selected Day" : "Day Brief"}</h4>
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Day Inspector</p>
+                <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">
+                  {selectedDate ? "Selected Day" : "Day Brief"}
+                </h4>
+              </div>
               {selectedDate ? (
                 <button
                   type="button"
@@ -1162,34 +1222,34 @@ export default function TaskWorkspace({
             </div>
 
             {selectedDate ? (
-              <div className="mb-3 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800 dark:border-cyan-800/40 dark:bg-cyan-900/20 dark:text-cyan-300">
+              <div className="mb-3 rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-emerald-50 px-3 py-3 text-xs font-semibold text-cyan-800 dark:border-cyan-800/40 dark:from-cyan-900/20 dark:to-emerald-900/10 dark:text-cyan-300">
                 {new Date(`${selectedDate}T00:00:00`).toLocaleDateString()}
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => goRelativeDate(-1)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Prev
                   </button>
                   <button
                     type="button"
                     onClick={() => goRelativeDate(1)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Next
                   </button>
                   <button
                     type="button"
                     onClick={() => selectDate(todayKey)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Today
                   </button>
                   <button
                     type="button"
                     onClick={clearDateFilter}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] dark:border-slate-700"
+                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold dark:border-slate-700"
                   >
                     Clear
                   </button>
@@ -1206,13 +1266,15 @@ export default function TaskWorkspace({
                 </div>
               </div>
             ) : (
-              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">Click any date to see tasks for that day.</p>
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                Click any date to inspect tasks for that day.
+              </p>
             )}
 
             {showDateBrief && selectedDate ? (
               <div className="space-y-2">
                 {selectedDateTasks.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                     No tasks on this day.
                   </div>
                 ) : (
@@ -1223,9 +1285,14 @@ export default function TaskWorkspace({
                       new Date(task.dueDate).getTime() < Date.now();
 
                     return (
-                      <div key={task._id} className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{task.title}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
+                      <div
+                        key={task._id}
+                        className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/50"
+                      >
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {task.title}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
                           <span className={clsx("rounded-full px-2 py-0.5 font-semibold capitalize", statusBadgeMap[task.status])}>
                             {task.status.replace("_", " ")}
                           </span>
@@ -1247,7 +1314,7 @@ export default function TaskWorkspace({
                         <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                           {task.assignedTo?.fullname || task.assignedTo?.username || "-"}
                         </p>
-                        {task.linkedTargets && task.linkedTargets.length > 0 && (
+                        {task.linkedTargets && task.linkedTargets.length > 0 ? (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {task.linkedTargets.map((target, idx) => (
                               <span
@@ -1259,7 +1326,7 @@ export default function TaskWorkspace({
                               </span>
                             ))}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })

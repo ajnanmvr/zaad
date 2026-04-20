@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
 import { PAYMENT_POPULATE_FIELDS, mapRecordListItem } from "@/app/api/payment/utils";
 import { findRecords } from "@/repositories/paymentRepository";
+import { getLiabilityEntitySummaryFromStats } from "@/services/paymentService";
 
 type EntityBucket = {
   income: number;
@@ -78,47 +79,67 @@ export async function GET(request: NextRequest) {
     const total = sortedRows.length;
     const pagedRows = sortedRows.slice(page * limit, page * limit + limit);
 
-    const groupedByEntity = filteredRows.reduce(
-      (acc: Record<string, EntityBucket>, row: any) => {
-        const entityName = String(row?.client?.name || "Unknown Entity");
-        if (!acc[entityName]) {
-          acc[entityName] = { income: 0, expense: 0 };
-        }
-        const amount = Number(row.amount || 0);
-        if (row.type === "income") {
-          acc[entityName].income += amount;
-        } else {
-          acc[entityName].expense += amount;
-        }
-        return acc;
-      },
-      {},
-    );
+    const canUsePrecomputedSummary = !search && !type && !method;
 
-    const entitySummary = Object.keys(groupedByEntity)
-      .map((entity) => {
-        const bucket: EntityBucket = groupedByEntity[entity] || {
-          income: 0,
-          expense: 0,
-        };
-        return {
-          entity,
-          income: Number(bucket.income.toFixed(2)),
-          expense: Number(bucket.expense.toFixed(2)),
-          net: Number((bucket.income - bucket.expense).toFixed(2)),
-        };
-      })
-      .sort((a: any, b: any) => Math.abs(b.net) - Math.abs(a.net));
+    let entitySummary: Array<{ entity: string; income: number; expense: number; net: number }> = [];
+    let totals = { income: 0, expense: 0, net: 0 };
 
-    const totals = entitySummary.reduce(
-      (acc: any, row: any) => {
-        acc.income += row.income;
-        acc.expense += row.expense;
-        acc.net += row.net;
-        return acc;
-      },
-      { income: 0, expense: 0, net: 0 },
-    );
+    if (canUsePrecomputedSummary) {
+      const precomputedSummary = await getLiabilityEntitySummaryFromStats();
+      entitySummary = precomputedSummary.entities.map((row) => ({
+        entity: row.entity,
+        income: row.income,
+        expense: row.expense,
+        net: row.net,
+      }));
+      totals = {
+        income: precomputedSummary.totals.income,
+        expense: precomputedSummary.totals.expense,
+        net: precomputedSummary.totals.net,
+      };
+    } else {
+      const groupedByEntity = filteredRows.reduce(
+        (acc: Record<string, EntityBucket>, row: any) => {
+          const entityName = String(row?.client?.name || "Unknown Entity");
+          if (!acc[entityName]) {
+            acc[entityName] = { income: 0, expense: 0 };
+          }
+          const amount = Number(row.amount || 0);
+          if (row.type === "income") {
+            acc[entityName].income += amount;
+          } else {
+            acc[entityName].expense += amount;
+          }
+          return acc;
+        },
+        {},
+      );
+
+      entitySummary = Object.keys(groupedByEntity)
+        .map((entity) => {
+          const bucket: EntityBucket = groupedByEntity[entity] || {
+            income: 0,
+            expense: 0,
+          };
+          return {
+            entity,
+            income: Number(bucket.income.toFixed(2)),
+            expense: Number(bucket.expense.toFixed(2)),
+            net: Number((bucket.income - bucket.expense).toFixed(2)),
+          };
+        })
+        .sort((a: any, b: any) => Math.abs(b.net) - Math.abs(a.net));
+
+      totals = entitySummary.reduce(
+        (acc: any, row: any) => {
+          acc.income += row.income;
+          acc.expense += row.expense;
+          acc.net += row.net;
+          return acc;
+        },
+        { income: 0, expense: 0, net: 0 },
+      );
+    }
 
     return Response.json(
       {

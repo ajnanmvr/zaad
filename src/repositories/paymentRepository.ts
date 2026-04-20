@@ -3,6 +3,8 @@ import TaskNotification from "@/models/taskNotifications";
 import Employee from "@/models/employees";
 import Entity from "@/models/entities";
 import EntityRecordStats from "@/models/entityRecordStats";
+import LiabilityEntityStats from "@/models/liabilityEntityStats";
+import OfficeRecordCategoryStats from "@/models/officeRecordCategoryStats";
 import PaymentTemplate from "@/models/paymentTemplates";
 import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
 import mongoose from "mongoose";
@@ -256,4 +258,264 @@ export async function unpublishEntityRecordStats(entityId: string) {
     },
     { new: true },
   );
+}
+
+export async function aggregateOfficeRecordCategoryStatsByKeys(categoryKeys?: string[]) {
+  const matchStage: Record<string, any> = {
+    deletedAt: null,
+    recordKind: "office_records",
+  };
+
+  if (categoryKeys && categoryKeys.length > 0) {
+    const normalizedKeys = Array.from(new Set(categoryKeys.map((value) => String(value || "").trim()).filter(Boolean)));
+    const includeUncategorized = normalizedKeys.includes("__uncategorized__");
+    const objectIds = normalizedKeys
+      .filter((key) => key !== "__uncategorized__")
+      .filter((key) => mongoose.Types.ObjectId.isValid(key))
+      .map((key) => new mongoose.Types.ObjectId(key));
+
+    const categoryOrClauses: any[] = [];
+    if (objectIds.length > 0) {
+      categoryOrClauses.push({ category: { $in: objectIds } });
+    }
+    if (includeUncategorized) {
+      categoryOrClauses.push({ category: null });
+    }
+
+    if (!categoryOrClauses.length) {
+      return [];
+    }
+
+    matchStage.$or = categoryOrClauses;
+  }
+
+  return Records.aggregate([
+    { $match: matchStage },
+    {
+      $addFields: {
+        categoryKey: {
+          $ifNull: [{ $toString: "$category" }, "__uncategorized__"],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$categoryKey",
+        category: { $first: "$category" },
+        incomeTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
+        incomeCount: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, 1, 0],
+          },
+        },
+        expenseTotal: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              { $add: [{ $ifNull: ["$amount", 0] }, { $ifNull: ["$serviceFee", 0] }] },
+              0,
+            ],
+          },
+        },
+        expenseCount: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "expense"] }, 1, 0],
+          },
+        },
+        totalCount: { $sum: 1 },
+      },
+    },
+    {
+      $lookup: {
+        from: "officeExpenseCategories",
+        localField: "category",
+        foreignField: "_id",
+        as: "categoryDoc",
+      },
+    },
+    {
+      $addFields: {
+        categoryLabel: {
+          $ifNull: [{ $arrayElemAt: ["$categoryDoc.category", 0] }, "Office"],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        category: 1,
+        categoryLabel: 1,
+        incomeTotal: 1,
+        incomeCount: 1,
+        expenseTotal: 1,
+        expenseCount: 1,
+        totalCount: 1,
+      },
+    },
+  ]);
+}
+
+export async function bulkUpsertOfficeRecordCategoryStats(statsRows: any[]) {
+  if (!statsRows.length) {
+    return null;
+  }
+
+  return OfficeRecordCategoryStats.bulkWrite(
+    statsRows.map((row) => ({
+      updateOne: {
+        filter: { categoryKey: row.categoryKey },
+        update: {
+          $set: {
+            published: true,
+            category: row.category || null,
+            categoryLabel: row.categoryLabel || "Office",
+            incomeTotal: row.incomeTotal || 0,
+            incomeCount: row.incomeCount || 0,
+            expenseTotal: row.expenseTotal || 0,
+            expenseCount: row.expenseCount || 0,
+            totalCount: row.totalCount || 0,
+            lastRecomputedAt: row.lastRecomputedAt || new Date(),
+          },
+        },
+        upsert: true,
+      },
+    })),
+  );
+}
+
+export async function findOfficeRecordCategoryStatsByKeys(categoryKeys?: string[]) {
+  const query: Record<string, any> = { published: true };
+  if (categoryKeys && categoryKeys.length > 0) {
+    query.categoryKey = { $in: categoryKeys };
+  }
+
+  return OfficeRecordCategoryStats.find(query)
+    .select("categoryKey category categoryLabel incomeTotal incomeCount expenseTotal expenseCount totalCount lastRecomputedAt")
+    .lean();
+}
+
+export async function aggregateLiabilityEntityStatsByKeys(entityKeys?: string[]) {
+  const matchStage: Record<string, any> = {
+    deletedAt: null,
+    recordKind: "liability",
+  };
+
+  if (entityKeys && entityKeys.length > 0) {
+    const normalizedKeys = Array.from(new Set(entityKeys.map((value) => String(value || "").trim()).filter(Boolean)));
+    const includeUnknown = normalizedKeys.includes("__unknown__");
+    const objectIds = normalizedKeys
+      .filter((key) => key !== "__unknown__")
+      .filter((key) => mongoose.Types.ObjectId.isValid(key))
+      .map((key) => new mongoose.Types.ObjectId(key));
+
+    const entityOrClauses: any[] = [];
+    if (objectIds.length > 0) {
+      entityOrClauses.push({ entity: { $in: objectIds } });
+    }
+    if (includeUnknown) {
+      entityOrClauses.push({ entity: null });
+    }
+
+    if (!entityOrClauses.length) {
+      return [];
+    }
+
+    matchStage.$or = entityOrClauses;
+  }
+
+  return Records.aggregate([
+    { $match: matchStage },
+    {
+      $addFields: {
+        entityKey: {
+          $ifNull: [{ $toString: "$entity" }, "__unknown__"],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$entityKey",
+        entity: { $first: "$entity" },
+        income: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
+        expense: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "expense"] }, { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
+        totalTransactions: { $sum: 1 },
+      },
+    },
+    {
+      $lookup: {
+        from: "entities",
+        localField: "entity",
+        foreignField: "_id",
+        as: "entityDoc",
+      },
+    },
+    {
+      $addFields: {
+        entityName: {
+          $ifNull: [{ $arrayElemAt: ["$entityDoc.name", 0] }, "Unknown Entity"],
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        entity: 1,
+        entityName: 1,
+        income: 1,
+        expense: 1,
+        net: { $subtract: ["$income", "$expense"] },
+        totalTransactions: 1,
+      },
+    },
+  ]);
+}
+
+export async function bulkUpsertLiabilityEntityStats(statsRows: any[]) {
+  if (!statsRows.length) {
+    return null;
+  }
+
+  return LiabilityEntityStats.bulkWrite(
+    statsRows.map((row) => ({
+      updateOne: {
+        filter: { entityKey: row.entityKey },
+        update: {
+          $set: {
+            published: true,
+            entity: row.entity || null,
+            entityName: row.entityName || "Unknown Entity",
+            income: row.income || 0,
+            expense: row.expense || 0,
+            net: row.net || 0,
+            totalTransactions: row.totalTransactions || 0,
+            lastRecomputedAt: row.lastRecomputedAt || new Date(),
+          },
+        },
+        upsert: true,
+      },
+    })),
+  );
+}
+
+export async function findLiabilityEntityStatsByKeys(entityKeys?: string[]) {
+  const query: Record<string, any> = { published: true };
+  if (entityKeys && entityKeys.length > 0) {
+    query.entityKey = { $in: entityKeys };
+  }
+
+  return LiabilityEntityStats.find(query)
+    .select("entityKey entity entityName income expense net totalTransactions lastRecomputedAt")
+    .lean();
 }

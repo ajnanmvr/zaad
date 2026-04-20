@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const result = await recomputeAllEntityLedgerStats();
     return Response.json(
       {
-        message: "Entity ledger stats recomputed",
+        message: "Ledger stats recomputed",
         ...result,
       },
       { status: 200 },
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const status = getServiceErrorStatus(error);
     return Response.json(
-      { error: getServiceErrorMessage(error, "Failed to recompute entity ledger stats") },
+      { error: getServiceErrorMessage(error, "Failed to recompute ledger stats") },
       { status },
     );
   }

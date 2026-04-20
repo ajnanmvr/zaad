@@ -3,13 +3,19 @@ import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/a
 import { randomUUID } from "crypto";
 import {
   aggregateEntityRecordStatsByEntityIds,
+  aggregateLiabilityEntityStatsByKeys,
+  aggregateOfficeRecordCategoryStatsByKeys,
   aggregateRecords,
   bulkUpsertEntityRecordStats,
+  bulkUpsertLiabilityEntityStats,
+  bulkUpsertOfficeRecordCategoryStats,
   createPaymentEditNotification,
   createRecord,
   distinctEmployeeIdsByCompany,
   findEntityRecordStatsByEntityIds,
   findEntitiesByIds,
+  findLiabilityEntityStatsByKeys,
+  findOfficeRecordCategoryStatsByKeys,
   findPublishedEntityIds,
   findOneRecord,
   findPaymentTemplateMethods,
@@ -230,6 +236,29 @@ type EntityLedgerTotals = {
   lastRecomputedAt?: string;
 };
 
+type OfficeCategorySummaryRow = {
+  categoryKey: string;
+  categoryId?: string;
+  category: string;
+  totalIncome: number;
+  totalExpense: number;
+  incomeCount: number;
+  expenseCount: number;
+  totalCount: number;
+  lastRecomputedAt?: string;
+};
+
+type LiabilityEntitySummaryRow = {
+  entityKey: string;
+  entityId?: string;
+  entity: string;
+  income: number;
+  expense: number;
+  net: number;
+  totalTransactions: number;
+  lastRecomputedAt?: string;
+};
+
 const ZERO_ENTITY_TOTALS: EntityLedgerTotals = {
   totalIncome: 0,
   totalExpense: 0,
@@ -242,6 +271,28 @@ function normalizeEntityIds(entityIds: Array<string | null | undefined>) {
     new Set(
       entityIds
         .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizeOfficeCategoryKeys(categoryKeys: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      categoryKeys
+        .map((value) => String(value || "").trim())
+        .map((value) => (value ? value : "__uncategorized__"))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizeLiabilityEntityKeys(entityKeys: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      entityKeys
+        .map((value) => String(value || "").trim())
+        .map((value) => (value ? value : "__unknown__"))
         .filter(Boolean),
     ),
   );
@@ -285,6 +336,57 @@ function sumEntityTotals(rows: EntityLedgerTotals[]) {
     },
     { ...ZERO_ENTITY_TOTALS },
   );
+}
+
+function mapOfficeStatsRows(statsRows: any[]) {
+  const rows: OfficeCategorySummaryRow[] = [];
+
+  for (const row of statsRows || []) {
+    const categoryKey = String(row?.categoryKey || row?._id || "").trim();
+    if (!categoryKey) continue;
+
+    rows.push({
+      categoryKey,
+      categoryId: row?.category ? String(row.category) : undefined,
+      category: String(row?.categoryLabel || "Office"),
+      totalIncome: Number(row?.incomeTotal || 0),
+      totalExpense: Number(row?.expenseTotal || 0),
+      incomeCount: Number(row?.incomeCount || 0),
+      expenseCount: Number(row?.expenseCount || 0),
+      totalCount: Number(row?.totalCount || 0),
+      lastRecomputedAt: row?.lastRecomputedAt
+        ? new Date(row.lastRecomputedAt).toISOString()
+        : undefined,
+    });
+  }
+
+  return rows;
+}
+
+function mapLiabilityStatsRows(statsRows: any[]) {
+  const rows: LiabilityEntitySummaryRow[] = [];
+
+  for (const row of statsRows || []) {
+    const entityKey = String(row?.entityKey || row?._id || "").trim();
+    if (!entityKey) continue;
+
+    const income = Number(row?.income || 0);
+    const expense = Number(row?.expense || 0);
+    rows.push({
+      entityKey,
+      entityId: row?.entity ? String(row.entity) : undefined,
+      entity: String(row?.entityName || "Unknown Entity"),
+      income,
+      expense,
+      net: Number(row?.net ?? income - expense),
+      totalTransactions: Number(row?.totalTransactions || 0),
+      lastRecomputedAt: row?.lastRecomputedAt
+        ? new Date(row.lastRecomputedAt).toISOString()
+        : undefined,
+    });
+  }
+
+  return rows;
 }
 
 async function recomputeEntityRecordStats(entityIds?: string[]) {
@@ -334,6 +436,135 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
 
   return {
     updatedEntities: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function recomputeOfficeRecordCategoryStats(categoryKeys?: string[]) {
+  const normalizedKeys = normalizeOfficeCategoryKeys(categoryKeys || []);
+  const recomputeAll = normalizedKeys.length === 0;
+
+  const aggregateRows = await aggregateOfficeRecordCategoryStatsByKeys(
+    recomputeAll ? undefined : normalizedKeys,
+  );
+
+  const now = new Date();
+
+  if (recomputeAll) {
+    const upsertRows = (aggregateRows || []).map((row: any) => ({
+      categoryKey: String(row?._id || ""),
+      category: row?.category || null,
+      categoryLabel: String(row?.categoryLabel || "Office"),
+      incomeTotal: Number(row?.incomeTotal || 0),
+      incomeCount: Number(row?.incomeCount || 0),
+      expenseTotal: Number(row?.expenseTotal || 0),
+      expenseCount: Number(row?.expenseCount || 0),
+      totalCount: Number(row?.totalCount || 0),
+      lastRecomputedAt: now,
+    }));
+
+    await bulkUpsertOfficeRecordCategoryStats(upsertRows);
+
+    return {
+      updatedOfficeCategories: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
+    };
+  }
+
+  const aggregateByKey = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByKey.set(key, row);
+    }
+  }
+
+  const upsertRows = normalizedKeys.map((key) => {
+    const aggregated = aggregateByKey.get(key);
+    return {
+      categoryKey: key,
+      category: aggregated?.category || (key === "__uncategorized__" ? null : key),
+      categoryLabel: String(aggregated?.categoryLabel || "Office"),
+      incomeTotal: Number(aggregated?.incomeTotal || 0),
+      incomeCount: Number(aggregated?.incomeCount || 0),
+      expenseTotal: Number(aggregated?.expenseTotal || 0),
+      expenseCount: Number(aggregated?.expenseCount || 0),
+      totalCount: Number(aggregated?.totalCount || 0),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertOfficeRecordCategoryStats(upsertRows);
+
+  return {
+    updatedOfficeCategories: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function recomputeLiabilityEntityStats(entityKeys?: string[]) {
+  const normalizedKeys = normalizeLiabilityEntityKeys(entityKeys || []);
+  const recomputeAll = normalizedKeys.length === 0;
+
+  const aggregateRows = await aggregateLiabilityEntityStatsByKeys(
+    recomputeAll ? undefined : normalizedKeys,
+  );
+
+  const now = new Date();
+
+  if (recomputeAll) {
+    const upsertRows = (aggregateRows || []).map((row: any) => {
+      const income = Number(row?.income || 0);
+      const expense = Number(row?.expense || 0);
+      return {
+        entityKey: String(row?._id || ""),
+        entity: row?.entity || null,
+        entityName: String(row?.entityName || "Unknown Entity"),
+        income,
+        expense,
+        net: Number(row?.net ?? income - expense),
+        totalTransactions: Number(row?.totalTransactions || 0),
+        lastRecomputedAt: now,
+      };
+    });
+
+    await bulkUpsertLiabilityEntityStats(upsertRows);
+
+    return {
+      updatedLiabilityEntities: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
+    };
+  }
+
+  const aggregateByKey = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByKey.set(key, row);
+    }
+  }
+
+  const upsertRows = normalizedKeys.map((key) => {
+    const aggregated = aggregateByKey.get(key);
+    const income = Number(aggregated?.income || 0);
+    const expense = Number(aggregated?.expense || 0);
+
+    return {
+      entityKey: key,
+      entity: aggregated?.entity || (key === "__unknown__" ? null : key),
+      entityName: String(aggregated?.entityName || "Unknown Entity"),
+      income,
+      expense,
+      net: Number(aggregated?.net ?? income - expense),
+      totalTransactions: Number(aggregated?.totalTransactions || 0),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertLiabilityEntityStats(upsertRows);
+
+  return {
+    updatedLiabilityEntities: upsertRows.length,
     lastRecomputedAt: now.toISOString(),
   };
 }
@@ -399,7 +630,105 @@ export function isAdminRole(role?: string) {
 }
 
 export async function recomputeAllEntityLedgerStats() {
-  return recomputeEntityRecordStats();
+  const [entityStats, officeStats, liabilityStats] = await Promise.all([
+    recomputeEntityRecordStats(),
+    recomputeOfficeRecordCategoryStats(),
+    recomputeLiabilityEntityStats(),
+  ]);
+
+  return {
+    ...entityStats,
+    ...officeStats,
+    ...liabilityStats,
+    lastRecomputedAt: new Date().toISOString(),
+  };
+}
+
+export async function getOfficeRecordCategorySummaryFromStats() {
+  let statsRows = await findOfficeRecordCategoryStatsByKeys();
+  let rows = mapOfficeStatsRows(statsRows).filter((row) => row.totalCount > 0);
+
+  if (!rows.length) {
+    await recomputeOfficeRecordCategoryStats();
+    statsRows = await findOfficeRecordCategoryStatsByKeys();
+    rows = mapOfficeStatsRows(statsRows).filter((row) => row.totalCount > 0);
+  }
+
+  const incomeByCategory = rows
+    .filter((row) => row.incomeCount > 0)
+    .map((row) => ({
+      category: row.category,
+      total: Number(row.totalIncome.toFixed(2)),
+      count: row.incomeCount,
+      categoryKey: row.categoryKey,
+      categoryId: row.categoryId,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const expenseByCategory = rows
+    .filter((row) => row.expenseCount > 0)
+    .map((row) => ({
+      category: row.category,
+      total: Number(row.totalExpense.toFixed(2)),
+      count: row.expenseCount,
+      categoryKey: row.categoryKey,
+      categoryId: row.categoryId,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    incomeByCategory,
+    expenseByCategory,
+    totalIncome: Number(rows.reduce((sum, row) => sum + row.totalIncome, 0).toFixed(2)),
+    totalExpense: Number(rows.reduce((sum, row) => sum + row.totalExpense, 0).toFixed(2)),
+    lastRecomputedAt: rows[0]?.lastRecomputedAt,
+  };
+}
+
+export async function getLiabilityEntitySummaryFromStats() {
+  let statsRows = await findLiabilityEntityStatsByKeys();
+  let rows = mapLiabilityStatsRows(statsRows).filter((row) => row.totalTransactions > 0);
+
+  if (!rows.length) {
+    await recomputeLiabilityEntityStats();
+    statsRows = await findLiabilityEntityStatsByKeys();
+    rows = mapLiabilityStatsRows(statsRows).filter((row) => row.totalTransactions > 0);
+  }
+
+  const entities = rows
+    .map((row) => ({
+      entity: row.entity,
+      income: Number(row.income.toFixed(2)),
+      expense: Number(row.expense.toFixed(2)),
+      net: Number(row.net.toFixed(2)),
+      entityKey: row.entityKey,
+      entityId: row.entityId,
+      totalTransactions: row.totalTransactions,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
+  const totals = entities.reduce(
+    (acc, row) => {
+      acc.income += row.income;
+      acc.expense += row.expense;
+      acc.net += row.net;
+      return acc;
+    },
+    { income: 0, expense: 0, net: 0 },
+  );
+
+  return {
+    entities,
+    totals: {
+      income: Number(totals.income.toFixed(2)),
+      expense: Number(totals.expense.toFixed(2)),
+      net: Number(totals.net.toFixed(2)),
+    },
+    lastRecomputedAt: rows[0]?.lastRecomputedAt,
+  };
 }
 
 async function resolveLinkedRecordIds(record: any, includeArchived = false) {
@@ -450,11 +779,35 @@ async function refreshEntityStatsForRecordRows(records: any[]) {
     (records || []).map((record) => record?.entity?.toString?.() || record?.entity),
   );
 
-  if (!affectedEntityIds.length) {
+  const affectedOfficeCategoryKeys = normalizeOfficeCategoryKeys(
+    (records || [])
+      .filter((record) => String(record?.recordKind || "").toLowerCase() === "office_records")
+      .map((record) => record?.category?.toString?.() || record?.category),
+  );
+
+  const affectedLiabilityEntityKeys = normalizeLiabilityEntityKeys(
+    (records || [])
+      .filter((record) => String(record?.recordKind || "").toLowerCase() === "liability")
+      .map((record) => record?.entity?.toString?.() || record?.entity),
+  );
+
+  if (
+    !affectedEntityIds.length &&
+    !affectedOfficeCategoryKeys.length &&
+    !affectedLiabilityEntityKeys.length
+  ) {
     return;
   }
 
-  await recomputeEntityRecordStats(affectedEntityIds);
+  await Promise.all([
+    affectedEntityIds.length ? recomputeEntityRecordStats(affectedEntityIds) : Promise.resolve(),
+    affectedOfficeCategoryKeys.length
+      ? recomputeOfficeRecordCategoryStats(affectedOfficeCategoryKeys)
+      : Promise.resolve(),
+    affectedLiabilityEntityKeys.length
+      ? recomputeLiabilityEntityStats(affectedLiabilityEntityKeys)
+      : Promise.resolve(),
+  ]);
 }
 
 function buildTotals(records: any[]) {
@@ -1463,7 +1816,7 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   const linkedIds = await resolveLinkedRecordIds(record);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity" },
+    { select: "entity recordKind category" },
   );
 
   await updateManyRecords(
@@ -1511,7 +1864,7 @@ export async function deleteSelfTransferByGroupId(groupId: string, principal: TP
   const linkedIds = await resolveLinkedRecordIds(record);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity" },
+    { select: "entity recordKind category" },
   );
 
   await updateManyRecords(
@@ -1602,13 +1955,15 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
     { new: true }
   );
 
-  await recomputeEntityRecordStats(
-    normalizeEntityIds([
-      (existingRecord as any)?.entity?.toString?.() || (existingRecord as any)?.entity,
-      (data as any)?.entity?.toString?.() || (data as any)?.entity,
-      normalizedPayload?.entity,
-    ]),
-  );
+  await refreshEntityStatsForRecordRows([
+    existingRecord,
+    data,
+    {
+      entity: normalizedPayload?.entity,
+      recordKind: normalizedPayload?.recordKind,
+      category: normalizedPayload?.category,
+    },
+  ]);
 
   const creatorId = existingRecord.createdBy?.toString?.();
   if (data && creatorId && creatorId !== principal.userId) {
@@ -1635,7 +1990,7 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   const linkedIds = await resolveLinkedRecordIds(record, true);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity" },
+    { select: "entity recordKind category" },
   );
 
   const data = await updateManyRecords(

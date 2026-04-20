@@ -956,7 +956,7 @@ const TransactionList = ({
       ? `/accounts/add-record?type=expense&lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
       : "/accounts/add-record?type=expense";
 
-  const handleRecomputeEntityStats = async () => {
+  const handleRecomputeLedgerStats = async () => {
     if (isRefreshingLedgerStats) {
       return;
     }
@@ -965,11 +965,25 @@ const TransactionList = ({
       setIsRefreshingLedgerStats(true);
       const response = await axios.post("/api/payment/entity-stats/recompute");
       const updatedEntities = Number(response?.data?.updatedEntities || 0);
-      toast.success(`Entity stats refreshed (${updatedEntities} entities)`);
+      const updatedOfficeCategories = Number(
+        response?.data?.updatedOfficeCategories || 0,
+      );
+      const updatedLiabilityEntities = Number(
+        response?.data?.updatedLiabilityEntities || 0,
+      );
+      toast.success(
+        `Ledger stats refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities)`,
+      );
       await queryClient.invalidateQueries({ queryKey: ["payment"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["office-records-page-summary"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["liability-records-page-summary"],
+      });
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.error || "Failed to refresh entity ledger stats",
+        error?.response?.data?.error || "Failed to refresh ledger stats",
       );
     } finally {
       setIsRefreshingLedgerStats(false);
@@ -1024,12 +1038,12 @@ const TransactionList = ({
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={handleRecomputeEntityStats}
+                onClick={handleRecomputeLedgerStats}
                 disabled={isRefreshingLedgerStats}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <FiRefreshCw className={clsx("text-sm", isRefreshingLedgerStats && "animate-spin")} />
-                {isRefreshingLedgerStats ? "Refreshing stats..." : "Recompute All Entity Stats"}
+                {isRefreshingLedgerStats ? "Refreshing all stats..." : "Refresh All Ledger Stats"}
               </button>
             </div>
           )}
