@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import calculateStatus from "@/utils/calculateStatus";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
 import {
-  FiCalendar,
   FiArchive,
   FiCheckCircle,
   FiCreditCard,
@@ -18,49 +19,44 @@ import {
   FiGlobe,
   FiLayers,
   FiLock,
-  FiMessageSquare,
   FiPhone,
   FiPlus,
   FiRefreshCw,
-  FiTrash2,
   FiTag,
+  FiTrash2,
   FiUpload,
-  FiUser,
-  FiUsers,
+  FiUsers
 } from "react-icons/fi";
-import { toast } from "react-hot-toast";
-import calculateStatus from "@/utils/calculateStatus";
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import HandoverList from "../HandoverList";
+import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
 import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
-import { TEntityListItem, TPagination } from "@/types/types";
-import ExportActionsMenu from "@/components/common/ExportActionsMenu";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import {
   getDocumentCategoryIcon,
   getDocumentCategoryLabel,
   normalizeDocumentCategory,
 } from "@/config/documentCategoryVisuals";
+import { TEntityListItem, TPagination } from "@/types/types";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+import HandoverList from "../HandoverList";
 
 import {
   EntityProfileHeader,
-  EntitySectionSkeleton,
   EntityProfileTabs,
   EntitySectionKey,
+  EntitySectionSkeleton,
   EntityType,
-  EntityMetric,
   MetricCard,
   SectionCard,
   formatDate,
   getSectionTitle,
   hasValue,
   initialsFromName,
-  resolveAvatarColorWithFallback,
+  resolveAvatarColorWithFallback
 } from "./EntityProfileFrame";
 
 type EntityDetailResponse = {
@@ -214,6 +210,7 @@ export default function EntitySectionPage({
   const [employeePage, setEmployeePage] = useState<number>(1);
   const [employeePageSize, setEmployeePageSize] = useState<number>(20);
   const [documentDraft, setDocumentDraft] = useState({
+    category: "" as "" | "visa" | "license" | "other",
     documentTemplate: "",
     issueDate: "",
     expiryDate: "",
@@ -337,6 +334,15 @@ export default function EntitySectionPage({
   const selectedDocumentTemplate = documentDraft.documentTemplate
     ? documentTemplateMap.get(documentDraft.documentTemplate)
     : undefined;
+  const filteredDocumentOptions = useMemo(() => {
+    if (!documentDraft.category) {
+      return [];
+    }
+
+    return documentOptions.filter(
+      (item) => normalizeDocumentCategory(item.category) === documentDraft.category,
+    );
+  }, [documentDraft.category, documentOptions]);
   const selectedDocumentTemplateCategory = normalizeDocumentCategory(
     selectedDocumentTemplate?.category,
   );
@@ -573,6 +579,10 @@ export default function EntitySectionPage({
   };
 
   const handleAddDocument = async () => {
+    if (!documentDraft.category) {
+      toast.error("Please select a document category");
+      return;
+    }
     if (!documentDraft.documentTemplate) {
       toast.error("Please select a document option");
       return;
@@ -622,6 +632,7 @@ export default function EntitySectionPage({
       setShowAddDocument(false);
       setEditingDocumentId(null);
       setDocumentDraft({
+        category: "",
         documentTemplate: "",
         issueDate: "",
         expiryDate: "",
@@ -700,8 +711,14 @@ export default function EntitySectionPage({
   const startEditDocument = (
     doc: NonNullable<EntityDetailResponse["data"]["documents"]>[number],
   ) => {
+    const templateMeta = doc.documentTemplate
+      ? documentTemplateMap.get(doc.documentTemplate)
+      : undefined;
     setEditingDocumentId(doc._id);
     setDocumentDraft({
+      category: normalizeDocumentCategory(
+        doc.templateCategory || templateMeta?.category,
+      ),
       documentTemplate: doc.documentTemplate || "",
       issueDate: doc.issueDate || "",
       expiryDate: doc.expiryDate || "",
@@ -1186,6 +1203,7 @@ export default function EntitySectionPage({
                           if (!next) {
                             setEditingDocumentId(null);
                             setDocumentDraft({
+                              category: "",
                               documentTemplate: "",
                               issueDate: "",
                               expiryDate: "",
@@ -1251,10 +1269,36 @@ export default function EntitySectionPage({
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Category
+                          </label>
+                          <select
+                            value={documentDraft.category}
+                            onChange={(event) =>
+                              setDocumentDraft((prev) => ({
+                                ...prev,
+                                category: event.target.value as
+                                  | ""
+                                  | "visa"
+                                  | "license"
+                                  | "other",
+                                documentTemplate: "",
+                              }))
+                            }
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                          >
+                            <option value="">Select category</option>
+                            <option value="visa">Visa Related</option>
+                            <option value="license">License Related</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Document
                           </label>
                           <select
                             value={documentDraft.documentTemplate}
+                            disabled={!documentDraft.category}
                             onChange={(event) =>
                               setDocumentDraft((prev) => ({
                                 ...prev,
@@ -1263,8 +1307,12 @@ export default function EntitySectionPage({
                             }
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                           >
-                            <option value="">Select document</option>
-                            {documentOptions.map((option) => (
+                            <option value="">
+                              {documentDraft.category
+                                ? "Select document"
+                                : "Select category first"}
+                            </option>
+                            {filteredDocumentOptions.map((option) => (
                               <option key={option.id} value={option.id}>
                                 {option.name || "Unnamed document"}
                               </option>

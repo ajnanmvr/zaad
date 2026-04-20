@@ -6,7 +6,7 @@ import axios from "axios";
 import clsx from "clsx";
 import { debounce } from "lodash";
 import React, { useEffect, useMemo, useState } from "react";
-import { FiBriefcase, FiCalendar, FiChevronDown, FiFileText, FiInfo, FiUserPlus } from "react-icons/fi";
+import { FiBriefcase, FiCalendar, FiChevronDown, FiFileText, FiFolder, FiInfo, FiUserPlus } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 
 interface AddExpiryDocumentModalProps {
@@ -16,6 +16,7 @@ interface AddExpiryDocumentModalProps {
 }
 
 type EntityType = "company" | "employee" | "individual";
+type DocumentCategory = "visa" | "license" | "other";
 
 const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocumentModalProps) => {
   const SUGGESTION_LIMIT = 8;
@@ -28,10 +29,11 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
     color?: string;
     type: string;
   } | null>(null);
-  const [documentTemplateOptions, setDocumentTemplateOptions] = useState<Array<{ id: string; name: string; color?: string }>>([]);
+  const [documentTemplateOptions, setDocumentTemplateOptions] = useState<Array<{ id: string; name: string; color?: string; category?: DocumentCategory }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     entity: "",
+    category: "" as "" | DocumentCategory,
     documentTemplate: "",
     issueDate: "",
     expiryDate: "",
@@ -49,6 +51,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
     setSelectedEntitySummary(null);
     setFormData({
       entity: "",
+      category: "",
       documentTemplate: "",
       issueDate: "",
       expiryDate: "",
@@ -124,6 +127,10 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
       toast.error("Please select an entity");
       return;
     }
+    if (!formData.category) {
+      toast.error("Please select a document category");
+      return;
+    }
     if (!formData.documentTemplate) {
       toast.error("Please select a document");
       return;
@@ -149,6 +156,16 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
       setIsSubmitting(false);
     }
   };
+
+  const filteredTemplateOptions = useMemo(() => {
+    if (!formData.category) {
+      return [];
+    }
+
+    return documentTemplateOptions.filter(
+      (option) => (option.category || "other") === formData.category,
+    );
+  }, [documentTemplateOptions, formData.category]);
 
   if (!isOpen) return null;
 
@@ -272,25 +289,58 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>
-              Document Name / Template <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <FiFileText />
-              </span>
-              <select
-                value={formData.documentTemplate}
-                onChange={(event) => setFormData((prev) => ({ ...prev, documentTemplate: event.target.value }))}
-                className={clsx(inputClass, "pl-11")}
-              >
-                <option value="">Select document</option>
-                {documentTemplateOptions.map((option) => (
-                  <option key={option.id} value={option.id}>{option.name || "Unnamed document"}</option>
-                ))}
-              </select>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelClass}>
+                Document Category <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <FiFolder />
+                </span>
+                <select
+                  value={formData.category}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      category: event.target.value as "" | DocumentCategory,
+                      documentTemplate: "",
+                    }))
+                  }
+                  className={clsx(inputClass, "pl-11")}
+                >
+                  <option value="">Select category</option>
+                  <option value="visa">Visa Related</option>
+                  <option value="license">License Related</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
+
+            <div>
+              <label className={labelClass}>
+                Document Name / Template <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <FiFileText />
+                </span>
+                <select
+                  value={formData.documentTemplate}
+                  disabled={!formData.category}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, documentTemplate: event.target.value }))}
+                  className={clsx(inputClass, "pl-11")}
+                >
+                  <option value="">
+                    {formData.category ? "Select document" : "Select category first"}
+                  </option>
+                  {filteredTemplateOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.name || "Unnamed document"}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {selectedDocumentTemplate ? (
               <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-1.5 dark:border-amber-900/40 dark:bg-amber-900/20">
                 <span
