@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import {
   FiCalendar,
+  FiArchive,
   FiCheckCircle,
   FiCreditCard,
   FiEdit2,
@@ -20,8 +21,10 @@ import {
   FiMessageSquare,
   FiPhone,
   FiPlus,
+  FiRefreshCw,
   FiTrash2,
   FiTag,
+  FiUpload,
   FiUser,
   FiUsers,
 } from "react-icons/fi";
@@ -176,8 +179,8 @@ export default function EntitySectionPage({
   const [isAddingDocument, setIsAddingDocument] = useState(false);
   const [isAddingCredential, setIsAddingCredential] = useState(false);
   const [documentCategoryTab, setDocumentCategoryTab] = useState<
-    "visa" | "license" | "other"
-  >("visa");
+    "visa" | "license" | "other" | null
+  >(null);
   const [visibleCredentialIds, setVisibleCredentialIds] = useState<string[]>(
     [],
   );
@@ -192,18 +195,22 @@ export default function EntitySectionPage({
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
   const [showDeleteEntityConfirm, setShowDeleteEntityConfirm] = useState(false);
+  const [showDeleteDocumentConfirm, setShowDeleteDocumentConfirm] = useState(false);
+  const [showDeleteCredentialConfirm, setShowDeleteCredentialConfirm] = useState(false);
+  const [showArchiveDocumentModal, setShowArchiveDocumentModal] = useState(false);
+  const [isDeletingDocument, setIsDeletingDocument] = useState(false);
+  const [isDeletingCredential, setIsDeletingCredential] = useState(false);
+  const [isArchivingDocument, setIsArchivingDocument] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(
     null,
   );
   const [editingCredentialId, setEditingCredentialId] = useState<string | null>(
     null,
   );
-  const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<
-    string | null
-  >(null);
-  const [deleteCredentialConfirmId, setDeleteCredentialConfirmId] = useState<
-    string | null
-  >(null);
+  const [deleteDocumentConfirmId, setDeleteDocumentConfirmId] = useState<string | null>(null);
+  const [deleteCredentialConfirmId, setDeleteCredentialConfirmId] = useState<string | null>(null);
+  const [archiveDocumentId, setArchiveDocumentId] = useState<string | null>(null);
+  const [archiveNoteDraft, setArchiveNoteDraft] = useState("");
   const [employeePage, setEmployeePage] = useState<number>(1);
   const [employeePageSize, setEmployeePageSize] = useState<number>(20);
   const [documentDraft, setDocumentDraft] = useState({
@@ -433,18 +440,26 @@ export default function EntitySectionPage({
       return;
     }
 
+    if (documentCategoryTab === null) {
+      return;
+    }
+
     const isCurrentTabVisible = visibleCompanyDocumentTabs.some(
       (tab) => tab.key === documentCategoryTab,
     );
 
     if (!isCurrentTabVisible) {
-      setDocumentCategoryTab("visa");
+      setDocumentCategoryTab(null);
     }
   }, [documentCategoryTab, entityType, visibleCompanyDocumentTabs]);
 
   const visibleDocuments = useMemo(() => {
     if (entityType !== "company") {
       return sortedDocuments;
+    }
+
+    if (documentCategoryTab === null) {
+      return [];
     }
 
     return sortedDocuments.filter((doc) => {
@@ -457,6 +472,11 @@ export default function EntitySectionPage({
       return category === documentCategoryTab;
     });
   }, [documentCategoryTab, documentTemplateMap, entityType, sortedDocuments]);
+
+  const renewingDocument = useMemo(
+    () => documents.find((doc) => doc._id === renewingDocId),
+    [documents, renewingDocId],
+  );
 
   const sortedCredentials = useMemo(() => {
     const clone = [...credentials];
@@ -704,38 +724,94 @@ export default function EntitySectionPage({
   };
 
   const deleteDocument = async (docId: string) => {
-    if (deleteDocumentConfirmId !== docId) {
-      setDeleteDocumentConfirmId(docId);
-      toast.error("Click delete again to confirm");
+    setDeleteDocumentConfirmId(docId);
+    setShowDeleteDocumentConfirm(true);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!deleteDocumentConfirmId) {
       return;
     }
-
     try {
-      await axios.delete(`/api/${entityType}/${id}/doc/${docId}`);
+      setIsDeletingDocument(true);
+      await axios.delete(`/api/${entityType}/${id}/doc/${deleteDocumentConfirmId}`);
       toast.success("Document deleted successfully");
+      setShowDeleteDocumentConfirm(false);
       setDeleteDocumentConfirmId(null);
       await refetchEntity();
     } catch (error) {
       toast.error("Failed to delete document");
       console.error(error);
+    } finally {
+      setIsDeletingDocument(false);
     }
   };
 
-  const deleteCredential = async (credentialId: string) => {
-    if (deleteCredentialConfirmId !== credentialId) {
-      setDeleteCredentialConfirmId(credentialId);
-      toast.error("Click delete again to confirm");
+  const archiveDocument = async (docId: string) => {
+    setArchiveDocumentId(docId);
+    setArchiveNoteDraft("");
+    setShowArchiveDocumentModal(true);
+  };
+
+  const confirmArchiveDocument = async () => {
+    if (!archiveDocumentId) {
       return;
     }
 
     try {
-      await axios.delete(`/api/${entityType}/${id}/credential/${credentialId}`);
+      setIsArchivingDocument(true);
+      await axios.put(`/api/${entityType}/${id}/doc/${archiveDocumentId}`, {
+        archived: true,
+        archiveNotes: archiveNoteDraft.trim() || undefined,
+      });
+      toast.success("Document archived successfully");
+      setShowArchiveDocumentModal(false);
+      setArchiveDocumentId(null);
+      setArchiveNoteDraft("");
+      await refetchEntity();
+    } catch (error) {
+      toast.error("Failed to archive document");
+      console.error(error);
+    } finally {
+      setIsArchivingDocument(false);
+    }
+  };
+
+  const unarchiveDocument = async (docId: string) => {
+    try {
+      await axios.put(`/api/${entityType}/${id}/doc/${docId}`, {
+        archived: false,
+        archiveNotes: null,
+      });
+      toast.success("Document unarchived successfully");
+      await refetchEntity();
+    } catch (error) {
+      toast.error("Failed to unarchive document");
+      console.error(error);
+    }
+  };
+
+  const deleteCredential = async (credentialId: string) => {
+    setDeleteCredentialConfirmId(credentialId);
+    setShowDeleteCredentialConfirm(true);
+  };
+
+  const confirmDeleteCredential = async () => {
+    if (!deleteCredentialConfirmId) {
+      return;
+    }
+    try {
+      setIsDeletingCredential(true);
+      await axios.delete(`/api/${entityType}/${id}/credential/${deleteCredentialConfirmId}`);
       toast.success("Credential deleted successfully");
+      setShowDeleteCredentialConfirm(false);
       setDeleteCredentialConfirmId(null);
       await refetchEntity();
     } catch (error) {
       toast.error("Failed to delete credential");
       console.error(error);
+    } finally {
+      setIsDeletingCredential(false);
     }
   };
 
@@ -809,6 +885,138 @@ export default function EntitySectionPage({
           void performDeleteEntity();
         }}
       />
+
+      <ConfirmationModal
+        isOpen={showDeleteDocumentConfirm}
+        title="Delete Document"
+        message="Delete this document? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeletingDocument}
+        onCancel={() => {
+          if (!isDeletingDocument) {
+            setShowDeleteDocumentConfirm(false);
+          }
+        }}
+        onConfirm={() => {
+          void confirmDeleteDocument();
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteCredentialConfirm}
+        title="Delete Credential"
+        message="Delete this credential? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeletingCredential}
+        onCancel={() => {
+          if (!isDeletingCredential) {
+            setShowDeleteCredentialConfirm(false);
+          }
+        }}
+        onConfirm={() => {
+          void confirmDeleteCredential();
+        }}
+      />
+
+      {showArchiveDocumentModal && (
+        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Archive Document
+            </h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Add an optional archive note for this document.
+            </p>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Archive Note
+              </label>
+              <textarea
+                rows={3}
+                value={archiveNoteDraft}
+                onChange={(event) => setArchiveNoteDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                placeholder="Reason for archiving (optional)"
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isArchivingDocument) return;
+                  setShowArchiveDocumentModal(false);
+                  setArchiveDocumentId(null);
+                  setArchiveNoteDraft("");
+                }}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void confirmArchiveDocument();
+                }}
+                disabled={isArchivingDocument}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-60"
+              >
+                {isArchivingDocument ? "Archiving..." : "Archive"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renewingDocId && (
+        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Renew Document
+            </h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {renewingDocument?.name || "Selected document"}
+            </p>
+            <div className="mt-4">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                New Expiry Date
+              </label>
+              <input
+                type="date"
+                value={renewExpiryDate}
+                onChange={(event) => setRenewExpiryDate(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRenewingDocId(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (renewingDocument) {
+                    void submitRenew(renewingDocument);
+                  }
+                }}
+                disabled={isRenewingDoc}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {isRenewingDoc ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         <EntityProfileHeader
@@ -1022,8 +1230,25 @@ export default function EntitySectionPage({
                   )}
 
                   {showAddDocument && (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+                      <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                            {editingDocumentId ? "Edit Document" : "Add Document"}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAddDocument(false);
+                              setEditingDocumentId(null);
+                            }}
+                            className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Close
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Document
@@ -1115,20 +1340,36 @@ export default function EntitySectionPage({
                           />
                         </div>
                       </div>
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleAddDocument}
-                          disabled={isAddingDocument}
-                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isAddingDocument ? "Saving..." : "Save Document"}
-                        </button>
+                        <div className="mt-4 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAddDocument(false);
+                              setEditingDocumentId(null);
+                            }}
+                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddDocument}
+                            disabled={isAddingDocument}
+                            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isAddingDocument ? "Saving..." : "Save Document"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {visibleDocuments.length === 0 ? (
+                  {entityType === "company" && documentCategoryTab === null ? (
+                    <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
+                      <FiFileText className="text-3xl opacity-30" />
+                      <p>Select a category to view documents.</p>
+                    </div>
+                  ) : visibleDocuments.length === 0 ? (
                     <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
                       <FiFileText className="text-3xl opacity-30" />
                       <p>
@@ -1139,135 +1380,141 @@ export default function EntitySectionPage({
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-                      {visibleDocuments.map((doc, index) => {
-                        const isArchived = Boolean(doc.archived);
-                        const status = calculateStatus(doc.expiryDate || "");
-                        const templateMeta = doc.documentTemplate
-                          ? documentTemplateMap.get(doc.documentTemplate)
-                          : undefined;
-                        const templateCategory = normalizeDocumentCategory(
-                          doc.templateCategory || templateMeta?.category,
-                        );
-                        const DocumentIcon = getDocumentCategoryIcon(templateCategory);
-                        const docAvatarColor = resolveAvatarColorWithFallback(
-                          templateMeta?.color,
-                          templateMeta?.name || doc.name || "Document",
-                        );
-                        return (
-                          <div
-                            key={doc._id}
-                            className={clsx(
-                              "p-4",
-                              index !== visibleDocuments.length - 1 &&
-                                "border-b border-slate-200 dark:border-slate-700",
-                            )}
-                          >
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                <span
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
-                                  style={{ backgroundColor: docAvatarColor }}
+                      <div className="max-w-full overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                              <th className="px-4 py-3">Document</th>
+                              <th className="px-4 py-3">Issue Date</th>
+                              <th className="px-4 py-3">Expiry Date</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Notes</th>
+                              <th className="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleDocuments.map((doc) => {
+                              const isArchived = Boolean(doc.archived);
+                              const status = calculateStatus(doc.expiryDate || "");
+                              const templateMeta = doc.documentTemplate
+                                ? documentTemplateMap.get(doc.documentTemplate)
+                                : undefined;
+                              const templateCategory = normalizeDocumentCategory(
+                                doc.templateCategory || templateMeta?.category,
+                              );
+                              const DocumentIcon = getDocumentCategoryIcon(templateCategory);
+                              const docAvatarColor = resolveAvatarColorWithFallback(
+                                templateMeta?.color,
+                                templateMeta?.name || doc.name || "Document",
+                              );
+
+                              return (
+                                <tr
+                                  key={doc._id}
+                                  className="border-b border-slate-200/70 align-top dark:border-slate-700/70"
                                 >
-                                  <DocumentIcon className="text-sm" />
-                                </span>
-                                {doc.name || "Untitled document"}
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
-                                  {getDocumentCategoryLabel(templateCategory)}
-                                </span>
-                              </p>
-                              <p className="text-sm text-slate-600 dark:text-slate-300">
-                                Issue: {formatDate(doc.issueDate)}
-                              </p>
-                              <p className="text-sm text-slate-600 dark:text-slate-300">
-                                Expiry: {formatDate(doc.expiryDate)}
-                              </p>
-                            </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span
-                                className={clsx(
-                                  "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
-                                  isArchived
-                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
-                                    : status === "valid"
-                                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                      : status === "expired"
-                                        ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-                                )}
-                              >
-                                {isArchived ? "archived" : status}
-                              </span>
-                              {!isArchived && (
-                                <button
-                                  type="button"
-                                  onClick={() => startRenew(doc)}
-                                  className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
-                                >
-                                  Renew
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => startEditDocument(doc)}
-                                className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
-                              >
-                                <FiEdit2 />
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteDocument(doc._id)}
-                                className={clsx(
-                                  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
-                                  deleteDocumentConfirmId === doc._id
-                                    ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
-                                    : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
-                                )}
-                              >
-                                <FiTrash2 />
-                                Delete
-                              </button>
-                            </div>
-                            {hasValue(doc.notes) && (
-                              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                                {doc.notes}
-                              </p>
-                            )}
-                            {hasValue(doc.archiveNotes) && (
-                              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                                Archive reason: {doc.archiveNotes}
-                              </p>
-                            )}
-                            {renewingDocId === doc._id && (
-                              <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <input
-                                  type="date"
-                                  value={renewExpiryDate}
-                                  onChange={(event) =>
-                                    setRenewExpiryDate(event.target.value)
-                                  }
-                                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => submitRenew(doc)}
-                                  disabled={isRenewingDoc}
-                                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                                >
-                                  {isRenewingDoc ? "Saving..." : "Save"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setRenewingDocId(null)}
-                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                                  <td className="px-4 py-3">
+                                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                      <span
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                        style={{ backgroundColor: docAvatarColor }}
+                                      >
+                                        <DocumentIcon className="text-sm" />
+                                      </span>
+                                      {doc.name || "Untitled document"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                    {formatDate(doc.issueDate)}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                    {formatDate(doc.expiryDate)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span
+                                      className={clsx(
+                                        "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize",
+                                        isArchived
+                                          ? "bg-slate-100 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300"
+                                          : status === "valid"
+                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                            : status === "expired"
+                                              ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                                              : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                      )}
+                                    >
+                                      {isArchived ? "archived" : status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                                    <div className="space-y-1">
+                                      <p>{hasValue(doc.notes) ? doc.notes : "-"}</p>
+                                      {hasValue(doc.archiveNotes) && (
+                                        <p className="text-xs font-medium">
+                                          Archive reason: {doc.archiveNotes}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                      {!isArchived && (
+                                        <button
+                                          type="button"
+                                          onClick={() => startRenew(doc)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-300 text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                          title="Renew document"
+                                        >
+                                          <FiRefreshCw className="text-sm" />
+                                        </button>
+                                      )}
+                                      {!isArchived && (
+                                        <button
+                                          type="button"
+                                          onClick={() => archiveDocument(doc._id)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-300 text-amber-700 transition hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                                          title="Archive document"
+                                        >
+                                          <FiArchive className="text-sm" />
+                                        </button>
+                                      )}
+                                      {isArchived && (
+                                        <button
+                                          type="button"
+                                          onClick={() => unarchiveDocument(doc._id)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-300 text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                          title="Unarchive document"
+                                        >
+                                          <FiUpload className="text-sm" />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditDocument(doc)}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-300 text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                                        title="Edit document"
+                                      >
+                                        <FiEdit2 className="text-sm" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteDocument(doc._id)}
+                                        className={clsx(
+                                          "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
+                                          "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                        )}
+                                        title="Delete document"
+                                      >
+                                        <FiTrash2 className="text-sm" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1432,107 +1679,114 @@ export default function EntitySectionPage({
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-                      {sortedCredentials.map((item, index) => {
-                        const isVisible = visibleCredentialIds.includes(
-                          item._id,
-                        );
-                        const plainSecret =
-                          item.credential || item.password || "";
-                        const templateMeta = item.credentialTemplate
-                          ? credentialTemplateMap.get(item.credentialTemplate)
-                          : undefined;
-                        const credentialAvatarColor = resolveAvatarColorWithFallback(
-                          templateMeta?.color,
-                          templateMeta?.platform || item.platform || "Credential",
-                        );
+                      <div className="max-w-full overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                              <th className="px-4 py-3">Platform</th>
+                              <th className="px-4 py-3">Username</th>
+                              <th className="px-4 py-3">Password</th>
+                              <th className="px-4 py-3">Notes</th>
+                              <th className="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedCredentials.map((item) => {
+                              const isVisible = visibleCredentialIds.includes(
+                                item._id,
+                              );
+                              const plainSecret =
+                                item.credential || item.password || "";
+                              const templateMeta = item.credentialTemplate
+                                ? credentialTemplateMap.get(item.credentialTemplate)
+                                : undefined;
+                              const credentialAvatarColor = resolveAvatarColorWithFallback(
+                                templateMeta?.color,
+                                templateMeta?.platform || item.platform || "Credential",
+                              );
 
-                        return (
-                          <div
-                            key={item._id}
-                            className={clsx(
-                              "p-4",
-                              index !== sortedCredentials.length - 1 &&
-                                "border-b border-slate-200 dark:border-slate-700",
-                            )}
-                          >
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                <span
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
-                                  style={{ backgroundColor: credentialAvatarColor }}
+                              return (
+                                <tr
+                                  key={item._id}
+                                  className="border-b border-slate-200/70 align-top dark:border-slate-700/70"
                                 >
-                                  <FiLock className="text-sm" />
-                                </span>
-                                Platform: {item.platform || "Unknown platform"}
-                              </p>
-                              <p className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <FiUser className="text-slate-400" />
-                                Username: {item.username || "-"}
-                              </p>
-                              <div className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 sm:col-span-2">
-                                <FiLock className="text-slate-400" />
-                                <span>
-                                  Password:{" "}
-                                  {plainSecret
-                                    ? isVisible
-                                      ? plainSecret
-                                      : "******"
-                                    : "-"}
-                                </span>
-                                {plainSecret && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setVisibleCredentialIds((prev) =>
-                                        prev.includes(item._id)
-                                          ? prev.filter((id) => id !== item._id)
-                                          : [...prev, item._id],
-                                      );
-                                    }}
-                                    className="rounded-md border border-slate-300 p-1 text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                    title={
-                                      isVisible
-                                        ? "Hide password"
-                                        : "Show password"
-                                    }
-                                  >
-                                    {isVisible ? <FiEyeOff /> : <FiEye />}
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => startEditCredential(item)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
-                                  title="Edit credential"
-                                >
-                                  <FiEdit2 />
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteCredential(item._id)}
-                                  className={clsx(
-                                    "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
-                                    deleteCredentialConfirmId === item._id
-                                      ? "border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
-                                      : "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
-                                  )}
-                                  title="Delete credential"
-                                >
-                                  <FiTrash2 />
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                            {hasValue(item.notes) && (
-                              <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <FiMessageSquare className="text-slate-400" />
-                                {item.notes}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
+                                  <td className="px-4 py-3">
+                                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                      <span
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
+                                        style={{ backgroundColor: credentialAvatarColor }}
+                                      >
+                                        <FiLock className="text-sm" />
+                                      </span>
+                                      {item.platform || "Unknown platform"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                    {item.username || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                                    <div className="inline-flex items-center gap-2">
+                                      <span>
+                                        {plainSecret
+                                          ? isVisible
+                                            ? plainSecret
+                                            : "******"
+                                          : "-"}
+                                      </span>
+                                      {plainSecret && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setVisibleCredentialIds((prev) =>
+                                              prev.includes(item._id)
+                                                ? prev.filter((id) => id !== item._id)
+                                                : [...prev, item._id],
+                                            );
+                                          }}
+                                          className="rounded-md border border-slate-300 p-1 text-slate-500 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                          title={
+                                            isVisible
+                                              ? "Hide password"
+                                              : "Show password"
+                                          }
+                                        >
+                                          {isVisible ? <FiEyeOff /> : <FiEye />}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                                    {hasValue(item.notes) ? item.notes : "-"}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditCredential(item)}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-300 text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                                        title="Edit credential"
+                                      >
+                                        <FiEdit2 className="text-sm" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteCredential(item._id)}
+                                        className={clsx(
+                                          "inline-flex h-8 w-8 items-center justify-center rounded-md border transition",
+                                          "border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10",
+                                        )}
+                                        title="Delete credential"
+                                      >
+                                        <FiTrash2 className="text-sm" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>

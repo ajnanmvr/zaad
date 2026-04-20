@@ -1307,20 +1307,22 @@ const TransactionList = ({
           <div className="border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-5">
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={String(pageSize)}
-                  onChange={(event) => {
-                    const nextSize = Number(event.target.value);
-                    setPageSize(nextSize);
-                    setPageNumber(0);
-                  }}
-                  className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value="10">10 rows</option>
-                  <option value="25">25 rows</option>
-                  <option value="50">50 rows</option>
-                  <option value="100">100 rows</option>
-                </select>
+                {!isInnerEntityRecords && (
+                  <select
+                    value={String(pageSize)}
+                    onChange={(event) => {
+                      const nextSize = Number(event.target.value);
+                      setPageSize(nextSize);
+                      setPageNumber(0);
+                    }}
+                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    <option value="10">10 rows</option>
+                    <option value="25">25 rows</option>
+                    <option value="50">50 rows</option>
+                    <option value="100">100 rows</option>
+                  </select>
+                )}
 
                 <select
                   value={filterDummy.t}
@@ -1364,34 +1366,38 @@ const TransactionList = ({
                   ))}
                 </select>
 
-                <select
-                  value={filterDummy.k}
-                  onChange={(e) =>
-                    setFilterDummy({ ...filterDummy, k: e.target.value })
-                  }
-                  className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">All kinds</option>
-                  <option value="standard">Standard</option>
-                  <option value="office_records">Office</option>
-                  <option value="liability">Liability</option>
-                  <option value="self_transfer">Self Transfer</option>
-                </select>
+                {!isInnerEntityRecords && (
+                  <select
+                    value={filterDummy.k}
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, k: e.target.value })
+                    }
+                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">All kinds</option>
+                    <option value="standard">Standard</option>
+                    <option value="office_records">Office</option>
+                    <option value="liability">Liability</option>
+                    <option value="self_transfer">Self Transfer</option>
+                  </select>
+                )}
 
-                <select
-                  value={filterDummy.oc}
-                  onChange={(e) =>
-                    setFilterDummy({ ...filterDummy, oc: e.target.value })
-                  }
-                  className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">Office category</option>
-                  {officeCategoryOptions.map((officeCategory) => (
-                    <option key={officeCategory.id} value={officeCategory.id}>
-                      {officeCategory.label}
-                    </option>
-                  ))}
-                </select>
+                {!isInnerEntityRecords && (
+                  <select
+                    value={filterDummy.oc}
+                    onChange={(e) =>
+                      setFilterDummy({ ...filterDummy, oc: e.target.value })
+                    }
+                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="">Office category</option>
+                    {officeCategoryOptions.map((officeCategory) => (
+                      <option key={officeCategory.id} value={officeCategory.id}>
+                        {officeCategory.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
 
                 <button
                   type="button"

@@ -71,6 +71,9 @@ const ExpiryDocumentsPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<
+    "visa" | "license" | "other" | null
+  >(null);
   const [showAddDocument, setShowAddDocument] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -100,12 +103,31 @@ const ExpiryDocumentsPage = () => {
     );
   }, [rows]);
 
+  const categoryCounts = useMemo(() => {
+    return rows.reduce(
+      (acc, item) => {
+        const category = item.templateCategory || "other";
+        acc[category] += 1;
+        return acc;
+      },
+      { visa: 0, license: 0, other: 0 }
+    );
+  }, [rows]);
+
   const filteredRows = useMemo(() => {
-    if (nameFilter === "all") {
-      return rows;
+    if (!selectedCategory) {
+      return [];
     }
-    return rows.filter((item) => (item.name || "unnamed") === nameFilter);
-  }, [rows, nameFilter]);
+
+    const rowsByCategory = rows.filter(
+      (item) => (item.templateCategory || "other") === selectedCategory
+    );
+
+    if (nameFilter === "all") {
+      return rowsByCategory;
+    }
+    return rowsByCategory.filter((item) => (item.name || "unnamed") === nameFilter);
+  }, [rows, nameFilter, selectedCategory]);
 
   const isDocumentFiltered = nameFilter !== "all";
   const activeDocumentLabel = nameFilter === "unnamed" ? "Unnamed" : nameFilter;
@@ -393,6 +415,7 @@ const ExpiryDocumentsPage = () => {
               title="Filter expiry documents by name"
               value={nameFilter}
               onChange={(event) => setNameFilter(event.target.value)}
+              disabled={!selectedCategory}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="all">All documents</option>
@@ -412,6 +435,7 @@ const ExpiryDocumentsPage = () => {
                 setPage(PAGINATION.DEFAULT_PAGE);
                 setSelectedIds([]);
               }}
+              disabled={!selectedCategory}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value={10}>Show 10</option>
@@ -425,8 +449,42 @@ const ExpiryDocumentsPage = () => {
           <ExportActionsMenu onExport={exportRows} />
         </div>
 
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          {([
+            { key: "visa", label: "Visa Related" },
+            { key: "license", label: "License Related" },
+            { key: "other", label: "Other" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setSelectedCategory(tab.key);
+                setPage(PAGINATION.DEFAULT_PAGE);
+                setSelectedIds([]);
+                setNameFilter("all");
+              }}
+              className={clsx(
+                "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+                selectedCategory === tab.key
+                  ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-600/60 dark:bg-cyan-500/15 dark:text-cyan-300"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              )}
+            >
+              {tab.label}
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                {categoryCounts[tab.key]}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-          {isLoading ? (
+          {!selectedCategory ? (
+            <div className="py-10 text-center text-sm text-slate-600 dark:text-slate-400">
+              Select a category to view expiry documents.
+            </div>
+          ) : isLoading ? (
             <div className="flex justify-center py-10">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
             </div>
