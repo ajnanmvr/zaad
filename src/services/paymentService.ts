@@ -1,6 +1,4 @@
-import { filterData } from "@/utils/filterData";
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
-import { randomUUID } from "crypto";
 import {
   aggregateEntityRecordStatsByEntityIds,
   aggregateLiabilityEntityStatsByKeys,
@@ -9,29 +7,29 @@ import {
   bulkUpsertEntityRecordStats,
   bulkUpsertLiabilityEntityStats,
   bulkUpsertOfficeRecordCategoryStats,
+  countRecordsByQuery,
   createPaymentEditNotification,
   createRecord,
-  countRecordsByQuery,
   distinctEmployeeIdsByCompany,
-  findEntityRecordStatsByEntityIds,
   findEntitiesByIds,
+  findEntityRecordStatsByEntityIds,
   findLiabilityEntityStatsByKeys,
+  findMonthlyFinanceStatsByYearMonth,
   findOfficeRecordCategoryStatsByKeys,
-  findPublishedEntityIds,
   findOneRecord,
-  findPaymentTemplateMethods,
-  findPaymentTemplateByMethodName,
   findPaymentStatusTemplateByStatusName,
-  findPaymentStatusTemplates,
+  findPaymentTemplateByMethodName,
+  findPaymentTemplateMethods,
   findRecordById,
   findRecordByIdAndPopulate,
   findRecordByIdLean,
   findRecords,
   updateManyRecords,
   updateRecordById,
-  findMonthlyFinanceStatsByYearMonth,
-  upsertMonthlyFinanceStats,
+  upsertMonthlyFinanceStats
 } from "@/repositories/paymentRepository";
+import { filterData } from "@/utils/filterData";
+import { randomUUID } from "crypto";
 
 const CONTENT_PER_SECTION = 25;
 
@@ -842,15 +840,6 @@ async function refreshEntityStatsForRecordRows(records: any[]) {
     !affectedLiabilityEntityKeys.length
   ) {
     return;
-  }
-
-  // Ensure entity record stats exist for entities with records
-  if (affectedEntityIds.length) {
-    const entityRows = await findEntitiesByIds(affectedEntityIds);
-    for (const entity of entityRows) {
-      const entityType = String(entity?.entityType || "company");
-      await ensureEntityRecordStats(String(entity?._id), entityType);
-    }
   }
 
   await Promise.all([
@@ -2224,7 +2213,21 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
   const profit = Number(profitData.totalServiceFee || 0);
   const netProfit = profit - Number(officeRecordsData.totalExpense || 0);
 
-  // 4. Aggregate payment methods breakdown (income and expense per method, excluding service fees from balance)
+  // 4. Aggregate payment methods breakdown.
+  // Balance carries forward from the previous month: prevBalance + income - expense.
+  const previousMonth = computeMonth === 1 ? 12 : computeMonth - 1;
+  const previousYear = computeMonth === 1 ? computeYear - 1 : computeYear;
+  const previousMonthlyStats = await findMonthlyFinanceStatsByYearMonth(previousYear, previousMonth);
+  const previousBalancesByMethodId = new Map<string, { balance: number; methodLabel?: string }>(
+    ((previousMonthlyStats as any)?.paymentMethods || []).map((row: any) => [
+      String(row?.methodId || ""),
+      {
+        balance: Number(row?.balance || 0),
+        methodLabel: String(row?.methodLabel || ""),
+      },
+    ]),
+  );
+
   const paymentMethodsAgg = await aggregateRecords([
     {
       $match: dateMatch,
@@ -2252,29 +2255,43 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
     },
   ]);
 
-  // Build payment methods array with labels
+  // Build payment methods array with labels and carried-forward balances
   const paymentMethodsMap = new Map<string, any>();
-  const methodIds = paymentMethodsAgg.map((row: any) => String(row._id?.methodId || ""));
-  
-  if (methodIds.length > 0) {
-    const methods = await findPaymentTemplateMethods();
-    const methodTemplatesById = new Map(
-      (methods as any[]).map((m: any) => [String(m._id), m])
-    );
+  const methods = await findPaymentTemplateMethods();
+  const methodTemplatesById = new Map(
+    (methods as any[]).map((m: any) => [String(m._id), m]),
+  );
 
-    for (const row of paymentMethodsAgg) {
-      const methodId = String(row._id?.methodId || "");
-      const method = methodTemplatesById.get(methodId);
-      const methodLabel = method?.method || methodId || "Unknown";
+  const currentTotalsByMethodId = new Map<string, { income: number; expense: number }>();
+  for (const row of paymentMethodsAgg) {
+    const methodId = String(row._id?.methodId || "");
+    currentTotalsByMethodId.set(methodId, {
+      income: Number(row.incomeTotal || 0),
+      expense: Number(row.expenseTotal || 0),
+    });
+  }
 
-      paymentMethodsMap.set(methodId, {
-        methodId,
-        methodLabel,
-        income: Number((row.incomeTotal || 0).toFixed(2)),
-        expense: Number((row.expenseTotal || 0).toFixed(2)),
-        balance: Number(((row.incomeTotal || 0) - (row.expenseTotal || 0)).toFixed(2)),
-      });
-    }
+  const allMethodIds = Array.from(new Set<string>([
+    ...Array.from(previousBalancesByMethodId.keys()),
+    ...Array.from(currentTotalsByMethodId.keys()),
+  ]));
+
+  for (const methodId of allMethodIds) {
+    const method = methodTemplatesById.get(methodId);
+    const previous = previousBalancesByMethodId.get(methodId);
+    const current = currentTotalsByMethodId.get(methodId) || { income: 0, expense: 0 };
+    const prevBalance = Number(previous?.balance || 0);
+    const currentIncome = Number(current.income || 0);
+    const currentExpense = Number(current.expense || 0);
+    const methodLabel = method?.method || previous?.methodLabel || methodId || "Unknown";
+
+    paymentMethodsMap.set(methodId, {
+      methodId,
+      methodLabel,
+      income: Number(currentIncome.toFixed(2)),
+      expense: Number(currentExpense.toFixed(2)),
+      balance: Number((prevBalance + currentIncome - currentExpense).toFixed(2)),
+    });
   }
 
   // Build final response
@@ -2310,16 +2327,12 @@ export async function backfillMonthlyFinanceStats(startYear?: number, startMonth
   const now = new Date();
   
   // Find the earliest record in the database
-  const Records = await getRecordClient({});
-  if (!Records) {
+  const earliestRecordQuery = await findOneRecord({ deletedAt: null }, "createdAt", { createdAt: 1 });
+  if (!earliestRecordQuery) {
     throw new Error("Unable to connect to records database");
   }
 
-  const earliestRecord = await Records.findOne(
-    { deletedAt: null },
-    { createdAt: 1 },
-    { sort: { createdAt: 1 } }
-  ).lean();
+  const earliestRecord = await earliestRecordQuery.lean();
 
   if (!earliestRecord) {
     return {

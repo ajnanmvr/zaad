@@ -155,22 +155,24 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
     try {
       setIsRefreshingLedgerStats(true);
       
-      // Recompute entity ledger stats
+      // Recompute all ledger precomputations
       const response = await axios.post("/api/payment/entity-stats/recompute");
       const updatedEntities = Number(response?.data?.updatedEntities || 0);
       const updatedOfficeCategories = Number(response?.data?.updatedOfficeCategories || 0);
       const updatedLiabilityEntities = Number(response?.data?.updatedLiabilityEntities || 0);
       
-      // Also recompute current month's monthly stats
+      // Also recompute all monthly finance stats up to the current month
+      let monthlyComputedMonths = 0;
       try {
-        await axios.post("/api/payment/monthly-stats/recompute");
+        const monthlyResponse = await axios.post("/api/admin/payment/backfill-monthly-stats");
+        monthlyComputedMonths = Number(monthlyResponse?.data?.computedMonths || 0);
       } catch (monthlyError) {
         // Log error but don't fail the entire operation
         console.warn("Failed to recompute monthly stats:", monthlyError);
       }
       
       toast.success(
-        `Ledger stats refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities)`,
+        `All precomputations refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities, ${monthlyComputedMonths} monthly periods)`,
       );
       
       // Invalidate related queries

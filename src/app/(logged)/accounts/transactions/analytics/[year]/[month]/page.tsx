@@ -40,29 +40,15 @@ export default function MonthlyStatsPage({
 }) {
   const year = Number(params.year);
   const month = Number(params.month);
+  const isInitialParamsValid = !!year && year >= 2000 && year <= 2100 && !!month && month >= 1 && month <= 12;
 
-  // Validate year and month
-  if (!year || year < 2000 || year > 2100 || !month || month < 1 || month > 12) {
-    return (
-      <div className="min-h-screen bg-white p-8 dark:bg-slate-950">
-        <Breadcrumb pageName="Monthly Finance Summary" />
-        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
-          <p className="text-red-700 dark:text-red-300">Invalid year or month provided</p>
-        </div>
-        <div className="mt-4">
-          <Link href="/accounts/transactions/analytics" className="text-blue-600 hover:underline dark:text-blue-400">
-            ← Back to Finance Summary
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const [displayMonth, setDisplayMonth] = useState(month);
-  const [displayYear, setDisplayYear] = useState(year);
+  const [displayMonth, setDisplayMonth] = useState(isInitialParamsValid ? month : 1);
+  const [displayYear, setDisplayYear] = useState(isInitialParamsValid ? year : 2000);
+  const isDisplayParamsValid = displayYear >= 2000 && displayYear <= 2100 && displayMonth >= 1 && displayMonth <= 12;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["finance-summary-monthly", displayYear, displayMonth],
+    enabled: isDisplayParamsValid,
     queryFn: async () => {
       const response = await axios.get("/api/payment/monthly-stats", {
         params: {
@@ -80,6 +66,22 @@ export default function MonthlyStatsPage({
       year: "numeric",
     });
   }, [displayYear, displayMonth]);
+
+  if (!isInitialParamsValid) {
+    return (
+      <div className="min-h-screen bg-white p-8 dark:bg-slate-950">
+        <Breadcrumb pageName="Monthly Finance Summary" />
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
+          <p className="text-red-700 dark:text-red-300">Invalid year or month provided</p>
+        </div>
+        <div className="mt-4">
+          <Link href="/accounts/transactions/analytics" className="text-blue-600 hover:underline dark:text-blue-400">
+            ← Back to Finance Summary
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handlePreviousMonth = () => {
     if (displayMonth === 1) {
