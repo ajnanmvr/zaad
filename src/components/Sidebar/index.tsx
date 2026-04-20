@@ -190,7 +190,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/"}
                 />
               </li>
-              {(can("tasks.read") || can("tasks.complete") || can("tasks.manage")) && (
+              {(can("tasks.read") ||
+                can("tasks.complete") ||
+                can("tasks.manage")) && (
                 <li>
                   <NavItem
                     href="/tasks"
@@ -221,7 +223,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   href="/company"
                   icon={<FiBriefcase />}
                   label="Companies"
-                  active={pathname.startsWith("/company") && !pathname.includes("register")}
+                  active={
+                    pathname.startsWith("/company") &&
+                    !pathname.includes("register")
+                  }
                 />
               </li>
               <li>
@@ -229,7 +234,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   href="/employee"
                   icon={<FiUser />}
                   label="Employees"
-                  active={pathname.startsWith("/employee") && !pathname.includes("register")}
+                  active={
+                    pathname.startsWith("/employee") &&
+                    !pathname.includes("register")
+                  }
                 />
               </li>
               <li>
@@ -252,7 +260,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       }`}
                       onClick={(event) => {
                         event.preventDefault();
-                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                        sidebarExpanded
+                          ? handleClick()
+                          : setSidebarExpanded(true);
                       }}
                     >
                       <FiFolderPlus className="text-lg opacity-80" />
@@ -300,14 +310,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
             <ul className="space-y-1.5">
               <li>
                 <NavItem
-                  href="/accounts/transactions"
-                  icon={<FiTrendingUp />}
-                  label="All Transactions"
-                  active={pathname === "/accounts/transactions"}
-                />
-              </li>
-              <li>
-                <NavItem
                   href="/accounts/transactions/analytics"
                   icon={<FiBarChart2 />}
                   label="Finance Summary"
@@ -316,10 +318,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               </li>
               <li>
                 <NavItem
-                  href="/accounts/add-record"
-                  icon={<FiFolderPlus />}
-                  label="Add Record"
-                  active={pathname === "/accounts/add-record"}
+                  href="/accounts/transactions"
+                  icon={<FiTrendingUp />}
+                  label="All Transactions"
+                  active={pathname === "/accounts/transactions"}
                 />
               </li>
               <li>
@@ -350,15 +352,23 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     <Link
                       href="#"
                       className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                        pathname.startsWith("/accounts/transactions/credit-list") ||
-                        pathname.startsWith("/accounts/transactions/debit-list") ||
-                        pathname.startsWith("/accounts/transactions/credit-debit")
+                        pathname.startsWith(
+                          "/accounts/transactions/credit-list",
+                        ) ||
+                        pathname.startsWith(
+                          "/accounts/transactions/debit-list",
+                        ) ||
+                        pathname.startsWith(
+                          "/accounts/transactions/credit-debit",
+                        )
                           ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                       }`}
                       onClick={(event) => {
                         event.preventDefault();
-                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                        sidebarExpanded
+                          ? handleClick()
+                          : setSidebarExpanded(true);
                       }}
                     >
                       <FiCreditCard className="text-lg opacity-80" />
@@ -374,7 +384,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             href="/accounts/transactions/credit-list"
                             icon={<FiTrendingUp />}
                             label="Credit List"
-                            active={pathname === "/accounts/transactions/credit-list"}
+                            active={
+                              pathname === "/accounts/transactions/credit-list"
+                            }
                           />
                         </li>
                         <li>
@@ -382,7 +394,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             href="/accounts/transactions/debit-list"
                             icon={<FiTrendingDown />}
                             label="Debit List"
-                            active={pathname === "/accounts/transactions/debit-list"}
+                            active={
+                              pathname === "/accounts/transactions/debit-list"
+                            }
                           />
                         </li>
                       </ul>
@@ -487,7 +501,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
                     pathname.startsWith("/settings/credential-platforms") ||
-                    pathname.startsWith("/settings/office-expense-categories") ||
+                    pathname.startsWith(
+                      "/settings/office-expense-categories",
+                    ) ||
                     pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates") ||
@@ -500,18 +516,26 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         href="#"
                         className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
                           pathname.startsWith("/settings/document-types") ||
-                          pathname.startsWith("/settings/credential-platforms") ||
-                          pathname.startsWith("/settings/office-expense-categories") ||
+                          pathname.startsWith(
+                            "/settings/credential-platforms",
+                          ) ||
+                          pathname.startsWith(
+                            "/settings/office-expense-categories",
+                          ) ||
                           pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates") ||
-                          pathname.startsWith("/settings/particular-suggestions")
+                          pathname.startsWith(
+                            "/settings/particular-suggestions",
+                          )
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                         }`}
                         onClick={(event) => {
                           event.preventDefault();
-                          sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                          sidebarExpanded
+                            ? handleClick()
+                            : setSidebarExpanded(true);
                         }}
                       >
                         <FiLayers className="text-lg opacity-80" />
@@ -535,7 +559,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               href="/settings/credential-platforms"
                               icon={<FiFileText />}
                               label="Credential Platforms"
-                              active={pathname === "/settings/credential-platforms"}
+                              active={
+                                pathname === "/settings/credential-platforms"
+                              }
                             />
                           </li>
                           <li>
@@ -543,7 +569,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               href="/settings/office-expense-categories"
                               icon={<FiBriefcase />}
                               label="Office Categories"
-                              active={pathname === "/settings/office-expense-categories"}
+                              active={
+                                pathname ===
+                                "/settings/office-expense-categories"
+                              }
                             />
                           </li>
                           <li>
@@ -567,7 +596,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               href="/settings/particular-suggestions"
                               icon={<FiFileText />}
                               label="Particular Suggestions"
-                              active={pathname === "/settings/particular-suggestions"}
+                              active={
+                                pathname === "/settings/particular-suggestions"
+                              }
                             />
                           </li>
                         </ul>

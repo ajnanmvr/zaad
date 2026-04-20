@@ -1,12 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ApexOptions } from "apexcharts";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import {
   FiActivity,
@@ -18,8 +16,6 @@ import {
   FiTrendingDown,
   FiTrendingUp,
 } from "react-icons/fi";
-
-const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 type MonthlyCategory = {
   categoryId: string;
@@ -83,14 +79,14 @@ function MetricCard({
   };
 
   return (
-    <article className={clsx("rounded-3xl border p-5 shadow-sm backdrop-blur", tones[tone])}>
+    <article className={clsx("rounded-3xl relative border p-5 shadow-sm backdrop-blur", tones[tone])}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">{title}</p>
-          <p className="mt-3 min-w-[9ch] tabular-nums text-3xl font-black leading-none text-slate-950 dark:text-white">{value}</p>
+          <p className="mt-3 min-w-[9ch] tabular-nums text-2xl font-black leading-none text-slate-950 dark:text-white">{value}</p>
           <p className="mt-2 text-xs font-medium opacity-80">{subtitle}</p>
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/80 p-2 shadow-sm dark:bg-slate-900/80">{icon}</div>
+        <div className="flex absolute right-4 h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/80 p-2 shadow-sm dark:bg-slate-900/80">{icon}</div>
       </div>
     </article>
   );
@@ -260,34 +256,6 @@ function LineChart({
   );
 }
 
-function ComparisonBars({
-  items,
-}: {
-  items: Array<{
-    label: string;
-    value: number;
-    color: string;
-  }>;
-}) {
-  const max = Math.max(...items.map((item) => item.value), 1);
-
-  return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/40">
-      {items.map((item) => (
-        <div key={item.label}>
-          <div className="mb-1 flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-200">
-            <span>{item.label}</span>
-            <span className="tabular-nums">{formatCurrency(item.value)}</span>
-          </div>
-          <div className="h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-            <div className="h-full rounded-full" style={{ width: `${Math.max((item.value / max) * 100, 8)}%`, background: item.color }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function FinanceAnalyticsPage() {
   const LIMITS = {
     paymentMethodRows: 6,
@@ -350,6 +318,10 @@ export default function FinanceAnalyticsPage() {
   const currentMonthCategories = latestStats?.officeRecords?.byCategory || [];
   const currentMonthMethods = [...(latestStats?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
   const currentMonthMethodsLimited = currentMonthMethods.slice(0, LIMITS.paymentMethodRows);
+  const currentMonthTotalBalance = useMemo(
+    () => currentMonthMethods.reduce((sum, method) => sum + Number(method.balance || 0), 0),
+    [currentMonthMethods],
+  );
 
   const isNetPositive = Number(latestStats?.netProfit || 0) >= 0;
 
@@ -362,36 +334,6 @@ export default function FinanceAnalyticsPage() {
       color: ["#F43F5E", "#FB7185", "#EC4899", "#F97316", "#8B5CF6", "#10B981", "#06B6D4", "#F59E0B"][index % 8],
     }))
     .filter((slice) => slice.value > 0);
-
-  const currentComparisonSlices = latestStats
-    ? [
-        { label: "Profit", value: Math.max(latestStats.profit, 0), color: "#10B981" },
-        { label: "Office Expense", value: Math.max(latestStats.officeRecords.totalExpense, 0), color: "#F43F5E" },
-      ]
-    : [];
-
-  const currentComparisonOptions: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false } },
-    colors: ["#10B981", "#F43F5E"],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        borderRadius: 6,
-        columnWidth: "48%",
-      },
-    },
-    xaxis: {
-      categories: [latestStats ? monthLabel(latestStats.month, latestStats.year) : "Current Month"],
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => `${Math.round(value)}`,
-      },
-    },
-    legend: { position: "top" },
-    dataLabels: { enabled: false },
-    grid: { borderColor: "#E2E8F0" },
-  };
 
   return (
     <div className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">
@@ -419,16 +361,16 @@ export default function FinanceAnalyticsPage() {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
-          title="Total Transactions"
-          value={isLoading ? "..." : totals.transactions.toLocaleString()}
-          subtitle={`Average ${averages.transactions.toFixed(1)} per month`}
+          title="Transactions"
+          value={isLoading ? "..." : totals.transactions.toLocaleString() + " Transactions"}
+          subtitle={`Average ${averages.transactions.toFixed(0)} transactions per month`}
           tone="cyan"
           icon={<FiActivity className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />}
         />
         <MetricCard
-          title="Office Income"
-          value={isLoading ? "..." : formatCurrency(totals.income)}
-          subtitle={`Average ${formatCurrency(averages.income)} per month`}
+          title="Total Balance"
+          value={isLoading ? "..." : formatCurrency(currentMonthTotalBalance)}
+          subtitle="Current month total across payment methods"
           tone="emerald"
           icon={<FiDollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />}
         />
@@ -455,29 +397,7 @@ export default function FinanceAnalyticsPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <ChartCard title="Current Month Comparison" subtitle={latestStats ? monthLabel(latestStats.month, latestStats.year) : "No month loaded"}>
-          {latestStats ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-                <ReactApexChart
-                  type="bar"
-                  height={300}
-                  options={currentComparisonOptions}
-                  series={[
-                    { name: "Profit", data: [currentComparisonSlices[0]?.value || 0] },
-                    { name: "Office Expense", data: [currentComparisonSlices[1]?.value || 0] },
-                  ]}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-              No monthly stats available yet.
-            </div>
-          )}
-        </ChartCard>
-
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <ChartCard title="Office Expense Pie" subtitle={`Category split for ${latestStats ? monthLabel(latestStats.month, latestStats.year) : "the latest month"}`}>
           {officeExpenseSlices.length > 0 ? (
             <PieChart
@@ -497,7 +417,7 @@ export default function FinanceAnalyticsPage() {
             <div className="space-y-4">
               <div className="rounded-2xl bg-gradient-to-br from-cyan-50 to-emerald-50 p-5 text-slate-900 ring-1 ring-cyan-100 dark:from-slate-950 dark:to-cyan-950 dark:text-white dark:ring-cyan-900/40">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Net Profit</p>
-                <p className={clsx("mt-2 text-4xl font-black", isNetPositive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
+                <p className={clsx("mt-2 text-3xl font-black", isNetPositive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
                   {formatCurrency(latestStats.netProfit)}
                 </p>
                 <p className="mt-2 text-xs text-slate-500 dark:text-cyan-100/80">
