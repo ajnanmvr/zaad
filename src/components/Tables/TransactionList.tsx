@@ -11,7 +11,7 @@ import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import EntityAvatar from "../common/EntityAvatar";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import ExportActionsMenu from "../common/ExportActionsMenu";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
 import {
@@ -36,6 +36,7 @@ import {
   FiChevronRight,
   FiSearch,
   FiFileText,
+  FiRefreshCw,
 } from "react-icons/fi";
 
 type TPaymentMethodOption = {
@@ -327,6 +328,7 @@ const TransactionList = ({
   returnTo?: string;
 }) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { user } = useUserContext();
   const isAdmin = ["admin", "superadmin"].includes(
@@ -348,6 +350,7 @@ const TransactionList = ({
   const [isSortOpen, setSortOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [isRefreshingLedgerStats, setIsRefreshingLedgerStats] = useState(false);
   const [entityRecordsType, setEntityRecordsType] = useState<
     "company" | "employees" | "both"
   >("company");
@@ -503,12 +506,35 @@ const TransactionList = ({
       setHasMore(paymentData.hasMore);
 
       if (hasLedgerContext) {
-        const { balance, totalIncome, totalExpense, totalTransactions } =
+        const fallbackTotals =
           summarizeTransactionRecords(nextRecords, isInnerEntityRecords);
-        setCards([balance, totalIncome, totalExpense, totalTransactions]);
+        const totalIncome = Number(paymentData?.totalIncome);
+        const totalExpense = Number(paymentData?.totalExpense);
+        const totalTransactions = Number(paymentData?.totalTransactions);
+        const balance = Number(paymentData?.balance);
+
+        const nextTotalIncome = Number.isFinite(totalIncome)
+          ? totalIncome
+          : fallbackTotals.totalIncome;
+        const nextTotalExpense = Number.isFinite(totalExpense)
+          ? totalExpense
+          : fallbackTotals.totalExpense;
+        const nextTotalTransactions = Number.isFinite(totalTransactions)
+          ? totalTransactions
+          : fallbackTotals.totalTransactions;
+        const nextBalance = Number.isFinite(balance)
+          ? balance
+          : fallbackTotals.balance;
+
+        setCards([
+          nextBalance,
+          nextTotalIncome,
+          nextTotalExpense,
+          nextTotalTransactions,
+        ]);
 
         const recordsWithRunningBalance = [...nextRecords];
-        let runningBalance = balance;
+        let runningBalance = nextBalance;
 
         for (let i = 0; i < recordsWithRunningBalance.length; i++) {
           const record = recordsWithRunningBalance[i];
@@ -565,6 +591,41 @@ const TransactionList = ({
     () => summarizeTransactionRecords(visibleRecords, true),
     [visibleRecords],
   );
+
+  const precomputedEntitySummary = useMemo(() => {
+    if (!isInnerEntityRecords) {
+      return null;
+    }
+
+    const totalIncome = Number(paymentData?.totalIncome);
+    const totalExpense = Number(paymentData?.totalExpense);
+    const totalTransactions = Number(paymentData?.totalTransactions);
+    const balance = Number(paymentData?.balance);
+
+    if (
+      !Number.isFinite(totalIncome) ||
+      !Number.isFinite(totalExpense) ||
+      !Number.isFinite(totalTransactions) ||
+      !Number.isFinite(balance)
+    ) {
+      return null;
+    }
+
+    return {
+      totalIncome,
+      totalExpense,
+      totalTransactions,
+      balance,
+    };
+  }, [
+    isInnerEntityRecords,
+    paymentData?.balance,
+    paymentData?.totalExpense,
+    paymentData?.totalIncome,
+    paymentData?.totalTransactions,
+  ]);
+
+  const displayEntitySummary = precomputedEntitySummary || entitySummary;
 
   const selectedRecords = useMemo(
     () =>
@@ -895,6 +956,26 @@ const TransactionList = ({
       ? `/accounts/add-record?type=expense&lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
       : "/accounts/add-record?type=expense";
 
+  const handleRecomputeEntityStats = async () => {
+    if (isRefreshingLedgerStats) {
+      return;
+    }
+
+    try {
+      setIsRefreshingLedgerStats(true);
+      const response = await axios.post("/api/payment/entity-stats/recompute");
+      const updatedEntities = Number(response?.data?.updatedEntities || 0);
+      toast.success(`Entity stats refreshed (${updatedEntities} entities)`);
+      await queryClient.invalidateQueries({ queryKey: ["payment"] });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error || "Failed to refresh entity ledger stats",
+      );
+    } finally {
+      setIsRefreshingLedgerStats(false);
+    }
+  };
+
   return (
     <>
       {type && !embedded && (
@@ -938,37 +1019,53 @@ const TransactionList = ({
       )}
 
       {isInnerEntityRecords && (
-        <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          <CardDataStats
-            loading={isLoading}
-            title="Transactions"
-            total={`${entitySummary.totalTransactions}`}
-          >
-            <FiInfo className="text-xl" />
-          </CardDataStats>
-          <CardDataStats
-            loading={isLoading}
-            title="Total Income"
-            total={`${entitySummary.totalIncome.toFixed(2)} AED`}
-            color="emerald-500"
-          >
-            <FiArrowDownLeft className="text-xl text-emerald-500" />
-          </CardDataStats>
-          <CardDataStats
-            loading={isLoading}
-            title="Total Expense"
-            total={`${entitySummary.totalExpense.toFixed(2)} AED`}
-            color="rose-500"
-          >
-            <FiArrowUpRight className="text-xl text-rose-500" />
-          </CardDataStats>
-          <CardDataStats
-            loading={isLoading}
-            title="Balance"
-            total={`${entitySummary.balance.toFixed(2)} AED`}
-          >
-            <FiFilter className="text-xl text-emerald-500" />
-          </CardDataStats>
+        <div className="my-6 space-y-3">
+          {isAdmin && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleRecomputeEntityStats}
+                disabled={isRefreshingLedgerStats}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <FiRefreshCw className={clsx("text-sm", isRefreshingLedgerStats && "animate-spin")} />
+                {isRefreshingLedgerStats ? "Refreshing stats..." : "Recompute All Entity Stats"}
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+            <CardDataStats
+              loading={isLoading}
+              title="Transactions"
+              total={`${displayEntitySummary.totalTransactions}`}
+            >
+              <FiInfo className="text-xl" />
+            </CardDataStats>
+            <CardDataStats
+              loading={isLoading}
+              title="Total Income"
+              total={`${displayEntitySummary.totalIncome.toFixed(2)} AED`}
+              color="emerald-500"
+            >
+              <FiArrowDownLeft className="text-xl text-emerald-500" />
+            </CardDataStats>
+            <CardDataStats
+              loading={isLoading}
+              title="Total Expense"
+              total={`${displayEntitySummary.totalExpense.toFixed(2)} AED`}
+              color="rose-500"
+            >
+              <FiArrowUpRight className="text-xl text-rose-500" />
+            </CardDataStats>
+            <CardDataStats
+              loading={isLoading}
+              title="Balance"
+              total={`${displayEntitySummary.balance.toFixed(2)} AED`}
+            >
+              <FiFilter className="text-xl text-emerald-500" />
+            </CardDataStats>
+          </div>
         </div>
       )}
 

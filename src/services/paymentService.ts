@@ -2,11 +2,15 @@ import { filterData } from "@/utils/filterData";
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
 import { randomUUID } from "crypto";
 import {
+  aggregateEntityRecordStatsByEntityIds,
   aggregateRecords,
+  bulkUpsertEntityRecordStats,
   createPaymentEditNotification,
   createRecord,
   distinctEmployeeIdsByCompany,
+  findEntityRecordStatsByEntityIds,
   findEntitiesByIds,
+  findPublishedEntityIds,
   findOneRecord,
   findPaymentTemplateMethods,
   findPaymentTemplateByMethodName,
@@ -218,9 +222,184 @@ function getPaymentSortMap(sort?: string | null) {
   return sortMap[String(sort || "newest")] || sortMap.newest;
 }
 
+type EntityLedgerTotals = {
+  totalIncome: number;
+  totalExpense: number;
+  totalTransactions: number;
+  balance: number;
+  lastRecomputedAt?: string;
+};
+
+const ZERO_ENTITY_TOTALS: EntityLedgerTotals = {
+  totalIncome: 0,
+  totalExpense: 0,
+  totalTransactions: 0,
+  balance: 0,
+};
+
+function normalizeEntityIds(entityIds: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      entityIds
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function mapStatsRowsToTotalsByEntity(statsRows: any[]) {
+  const totalsByEntity = new Map<string, EntityLedgerTotals>();
+
+  for (const row of statsRows || []) {
+    const entityId = String(row?.entity || row?._id || "").trim();
+    if (!entityId) continue;
+
+    const totalIncome = Number(row?.totalIncome || 0);
+    const totalExpense = Number(row?.totalExpense || 0);
+    const totalTransactions = Number(row?.totalTransactions || 0);
+    const balance = Number(row?.balance ?? totalIncome - totalExpense);
+    const lastRecomputedAt = row?.lastRecomputedAt
+      ? new Date(row.lastRecomputedAt).toISOString()
+      : undefined;
+
+    totalsByEntity.set(entityId, {
+      totalIncome,
+      totalExpense,
+      totalTransactions,
+      balance,
+      lastRecomputedAt,
+    });
+  }
+
+  return totalsByEntity;
+}
+
+function sumEntityTotals(rows: EntityLedgerTotals[]) {
+  return rows.reduce<EntityLedgerTotals>(
+    (acc, row) => {
+      acc.totalIncome += Number(row.totalIncome || 0);
+      acc.totalExpense += Number(row.totalExpense || 0);
+      acc.totalTransactions += Number(row.totalTransactions || 0);
+      acc.balance += Number(row.balance || 0);
+      return acc;
+    },
+    { ...ZERO_ENTITY_TOTALS },
+  );
+}
+
+async function recomputeEntityRecordStats(entityIds?: string[]) {
+  const normalizedEntityIds = normalizeEntityIds(entityIds || []);
+  const recomputeAll = normalizedEntityIds.length === 0;
+
+  const entityRows = recomputeAll
+    ? await findPublishedEntityIds()
+    : await findEntitiesByIds(normalizedEntityIds);
+  const targetEntityIds = normalizeEntityIds(
+    entityRows.map((row: any) => String(row?._id || row?.id || "")),
+  );
+
+  if (targetEntityIds.length === 0) {
+    return {
+      updatedEntities: 0,
+      lastRecomputedAt: new Date().toISOString(),
+    };
+  }
+
+  const aggregateRows = await aggregateEntityRecordStatsByEntityIds(targetEntityIds);
+  const aggregateByEntity = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByEntity.set(key, row);
+    }
+  }
+
+  const now = new Date();
+  const upsertRows = targetEntityIds.map((entityId) => {
+    const aggregated = aggregateByEntity.get(entityId);
+    const totalIncome = Number(aggregated?.totalIncome || 0);
+    const totalExpense = Number(aggregated?.totalExpense || 0);
+    const totalTransactions = Number(aggregated?.totalTransactions || 0);
+    return {
+      entity: entityId,
+      totalIncome,
+      totalExpense,
+      totalTransactions,
+      balance: Number((totalIncome - totalExpense).toFixed(2)),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertEntityRecordStats(upsertRows);
+
+  return {
+    updatedEntities: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function getEntityTotals(entityId: string): Promise<EntityLedgerTotals> {
+  const normalizedEntityId = String(entityId || "").trim();
+  if (!normalizedEntityId) {
+    return { ...ZERO_ENTITY_TOTALS };
+  }
+
+  let statsRows = await findEntityRecordStatsByEntityIds([normalizedEntityId]);
+  let byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+
+  // Backfill on first read for existing entities that do not yet have cached stats.
+  if (!byEntity.has(normalizedEntityId)) {
+    await recomputeEntityRecordStats([normalizedEntityId]);
+    statsRows = await findEntityRecordStatsByEntityIds([normalizedEntityId]);
+    byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+  }
+
+  return byEntity.get(normalizedEntityId) || { ...ZERO_ENTITY_TOTALS };
+}
+
+async function getCompanyScopedEntityTotals(
+  companyId: string,
+  recordScope: "company" | "employees" | "mixed",
+) {
+  const employeeIds = await distinctEmployeeIdsByCompany(companyId);
+  const employeeIdStrings = employeeIds.map((id: any) => String(id));
+
+  const scopedEntityIds =
+    recordScope === "employees"
+      ? employeeIdStrings
+      : recordScope === "mixed"
+        ? [companyId, ...employeeIdStrings]
+        : [companyId];
+
+  const normalizedIds = normalizeEntityIds(scopedEntityIds);
+  if (!normalizedIds.length) {
+    return { ...ZERO_ENTITY_TOTALS };
+  }
+
+  let statsRows = await findEntityRecordStatsByEntityIds(normalizedIds);
+  let byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+
+  const missingEntityIds = normalizedIds.filter((entityId) => !byEntity.has(entityId));
+  if (missingEntityIds.length > 0) {
+    await recomputeEntityRecordStats(missingEntityIds);
+    statsRows = await findEntityRecordStatsByEntityIds(normalizedIds);
+    byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+  }
+
+  const scopedTotals = sumEntityTotals(
+    normalizedIds.map((entityId) => byEntity.get(entityId) || { ...ZERO_ENTITY_TOTALS }),
+  );
+
+  return scopedTotals;
+}
+
 export function isAdminRole(role?: string) {
   const normalized = (role || "").toLowerCase();
   return normalized === "admin" || normalized === "superadmin";
+}
+
+export async function recomputeAllEntityLedgerStats() {
+  return recomputeEntityRecordStats();
 }
 
 async function resolveLinkedRecordIds(record: any, includeArchived = false) {
@@ -264,6 +443,18 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
   }
 
   return Array.from(linkedIds);
+}
+
+async function refreshEntityStatsForRecordRows(records: any[]) {
+  const affectedEntityIds = normalizeEntityIds(
+    (records || []).map((record) => record?.entity?.toString?.() || record?.entity),
+  );
+
+  if (!affectedEntityIds.length) {
+    return;
+  }
+
+  await recomputeEntityRecordStats(affectedEntityIds);
 }
 
 function buildTotals(records: any[]) {
@@ -405,6 +596,8 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     ],
   });
 
+  await refreshEntityStatsForRecordRows([data]);
+
   return data;
 }
 
@@ -496,7 +689,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   const newNumber = latest?.number || 0;
   const transferGroupId = generateGroupId();
 
-  await createRecord({
+  const firstRecord = await createRecord({
     createdBy: principal.userId,
     type: "expense",
     recordKind: "self_transfer",
@@ -518,7 +711,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     ],
   });
 
-  await createRecord({
+  const secondRecord = await createRecord({
     createdBy: principal.userId,
     type: "income",
     recordKind: "self_transfer",
@@ -811,7 +1004,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     normalizedPayload.status = profitStatusTemplate._id;
   }
 
-  await createRecord({
+  const firstRecord = await createRecord({
     ...normalizedPayload,
     createdBy: principal.userId,
     activityLog: [
@@ -840,7 +1033,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     throw new Error("Payment method is required for instant profit records");
   }
 
-  await createRecord({
+  const secondRecord = await createRecord({
     ...rest,
     // Mirror expense carries the income amount as service fee.
     serviceFee: Number(originalAmount || 0),
@@ -861,6 +1054,8 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
       },
     ],
   });
+
+  await refreshEntityStatsForRecordRows([firstRecord, secondRecord]);
 }
 
 export async function listPaymentAccounts(searchParams: URLSearchParams) {
@@ -1161,8 +1356,10 @@ export async function listCompanyPaymentRecords(
 
   const hasMore = records.length > pageSize;
   const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
-  const allRecords = await findRecords(query);
-  const totals = buildTotals(allRecords);
+  const totals = await getCompanyScopedEntityTotals(
+    companyId,
+    input.recordScope || "company",
+  );
 
   return {
     count: transformedData.length,
@@ -1203,8 +1400,7 @@ export async function listEmployeePaymentRecords(
 
   const hasMore = records.length > pageSize;
   const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
-  const allRecords = await findRecords(query);
-  const totals = buildTotals(allRecords);
+  const totals = await getEntityTotals(employeeId);
 
   return {
     count: transformedData.length,
@@ -1248,7 +1444,7 @@ export async function listIndividualPaymentRecords(
   const hasMore = records.length > pageSize;
   const individualRecords = records.slice(0, pageSize);
   const transformedData = individualRecords.map(mapRecordListItem);
-  const totals = buildTotals(await findRecords(await applyPaymentRecordFilters({ ...ACTIVE_RECORD_FILTER, entity: employeeId }, input)));
+  const totals = await getEntityTotals(employeeId);
 
   return {
     count: transformedData.length,
@@ -1265,6 +1461,11 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   }
 
   const linkedIds = await resolveLinkedRecordIds(record);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity" },
+  );
+
   await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
@@ -1284,6 +1485,8 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
       },
     }
   );
+
+  await refreshEntityStatsForRecordRows(linkedRecords);
 
   return { status: 200, body: { message: "data deleted" } };
 }
@@ -1306,6 +1509,11 @@ export async function deleteSelfTransferByGroupId(groupId: string, principal: TP
   }
 
   const linkedIds = await resolveLinkedRecordIds(record);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity" },
+  );
+
   await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
@@ -1322,6 +1530,8 @@ export async function deleteSelfTransferByGroupId(groupId: string, principal: TP
       },
     },
   );
+
+  await refreshEntityStatsForRecordRows(linkedRecords);
 
   return { status: 200, body: { message: "Self transfer deleted", groupId: normalizedGroupId } };
 }
@@ -1392,6 +1602,14 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
     { new: true }
   );
 
+  await recomputeEntityRecordStats(
+    normalizeEntityIds([
+      (existingRecord as any)?.entity?.toString?.() || (existingRecord as any)?.entity,
+      (data as any)?.entity?.toString?.() || (data as any)?.entity,
+      normalizedPayload?.entity,
+    ]),
+  );
+
   const creatorId = existingRecord.createdBy?.toString?.();
   if (data && creatorId && creatorId !== principal.userId) {
     await createPaymentEditNotification({
@@ -1415,6 +1633,11 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   }
 
   const linkedIds = await resolveLinkedRecordIds(record, true);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity" },
+  );
+
   const data = await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
@@ -1434,6 +1657,8 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
       },
     }
   );
+
+  await refreshEntityStatsForRecordRows(linkedRecords);
 
   return { status: 200, body: { message: "Record recovered", data } };
 }

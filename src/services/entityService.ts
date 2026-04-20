@@ -15,6 +15,10 @@ import {
   softDeleteCompanyById,
   updateCompanyById,
 } from "@/repositories/companyRepository";
+import {
+  ensureEntityRecordStats,
+  unpublishEntityRecordStats,
+} from "@/repositories/paymentRepository";
 
 type EntityPayload = {
   documents?: any[];
@@ -81,7 +85,9 @@ export async function createCompanyEntity(entityData: any) {
     const existingColors = await findPublishedCompanyColors();
     entityData.color = generateEntityColor(existingColors);
   }
-  return createCompany(entityData);
+  const company = await createCompany(entityData);
+  await ensureEntityRecordStats(String(company._id));
+  return company;
 }
 
 export async function createEmployeeOrIndividualEntity(entityData: any, entityType?: string) {
@@ -99,9 +105,14 @@ export async function createEmployeeOrIndividualEntity(entityData: any, entityTy
     entityData.color = generateEntityColor(allExistingColors);
   }
   if (entityType === "individual") {
-    return Individual.create(entityData);
+    const individual = await Individual.create(entityData);
+    await ensureEntityRecordStats(String(individual._id));
+    return individual;
   }
-  return Employee.create(entityData);
+
+  const employee = await Employee.create(entityData);
+  await ensureEntityRecordStats(String(employee._id));
+  return employee;
 }
 
 export async function updateCompanyEntity(entityId: string, entityData: any) {
@@ -113,11 +124,29 @@ export async function updateEmployeeEntity(entityId: string, entityData: any) {
 }
 
 export async function softDeleteCompanyEntity(entityId: string) {
-  return softDeleteCompanyById(entityId);
+  const company = await softDeleteCompanyById(entityId);
+  if (company) {
+    await unpublishEntityRecordStats(entityId);
+  }
+  return company;
 }
 
 export async function softDeleteEmployeeEntity(entityId: string) {
-  return Employee.findByIdAndUpdate(entityId, { published: false });
+  const employee = await Employee.findByIdAndUpdate(entityId, { published: false });
+  if (employee) {
+    await unpublishEntityRecordStats(entityId);
+  }
+  return employee;
+}
+
+export async function softDeleteIndividualEntity(entityId: string) {
+  const individual = await Individual.findByIdAndUpdate(entityId, {
+    published: false,
+  });
+  if (individual) {
+    await unpublishEntityRecordStats(entityId);
+  }
+  return individual;
 }
 
 export async function getCompanyEntityById(entityId: string) {

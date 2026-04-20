@@ -12,7 +12,11 @@ import {
   listEntityDocuments,
   replaceEntityDocuments,
 } from "@/services/entityDocumentService";
-import { splitEntityPayload, updateEmployeeEntity } from "@/services/entityService";
+import {
+  softDeleteIndividualEntity,
+  splitEntityPayload,
+  updateEmployeeEntity,
+} from "@/services/entityService";
 
 export async function GET(
   request: NextRequest,
@@ -104,7 +108,7 @@ export async function DELETE(
     await connect();
     await requirePermission(request, "entities.write");
 
-    const individual = await Individual.findByIdAndUpdate(params.id, { published: false });
+    const individual = await softDeleteIndividualEntity(params.id);
     if (!individual) {
       return Response.json({ message: "Individual not found" }, { status: 404 });
     }

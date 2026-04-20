@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
@@ -175,6 +175,9 @@ export default function EntitySectionPage({
   const [showAddCredential, setShowAddCredential] = useState(false);
   const [isAddingDocument, setIsAddingDocument] = useState(false);
   const [isAddingCredential, setIsAddingCredential] = useState(false);
+  const [documentCategoryTab, setDocumentCategoryTab] = useState<
+    "visa" | "license" | "other"
+  >("visa");
   const [visibleCredentialIds, setVisibleCredentialIds] = useState<string[]>(
     [],
   );
@@ -395,6 +398,65 @@ export default function EntitySectionPage({
         new Date(b.expiryDate || "1970-01-01").getTime(),
     );
   }, [documents, documentSort]);
+
+  const documentCategoryCounts = useMemo(() => {
+    const counts = { visa: 0, license: 0, other: 0 };
+
+    for (const doc of sortedDocuments) {
+      const templateMeta = doc.documentTemplate
+        ? documentTemplateMap.get(doc.documentTemplate)
+        : undefined;
+      const category = normalizeDocumentCategory(
+        doc.templateCategory || templateMeta?.category,
+      );
+      counts[category] += 1;
+    }
+
+    return counts;
+  }, [documentTemplateMap, sortedDocuments]);
+
+  const visibleCompanyDocumentTabs = useMemo(() => {
+    const tabs: Array<{ key: "visa" | "license" | "other"; label: string }> = [
+      { key: "visa", label: "Visa Related" },
+      { key: "license", label: "License Related" },
+    ];
+
+    if (documentCategoryCounts.other > 0) {
+      tabs.push({ key: "other", label: "Other" });
+    }
+
+    return tabs;
+  }, [documentCategoryCounts.other]);
+
+  useEffect(() => {
+    if (entityType !== "company") {
+      return;
+    }
+
+    const isCurrentTabVisible = visibleCompanyDocumentTabs.some(
+      (tab) => tab.key === documentCategoryTab,
+    );
+
+    if (!isCurrentTabVisible) {
+      setDocumentCategoryTab("visa");
+    }
+  }, [documentCategoryTab, entityType, visibleCompanyDocumentTabs]);
+
+  const visibleDocuments = useMemo(() => {
+    if (entityType !== "company") {
+      return sortedDocuments;
+    }
+
+    return sortedDocuments.filter((doc) => {
+      const templateMeta = doc.documentTemplate
+        ? documentTemplateMap.get(doc.documentTemplate)
+        : undefined;
+      const category = normalizeDocumentCategory(
+        doc.templateCategory || templateMeta?.category,
+      );
+      return category === documentCategoryTab;
+    });
+  }, [documentCategoryTab, documentTemplateMap, entityType, sortedDocuments]);
 
   const sortedCredentials = useMemo(() => {
     const clone = [...credentials];
@@ -936,6 +998,29 @@ export default function EntitySectionPage({
                     </button>
                   </div>
 
+                  {entityType === "company" && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {visibleCompanyDocumentTabs.map((tab) => (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setDocumentCategoryTab(tab.key)}
+                          className={clsx(
+                            "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition",
+                            documentCategoryTab === tab.key
+                              ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-600/60 dark:bg-cyan-500/15 dark:text-cyan-300"
+                              : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
+                          )}
+                        >
+                          {tab.label}
+                          <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            {documentCategoryCounts[tab.key]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {showAddDocument && (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1043,14 +1128,18 @@ export default function EntitySectionPage({
                     </div>
                   )}
 
-                  {documents.length === 0 ? (
+                  {visibleDocuments.length === 0 ? (
                     <div className="m-1 flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-12 text-center text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-500">
                       <FiFileText className="text-3xl opacity-30" />
-                      <p>No physical documents recorded for this entity.</p>
+                      <p>
+                        {documents.length === 0
+                          ? "No physical documents recorded for this entity."
+                          : "No documents in this category."}
+                      </p>
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/40 dark:border-slate-700 dark:bg-slate-800/20">
-                      {sortedDocuments.map((doc, index) => {
+                      {visibleDocuments.map((doc, index) => {
                         const isArchived = Boolean(doc.archived);
                         const status = calculateStatus(doc.expiryDate || "");
                         const templateMeta = doc.documentTemplate
@@ -1069,7 +1158,7 @@ export default function EntitySectionPage({
                             key={doc._id}
                             className={clsx(
                               "p-4",
-                              index !== sortedDocuments.length - 1 &&
+                              index !== visibleDocuments.length - 1 &&
                                 "border-b border-slate-200 dark:border-slate-700",
                             )}
                           >
