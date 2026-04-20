@@ -207,18 +207,14 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Total Clients</p>
             <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{filteredRows.length}</p>
           </div>
           <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Total Balance</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Total</p>
             <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{formatAmount(totalBalance)}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">Page</p>
-            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{safePage} / {pageCount}</p>
           </div>
         </div>
       </section>
