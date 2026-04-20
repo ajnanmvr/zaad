@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
       return createdAt >= thisMonthStart;
     });
 
+    // Use precomputed stats only for all-time view (no date filters)
     const canUsePrecomputedSummary =
       !search && !type && !method && !from && !to && !month && !year;
 
@@ -163,6 +164,7 @@ export async function GET(request: NextRequest) {
             acc[categoryKey].incomeTotal += amount;
             acc[categoryKey].incomeCount += 1;
           } else {
+            // Include both expense amount and service fee in total
             acc[categoryKey].expenseTotal += amount + serviceFee;
             acc[categoryKey].expenseCount += 1;
           }

@@ -54,11 +54,24 @@ const queryFromFilter = (filter: typeof baseFilter) => {
     if (filter.y) return `?y=${filter.y}`;
   }
 
+  // Current mode: send current month and year as params
+  if (filter.mode === "current") {
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1);
+    const currentYear = String(now.getFullYear());
+    return `?month=${currentMonth}&y=${currentYear}`;
+  }
+
+  // All time: return empty to skip date filters
+  if (filter.mode === "alltime") {
+    return "";
+  }
+
   return "";
 };
 
 const baseFilter = {
-  mode: "current" as "current" | "year" | "month" | "range",
+  mode: "alltime" as "current" | "alltime" | "year" | "month" | "range",
   m: "",
   y: "",
   from: "",
@@ -101,6 +114,12 @@ export default function OfficeRecordsPage() {
   const dateRangeQuery = useMemo(() => queryFromFilter(filter), [filter]);
 
   const filterDisplay = useMemo(() => {
+    if (filter.mode === "alltime") {
+      return "All Time";
+    }
+    if (filter.mode === "current") {
+      return "This Month";
+    }
     if (filter.mode === "range" && filter.from && filter.to) {
       return `${filter.from} to ${filter.to}`;
     }
@@ -213,14 +232,32 @@ export default function OfficeRecordsPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setFilterOpen(true)}
-              className="inline-flex min-w-[200px] items-center justify-between gap-3 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700"
+              onClick={() => setFilter({ ...baseFilter, mode: "alltime" })}
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition",
+                filter.mode === "alltime"
+                  ? "bg-amber-600 text-white"
+                  : "border border-amber-300 bg-white text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300"
+              )}
             >
-              <span className="inline-flex items-center gap-2">
-                <FiFilter />
-                {filterDisplay}
-              </span>
-              <FiChevronDown />
+              <FiFilter /> All Time
+            </button>
+            <button
+              onClick={() => setFilter({ ...baseFilter, mode: "current", m: "", y: "", from: "", to: "" })}
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition",
+                filter.mode === "current"
+                  ? "bg-amber-600 text-white"
+                  : "border border-amber-300 bg-white text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300"
+              )}
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-bold text-amber-700 transition hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300"
+            >
+              More <FiChevronDown />
             </button>
             <Link
               href="/accounts/add-record?recordKind=office_records&type=income"
@@ -300,19 +337,9 @@ export default function OfficeRecordsPage() {
       {isFilterOpen && (
         <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-8">
-            <h3 className="mb-6 text-xl font-black text-slate-900 dark:text-white">Date Range Filter</h3>
+            <h3 className="mb-6 text-xl font-black text-slate-900 dark:text-white">More Date Range Options</h3>
 
-            <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-4">
-              <button
-                onClick={() => setDraft({ ...draft, mode: "current", m: "", y: "", from: "", to: "" })}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  draft.mode === "current"
-                    ? "bg-amber-600 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                {currentMonthYearLabel}
-              </button>
+            <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <button
                 onClick={() => setDraft({ ...draft, mode: "year", m: "", from: "", to: "" })}
                 className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -435,7 +462,7 @@ export default function OfficeRecordsPage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
                 <FiRefreshCw />
-                Reset to {currentMonthYearLabel}
+                Reset to All Time
               </button>
               <div className="flex items-center gap-2">
                 <button

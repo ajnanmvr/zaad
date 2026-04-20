@@ -1,43 +1,45 @@
 "use client";
-import { TRecordList } from "@/types/records";
-import axios from "axios";
-import clsx from "clsx";
-import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import SkeletonList from "../common/SkeletonList";
-import CardDataStats from "../CardDataStats";
-import Breadcrumb from "../Breadcrumbs/Breadcrumb";
-import EntityAvatar from "../common/EntityAvatar";
-import PaymentMethodBadge from "../common/PaymentMethodBadge";
-import ExportActionsMenu from "../common/ExportActionsMenu";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import { useUserContext } from "@/contexts/UserContext";
+import { TRecordList } from "@/types/records";
+import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
 import {
   exportRowsCsv,
   exportRowsExcel,
   exportRowsPdf,
 } from "@/utils/exportTableData";
-import toast from "react-hot-toast";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
-  FiFilter,
-  FiMenu,
-  FiArrowUpRight,
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import axios from "axios";
+import clsx from "clsx";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import {
   FiArrowDownLeft,
   FiArrowRight,
-  FiPlusCircle,
-  FiInfo,
-  FiTrash2,
-  FiX,
+  FiArrowUpRight,
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiSearch,
   FiFileText,
-  FiRefreshCw,
+  FiFilter,
+  FiInfo,
+  FiMenu,
+  FiPlusCircle,
+  FiSearch,
+  FiX
 } from "react-icons/fi";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
+import CardDataStats from "../CardDataStats";
+import EntityAvatar from "../common/EntityAvatar";
+import ExportActionsMenu from "../common/ExportActionsMenu";
+import PaymentMethodBadge from "../common/PaymentMethodBadge";
+import SkeletonList from "../common/SkeletonList";
 
 type TPaymentMethodOption = {
   value: string;
@@ -298,7 +300,8 @@ const summarizeTransactionRecords = (
       }
 
       summary.totalTransactions += 1;
-      summary.balance = summary.totalIncome - (summary.totalExpense + summary.totalServiceFee);
+      summary.balance =
+        summary.totalIncome - (summary.totalExpense + summary.totalServiceFee);
       return summary;
     },
     {
@@ -315,6 +318,7 @@ const TransactionList = ({
   id,
   category,
   embedded = false,
+  enableSelection = false,
   lockEntityType,
   lockEntityId,
   lockEntityName,
@@ -324,6 +328,7 @@ const TransactionList = ({
   id?: string | string[];
   category?: LedgerCategory;
   embedded?: boolean;
+  enableSelection?: boolean;
   lockEntityType?: string;
   lockEntityId?: string;
   lockEntityName?: string;
@@ -507,8 +512,10 @@ const TransactionList = ({
       setHasMore(paymentData.hasMore);
 
       if (hasLedgerContext) {
-        const fallbackTotals =
-          summarizeTransactionRecords(nextRecords, isInnerEntityRecords);
+        const fallbackTotals = summarizeTransactionRecords(
+          nextRecords,
+          isInnerEntityRecords,
+        );
         const totalIncome = Number(paymentData?.totalIncome);
         const totalExpense = Number(paymentData?.totalExpense);
         const totalTransactions = Number(paymentData?.totalTransactions);
@@ -644,8 +651,6 @@ const TransactionList = ({
     visibleRecords.every(
       (record) => record?.id && selectedRecordIds.includes(record.id),
     );
-
-  const enableSelection = true;
   const hasActiveFilter =
     Boolean(filter.m) ||
     Boolean(filter.t) ||
@@ -1007,33 +1012,45 @@ const TransactionList = ({
 
       {isInnerEntityRecords && (
         <div className="my-6 space-y-3">
-
-
           <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Transactions</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                Transactions
+              </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
                 {isLoading ? "..." : displayEntitySummary.totalTransactions}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Income</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                Income
+              </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
-                {isLoading ? "..." : `${displayEntitySummary.totalIncome.toFixed(2)} AED`}
+                {isLoading
+                  ? "..."
+                  : `${displayEntitySummary.totalIncome.toFixed(2)} AED`}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Expense</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                Expense
+              </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
-                {isLoading ? "..." : `${(displayEntitySummary.totalExpense + displayEntitySummary.totalServiceFee).toFixed(2)} AED`}
+                {isLoading
+                  ? "..."
+                  : `${(displayEntitySummary.totalExpense + displayEntitySummary.totalServiceFee).toFixed(2)} AED`}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Balance</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                Balance
+              </p>
               <p
                 className={clsx(
                   "mt-1 text-base font-black",
-                  entityBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400",
+                  entityBalance < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-emerald-600 dark:text-emerald-400",
                 )}
               >
                 {isLoading ? "..." : entityBalanceLabel}
@@ -1245,8 +1262,6 @@ const TransactionList = ({
                   </div>
                 )}
               </div>
-
-
 
               <ExportActionsMenu
                 iconOnly
@@ -1493,7 +1508,12 @@ const TransactionList = ({
                         return (
                           <tr
                             key={key}
-                            className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                            className={clsx(
+                              "group border-b border-slate-100 transition-colors last:border-0 dark:border-slate-800",
+                              key % 2 === 0
+                                ? "bg-white dark:bg-slate-900 hover:bg-slate-200/60 dark:hover:bg-slate-800/50"
+                                : "bg-slate-100 dark:bg-slate-800/30 hover:bg-slate-200  dark:hover:bg-slate-800/50",
+                            )}
                           >
                             {enableSelection && (
                               <td className="py-4 pl-4 align-top">
