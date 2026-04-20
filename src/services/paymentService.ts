@@ -393,21 +393,53 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
   const normalizedEntityIds = normalizeEntityIds(entityIds || []);
   const recomputeAll = normalizedEntityIds.length === 0;
 
-  const entityRows = recomputeAll
-    ? await findPublishedEntityIds()
-    : await findEntitiesByIds(normalizedEntityIds);
-  const targetEntityIds = normalizeEntityIds(
-    entityRows.map((row: any) => String(row?._id || row?.id || "")),
-  );
+  // When recomputing all, get aggregates first to determine which entities have records
+  if (recomputeAll) {
+    const aggregateRows = await aggregateEntityRecordStatsByEntityIds();
+    const aggregateByEntity = new Map<string, any>();
+    for (const row of aggregateRows || []) {
+      const key = String(row?._id || "").trim();
+      if (key) {
+        aggregateByEntity.set(key, row);
+      }
+    }
 
-  if (targetEntityIds.length === 0) {
+    if (aggregateByEntity.size === 0) {
+      return {
+        updatedEntities: 0,
+        lastRecomputedAt: new Date().toISOString(),
+      };
+    }
+
+    const now = new Date();
+    const upsertRows = Array.from(aggregateByEntity.values()).map((aggregated) => {
+      const entityId = String(aggregated?._id || "");
+      const totalIncome = Number(aggregated?.totalIncome || 0);
+      const totalExpense = Number(aggregated?.totalExpense || 0);
+      const totalServiceFee = Number(aggregated?.totalServiceFee || 0);
+      const totalTransactions = Number(aggregated?.totalTransactions || 0);
+      return {
+        entity: entityId,
+        entityType: String(aggregated?.entityType || "company"),
+        totalIncome,
+        totalExpense,
+        totalServiceFee,
+        totalTransactions,
+        balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
+        lastRecomputedAt: now,
+      };
+    });
+
+    await bulkUpsertEntityRecordStats(upsertRows);
+
     return {
-      updatedEntities: 0,
-      lastRecomputedAt: new Date().toISOString(),
+      updatedEntities: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
     };
   }
 
-  const aggregateRows = await aggregateEntityRecordStatsByEntityIds(targetEntityIds);
+  // For specific entities, compute and upsert only those with records
+  const aggregateRows = await aggregateEntityRecordStatsByEntityIds(normalizedEntityIds);
   const aggregateByEntity = new Map<string, any>();
   for (const row of aggregateRows || []) {
     const key = String(row?._id || "").trim();
@@ -416,18 +448,28 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
     }
   }
 
+  if (aggregateByEntity.size === 0) {
+    return {
+      updatedEntities: 0,
+      lastRecomputedAt: new Date().toISOString(),
+    };
+  }
+
   const now = new Date();
-  const upsertRows = targetEntityIds.map((entityId) => {
-    const aggregated = aggregateByEntity.get(entityId);
+  const upsertRows = Array.from(aggregateByEntity.values()).map((aggregated) => {
+    const entityId = String(aggregated?._id || "");
     const totalIncome = Number(aggregated?.totalIncome || 0);
     const totalExpense = Number(aggregated?.totalExpense || 0);
+    const totalServiceFee = Number(aggregated?.totalServiceFee || 0);
     const totalTransactions = Number(aggregated?.totalTransactions || 0);
     return {
       entity: entityId,
+      entityType: String(aggregated?.entityType || "company"),
       totalIncome,
       totalExpense,
+      totalServiceFee,
       totalTransactions,
-      balance: Number((totalIncome - totalExpense).toFixed(2)),
+      balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
       lastRecomputedAt: now,
     };
   });
@@ -797,6 +839,15 @@ async function refreshEntityStatsForRecordRows(records: any[]) {
     !affectedLiabilityEntityKeys.length
   ) {
     return;
+  }
+
+  // Ensure entity record stats exist for entities with records
+  if (affectedEntityIds.length) {
+    const entityRows = await findEntitiesByIds(affectedEntityIds);
+    for (const entity of entityRows) {
+      const entityType = String(entity?.entityType || "company");
+      await ensureEntityRecordStats(String(entity?._id), entityType);
+    }
   }
 
   await Promise.all([

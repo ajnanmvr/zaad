@@ -173,6 +173,7 @@ export async function aggregateEntityRecordStatsByEntityIds(entityIds?: string[]
     {
       $group: {
         _id: "$entity",
+        entityType: { $first: "$entityDoc.entityType" },
         totalTransactions: { $sum: 1 },
         totalIncome: {
           $sum: {
@@ -183,7 +184,16 @@ export async function aggregateEntityRecordStatsByEntityIds(entityIds?: string[]
           $sum: {
             $cond: [
               { $eq: ["$type", "expense"] },
-              { $add: [{ $ifNull: ["$amount", 0] }, { $ifNull: ["$serviceFee", 0] }] },
+              { $ifNull: ["$amount", 0] },
+              0,
+            ],
+          },
+        },
+        totalServiceFee: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              { $ifNull: ["$serviceFee", 0] },
               0,
             ],
           },
@@ -204,9 +214,11 @@ export async function bulkUpsertEntityRecordStats(statsRows: any[]) {
         filter: { entity: row.entity },
         update: {
           $set: {
+            entityType: row.entityType,
             published: true,
             totalIncome: row.totalIncome,
             totalExpense: row.totalExpense,
+            totalServiceFee: row.totalServiceFee,
             totalTransactions: row.totalTransactions,
             balance: row.balance,
             lastRecomputedAt: row.lastRecomputedAt || new Date(),
@@ -224,16 +236,17 @@ export async function findEntityRecordStatsByEntityIds(entityIds: string[]) {
   }
 
   return EntityRecordStats.find({ entity: { $in: entityIds }, published: true })
-    .select("entity totalIncome totalExpense totalTransactions balance lastRecomputedAt")
+    .select("entity entityType totalIncome totalExpense totalServiceFee totalTransactions balance lastRecomputedAt")
     .lean();
 }
 
-export async function ensureEntityRecordStats(entityId: string) {
+export async function ensureEntityRecordStats(entityId: string, entityType?: string) {
   return EntityRecordStats.findOneAndUpdate(
     { entity: entityId },
     {
       $setOnInsert: {
         entity: entityId,
+        entityType: entityType || "company",
         totalIncome: 0,
         totalExpense: 0,
         totalTransactions: 0,
@@ -241,6 +254,7 @@ export async function ensureEntityRecordStats(entityId: string) {
         lastRecomputedAt: new Date(),
       },
       $set: {
+        entityType: entityType || "company",
         published: true,
       },
     },

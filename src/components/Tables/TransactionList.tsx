@@ -293,16 +293,18 @@ const summarizeTransactionRecords = (
       if (record?.type === "income" && !isLiabilityRecord(record)) {
         summary.totalIncome += amount;
       } else if (record?.type === "expense") {
-        summary.totalExpense += amount + serviceFee;
+        summary.totalExpense += amount;
+        summary.totalServiceFee += serviceFee;
       }
 
       summary.totalTransactions += 1;
-      summary.balance = summary.totalIncome - summary.totalExpense;
+      summary.balance = summary.totalIncome - (summary.totalExpense + summary.totalServiceFee);
       return summary;
     },
     {
       totalIncome: 0,
       totalExpense: 0,
+      totalServiceFee: 0,
       totalTransactions: 0,
       balance: 0,
     },
@@ -350,7 +352,6 @@ const TransactionList = ({
   const [isSortOpen, setSortOpen] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
-  const [isRefreshingLedgerStats, setIsRefreshingLedgerStats] = useState(false);
   const [entityRecordsType, setEntityRecordsType] = useState<
     "company" | "employees" | "both"
   >("company");
@@ -599,6 +600,7 @@ const TransactionList = ({
 
     const totalIncome = Number(paymentData?.totalIncome);
     const totalExpense = Number(paymentData?.totalExpense);
+    const totalServiceFee = Number(paymentData?.totalServiceFee || 0);
     const totalTransactions = Number(paymentData?.totalTransactions);
     const balance = Number(paymentData?.balance);
 
@@ -614,6 +616,7 @@ const TransactionList = ({
     return {
       totalIncome,
       totalExpense,
+      totalServiceFee,
       totalTransactions,
       balance,
     };
@@ -621,6 +624,7 @@ const TransactionList = ({
     isInnerEntityRecords,
     paymentData?.balance,
     paymentData?.totalExpense,
+    paymentData?.totalServiceFee,
     paymentData?.totalIncome,
     paymentData?.totalTransactions,
   ]);
@@ -956,39 +960,8 @@ const TransactionList = ({
       ? `/accounts/add-record?type=expense&lockEntityType=${encodeURIComponent(lockEntityType)}&lockEntityId=${encodeURIComponent(lockEntityId)}&lockEntityName=${encodeURIComponent(lockEntityName || "")}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`
       : "/accounts/add-record?type=expense";
 
-  const handleRecomputeLedgerStats = async () => {
-    if (isRefreshingLedgerStats) {
-      return;
-    }
-
-    try {
-      setIsRefreshingLedgerStats(true);
-      const response = await axios.post("/api/payment/entity-stats/recompute");
-      const updatedEntities = Number(response?.data?.updatedEntities || 0);
-      const updatedOfficeCategories = Number(
-        response?.data?.updatedOfficeCategories || 0,
-      );
-      const updatedLiabilityEntities = Number(
-        response?.data?.updatedLiabilityEntities || 0,
-      );
-      toast.success(
-        `Ledger stats refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities)`,
-      );
-      await queryClient.invalidateQueries({ queryKey: ["payment"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["office-records-page-summary"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["liability-records-page-summary"],
-      });
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.error || "Failed to refresh ledger stats",
-      );
-    } finally {
-      setIsRefreshingLedgerStats(false);
-    }
-  };
+  const entityBalance = Number(displayEntitySummary.balance || 0);
+  const entityBalanceLabel = `${Math.abs(entityBalance).toFixed(2)} AED`;
 
   return (
     <>
@@ -1034,51 +1007,38 @@ const TransactionList = ({
 
       {isInnerEntityRecords && (
         <div className="my-6 space-y-3">
-          {isAdmin && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleRecomputeLedgerStats}
-                disabled={isRefreshingLedgerStats}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <FiRefreshCw className={clsx("text-sm", isRefreshingLedgerStats && "animate-spin")} />
-                {isRefreshingLedgerStats ? "Refreshing all stats..." : "Refresh All Ledger Stats"}
-              </button>
-            </div>
-          )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-            <CardDataStats
-              loading={isLoading}
-              title="Transactions"
-              total={`${displayEntitySummary.totalTransactions}`}
-            >
-              <FiInfo className="text-xl" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Total Income"
-              total={`${displayEntitySummary.totalIncome.toFixed(2)} AED`}
-              color="emerald-500"
-            >
-              <FiArrowDownLeft className="text-xl text-emerald-500" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Total Expense"
-              total={`${displayEntitySummary.totalExpense.toFixed(2)} AED`}
-              color="rose-500"
-            >
-              <FiArrowUpRight className="text-xl text-rose-500" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Balance"
-              total={`${displayEntitySummary.balance.toFixed(2)} AED`}
-            >
-              <FiFilter className="text-xl text-emerald-500" />
-            </CardDataStats>
+
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Transactions</p>
+              <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
+                {isLoading ? "..." : displayEntitySummary.totalTransactions}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Income</p>
+              <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
+                {isLoading ? "..." : `${displayEntitySummary.totalIncome.toFixed(2)} AED`}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Expense</p>
+              <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
+                {isLoading ? "..." : `${(displayEntitySummary.totalExpense + displayEntitySummary.totalServiceFee).toFixed(2)} AED`}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Balance</p>
+              <p
+                className={clsx(
+                  "mt-1 text-base font-black",
+                  entityBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                {isLoading ? "..." : entityBalanceLabel}
+              </p>
+            </div>
           </div>
         </div>
       )}

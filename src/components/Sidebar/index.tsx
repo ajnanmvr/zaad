@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import axios from "axios";
+import toast from "react-hot-toast";
 import {
-  FiCalendar,
+  FiActivity,
   FiBookOpen,
   FiBriefcase,
+  FiCalendar,
   FiCheckCircle,
-  FiRepeat,
   FiChevronRight,
   FiClock,
   FiCreditCard,
@@ -19,10 +21,14 @@ import {
   FiKey,
   FiLayers,
   FiLock,
+  FiLogOut,
+  FiRepeat,
   FiSettings,
   FiShield,
+  FiMonitor,
   FiTrendingDown,
   FiTrendingUp,
+  FiUser,
   FiUserPlus,
   FiUsers,
   FiX,
@@ -69,6 +75,7 @@ function SectionTitle({ title }: { title: string }) {
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useUserContext();
   const can = (permission: string) =>
     Array.isArray(user?.permissions) &&
@@ -76,8 +83,22 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
 
   const trigger = useRef<HTMLButtonElement | null>(null);
   const sidebar = useRef<HTMLElement | null>(null);
-
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      toast.loading("Logging out");
+      await axios.get("/api/users/auth/logout");
+      toast.dismiss();
+      toast.success("Logged out");
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Logout failed");
+      console.log({ message: "logout failed", error });
+    }
+  };
 
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
@@ -155,10 +176,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
         </div>
       </div>
 
-      <div className="no-scrollbar flex flex-col overflow-y-auto px-4 py-4">
+      <div className="no-scrollbar flex flex-1 flex-col overflow-y-auto px-4 py-4">
         <nav className="space-y-7">
           <div>
-            <SectionTitle title="Workspace" />
+            <SectionTitle title="Overview" />
             <ul className="space-y-1.5">
               <li>
                 <NavItem
@@ -172,7 +193,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/tasks"
-                    icon={<FiCalendar />}
+                    icon={<FiCheckCircle />}
                     label="My Tasks"
                     active={pathname === "/tasks"}
                   />
@@ -182,8 +203,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/tasks/manage"
-                    icon={<FiCheckCircle />}
-                    label="Task Management"
+                    icon={<FiCalendar />}
+                    label="Task Calendar"
                     active={pathname === "/tasks/manage"}
                   />
                 </li>
@@ -199,21 +220,15 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   href="/company"
                   icon={<FiBriefcase />}
                   label="Companies"
-                  active={
-                    pathname.startsWith("/company") &&
-                    !pathname.includes("register")
-                  }
+                  active={pathname.startsWith("/company") && !pathname.includes("register")}
                 />
               </li>
               <li>
                 <NavItem
                   href="/employee"
-                  icon={<FiUsers />}
+                  icon={<FiUser />}
                   label="Employees"
-                  active={
-                    pathname.startsWith("/employee") &&
-                    !pathname.includes("register")
-                  }
+                  active={pathname.startsWith("/employee") && !pathname.includes("register")}
                 />
               </li>
               <li>
@@ -224,7 +239,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname.startsWith("/individual")}
                 />
               </li>
-
               <SidebarLinkGroup activeCondition={pathname.includes("register")}>
                 {(handleClick, open) => (
                   <>
@@ -237,9 +251,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       }`}
                       onClick={(event) => {
                         event.preventDefault();
-                        sidebarExpanded
-                          ? handleClick()
-                          : setSidebarExpanded(true);
+                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
                       }}
                     >
                       <FiFolderPlus className="text-lg opacity-80" />
@@ -283,28 +295,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <SectionTitle title="Documents" />
-            <ul className="space-y-1.5">
-              <li>
-                <NavItem
-                  href="/documents/expiry"
-                  icon={<FiClock />}
-                  label="Expiry Documents"
-                  active={pathname === "/documents/expiry"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/documents/handover"
-                  icon={<FiFileText />}
-                  label="Physical Handover"
-                  active={pathname === "/documents/handover"}
-                />
-              </li>
-            </ul>
-          </div>
-
-          <div>
             <SectionTitle title="Finance" />
             <ul className="space-y-1.5">
               <li>
@@ -339,6 +329,58 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/accounts/transactions/self"}
                 />
               </li>
+              <SidebarLinkGroup
+                activeCondition={
+                  pathname.startsWith("/accounts/transactions/credit-list") ||
+                  pathname.startsWith("/accounts/transactions/debit-list") ||
+                  pathname.startsWith("/accounts/transactions/credit-debit")
+                }
+              >
+                {(handleClick, open) => (
+                  <>
+                    <Link
+                      href="#"
+                      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                        pathname.startsWith("/accounts/transactions/credit-list") ||
+                        pathname.startsWith("/accounts/transactions/debit-list") ||
+                        pathname.startsWith("/accounts/transactions/credit-debit")
+                          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                      }`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                      }}
+                    >
+                      <FiCreditCard className="text-lg opacity-80" />
+                      Credit / Debit Lists
+                      <FiChevronRight
+                        className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                      />
+                    </Link>
+                    <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                      <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                        <li>
+                          <NavItem
+                            href="/accounts/transactions/credit-list"
+                            icon={<FiTrendingUp />}
+                            label="Credit List"
+                            active={pathname === "/accounts/transactions/credit-list"}
+                          />
+                        </li>
+                        <li>
+                          <NavItem
+                            href="/accounts/transactions/debit-list"
+                            icon={<FiTrendingDown />}
+                            label="Debit List"
+                            active={pathname === "/accounts/transactions/debit-list"}
+                          />
+                        </li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </SidebarLinkGroup>
               <li>
                 <NavItem
                   href="/accounts/transactions/liability"
@@ -359,7 +401,29 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <SectionTitle title="Settings & Access" />
+            <SectionTitle title="Documents" />
+            <ul className="space-y-1.5">
+              <li>
+                <NavItem
+                  href="/documents/expiry"
+                  icon={<FiClock />}
+                  label="Expiry Documents"
+                  active={pathname === "/documents/expiry"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/documents/handover"
+                  icon={<FiFileText />}
+                  label="Physical Handover"
+                  active={pathname === "/documents/handover"}
+                />
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <SectionTitle title="Administration" />
             <ul className="space-y-1.5">
               <li>
                 <NavItem
@@ -367,6 +431,46 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   icon={<FiSettings />}
                   label="Settings Home"
                   active={pathname === "/settings"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/settings/roles"
+                  icon={<FiShield />}
+                  label="Roles"
+                  active={pathname === "/settings/roles"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/settings/permissions"
+                  icon={<FiKey />}
+                  label="Permissions"
+                  active={pathname === "/settings/permissions"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/settings/my-activity"
+                  icon={<FiActivity />}
+                  label="My Activity"
+                  active={pathname === "/settings/my-activity"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/settings/active-sessions"
+                  icon={<FiMonitor />}
+                  label="Active Sessions"
+                  active={pathname === "/settings/active-sessions"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/settings/change-password"
+                  icon={<FiLock />}
+                  label="Change Password"
+                  active={pathname === "/settings/change-password"}
                 />
               </li>
               {can("entities.write") && (
@@ -398,12 +502,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         }`}
                         onClick={(event) => {
                           event.preventDefault();
-                          sidebarExpanded
-                            ? handleClick()
-                            : setSidebarExpanded(true);
+                          sidebarExpanded ? handleClick() : setSidebarExpanded(true);
                         }}
                       >
-                        <FiLock className="text-lg opacity-80" />
+                        <FiLayers className="text-lg opacity-80" />
                         Types & Platforms
                         <FiChevronRight
                           className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
@@ -465,32 +567,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   )}
                 </SidebarLinkGroup>
               )}
-              {(can("roles.manage") || can("settings.read")) && (
-                <li>
-                  <NavItem
-                    href="/settings/roles"
-                    icon={<FiShield />}
-                    label="Role Management"
-                    active={pathname === "/settings/roles"}
-                  />
-                </li>
-              )}
-              {can("settings.read") && (
-                <li>
-                  <NavItem
-                    href="/settings/roles"
-                    icon={<FiShield />}
-                    label="Permission Overview"
-                    active={pathname === "/settings/roles"}
-                  />
-                </li>
-              )}
             </ul>
           </div>
 
           {can("users.read") && (
             <div>
-              <SectionTitle title="Administration" />
+              <SectionTitle title="Users" />
               <ul className="space-y-1.5">
                 <li>
                   <NavItem
@@ -504,6 +586,17 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
             </div>
           )}
         </nav>
+      </div>
+
+      <div className="border-t border-slate-200/70 px-4 py-4 dark:border-slate-800/80">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-800/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/15"
+        >
+          <FiLogOut className="text-lg" />
+          Logout
+        </button>
       </div>
     </aside>
   );

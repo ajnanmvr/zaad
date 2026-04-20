@@ -16,7 +16,6 @@ import {
   updateCompanyById,
 } from "@/repositories/companyRepository";
 import {
-  ensureEntityRecordStats,
   unpublishEntityRecordStats,
 } from "@/repositories/paymentRepository";
 
@@ -86,7 +85,6 @@ export async function createCompanyEntity(entityData: any) {
     entityData.color = generateEntityColor(existingColors);
   }
   const company = await createCompany(entityData);
-  await ensureEntityRecordStats(String(company._id));
   return company;
 }
 
@@ -106,12 +104,10 @@ export async function createEmployeeOrIndividualEntity(entityData: any, entityTy
   }
   if (entityType === "individual") {
     const individual = await Individual.create(entityData);
-    await ensureEntityRecordStats(String(individual._id));
     return individual;
   }
 
   const employee = await Employee.create(entityData);
-  await ensureEntityRecordStats(String(employee._id));
   return employee;
 }
 

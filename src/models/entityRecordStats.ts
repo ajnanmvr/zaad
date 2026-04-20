@@ -9,6 +9,12 @@ const EntityRecordStatsSchema = new Schema(
       unique: true,
       index: true,
     },
+    entityType: {
+      type: String,
+      required: true,
+      enum: ["company", "employee", "individual"],
+      index: true,
+    },
     published: {
       type: Boolean,
       default: true,
@@ -19,6 +25,10 @@ const EntityRecordStatsSchema = new Schema(
       default: 0,
     },
     totalExpense: {
+      type: Number,
+      default: 0,
+    },
+    totalServiceFee: {
       type: Number,
       default: 0,
     },

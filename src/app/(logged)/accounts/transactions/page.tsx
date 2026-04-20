@@ -5,7 +5,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
+import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2, FiCreditCard } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
 
 const TablesPageContent = () => {
@@ -61,6 +61,20 @@ const TablesPageContent = () => {
             >
               <FiArrowDownLeft />
               Liability
+            </Link>
+            <Link
+              href="/accounts/transactions/credit-list"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+            >
+              <FiCreditCard />
+              Credit List
+            </Link>
+            <Link
+              href="/accounts/transactions/debit-list"
+              className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
+            >
+              <FiArrowDownLeft />
+              Debit List
             </Link>
             <Link
               href="/accounts/transactions/bin"
