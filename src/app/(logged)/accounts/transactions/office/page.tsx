@@ -71,6 +71,11 @@ type OfficeSummaryRow = {
   count: number;
 };
 
+type TOfficeCategoryOption = {
+  id: string;
+  label: string;
+};
+
 type OfficeResponse = {
   summary: {
     incomeByCategory: OfficeSummaryRow[];
@@ -136,6 +141,28 @@ export default function OfficeRecordsPage() {
       return data;
     },
   });
+
+  const { data: officeCategoryOptions = [] } = useQuery<TOfficeCategoryOption[]>({
+    queryKey: ["office-expense-category-options"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/templates");
+      return (data?.officeExpenseCategoryOptions || []).map((item: any) => ({
+        id: item.id,
+        label: item.label || item.category || "Office",
+      }));
+    },
+  });
+
+  const officeCategoryIdByLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const option of officeCategoryOptions) {
+      const key = (option.label || "").trim().toLowerCase();
+      if (key) {
+        map.set(key, option.id);
+      }
+    }
+    return map;
+  }, [officeCategoryOptions]);
 
   const totalIncome = data?.summary?.totalIncome ?? 0;
   const totalExpense = data?.summary?.totalExpense ?? 0;
@@ -238,15 +265,31 @@ export default function OfficeRecordsPage() {
                   <th className="px-3 py-2">Category</th>
                   <th className="px-3 py-2">Income</th>
                   <th className="px-3 py-2">Expense</th>
+                  <th className="px-3 py-2 text-right">All Transactions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
+                  (() => {
+                    const normalizedCategory = row.category.trim().toLowerCase();
+                    const resolvedCategoryId = officeCategoryIdByLabel.get(normalizedCategory) || row.category;
+
+                    return (
                   <tr key={row.category} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-3 text-sm font-bold text-slate-800 dark:text-slate-100">{row.category}</td>
                     <td className="px-3 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300">AED {row.income.toFixed(2)}</td>
                     <td className="px-3 py-3 text-sm font-semibold text-rose-700 dark:text-rose-300">AED {row.expense.toFixed(2)}</td>
+                    <td className="px-3 py-3 text-right">
+                      <Link
+                        href={`/accounts/transactions?category=office_records&oc=${encodeURIComponent(resolvedCategoryId)}`}
+                        className="inline-flex items-center rounded-lg border border-cyan-300 bg-white px-3 py-1.5 text-xs font-bold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+                      >
+                        Open
+                      </Link>
+                    </td>
                   </tr>
+                    );
+                  })()
                 ))}
               </tbody>
             </table>
