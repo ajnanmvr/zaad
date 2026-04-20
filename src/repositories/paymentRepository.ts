@@ -5,6 +5,7 @@ import Entity from "@/models/entities";
 import EntityRecordStats from "@/models/entityRecordStats";
 import LiabilityEntityStats from "@/models/liabilityEntityStats";
 import OfficeRecordCategoryStats from "@/models/officeRecordCategoryStats";
+import MonthlyFinanceStats from "@/models/monthlyFinanceStats";
 import PaymentTemplate from "@/models/paymentTemplates";
 import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
 import mongoose from "mongoose";
@@ -80,6 +81,10 @@ export async function updateManyRecords(filter: any, update: any) {
 
 export async function aggregateRecords<T = any>(pipeline: any[]) {
   return Records.aggregate<T>(pipeline);
+}
+
+export async function countRecordsByQuery(query: any) {
+  return Records.countDocuments(query);
 }
 
 export async function distinctEmployeeIdsByCompany(companyId: string) {
@@ -532,4 +537,32 @@ export async function findLiabilityEntityStatsByKeys(entityKeys?: string[]) {
   return LiabilityEntityStats.find(query)
     .select("entityKey entity entityName income expense net totalTransactions lastRecomputedAt")
     .lean();
+}
+
+export async function findMonthlyFinanceStatsByYearMonth(year: number, month: number) {
+  return MonthlyFinanceStats.findOne(
+    { year, month, published: true },
+    null,
+    {},
+  ).lean();
+}
+
+export async function findAllMonthlyFinanceStats(sortByNewest = true) {
+  return MonthlyFinanceStats.find({ published: true })
+    .sort({ year: sortByNewest ? -1 : 1, month: sortByNewest ? -1 : 1 })
+    .lean();
+}
+
+export async function upsertMonthlyFinanceStats(year: number, month: number, stats: any) {
+  return MonthlyFinanceStats.findOneAndUpdate(
+    { year, month },
+    {
+      $set: {
+        ...stats,
+        published: true,
+        lastRecomputedAt: new Date(),
+      },
+    },
+    { upsert: true, new: true },
+  );
 }

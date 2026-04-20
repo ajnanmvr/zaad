@@ -154,13 +154,26 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
 
     try {
       setIsRefreshingLedgerStats(true);
+      
+      // Recompute entity ledger stats
       const response = await axios.post("/api/payment/entity-stats/recompute");
       const updatedEntities = Number(response?.data?.updatedEntities || 0);
       const updatedOfficeCategories = Number(response?.data?.updatedOfficeCategories || 0);
       const updatedLiabilityEntities = Number(response?.data?.updatedLiabilityEntities || 0);
+      
+      // Also recompute current month's monthly stats
+      try {
+        await axios.post("/api/payment/monthly-stats/recompute");
+      } catch (monthlyError) {
+        // Log error but don't fail the entire operation
+        console.warn("Failed to recompute monthly stats:", monthlyError);
+      }
+      
       toast.success(
         `Ledger stats refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities)`,
       );
+      
+      // Invalidate related queries
       await queryClient.invalidateQueries({ queryKey: ["entity-record-stats"] });
       await queryClient.invalidateQueries({ queryKey: ["payment"] });
       await queryClient.invalidateQueries({
@@ -168,6 +181,15 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
       });
       await queryClient.invalidateQueries({
         queryKey: ["liability-records-page-summary"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["finance-summary"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["finance-summary-monthly"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["finance-summary-monthly-list"],
       });
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to refresh ledger stats");

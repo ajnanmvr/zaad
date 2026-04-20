@@ -8,6 +8,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   FiActivity,
+  FiBarChart2,
   FiBookOpen,
   FiBriefcase,
   FiCalendar,
@@ -303,6 +304,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   icon={<FiTrendingUp />}
                   label="All Transactions"
                   active={pathname === "/accounts/transactions"}
+                />
+              </li>
+              <li>
+                <NavItem
+                  href="/accounts/transactions/analytics"
+                  icon={<FiBarChart2 />}
+                  label="Finance Summary"
+                  active={pathname === "/accounts/transactions/analytics"}
                 />
               </li>
               <li>

@@ -5,7 +5,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2, FiCreditCard } from "react-icons/fi";
+import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2, FiCreditCard, FiBarChart2 } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
 
 const TablesPageContent = () => {
@@ -75,6 +75,13 @@ const TablesPageContent = () => {
             >
               <FiArrowDownLeft />
               Debit List
+            </Link>
+            <Link
+              href="/accounts/transactions/analytics"
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-700 dark:bg-slate-900 dark:text-indigo-300"
+            >
+              <FiBarChart2 />
+              Finance Summary
             </Link>
             <Link
               href="/accounts/transactions/bin"

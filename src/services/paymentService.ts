@@ -11,6 +11,7 @@ import {
   bulkUpsertOfficeRecordCategoryStats,
   createPaymentEditNotification,
   createRecord,
+  countRecordsByQuery,
   distinctEmployeeIdsByCompany,
   findEntityRecordStatsByEntityIds,
   findEntitiesByIds,
@@ -28,6 +29,8 @@ import {
   findRecords,
   updateManyRecords,
   updateRecordById,
+  findMonthlyFinanceStatsByYearMonth,
+  upsertMonthlyFinanceStats,
 } from "@/repositories/paymentRepository";
 
 const CONTENT_PER_SECTION = 25;
@@ -2067,4 +2070,322 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   await refreshEntityStatsForRecordRows(linkedRecords);
 
   return { status: 200, body: { message: "Record recovered", data } };
+}
+
+/**
+ * Computes comprehensive monthly financial statistics including:
+ * - Total transaction count for the month
+ * - Office records income and expense
+ * - Profit (sum of service fees from entity records)
+ * - Net profit (profit - office expense)
+ * - Payment method breakdown (income, expense, balance per method, excluding service fees)
+ * - Includes self-transfer transactions
+ */
+export async function computeMonthlyFinanceStats(year?: number, month?: number) {
+  // Determine the month to compute
+  const now = new Date();
+  const computeYear = year || now.getFullYear();
+  const computeMonth = month || now.getMonth() + 1;
+
+  // Validate month is 1-12
+  if (computeMonth < 1 || computeMonth > 12) {
+    throw new Error(`Invalid month: ${computeMonth}. Month must be between 1 and 12`);
+  }
+
+  // Calculate month boundaries
+  const monthStart = new Date(computeYear, computeMonth - 1, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(computeYear, computeMonth, 1, 0, 0, 0, 0);
+
+  const dateMatch = {
+    createdAt: {
+      $gte: monthStart,
+      $lt: monthEnd,
+    },
+    deletedAt: null,
+  };
+
+  // 1. Count total transactions for the month (all record kinds including self_transfer)
+  const totalTransactionCount = await countRecordsByQuery(dateMatch);
+
+  // 2. Aggregate office records for income and expense
+  const officeRecordsAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: "office_records",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalIncome: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        totalExpense: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              {
+                $add: ["$amount", { $ifNull: ["$serviceFee", 0] }],
+              },
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  const officeRecordsData = officeRecordsAgg[0] || {
+    totalIncome: 0,
+    totalExpense: 0,
+  };
+
+  // 2a. Aggregate office records by category (income + expense)
+  const officeRecordsByCategoryAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: "office_records",
+      },
+    },
+    {
+      $group: {
+        _id: "$category",
+        incomeTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        expenseTotal: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              { $add: ["$amount", { $ifNull: ["$serviceFee", 0] }] },
+              0,
+            ],
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "officeExpenseCategories",
+        localField: "_id",
+        foreignField: "_id",
+        as: "categoryDoc",
+      },
+    },
+    {
+      $unwind: {
+        path: "$categoryDoc",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $sort: { expenseTotal: -1, incomeTotal: -1 },
+    },
+  ]);
+
+  const officeRecordsByCategory = officeRecordsByCategoryAgg.map((row: any) => {
+    const income = Number(row.incomeTotal || 0);
+    const expense = Number(row.expenseTotal || 0);
+    return {
+      categoryId: String(row._id || ""),
+      categoryLabel: String(row.categoryDoc?.category || "Unknown"),
+      income: Number(income.toFixed(2)),
+      expense: Number(expense.toFixed(2)),
+      balance: Number((income - expense).toFixed(2)),
+    };
+  });
+
+  // 3. Aggregate profit from entity records (sum of service fees)
+  const profitAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: { $nin: ["office_records", "liability", "self_transfer"] },
+        type: "expense",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalServiceFee: {
+          $sum: { $ifNull: ["$serviceFee", 0] },
+        },
+      },
+    },
+  ]);
+
+  const profitData = profitAgg[0] || { totalServiceFee: 0 };
+  const profit = Number(profitData.totalServiceFee || 0);
+  const netProfit = profit - Number(officeRecordsData.totalExpense || 0);
+
+  // 4. Aggregate payment methods breakdown (income and expense per method, excluding service fees from balance)
+  const paymentMethodsAgg = await aggregateRecords([
+    {
+      $match: dateMatch,
+    },
+    {
+      $group: {
+        _id: {
+          methodId: "$method",
+        },
+        incomeTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        expenseTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { incomeTotal: -1, expenseTotal: -1 },
+    },
+  ]);
+
+  // Build payment methods array with labels
+  const paymentMethodsMap = new Map<string, any>();
+  const methodIds = paymentMethodsAgg.map((row: any) => String(row._id?.methodId || ""));
+  
+  if (methodIds.length > 0) {
+    const methods = await findPaymentTemplateMethods();
+    const methodTemplatesById = new Map(
+      (methods as any[]).map((m: any) => [String(m._id), m])
+    );
+
+    for (const row of paymentMethodsAgg) {
+      const methodId = String(row._id?.methodId || "");
+      const method = methodTemplatesById.get(methodId);
+      const methodLabel = method?.method || methodId || "Unknown";
+
+      paymentMethodsMap.set(methodId, {
+        methodId,
+        methodLabel,
+        income: Number((row.incomeTotal || 0).toFixed(2)),
+        expense: Number((row.expenseTotal || 0).toFixed(2)),
+        balance: Number(((row.incomeTotal || 0) - (row.expenseTotal || 0)).toFixed(2)),
+      });
+    }
+  }
+
+  // Build final response
+  const monthlyStats = {
+    year: computeYear,
+    month: computeMonth,
+    totalTransactions: totalTransactionCount,
+    officeRecords: {
+      totalIncome: Number((officeRecordsData.totalIncome || 0).toFixed(2)),
+      totalExpense: Number((officeRecordsData.totalExpense || 0).toFixed(2)),
+      byCategory: officeRecordsByCategory,
+    },
+    profit: Number(profit.toFixed(2)),
+    netProfit: Number(netProfit.toFixed(2)),
+    paymentMethods: Array.from(paymentMethodsMap.values()),
+  };
+
+  // Persist to database
+  await upsertMonthlyFinanceStats(computeYear, computeMonth, monthlyStats);
+
+  return monthlyStats;
+}
+
+/**
+ * Backfills monthly statistics for all historical months from the earliest
+ * record in the database to the current month.
+ * 
+ * @param startYear - Optional year to start backfill from (defaults to first record)
+ * @param startMonth - Optional month to start backfill from
+ * @returns { totalMonths, computedMonths, errors, summary }
+ */
+export async function backfillMonthlyFinanceStats(startYear?: number, startMonth?: number) {
+  const now = new Date();
+  
+  // Find the earliest record in the database
+  const Records = await getRecordClient({});
+  if (!Records) {
+    throw new Error("Unable to connect to records database");
+  }
+
+  const earliestRecord = await Records.findOne(
+    { deletedAt: null },
+    { createdAt: 1 },
+    { sort: { createdAt: 1 } }
+  ).lean();
+
+  if (!earliestRecord) {
+    return {
+      totalMonths: 0,
+      computedMonths: 0,
+      errors: ["No records found in database"],
+      summary: "No data to backfill",
+    };
+  }
+
+  // Determine start date
+  const earliestDate = new Date(earliestRecord.createdAt);
+  let startDate: Date;
+
+  if (startYear && startMonth) {
+    if (startMonth < 1 || startMonth > 12) {
+      throw new Error("Invalid month. Must be between 1 and 12");
+    }
+    startDate = new Date(startYear, startMonth - 1, 1);
+  } else {
+    // Start from the month of the earliest record
+    startDate = new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
+  }
+
+  // Generate all months between startDate and current month
+  const months: Array<{ year: number; month: number }> = [];
+  let currentDate = new Date(startDate);
+
+  while (currentDate < now) {
+    months.push({
+      year: currentDate.getFullYear(),
+      month: currentDate.getMonth() + 1,
+    });
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  // Also include current month
+  months.push({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  });
+
+  // Remove duplicates
+  const uniqueMonths = Array.from(
+    new Map(months.map((m) => [`${m.year}-${m.month}`, m])).values()
+  );
+
+  const errors: string[] = [];
+  let computedCount = 0;
+
+  // Compute each month
+  for (const { year, month } of uniqueMonths) {
+    try {
+      await computeMonthlyFinanceStats(year, month);
+      computedCount++;
+    } catch (error: any) {
+      errors.push(`Failed to compute ${year}-${String(month).padStart(2, "0")}: ${error?.message}`);
+    }
+  }
+
+  return {
+    totalMonths: uniqueMonths.length,
+    computedMonths: computedCount,
+    errors,
+    summary: `Successfully computed ${computedCount} out of ${uniqueMonths.length} months${
+      errors.length > 0 ? ` with ${errors.length} errors` : ""
+    }`,
+  };
 }
