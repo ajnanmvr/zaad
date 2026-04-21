@@ -835,10 +835,17 @@ async function refreshEntityStatsForRecordRows(records: any[]) {
       .map((record) => record?.entity?.toString?.() || record?.entity),
   );
 
+  const affectedMonths = new Set<string>();
+  (records || []).forEach((record) => {
+    const date = record?.createdAt ? new Date(record.createdAt) : new Date();
+    affectedMonths.add(`${date.getFullYear()}-${date.getMonth() + 1}`);
+  });
+
   if (
     !affectedEntityIds.length &&
     !affectedOfficeCategoryKeys.length &&
-    !affectedLiabilityEntityKeys.length
+    !affectedLiabilityEntityKeys.length &&
+    !affectedMonths.size
   ) {
     return;
   }
@@ -851,6 +858,10 @@ async function refreshEntityStatsForRecordRows(records: any[]) {
     affectedLiabilityEntityKeys.length
       ? recomputeLiabilityEntityStats(affectedLiabilityEntityKeys)
       : Promise.resolve(),
+    ...Array.from(affectedMonths).map((monthStr) => {
+      const [year, month] = monthStr.split("-").map(Number);
+      return computeMonthlyFinanceStats(year, month);
+    }),
   ]);
 }
 
@@ -1860,7 +1871,7 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   const linkedIds = await resolveLinkedRecordIds(record);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity recordKind category" },
+    { select: "entity recordKind category createdAt" },
   );
 
   await updateManyRecords(
@@ -1908,7 +1919,7 @@ export async function deleteSelfTransferByGroupId(groupId: string, principal: TP
   const linkedIds = await resolveLinkedRecordIds(record);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity recordKind category" },
+    { select: "entity recordKind category createdAt" },
   );
 
   await updateManyRecords(
@@ -2006,6 +2017,7 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
       entity: normalizedPayload?.entity,
       recordKind: normalizedPayload?.recordKind,
       category: normalizedPayload?.category,
+      createdAt: (data as any)?.createdAt || (existingRecord as any)?.createdAt,
     },
   ]);
 
@@ -2034,7 +2046,7 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   const linkedIds = await resolveLinkedRecordIds(record, true);
   const linkedRecords = await findRecords(
     { _id: { $in: linkedIds } },
-    { select: "entity recordKind category" },
+    { select: "entity recordKind category createdAt" },
   );
 
   const data = await updateManyRecords(
