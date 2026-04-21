@@ -22,10 +22,6 @@ const steps = [
     name: "Records",
     script: path.join(rootDir, "scripts", "migrate-legacy-records.mjs"),
   },
-  {
-    name: "Refresh precomputed data",
-    script: path.join(rootDir, "scripts", "refresh-precomputed-data.mjs"),
-  },
 ];
 
 function runStep(step, index, total) {

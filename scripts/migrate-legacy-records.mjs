@@ -68,6 +68,50 @@ function compactObject(value) {
   );
 }
 
+function hslToHex(hue, saturation, lightness) {
+  const normalizedHue = ((hue % 360) + 360) % 360;
+  const normalizedSaturation = Math.max(0, Math.min(100, saturation)) / 100;
+  const normalizedLightness = Math.max(0, Math.min(100, lightness)) / 100;
+
+  const chroma = (1 - Math.abs(2 * normalizedLightness - 1)) * normalizedSaturation;
+  const secondary = chroma * (1 - Math.abs((normalizedHue / 60) % 2 - 1));
+  const match = normalizedLightness - chroma / 2;
+
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+
+  if (normalizedHue < 60) {
+    red = chroma;
+    green = secondary;
+  } else if (normalizedHue < 120) {
+    red = secondary;
+    green = chroma;
+  } else if (normalizedHue < 180) {
+    green = chroma;
+    blue = secondary;
+  } else if (normalizedHue < 240) {
+    green = secondary;
+    blue = chroma;
+  } else if (normalizedHue < 300) {
+    red = secondary;
+    blue = chroma;
+  } else {
+    red = chroma;
+    blue = secondary;
+  }
+
+  const toHex = (channel) => Math.round((channel + match) * 255)
+    .toString(16)
+    .padStart(2, "0");
+
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+}
+
+function getDistinctColor(index) {
+  return hslToHex(index * 137.508, 72, 58);
+}
+
 function inferRecordKind(sourceRecord) {
   const status = lower(sourceRecord?.status);
   const self = lower(sourceRecord?.self);
@@ -170,6 +214,7 @@ async function ensureStatusTemplate(collection, statusMap, statusName, type) {
   const insertResult = await collection.insertOne({
     status: normalizedStatus,
     appliesTo,
+    color: getDistinctColor(statusMap.size),
     published: true,
     createdAt: now,
     updatedAt: now,
@@ -243,7 +288,7 @@ async function migrate() {
       const type = lower(sourceRecord?.type) === "income" ? "income" : "expense";
 
       let methodId;
-      if (recordKind !== "liability" && recordKind !== "self_transfer") {
+      if (recordKind !== "liability") {
         methodId = await ensurePaymentMethodTemplate(
           paymentTemplates,
           paymentMethodMap,

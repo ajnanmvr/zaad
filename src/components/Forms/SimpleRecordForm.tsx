@@ -526,10 +526,18 @@ const SimpleRecordForm = ({
     const { name, value } = e.target;
 
     if (name === "amount") {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value === "" ? undefined : parseFloat(value) || 0,
-      }));
+      setFormData((prev) => {
+        const newAmount = value === "" ? undefined : parseFloat(value) || 0;
+        let newMethod = prev.method;
+        if (newAmount && newAmount !== 0 && prev.method === "service_fee") {
+          newMethod = "";
+        }
+        return {
+          ...prev,
+          amount: newAmount,
+          method: newMethod,
+        };
+      });
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -681,6 +689,25 @@ const SimpleRecordForm = ({
       return status.appliesTo === formData.type;
     });
   };
+
+  const displayPaymentMethods = useMemo(() => {
+    const methods = [...paymentMethods];
+    if (
+      !isEdit &&
+      formData.type === "expense" &&
+      formData.recordKind === "standard" &&
+      (!formData.amount || formData.amount === 0)
+    ) {
+      methods.push({
+        id: "service_fee",
+        label: "Service Fee",
+        method: "Service Fee",
+        color: "#f59e0b",
+        icon: "invoice",
+      });
+    }
+    return methods;
+  }, [paymentMethods, isEdit, formData.type, formData.recordKind, formData.amount]);
 
   const getEntityInitials = (name: string) => {
     const parts = String(name || "")
@@ -962,7 +989,9 @@ const SimpleRecordForm = ({
     }
 
     if (visibility.needsMethod) {
-      payload.method = formData.method;
+      if (formData.method !== "service_fee") {
+        payload.method = formData.method;
+      }
     }
 
     if (visibility.needsSwapMethods) {
@@ -1429,7 +1458,7 @@ const SimpleRecordForm = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                  {paymentMethods.map((method) => {
+                  {displayPaymentMethods.map((method) => {
                     const Icon = getPaymentMethodIcon(
                       (method.icon || "card") as TPaymentTemplateIcon,
                     );

@@ -196,6 +196,7 @@ async function ensureDocumentTemplate(targetCollection, templateMap, name) {
   const insertResult = await targetCollection.insertOne({
     name: trimmedName,
     category: inferDocumentCategory(trimmedName),
+    color: getDistinctEntityColor(templateMap.size),
     published: true,
     createdAt: now,
     updatedAt: now,
@@ -221,6 +222,7 @@ async function ensureCredentialTemplate(targetCollection, templateMap, platform)
   const now = new Date();
   const insertResult = await targetCollection.insertOne({
     platform: trimmedPlatform,
+    color: getDistinctEntityColor(templateMap.size),
     published: true,
     createdAt: now,
     updatedAt: now,
