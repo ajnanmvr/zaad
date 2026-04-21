@@ -354,8 +354,8 @@ export default function FinanceAnalyticsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useUserContext();
-  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
-  const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page");
+  const permissions = user?.permissions && Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
+  const canViewFinanceSummary = user ? hasPermission(permissions, "payments.view.finance-summary-page") : false;
 
   const LIMITS = {
     paymentMethodRows: 6,
