@@ -16,6 +16,7 @@ const OfficeExpenseCategoriesPage = () => {
         inputPlaceholder="e.g., Utilities, Rent, Supplies"
         usageLabel="transactions"
         accent="amber"
+        itemHrefBuilder={(item) => `/accounts/transactions?category=office_records&oc=${encodeURIComponent(item.id)}`}
       />
     </>
   );

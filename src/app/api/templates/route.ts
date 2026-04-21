@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
             published: item.published !== false,
             unpublished: item.published === false,
             createdAt: item.createdAt,
-            usageCount: usageMap.get(item.method) || 0,
+            usageCount: usageMap.get(item._id.toString()) || 0,
           })),
         },
         { status: 200 }
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
             published: item.published !== false,
             unpublished: item.published === false,
             createdAt: item.createdAt,
-            usageCount: usageMap.get(item.status) || 0,
+            usageCount: usageMap.get(item._id.toString()) || 0,
           })),
         },
         { status: 200 }

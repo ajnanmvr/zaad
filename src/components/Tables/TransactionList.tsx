@@ -1547,7 +1547,7 @@ const TransactionList = ({
                               </div>
                             </td>
 
-                            <td className="py-4 px-4 align-top">
+                            <td className="py-4 px-4 align-top uppercase">
                               <div className="flex items-start gap-3">
                                 {getTransactionAvatar(record)}
                                 <Link
@@ -1569,7 +1569,7 @@ const TransactionList = ({
                                   }}
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
-                                  <p className="font-semibold text-sm text-slate-900 dark:text-white capitalize truncate">
+                                  <p className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">
                                     {record?.recordKind === "self_transfer"
                                       ? record?.type === "expense"
                                         ? "Self Transfer Out"
@@ -1579,7 +1579,7 @@ const TransactionList = ({
                                           "Office Record"
                                         : record?.client?.name || "Unknown"}
                                   </p>
-                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400">
+                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
                                     {record?.particular}
                                   </p>
                                 </Link>

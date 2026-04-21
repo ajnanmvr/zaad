@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import connect from "@/db/mongo";
 import { computeMonthlyFinanceStats } from "@/services/paymentService";
 import { findMonthlyFinanceStatsByYearMonth } from "@/repositories/paymentRepository";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,11 +58,17 @@ export async function GET(request: NextRequest) {
       success: true,
       summary: stats,
     });
-  } catch (error: any) {
-    console.error("Error fetching monthly stats:", error);
+  } catch (error: unknown) {
+    const status = getServiceErrorStatus(error);
+    const message = getServiceErrorMessage(error, "Failed to fetch monthly statistics");
+
+    if (status >= 500) {
+      console.error("Error fetching monthly stats:", error);
+    }
+
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch monthly statistics" },
-      { status: 500 }
+      { error: message },
+      { status }
     );
   }
 }

@@ -16,6 +16,7 @@ const PaymentMethodsPage = () => {
         inputPlaceholder="e.g., Bank, Cash, Tasdeed, Swiper"
         usageLabel="transactions"
         accent="amber"
+        itemHrefBuilder={(item) => `/accounts/transactions?m=${encodeURIComponent(item.id)}`}
       />
     </>
   );

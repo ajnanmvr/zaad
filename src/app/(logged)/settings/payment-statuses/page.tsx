@@ -16,6 +16,7 @@ const PaymentStatusesPage = () => {
         inputPlaceholder="e.g., Office Expense, Liability Payment, Ready Cash"
         usageLabel="transactions"
         accent="amber"
+        itemHrefBuilder={(item) => `/accounts/transactions?s=${encodeURIComponent(item.id)}`}
       />
     </>
   );

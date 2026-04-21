@@ -16,6 +16,7 @@ const DocumentTypesPage = () => {
         inputPlaceholder="e.g., Passport, Emirates ID, Visa"
         usageLabel="documents"
         accent="emerald"
+        itemHrefBuilder={(item) => `/documents/expiry?name=${encodeURIComponent(item.name || "")}`}
       />
     </>
   );

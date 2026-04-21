@@ -2327,13 +2327,7 @@ export async function backfillMonthlyFinanceStats(startYear?: number, startMonth
   const now = new Date();
   
   // Find the earliest record in the database
-  const earliestRecordQuery = await findOneRecord({ deletedAt: null }, "createdAt", { createdAt: 1 });
-  if (!earliestRecordQuery) {
-    throw new Error("Unable to connect to records database");
-  }
-
-  const earliestRecord = await earliestRecordQuery.lean();
-
+  const earliestRecord = await findOneRecord({ deletedAt: null }, "createdAt", { createdAt: 1 });
   if (!earliestRecord) {
     return {
       totalMonths: 0,

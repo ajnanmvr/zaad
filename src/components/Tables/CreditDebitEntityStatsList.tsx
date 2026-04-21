@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
-import toast from "react-hot-toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
@@ -15,7 +14,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiCreditCard,
-  FiRefreshCw,
   FiSearch,
   FiTrendingDown,
   FiTrendingUp,
@@ -61,12 +59,10 @@ const toEntityTypeLabel = (entityType: string) => {
 };
 
 export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode }) {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [entityTypeFilter, setEntityTypeFilter] = useState<"all" | "company" | "employee" | "individual">("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [isRefreshingLedgerStats, setIsRefreshingLedgerStats] = useState(false);
 
   const isCredit = mode === "credit";
 
@@ -147,59 +143,6 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
     await exportRowsPdf(rows, filePrefix);
   };
 
-  const handleRecomputeLedgerStats = async () => {
-    if (isRefreshingLedgerStats) {
-      return;
-    }
-
-    try {
-      setIsRefreshingLedgerStats(true);
-      
-      // Recompute all ledger precomputations
-      const response = await axios.post("/api/payment/entity-stats/recompute");
-      const updatedEntities = Number(response?.data?.updatedEntities || 0);
-      const updatedOfficeCategories = Number(response?.data?.updatedOfficeCategories || 0);
-      const updatedLiabilityEntities = Number(response?.data?.updatedLiabilityEntities || 0);
-      
-      // Also recompute all monthly finance stats up to the current month
-      let monthlyComputedMonths = 0;
-      try {
-        const monthlyResponse = await axios.post("/api/admin/payment/backfill-monthly-stats");
-        monthlyComputedMonths = Number(monthlyResponse?.data?.computedMonths || 0);
-      } catch (monthlyError) {
-        // Log error but don't fail the entire operation
-        console.warn("Failed to recompute monthly stats:", monthlyError);
-      }
-      
-      toast.success(
-        `All precomputations refreshed (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities, ${monthlyComputedMonths} monthly periods)`,
-      );
-      
-      // Invalidate related queries
-      await queryClient.invalidateQueries({ queryKey: ["entity-record-stats"] });
-      await queryClient.invalidateQueries({ queryKey: ["payment"] });
-      await queryClient.invalidateQueries({
-        queryKey: ["office-records-page-summary"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["liability-records-page-summary"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["finance-summary"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["finance-summary-monthly"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["finance-summary-monthly-list"],
-      });
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to refresh ledger stats");
-    } finally {
-      setIsRefreshingLedgerStats(false);
-    }
-  };
-
   const headingTitle = isCredit ? "Credit List" : "Debit List";
   const headingAccent = isCredit
     ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300"
@@ -220,15 +163,12 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
               Clients with {isCredit ? "positive" : "negative"} balance. Zero balance is hidden.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleRecomputeLedgerStats()}
-            disabled={isRefreshingLedgerStats}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          <Link
+            href="/accounts/transactions/analytics"
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
           >
-            <FiRefreshCw className={clsx((isFetching || isRefreshingLedgerStats) && "animate-spin")} />
-            {isRefreshingLedgerStats ? "Refreshing..." : "Refresh"}
-          </button>
+            <FiTrendingUp /> Finance Summary
+          </Link>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">

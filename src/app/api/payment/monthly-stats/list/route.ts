@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { findAllMonthlyFinanceStats } from "@/repositories/paymentRepository";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,11 +19,17 @@ export async function GET(request: NextRequest) {
       success: true,
       summary: data,
     });
-  } catch (error: any) {
-    console.error("Error fetching monthly stats list:", error);
+  } catch (error: unknown) {
+    const status = getServiceErrorStatus(error);
+    const message = getServiceErrorMessage(error, "Failed to fetch monthly statistics list");
+
+    if (status >= 500) {
+      console.error("Error fetching monthly stats list:", error);
+    }
+
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch monthly statistics list" },
-      { status: 500 },
+      { error: message },
+      { status },
     );
   }
 }

@@ -5,10 +5,11 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
 import { hasPermission } from "@/auth/permissions";
+import toast from "react-hot-toast";
 import {
   FiActivity,
   FiArrowLeft,
@@ -261,6 +262,7 @@ function LineChart({
 
 export default function FinanceAnalyticsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useUserContext();
   const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
   const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page");
@@ -350,6 +352,32 @@ export default function FinanceAnalyticsPage() {
     }))
     .filter((slice) => slice.value > 0);
 
+  const handleRefresh = async () => {
+    try {
+      const [ledgerResponse, monthlyResponse] = await Promise.all([
+        axios.post("/api/payment/entity-stats/recompute"),
+        axios.post("/api/admin/payment/backfill-monthly-stats"),
+      ]);
+
+      const updatedEntities = Number(ledgerResponse?.data?.updatedEntities || 0);
+      const updatedOfficeCategories = Number(ledgerResponse?.data?.updatedOfficeCategories || 0);
+      const updatedLiabilityEntities = Number(ledgerResponse?.data?.updatedLiabilityEntities || 0);
+      const monthlyComputedMonths = Number(monthlyResponse?.data?.computedMonths || 0);
+
+      await queryClient.invalidateQueries({ queryKey: ["entity-record-stats"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary-monthly-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary-monthly"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
+      await queryClient.refetchQueries({ queryKey: ["finance-summary-monthly-list"] });
+
+      toast.success(
+        `Refreshed precomputed stats (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities, ${monthlyComputedMonths} monthly periods)`,
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to refresh finance summary");
+    }
+  };
+
   if (!user || !canViewFinanceSummary) {
     return (
       <div className="flex min-h-64 items-center justify-center">
@@ -373,12 +401,21 @@ export default function FinanceAnalyticsPage() {
             <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 dark:text-slate-50">Financial Summary</h1>
           </div>
 
-          <Link
-            href="/accounts/transactions"
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <FiArrowLeft /> Back to Transactions
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
+            >
+              <FiBarChart2 /> Refresh Precomputations
+            </button>
+            <Link
+              href="/accounts/transactions"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <FiArrowLeft /> Back to Transactions
+            </Link>
+          </div>
         </div>
       </section>
 

@@ -696,7 +696,7 @@ const SimpleRecordForm = ({
       !isEdit &&
       formData.type === "expense" &&
       formData.recordKind === "standard" &&
-      (!formData.amount || formData.amount === 0)
+      formData.amount === 0
     ) {
       methods.push({
         id: "service_fee",

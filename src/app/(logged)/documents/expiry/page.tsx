@@ -6,7 +6,7 @@ import { TExpiryDocumentItem, TPaginatedResponse } from "@/types/types";
 import calculateStatus from "@/utils/calculateStatus";
 import formatDate from "@/utils/formatDate";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
@@ -94,6 +94,14 @@ const ExpiryDocumentsPage = () => {
   const rows = useMemo(() => data?.data || [], [data]);
   const pagination = data?.pagination;
   const [nameFilter, setNameFilter] = useState("all");
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const documentName = searchParams.get("name")?.trim();
+    if (documentName) {
+      setNameFilter(documentName);
+    }
+  }, []);
 
   const documentNames = useMemo(() => {
     return Array.from(

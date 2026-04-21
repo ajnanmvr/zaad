@@ -16,6 +16,7 @@ const CredentialPlatformsPage = () => {
         inputPlaceholder="e.g., Gmail, Outlook, GitHub"
         usageLabel="credentials"
         accent="blue"
+        itemHrefBuilder={(item) => `/credentials?platform=${encodeURIComponent(item.platform || "")}`}
       />
     </>
   );

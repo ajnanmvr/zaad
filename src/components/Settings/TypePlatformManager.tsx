@@ -5,6 +5,7 @@ import axios from "axios";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import clsx from "clsx";
+import Link from "next/link";
 import {
   FiAlertCircle,
   FiEdit2,
@@ -65,6 +66,7 @@ type TypePlatformManagerProps = {
   inputPlaceholder: string;
   usageLabel: string;
   accent: "emerald" | "blue" | "amber";
+  itemHrefBuilder?: (item: ItemOption) => string | null;
 };
 
 function TypePlatformManager({
@@ -76,6 +78,7 @@ function TypePlatformManager({
   inputPlaceholder,
   usageLabel,
   accent,
+  itemHrefBuilder,
 }: TypePlatformManagerProps) {
   const queryClient = useQueryClient();
 
@@ -550,7 +553,20 @@ function TypePlatformManager({
                       style={{ backgroundColor: item.color }}
                     />
                   )}
-                  {itemName(item)}
+                  {(() => {
+                    const href = itemHrefBuilder?.(item);
+                    const label = itemName(item);
+
+                    if (!href) {
+                      return label;
+                    }
+
+                    return (
+                      <Link href={href} className="hover:text-blue-600 hover:underline dark:hover:text-blue-300">
+                        {label}
+                      </Link>
+                    );
+                  })()}
                   {item.unpublished && (
                     <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                       Unpublished
