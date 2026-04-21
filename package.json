@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "migrate:all": "node scripts/migrate-all.mjs",
     "test:rbac": "node scripts/rbac-matrix-check.mjs",
     "seed:roles": "node scripts/seed-system-roles.mjs",
     "migrate:category-templates": "node scripts/migrate-category-templates.mjs",
