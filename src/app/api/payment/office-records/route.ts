@@ -150,7 +150,7 @@ function aggregateMonthlyStats(monthlyStats: MonthlyOfficeStatsRow[], searchPara
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.office-records");
 
     const searchParams = request.nextUrl.searchParams;
     const page = Math.max(Number(searchParams.get("page") || "0"), 0);

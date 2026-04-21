@@ -10,7 +10,7 @@ import { computeMonthlyFinanceStats } from "@/services/paymentService";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.manage.recompute-monthly-stats");
 
     // Get current date
     const now = new Date();

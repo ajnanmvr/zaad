@@ -37,6 +37,7 @@ import {
 
 import { useUserContext } from "@/contexts/UserContext";
 import SidebarLinkGroup from "./SidebarLinkGroup";
+import { hasPermission } from "@/auth/permissions";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -80,7 +81,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const { user } = useUserContext();
   const can = (permission: string) =>
     Array.isArray(user?.permissions) &&
-    (user?.permissions as string[]).includes(permission);
+    hasPermission(user?.permissions as string[], permission);
 
   const trigger = useRef<HTMLButtonElement | null>(null);
   const sidebar = useRef<HTMLElement | null>(null);
@@ -308,39 +309,48 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           <div>
             <SectionTitle title="Finance" />
             <ul className="space-y-1.5">
-              <li>
-                <NavItem
-                  href="/accounts/transactions/analytics"
-                  icon={<FiBarChart2 />}
-                  label="Finance Summary"
-                  active={pathname === "/accounts/transactions/analytics"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions"
-                  icon={<FiTrendingUp />}
-                  label="All Transactions"
-                  active={pathname === "/accounts/transactions"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/office"
-                  icon={<FiBookOpen />}
-                  label="Office Records"
-                  active={pathname === "/accounts/transactions/office"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/self"
-                  icon={<FiRepeat />}
-                  label="Self Transfers"
-                  active={pathname === "/accounts/transactions/self"}
-                />
-              </li>
-              <SidebarLinkGroup
+              {can("payments.view.finance-summary-page") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/analytics"
+                    icon={<FiBarChart2 />}
+                    label="Finance Summary"
+                    active={pathname === "/accounts/transactions/analytics"}
+                  />
+                </li>
+              )}
+              {can("payments.view.transactions") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions"
+                    icon={<FiTrendingUp />}
+                    label="All Transactions"
+                    active={pathname === "/accounts/transactions"}
+                  />
+                </li>
+              )}
+              {can("payments.view.office-records") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/office"
+                    icon={<FiBookOpen />}
+                    label="Office Records"
+                    active={pathname === "/accounts/transactions/office"}
+                  />
+                </li>
+              )}
+              {can("payments.view.self-transfers") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/self"
+                    icon={<FiRepeat />}
+                    label="Self Transfers"
+                    active={pathname === "/accounts/transactions/self"}
+                  />
+                </li>
+              )}
+              {can("payments.view.credit-debit-lists") && (
+                <SidebarLinkGroup
                 activeCondition={
                   pathname.startsWith("/accounts/transactions/credit-list") ||
                   pathname.startsWith("/accounts/transactions/debit-list") ||
@@ -404,22 +414,27 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   </>
                 )}
               </SidebarLinkGroup>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/liability"
-                  icon={<FiTrendingDown />}
-                  label="Liability"
-                  active={pathname === "/accounts/transactions/liability"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/invoice"
-                  icon={<FiFileText />}
-                  label="Invoices"
-                  active={pathname === "/accounts/invoice"}
-                />
-              </li>
+              )}
+              {can("payments.view.liability-records") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/liability"
+                    icon={<FiTrendingDown />}
+                    label="Liability"
+                    active={pathname === "/accounts/transactions/liability"}
+                  />
+                </li>
+              )}
+              {can("payments.view.invoices") && (
+                <li>
+                  <NavItem
+                    href="/accounts/invoice"
+                    icon={<FiFileText />}
+                    label="Invoices"
+                    active={pathname === "/accounts/invoice"}
+                  />
+                </li>
+              )}
             </ul>
           </div>
 

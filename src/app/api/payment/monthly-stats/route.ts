@@ -7,7 +7,7 @@ import { findMonthlyFinanceStatsByYearMonth } from "@/repositories/paymentReposi
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.monthly-stats");
 
     const searchParams = request.nextUrl.searchParams;
     const year = searchParams.get("year");

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.liability-records");
     const response = await listLiabilitySummary();
     return NextResponse.json(response);
   } catch (error) {

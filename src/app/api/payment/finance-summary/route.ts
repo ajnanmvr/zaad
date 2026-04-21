@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.records-summary");
 
     const totalTransactions = await Records.countDocuments({ deletedAt: null });
 

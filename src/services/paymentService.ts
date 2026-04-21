@@ -668,7 +668,7 @@ async function getCompanyScopedEntityTotals(
 }
 
 export function isAdminRole(role?: string) {
-  const normalized = (role || "").toLowerCase();
+  const normalized = (role || "").toLowerCase().replace(/[\s_-]+/g, "");
   return normalized === "admin" || normalized === "superadmin";
 }
 

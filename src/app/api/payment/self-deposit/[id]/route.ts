@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   await connect();
-  await requirePermission(request, "payments.read");
+  await requirePermission(request, "payments.view.self-transfers");
 
   try {
     const { id } = params;
@@ -34,7 +34,7 @@ export async function PUT(
 ) {
   try {
     await connect();
-    const principal = await requirePermission(request, "payments.write");
+    const principal = await requirePermission(request, "payments.manage.self-transfers");
     const { id } = params;
     const reqBody = await request.json();
     const response = await updatePaymentRecord(id, reqBody, principal);
@@ -53,7 +53,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   await connect();
-  const principal = await requirePermission(request, "payments.write");
+  const principal = await requirePermission(request, "payments.manage.self-transfers");
   const { id } = params;
   const response = await deletePaymentRecord(id, principal);
   return Response.json(response.body, { status: response.status });

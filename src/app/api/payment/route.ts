@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    const principal = await requirePermission(request, "payments.write");
+    const principal = await requirePermission(request, "payments.create.transactions");
     const reqBody = await request.json();
     const data = await createPaymentRecord(reqBody, principal);
     return Response.json(
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.transactions");
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = Number(searchParams.get("page") || 0);
     const limit = Number(searchParams.get("limit") || 25);

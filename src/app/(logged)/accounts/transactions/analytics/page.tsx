@@ -3,9 +3,12 @@
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 import {
   FiActivity,
   FiArrowLeft,
@@ -257,6 +260,11 @@ function LineChart({
 }
 
 export default function FinanceAnalyticsPage() {
+  const router = useRouter();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page");
+
   const LIMITS = {
     paymentMethodRows: 6,
     topMethods: 5,
@@ -264,11 +272,18 @@ export default function FinanceAnalyticsPage() {
 
   const { data, isLoading, isError } = useQuery<MonthlyStatsListResponse>({
     queryKey: ["finance-summary-monthly-list"],
+    enabled: canViewFinanceSummary,
     queryFn: async () => {
       const { data } = await axios.get("/api/payment/monthly-stats/list");
       return data;
     },
   });
+
+  useEffect(() => {
+    if (user && !canViewFinanceSummary) {
+      router.push("/");
+    }
+  }, [user, canViewFinanceSummary, router]);
 
   const monthlyStats = useMemo(() => data?.summary ?? [], [data?.summary]);
 
@@ -334,6 +349,14 @@ export default function FinanceAnalyticsPage() {
       color: ["#F43F5E", "#FB7185", "#EC4899", "#F97316", "#8B5CF6", "#10B981", "#06B6D4", "#F59E0B"][index % 8],
     }))
     .filter((slice) => slice.value > 0);
+
+  if (!user || !canViewFinanceSummary) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">

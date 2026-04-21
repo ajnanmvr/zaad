@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { FiFilter, FiPlusCircle, FiRefreshCw, FiChevronDown } from "react-icons/fi";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
 const currentMonthYearLabel = new Date().toLocaleString("en-US", {
   month: "long",
@@ -107,11 +110,16 @@ type CategoryMatrixRow = {
 };
 
 export default function OfficeRecordsPage() {
+  const router = useRouter();
+  const { user } = useUserContext();
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [draft, setDraft] = useState({ ...baseFilter });
   const [filter, setFilter] = useState({ ...baseFilter });
 
   const dateRangeQuery = useMemo(() => queryFromFilter(filter), [filter]);
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canViewOfficeRecords = hasPermission(permissions, "payments.view.office-records");
+  const canCreateTransactions = hasPermission(permissions, "payments.create.transactions");
 
   const filterDisplay = useMemo(() => {
     if (filter.mode === "alltime") {
@@ -154,6 +162,7 @@ export default function OfficeRecordsPage() {
 
   const { data, isLoading, isError } = useQuery<OfficeResponse>({
     queryKey: ["office-records-page-summary", dateRangeQuery],
+    enabled: canViewOfficeRecords,
     queryFn: async () => {
       const fullQuery = `/api/payment/office-records${dateRangeQuery}`;
       const { data } = await axios.get(fullQuery);
@@ -163,6 +172,7 @@ export default function OfficeRecordsPage() {
 
   const { data: officeCategoryOptions = [] } = useQuery<TOfficeCategoryOption[]>({
     queryKey: ["office-expense-category-options"],
+    enabled: canViewOfficeRecords,
     queryFn: async () => {
       const { data } = await axios.get("/api/templates");
       return (data?.officeExpenseCategoryOptions || []).map((item: any) => ({
@@ -216,6 +226,20 @@ export default function OfficeRecordsPage() {
     return Array.from(matrix.values()).sort((a, b) => a.category.localeCompare(b.category));
   }, [data?.summary?.incomeByCategory, data?.summary?.expenseByCategory]);
 
+  useEffect(() => {
+    if (user && !canViewOfficeRecords) {
+      router.push("/");
+    }
+  }, [user, canViewOfficeRecords, router]);
+
+  if (!user || !canViewOfficeRecords) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Breadcrumb pageName="Office Records" />
@@ -259,18 +283,22 @@ export default function OfficeRecordsPage() {
             >
               More <FiChevronDown />
             </button>
-            <Link
-              href="/accounts/add-record?recordKind=office_records&type=income"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
-            >
-              <FiPlusCircle /> Income
-            </Link>
-            <Link
-              href="/accounts/add-record?recordKind=office_records&type=expense"
-              className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
-            >
-              <FiPlusCircle /> Expense
-            </Link>
+            {canCreateTransactions && (
+              <Link
+                href="/accounts/add-record?recordKind=office_records&type=income"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <FiPlusCircle /> Income
+              </Link>
+            )}
+            {canCreateTransactions && (
+              <Link
+                href="/accounts/add-record?recordKind=office_records&type=expense"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
+              >
+                <FiPlusCircle /> Expense
+              </Link>
+            )}
           </div>
         </div>
 

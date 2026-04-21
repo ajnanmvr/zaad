@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const particular = String(body?.particular || "").trim();
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const id = String(body?.id || "").trim();
@@ -177,7 +177,7 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const id = String(body?.id || "").trim();

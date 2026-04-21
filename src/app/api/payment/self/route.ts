@@ -7,7 +7,7 @@ import { listPaymentRecords } from "@/services/paymentService";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.self-transfers");
 
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = Number(searchParams.get("page") || 0);

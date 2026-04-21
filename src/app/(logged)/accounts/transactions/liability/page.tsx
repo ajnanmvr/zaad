@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { FiArrowRight, FiPlusCircle, FiShield } from "react-icons/fi";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
 type LiabilityEntitySummary = {
   entity: string;
@@ -26,13 +30,34 @@ type LiabilityResponse = {
 };
 
 export default function LiabilityPage() {
+  const router = useRouter();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canViewLiability = hasPermission(permissions, "payments.view.liability-records");
+  const canCreateTransactions = hasPermission(permissions, "payments.create.transactions");
+
   const { data, isLoading, isError } = useQuery<LiabilityResponse>({
     queryKey: ["liability-records-page-summary"],
+    enabled: canViewLiability,
     queryFn: async () => {
       const { data } = await axios.get("/api/payment/liability-records");
       return data;
     },
   });
+
+  useEffect(() => {
+    if (user && !canViewLiability) {
+      router.push("/");
+    }
+  }, [user, canViewLiability, router]);
+
+  if (!user || !canViewLiability) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   const entities = data?.summary?.entities || [];
   const totals = data?.summary?.totals || { income: 0, expense: 0, net: 0 };
@@ -52,18 +77,22 @@ export default function LiabilityPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/accounts/add-record?recordKind=liability&type=income"
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
-            >
-              <FiPlusCircle /> Income
-            </Link>
-            <Link
-              href="/accounts/add-record?recordKind=liability&type=expense"
-              className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
-            >
-              <FiPlusCircle /> Expense
-            </Link>
+            {canCreateTransactions && (
+              <Link
+                href="/accounts/add-record?recordKind=liability&type=income"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <FiPlusCircle /> Income
+              </Link>
+            )}
+            {canCreateTransactions && (
+              <Link
+                href="/accounts/add-record?recordKind=liability&type=expense"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
+              >
+                <FiPlusCircle /> Expense
+              </Link>
+            )}
           </div>
         </div>
 

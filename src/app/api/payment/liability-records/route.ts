@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.read");
+    await requirePermission(request, "payments.view.liability-records");
 
     const searchParams = request.nextUrl.searchParams;
     const page = Math.max(Number(searchParams.get("page") || "0"), 0);

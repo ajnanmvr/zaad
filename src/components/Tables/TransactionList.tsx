@@ -338,9 +338,8 @@ const TransactionList = ({
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { user } = useUserContext();
-  const isAdmin = ["admin", "superadmin"].includes(
-    (user?.role || "").toLowerCase(),
-  );
+  const normalizedRole = (user?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
+  const isAdmin = ["admin", "superadmin"].includes(normalizedRole);
 
   const [pageNumber, setPageNumber] = useState(0);
   const [isFilterOpen, setFilterOpen] = useState(false);

@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { FiArrowRight, FiArrowLeft, FiChevronsRight, FiFilter, FiRefreshCw, FiChevronDown } from "react-icons/fi";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
 const currentMonthYearLabel = new Date().toLocaleString("en-US", {
   month: "long",
@@ -95,6 +98,8 @@ type SelfTransfersResponse = {
 };
 
 export default function SelfTransfersPage() {
+  const router = useRouter();
+  const { user } = useUserContext();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
@@ -102,6 +107,10 @@ export default function SelfTransfersPage() {
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [draft, setDraft] = useState({ ...baseFilter });
   const [filter, setFilter] = useState({ ...baseFilter });
+
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canViewSelfTransfers = hasPermission(permissions, "payments.view.self-transfers");
+  const canManageSelfTransfers = hasPermission(permissions, "payments.manage.self-transfers");
 
   const dateRangeQuery = useMemo(() => queryFromFilter(filter), [filter]);
 
@@ -140,6 +149,7 @@ export default function SelfTransfersPage() {
 
   const { data, isLoading, isError, refetch } = useQuery<SelfTransfersResponse>({
     queryKey: ["self-transfers-page", page, search, method, sort, dateRangeQuery],
+    enabled: canViewSelfTransfers,
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -169,6 +179,20 @@ export default function SelfTransfersPage() {
   const thisMonth = data?.report?.thisMonthTransfers || 0;
   const allTime = data?.report?.allTimeTransfers || 0;
 
+  useEffect(() => {
+    if (user && !canViewSelfTransfers) {
+      router.push("/");
+    }
+  }, [user, canViewSelfTransfers, router]);
+
+  if (!user || !canViewSelfTransfers) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Breadcrumb pageName="Self Transfers" />
@@ -194,12 +218,14 @@ export default function SelfTransfersPage() {
               </span>
               <FiChevronDown />
             </button>
-            <Link
-              href="/accounts/add-record?recordKind=self_transfer"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2 text-sm font-bold text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
-            >
-              Create Self Transfer
-            </Link>
+            {canManageSelfTransfers && (
+              <Link
+                href="/accounts/add-record?recordKind=self_transfer"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2 text-sm font-bold text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+              >
+                Create Self Transfer
+              </Link>
+            )}
           </div>
         </div>
 
