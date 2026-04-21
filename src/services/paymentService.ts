@@ -308,8 +308,9 @@ function mapStatsRowsToTotalsByEntity(statsRows: any[]) {
 
     const totalIncome = Number(row?.totalIncome || 0);
     const totalExpense = Number(row?.totalExpense || 0);
+    const totalServiceFee = Number(row?.totalServiceFee || 0);
     const totalTransactions = Number(row?.totalTransactions || 0);
-    const balance = Number(row?.balance ?? totalIncome - totalExpense);
+    const balance = Number(row?.balance ?? totalIncome - (totalExpense + totalServiceFee));
     const lastRecomputedAt = row?.lastRecomputedAt
       ? new Date(row.lastRecomputedAt).toISOString()
       : undefined;
@@ -2116,9 +2117,7 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
           $sum: {
             $cond: [
               { $eq: ["$type", "expense"] },
-              {
-                $add: ["$amount", { $ifNull: ["$serviceFee", 0] }],
-              },
+              "$amount",
               0,
             ],
           },
@@ -2152,7 +2151,7 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
           $sum: {
             $cond: [
               { $eq: ["$type", "expense"] },
-              { $add: ["$amount", { $ifNull: ["$serviceFee", 0] }] },
+              "$amount",
               0,
             ],
           },
@@ -2218,14 +2217,29 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
   const previousMonth = computeMonth === 1 ? 12 : computeMonth - 1;
   const previousYear = computeMonth === 1 ? computeYear - 1 : computeYear;
   const previousMonthlyStats = await findMonthlyFinanceStatsByYearMonth(previousYear, previousMonth);
-  const previousBalancesByMethodId = new Map<string, { balance: number; methodLabel?: string }>(
-    ((previousMonthlyStats as any)?.paymentMethods || []).map((row: any) => [
-      String(row?.methodId || ""),
-      {
-        balance: Number(row?.balance || 0),
-        methodLabel: String(row?.methodLabel || ""),
-      },
-    ]),
+
+  const resolveMonthlyMethodId = (row: any) => {
+    const fromMethodRef = row?.method?._id || row?.method;
+    const methodRefId = String(fromMethodRef || "").trim();
+    if (methodRefId) return methodRefId;
+    return String(row?.methodId || "").trim();
+  };
+
+  const previousBalancesByMethodId = new Map<string, { balance: number; methodLabel?: string; methodColor?: string; methodIcon?: string }>(
+    ((((previousMonthlyStats as any)?.paymentMethods || []) as any[])
+      .map((row: any) => {
+        const methodId = resolveMonthlyMethodId(row);
+        return [
+          methodId,
+          {
+            balance: Number(row?.balance || 0),
+            methodLabel: String(row?.methodLabel || ""),
+            methodColor: String(row?.methodColor || ""),
+            methodIcon: String(row?.methodIcon || ""),
+          },
+        ] as const;
+      })
+      .filter((entry: readonly [string, { balance: number; methodLabel?: string; methodColor?: string; methodIcon?: string }]) => Boolean(entry[0]))),
   );
 
   const paymentMethodsAgg = await aggregateRecords([
@@ -2284,12 +2298,18 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
     const currentIncome = Number(current.income || 0);
     const currentExpense = Number(current.expense || 0);
     const methodLabel = method?.method || previous?.methodLabel || methodId || "Unknown";
+    const methodColor = String(method?.color || previous?.methodColor || "").trim();
+    const methodIcon = String(method?.icon || previous?.methodIcon || "").trim();
 
     paymentMethodsMap.set(methodId, {
+      method: method?._id || undefined,
       methodId,
       methodLabel,
+      methodColor,
+      methodIcon,
       income: Number(currentIncome.toFixed(2)),
       expense: Number(currentExpense.toFixed(2)),
+      net: Number((currentIncome - currentExpense).toFixed(2)),
       balance: Number((prevBalance + currentIncome - currentExpense).toFixed(2)),
     });
   }

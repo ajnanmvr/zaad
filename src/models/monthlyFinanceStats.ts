@@ -1,10 +1,14 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
 type PaymentMethodStat = {
+  method?: mongoose.Types.ObjectId;
   methodId: string;
   methodLabel: string;
+  methodColor?: string;
+  methodIcon?: string;
   income: number;
   expense: number;
+  net: number;
   balance: number;
 };
 
@@ -18,19 +22,36 @@ type OfficeRecordCategoryStat = {
 
 const PaymentMethodStatSchema = new Schema(
   {
+    method: {
+      type: Schema.Types.ObjectId,
+      ref: "paymentTemplates",
+      index: true,
+    },
     methodId: {
       type: String,
-      required: true,
+      default: "",
     },
     methodLabel: {
       type: String,
       required: true,
+    },
+    methodColor: {
+      type: String,
+      trim: true,
+    },
+    methodIcon: {
+      type: String,
+      trim: true,
     },
     income: {
       type: Number,
       default: 0,
     },
     expense: {
+      type: Number,
+      default: 0,
+    },
+    net: {
       type: Number,
       default: 0,
     },

@@ -103,7 +103,7 @@ export async function findEntitiesByIds(ids: any[]) {
 
 export async function findPaymentTemplateMethods() {
   return PaymentTemplate.find({ published: { $ne: false } })
-    .select("_id method")
+    .select("_id method color icon")
     .sort({ method: 1 });
 }
 
@@ -540,17 +540,28 @@ export async function findLiabilityEntityStatsByKeys(entityKeys?: string[]) {
 }
 
 export async function findMonthlyFinanceStatsByYearMonth(year: number, month: number) {
-  return MonthlyFinanceStats.findOne(
+  const stats = await MonthlyFinanceStats.findOne(
     { year, month, published: true },
     null,
     {},
-  ).lean();
+  )
+    .populate({ path: "paymentMethods.method", select: "_id method color icon" })
+    .lean();
+
+  if (!stats) {
+    return stats;
+  }
+
+  return normalizeMonthlyStatsPaymentMethods(stats);
 }
 
 export async function findAllMonthlyFinanceStats(sortByNewest = true) {
-  return MonthlyFinanceStats.find({ published: true })
+  const stats = await MonthlyFinanceStats.find({ published: true })
     .sort({ year: sortByNewest ? -1 : 1, month: sortByNewest ? -1 : 1 })
+    .populate({ path: "paymentMethods.method", select: "_id method color icon" })
     .lean();
+
+  return stats.map((item: any) => normalizeMonthlyStatsPaymentMethods(item));
 }
 
 export async function upsertMonthlyFinanceStats(year: number, month: number, stats: any) {
@@ -565,4 +576,32 @@ export async function upsertMonthlyFinanceStats(year: number, month: number, sta
     },
     { upsert: true, new: true },
   );
+}
+
+function normalizeMonthlyStatsPaymentMethods(stats: any) {
+  const rows = Array.isArray(stats?.paymentMethods) ? stats.paymentMethods : [];
+
+  const paymentMethods = rows.map((row: any) => {
+    const methodRef = row?.method;
+    const populatedMethod = methodRef && typeof methodRef === "object" ? methodRef : null;
+    const methodRefId = String(populatedMethod?._id || methodRef || "").trim();
+    const methodId = methodRefId || String(row?.methodId || "").trim();
+    const methodLabel = String(row?.methodLabel || populatedMethod?.method || methodId || "Unknown");
+    const methodColor = String(row?.methodColor || populatedMethod?.color || "").trim();
+    const methodIcon = String(row?.methodIcon || populatedMethod?.icon || "").trim();
+
+    return {
+      ...row,
+      method: methodRefId || null,
+      methodId,
+      methodLabel,
+      methodColor,
+      methodIcon,
+    };
+  });
+
+  return {
+    ...stats,
+    paymentMethods,
+  };
 }

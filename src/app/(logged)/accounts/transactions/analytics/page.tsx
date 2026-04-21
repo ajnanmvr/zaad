@@ -3,12 +3,13 @@
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
 import { hasPermission } from "@/auth/permissions";
+import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
 import toast from "react-hot-toast";
 import {
   FiActivity,
@@ -16,6 +17,7 @@ import {
   FiBarChart2,
   FiChevronRight,
   FiDollarSign,
+  FiFileText,
   FiLayers,
   FiTrendingDown,
   FiTrendingUp,
@@ -30,10 +32,14 @@ type MonthlyCategory = {
 };
 
 type MonthlyPaymentMethod = {
+  method?: string | null;
   methodId: string;
   methodLabel: string;
+  methodColor?: string;
+  methodIcon?: string;
   income: number;
   expense: number;
+  net?: number;
   balance: number;
 };
 
@@ -176,7 +182,7 @@ function PieChart({
             <div key={slice.label} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-950/30">
               <div className="flex items-center gap-3">
                 <span className="h-3.5 w-3.5 rounded-full" style={{ background: slice.color }} />
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{slice.label}</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">{slice.label}</span>
               </div>
               <span className="text-sm font-black text-slate-900 dark:text-slate-100">{percent}%</span>
             </div>
@@ -200,6 +206,8 @@ function LineChart({
 }) {
   const width = 760;
   const height = 280;
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const allValues = series.flatMap((item) => item.values);
   const max = Math.max(...allValues, 1);
   const min = Math.min(...allValues, 0);
@@ -207,16 +215,59 @@ function LineChart({
   const padding = 28;
   const innerWidth = width - padding * 2;
   const innerHeight = height - padding * 2;
+  const activeIndex = hoveredIndex ?? (labels.length > 0 ? labels.length - 1 : null);
+
+  const resolveIndexFromClientX = (clientX: number) => {
+    if (!svgRef.current || labels.length === 0) return null;
+
+    const rect = svgRef.current.getBoundingClientRect();
+    if (!rect.width) return null;
+
+    const xRatio = (clientX - rect.left) / rect.width;
+    const chartX = padding + xRatio * width;
+    const clampedChartX = Math.min(width - padding, Math.max(padding, chartX));
+    const relative = (clampedChartX - padding) / Math.max(innerWidth, 1);
+    const index = Math.round(relative * Math.max(labels.length - 1, 1));
+    return Math.min(labels.length - 1, Math.max(0, index));
+  };
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-950/40">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-72 w-full">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-72 w-full"
+        onMouseMove={(event) => {
+          const index = resolveIndexFromClientX(event.clientX);
+          setHoveredIndex(index);
+        }}
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
         {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
           const y = padding + innerHeight - ratio * innerHeight;
           return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />;
         })}
 
+        {activeIndex !== null && (
+          <line
+            x1={padding + (activeIndex / Math.max(labels.length - 1, 1)) * innerWidth}
+            y1={padding}
+            x2={padding + (activeIndex / Math.max(labels.length - 1, 1)) * innerWidth}
+            y2={height - padding}
+            stroke="currentColor"
+            className="text-slate-300 dark:text-slate-700"
+            strokeDasharray="5 5"
+          />
+        )}
+
         {series.map((entry) => {
+          const points = entry.values.map((value, index) => {
+            const x = padding + (index / Math.max(entry.values.length - 1, 1)) * innerWidth;
+            const normalized = (value - min) / range;
+            const y = padding + innerHeight - normalized * innerHeight;
+            return { x, y, value, label: labels[index] };
+          });
+
           const path = entry.values
             .map((value, index) => {
               const x = padding + (index / Math.max(entry.values.length - 1, 1)) * innerWidth;
@@ -227,27 +278,66 @@ function LineChart({
             .join(" ");
 
           return (
-            <path
-              key={entry.label}
-              d={path}
-              fill="none"
-              stroke={entry.color}
-              strokeWidth="3.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <g key={entry.label}>
+              <path
+                d={path}
+                fill="none"
+                stroke={entry.color}
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={clsx("transition-opacity duration-200", activeIndex !== null ? "opacity-90" : "opacity-80")}
+              />
+              {points.map((point, pointIndex) => (
+                <g key={`${entry.label}-${pointIndex}`}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={activeIndex === pointIndex ? 7 : 3.5}
+                    fill={entry.color}
+                    className={clsx("transition-all duration-150", activeIndex === pointIndex ? "opacity-100" : "opacity-55")}
+                  />
+                  {activeIndex === pointIndex && (
+                    <circle cx={point.x} cy={point.y} r={11} fill="none" stroke={entry.color} strokeOpacity={0.35} strokeWidth="2" />
+                  )}
+                </g>
+              ))}
+            </g>
           );
         })}
 
         {labels.map((label, index) => {
           const x = padding + (index / Math.max(labels.length - 1, 1)) * innerWidth;
           return (
-            <text key={label} x={x} y={height - 6} textAnchor="middle" className="fill-slate-400 text-[10px] font-semibold">
+            <text
+              key={label}
+              x={x}
+              y={height - 6}
+              textAnchor="middle"
+              className={clsx("fill-slate-400 text-[10px] font-semibold transition-colors", activeIndex === index && "fill-slate-700 dark:fill-slate-200")}
+            >
               {label}
             </text>
           );
         })}
       </svg>
+      {activeIndex !== null && labels[activeIndex] && (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Hovered Month</p>
+          <p className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">{labels[activeIndex]}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {series.map((entry) => {
+              const value = Number(entry.values[activeIndex] || 0);
+              return (
+                <div key={`hover-${entry.label}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/40">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{entry.label}</p>
+                  <p className="mt-1 text-sm font-black tabular-nums" style={{ color: entry.color }}>{formatCurrency(value)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {series.map((entry) => (
           <span key={entry.label} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -295,7 +385,6 @@ export default function FinanceAnalyticsPage() {
   );
 
   const latestStats = sortedStats[sortedStats.length - 1];
-  const recentSix = sortedStats.slice(-6);
   const recentTwelve = sortedStats.slice(-12);
 
   const totals = useMemo(() => {
@@ -323,14 +412,14 @@ export default function FinanceAnalyticsPage() {
     };
   }, [sortedStats.length, totals]);
 
-  const sixMonthTrend = useMemo(() => {
-    const labels = recentSix.map((item) => monthLabel(item.month, item.year));
+  const oneYearTrend = useMemo(() => {
+    const labels = recentTwelve.map((item) => monthLabel(item.month, item.year));
     return {
       labels,
-      profit: recentSix.map((item) => Number(item.profit || 0)),
-      officeExpense: recentSix.map((item) => Number(item.officeRecords?.totalExpense || 0)),
+      profit: recentTwelve.map((item) => Number(item.profit || 0)),
+      officeExpense: recentTwelve.map((item) => Number(item.officeRecords?.totalExpense || 0)),
     };
-  }, [recentSix]);
+  }, [recentTwelve]);
 
   const currentMonthCategories = latestStats?.officeRecords?.byCategory || [];
   const currentMonthMethods = [...(latestStats?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
@@ -342,7 +431,7 @@ export default function FinanceAnalyticsPage() {
 
   const isNetPositive = Number(latestStats?.netProfit || 0) >= 0;
 
-  const monthShortLabels = sixMonthTrend.labels.map((label) => label.split(" ")[0]);
+  const monthShortLabels = oneYearTrend.labels.map((label) => label.split(" ")[0]);
 
   const officeExpenseSlices = currentMonthCategories
     .map((category, index) => ({
@@ -402,6 +491,12 @@ export default function FinanceAnalyticsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/accounts/transactions/reports"
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+            >
+              <FiFileText /> Reports
+            </Link>
             <button
               type="button"
               onClick={() => void handleRefresh()}
@@ -457,7 +552,7 @@ export default function FinanceAnalyticsPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <ChartCard title="Office Expense Pie" subtitle={`Category split for ${latestStats ? monthLabel(latestStats.month, latestStats.year) : "the latest month"}`}>
           {officeExpenseSlices.length > 0 ? (
             <PieChart
@@ -509,70 +604,72 @@ export default function FinanceAnalyticsPage() {
             </div>
           )}
         </ChartCard>
+
+        <ChartCard title="Top Payment Methods" subtitle={`Latest month balances (showing ${Math.min(currentMonthMethodsLimited.length, LIMITS.paymentMethodRows)} of ${currentMonthMethods.length})`}>
+          {currentMonthMethods.length > 0 ? (
+            <>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50/80 dark:bg-slate-800/40">
+                    <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      <th className="px-4 py-3">Method</th>
+                      <th className="px-4 py-3 text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentMonthMethodsLimited.map((method) => {
+                      const positive = Number(method.balance || 0) >= 0;
+                      const methodColor = String(method.methodColor || "").trim() || "#64748B";
+                      const MethodIcon = getPaymentMethodIcon(method.methodIcon);
+                      const netValue = Number(method.net ?? Number(method.income || 0) - Number(method.expense || 0));
+
+                      return (
+                        <tr key={method.methodId} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                          <td className="px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: methodColor }}>
+                                <MethodIcon className="h-4 w-4" />
+                              </div>
+                              <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{method.methodLabel}</span>
+                            </div>
+                          </td>
+                          <td className={clsx("px-4 py-3 text-right text-sm font-bold tabular-nums", positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>{formatCurrency(method.balance)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3">
+                {currentMonthMethods.length > LIMITS.paymentMethodRows && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+                    Payment methods are intentionally capped here to keep the dashboard compact.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+              No payment method data in current month.
+            </div>
+          )}
+        </ChartCard>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <ChartCard title="Six-Month Trend" subtitle="Profit and office expense for the last 6 months including this month">
-          {sixMonthTrend.labels.length > 0 ? (
+      <section className="grid grid-cols-1 gap-5">
+        <ChartCard title="One-Year Trend" subtitle="Profit and office expense for the last 12 months including this month. Hover points to see values.">
+          {oneYearTrend.labels.length > 0 ? (
             <LineChart
               labels={monthShortLabels}
               series={[
-                { label: "Profit", values: sixMonthTrend.profit, color: "#10B981" },
-                { label: "Office Expense", values: sixMonthTrend.officeExpense, color: "#F43F5E" },
+                { label: "Profit", values: oneYearTrend.profit, color: "#10B981" },
+                { label: "Office Expense", values: oneYearTrend.officeExpense, color: "#F43F5E" },
               ]}
             />
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
               No monthly stats found.
-            </div>
-          )}
-        </ChartCard>
-
-        <ChartCard title="Top Payment Methods" subtitle={`Latest month balances (showing ${Math.min(currentMonthMethodsLimited.length, LIMITS.paymentMethodRows)} of ${currentMonthMethods.length})`}>
-          {currentMonthMethods.length > 0 ? (
-            <div className="space-y-4">
-              {currentMonthMethodsLimited.map((method) => {
-                const magnitude = Math.max(Math.abs(method.balance), 1);
-                const positive = method.balance >= 0;
-                const methodColor = positive ? "#10B981" : "#F43F5E";
-
-                return (
-                  <div key={method.methodId} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950/40">
-                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: methodColor }}>
-                          <FiDollarSign className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block truncate font-semibold text-slate-800 dark:text-slate-100">{method.methodLabel}</span>
-                          <span className="block text-[11px] text-slate-500 dark:text-slate-400">Income {formatCurrency(method.income)} · Expense {formatCurrency(method.expense)}</span>
-                        </div>
-                      </div>
-                      <span className={clsx("font-bold tabular-nums", positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
-                        {formatCurrency(method.balance)}
-                      </span>
-                    </div>
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.max((magnitude / Math.max(...currentMonthMethods.map((row) => Math.abs(row.balance)), 1)) * 100, 8)}%`,
-                          background: methodColor,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              {currentMonthMethods.length > LIMITS.paymentMethodRows && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
-                  Payment methods are intentionally capped here to keep the dashboard compact.
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
-              No payment method data in current month.
             </div>
           )}
         </ChartCard>

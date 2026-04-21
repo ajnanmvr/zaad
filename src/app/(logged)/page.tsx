@@ -180,10 +180,6 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <PrintReportButton
-              targetId="financial-report-root"
-              reportTitle="Financial Report"
-            />
             <Link
               href="/tasks"
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"

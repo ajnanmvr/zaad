@@ -319,6 +319,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
+              {can("payments.view.records-summary") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/reports"
+                    icon={<FiFileText />}
+                    label="Finance Reports"
+                    active={pathname === "/accounts/transactions/reports"}
+                  />
+                </li>
+              )}
               {can("payments.view.transactions") && (
                 <li>
                   <NavItem
