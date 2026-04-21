@@ -497,13 +497,15 @@ export default function FinanceAnalyticsPage() {
             >
               <FiFileText /> Reports
             </Link>
-            <button
-              type="button"
-              onClick={() => void handleRefresh()}
-              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
-            >
-              <FiBarChart2 /> Refresh Precomputations
-            </button>
+            {process.env.NODE_ENV === "development" && (
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
+              >
+                <FiBarChart2 /> Refresh Precomputations
+              </button>
+            )}
             <Link
               href="/accounts/transactions"
               className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"

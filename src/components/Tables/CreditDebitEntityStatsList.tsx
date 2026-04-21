@@ -246,10 +246,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
               <thead className="bg-slate-50/80 dark:bg-slate-800/40">
                 <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:text-slate-400">
                   <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Credit</th>
-                  <th className="px-4 py-3">Debit</th>
                   <th className="px-4 py-3">Balance</th>
-                  <th className="px-4 py-3">Transactions</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
@@ -270,10 +267,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{formatAmount(row.totalIncome)}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{formatAmount(Number(row.totalExpense || 0) + Number(row.totalServiceFee || 0))}</td>
                     <td className={clsx("px-4 py-3 text-sm font-black", isCredit ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>{formatAmount(row.balance)}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{Number(row.totalTransactions || 0)}</td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/accounts/transactions/${toEntityRouteType(row.entityType)}/${encodeURIComponent(row.entity)}`}

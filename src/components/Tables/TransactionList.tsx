@@ -27,7 +27,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiFileText,
-  FiFilter,
   FiInfo,
   FiMenu,
   FiPlusCircle,
@@ -70,6 +69,7 @@ const baseData = {
 };
 
 type LedgerCategory = "office_records" | "liability";
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 
@@ -381,7 +381,7 @@ const TransactionList = ({
     setFilterDummy(nextFilter);
     setSearchTerm(nextSearch);
     setSortBy(nextSort || "newest");
-    setPageSize(Number.isFinite(nextLimit) && nextLimit > 0 ? nextLimit : 25);
+    setPageSize(Number.isFinite(nextLimit) && nextLimit >= 0 ? nextLimit : 25);
     setPageNumber(0);
   }, [searchParams]);
 
@@ -503,8 +503,8 @@ const TransactionList = ({
     if (paymentData) {
       const nextRecords = isInnerEntityRecords
         ? (paymentData.records || []).filter(
-            (record: TRecordList) => !isLiabilityRecord(record),
-          )
+          (record: TRecordList) => !isLiabilityRecord(record),
+        )
         : paymentData.records || [];
 
       setRecords(nextRecords);
@@ -578,9 +578,9 @@ const TransactionList = ({
       const haystack = [
         `${record?.suffix || ""}${record?.number || ""}`,
         record?.client?.name ||
-          (record?.recordKind === "office_records"
-            ? record?.categoryName || ""
-            : ""),
+        (record?.recordKind === "office_records"
+          ? record?.categoryName || ""
+          : ""),
         record?.client?.type || "",
         record?.particular || "",
         record?.method || "",
@@ -774,9 +774,9 @@ const TransactionList = ({
           const haystack = [
             `${record?.suffix || ""}${record?.number || ""}`,
             record?.client?.name ||
-              (record?.recordKind === "office_records"
-                ? record?.categoryName || ""
-                : ""),
+            (record?.recordKind === "office_records"
+              ? record?.categoryName || ""
+              : ""),
             record?.client?.type || "",
             record?.particular || "",
             record?.method || "",
@@ -866,8 +866,8 @@ const TransactionList = ({
 
     const entityType =
       lockEntityType === "company" ||
-      lockEntityType === "employee" ||
-      lockEntityType === "individual"
+        lockEntityType === "employee" ||
+        lockEntityType === "individual"
         ? lockEntityType
         : null;
 
@@ -877,11 +877,11 @@ const TransactionList = ({
       selectedEntitySummary:
         entityType && lockEntityId
           ? {
-              id: lockEntityId,
-              name:
-                lockEntityName || selectedRecords[0]?.client?.name || "Client",
-              type: entityType,
-            }
+            id: lockEntityId,
+            name:
+              lockEntityName || selectedRecords[0]?.client?.name || "Client",
+            type: entityType,
+          }
           : null,
       invoiceData: {
         quotation: "false",
@@ -970,46 +970,12 @@ const TransactionList = ({
   return (
     <>
       {type && !embedded && (
-        <>
-          <Breadcrumb
-            pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`}
-          />
-          <div className="my-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-            <CardDataStats
-              loading={isLoading}
-              title="Total Transactions"
-              total={`${cards[3]}`}
-            >
-              <FiInfo className="text-xl" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Total Income"
-              total={`${cards[1].toFixed(2)} AED`}
-              color="emerald-500"
-            >
-              <FiArrowDownLeft className="text-xl text-emerald-500" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Total Expense"
-              total={`${cards[2].toFixed(2)} AED`}
-              color="rose-500"
-            >
-              <FiArrowUpRight className="text-xl text-rose-500" />
-            </CardDataStats>
-            <CardDataStats
-              loading={isLoading}
-              title="Balance"
-              total={`${cards[0].toFixed(2)} AED`}
-            >
-              <FiFilter className="text-xl text-emerald-500" />
-            </CardDataStats>
-          </div>
-        </>
+        <Breadcrumb
+          pageName={`${recordsWithBalance[0]?.client?.name || type}'s Transactions`}
+        />
       )}
 
-      {isInnerEntityRecords && (
+      {(isInnerEntityRecords || (type && !embedded)) && (
         <div className="my-6 space-y-3">
           <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
@@ -1175,8 +1141,32 @@ const TransactionList = ({
                     <FiFileText /> To Invoice
                   </button>
                 )}
-                <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  <span>{visibleRecords.length} shown</span>
+                <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Show
+                    </span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        const params = new URLSearchParams(searchParams);
+                        params.set("limit", String(val));
+                        params.set("page", "0");
+                        router.push(`${window.location.pathname}?${params.toString()}`);
+                      }}
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      {PAGE_SIZE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                      {(Boolean(id) || isInnerEntityRecords) && (
+                        <option value="0">All</option>
+                      )}
+                    </select>
+                  </div>
                   {selectedRecordIds.length > 0 && (
                     <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                       {selectedRecordIds.length} selected
@@ -1295,22 +1285,6 @@ const TransactionList = ({
           <div className="border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-5">
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                {!isInnerEntityRecords && (
-                  <select
-                    value={String(pageSize)}
-                    onChange={(event) => {
-                      const nextSize = Number(event.target.value);
-                      setPageSize(nextSize);
-                      setPageNumber(0);
-                    }}
-                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="10">10 rows</option>
-                    <option value="25">25 rows</option>
-                    <option value="50">50 rows</option>
-                    <option value="100">100 rows</option>
-                  </select>
-                )}
 
                 <select
                   value={filterDummy.t}
@@ -1553,8 +1527,8 @@ const TransactionList = ({
                                 <Link
                                   href={
                                     record?.client?.type &&
-                                    record.client.type !== "self" &&
-                                    record.client.type !== "office"
+                                      record.client.type !== "self" &&
+                                      record.client.type !== "office"
                                       ? `/${record.client.type}/${record.client.id}`
                                       : "#"
                                   }
@@ -1576,7 +1550,7 @@ const TransactionList = ({
                                         : "Self Transfer In"
                                       : record?.recordKind === "office_records"
                                         ? record?.categoryName ||
-                                          "Office Record"
+                                        "Office Record"
                                         : record?.client?.name || "Unknown"}
                                   </p>
                                   <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
@@ -1718,21 +1692,49 @@ const TransactionList = ({
                 <span>•</span>
                 <span>{visibleRecords.length} rows on this page</span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(pageNumber - 1)}
-                  disabled={pageNumber === 0 || isLoading}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-                >
-                  <FiChevronLeft /> Previous
-                </button>
-                <button
-                  onClick={() => handlePageChange(pageNumber + 1)}
-                  disabled={isLoading || !hasMore || !recordsWithBalance.length}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-                >
-                  Next <FiChevronRight />
-                </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Show
+                  </span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      const params = new URLSearchParams(searchParams);
+                      params.set("limit", String(val));
+                      params.set("page", "0");
+                      router.push(`${window.location.pathname}?${params.toString()}`);
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                    {(Boolean(id) || isInnerEntityRecords) && (
+                      <option value="0">All</option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(pageNumber - 1)}
+                    disabled={pageNumber === 0 || isLoading}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                  >
+                    <FiChevronLeft /> Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(pageNumber + 1)}
+                    disabled={isLoading || !hasMore || !recordsWithBalance.length}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                  >
+                    Next <FiChevronRight />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

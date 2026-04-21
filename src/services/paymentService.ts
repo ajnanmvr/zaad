@@ -1023,7 +1023,9 @@ export async function listPaymentRecords(input: {
   employeeCompanyId?: string | null;
   category?: string | null;
 }) {
-  const contentPerSection = Math.min(Math.max(Number(input.limit || 25), 1), 200);
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const contentPerSection = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
   const sortMap: Record<string, Record<string, 1 | -1>> = {
@@ -1037,8 +1039,8 @@ export async function listPaymentRecords(input: {
 
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    skip: input.pageNumber * contentPerSection,
-    limit: contentPerSection + 1,
+    skip: isAll ? 0 : input.pageNumber * contentPerSection,
+    limit: isAll ? undefined : contentPerSection + 1,
     sort: sortMap[String(input.sort || "newest")] || sortMap.newest,
   });
 
@@ -1046,8 +1048,8 @@ export async function listPaymentRecords(input: {
     return { message: "No records found", count: 0, hasMore: false, records: [] };
   }
 
-  const hasMore = records.length > contentPerSection;
-  const transformedData = records.slice(0, contentPerSection).map(mapRecordListItem);
+  const hasMore = isAll ? false : records.length > contentPerSection;
+  const transformedData = (isAll ? records : records.slice(0, contentPerSection)).map(mapRecordListItem);
 
   return { count: transformedData.length, hasMore, records: transformedData };
 }
@@ -1728,7 +1730,9 @@ export async function listCompanyPaymentRecords(
   companyId: string,
   input: PaymentRecordFilters & { recordScope?: "company" | "employees" | "mixed" } = {},
 ) {
-  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const employeeIds = await distinctEmployeeIdsByCompany(companyId);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
@@ -1745,8 +1749,8 @@ export async function listCompanyPaymentRecords(
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
     sort: getPaymentSortMap(input.sort),
-    skip: Number(input.pageNumber || 0) * pageSize,
-    limit: pageSize + 1,
+    skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+    limit: isAll ? undefined : pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1762,8 +1766,10 @@ export async function listCompanyPaymentRecords(
     };
   }
 
-  const hasMore = records.length > pageSize;
-  const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
   const totals = await getCompanyScopedEntityTotals(
     companyId,
     input.recordScope || "company",
@@ -1781,17 +1787,21 @@ export async function listEmployeePaymentRecords(
   employeeId: string,
   input: PaymentRecordFilters = {},
 ) {
-  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const query: Record<string, any> = {
     ...ACTIVE_RECORD_FILTER,
     entity: employeeId,
   };
+
   await applyPaymentRecordFilters(query, input);
+
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
     sort: getPaymentSortMap(input.sort),
-    skip: Number(input.pageNumber || 0) * pageSize,
-    limit: pageSize + 1,
+    skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+    limit: isAll ? undefined : pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1803,11 +1813,14 @@ export async function listEmployeePaymentRecords(
       totalIncome: 0,
       totalExpense: 0,
       totalTransactions: 0,
+      hasMore: false,
     };
   }
 
-  const hasMore = records.length > pageSize;
-  const transformedData = records.slice(0, pageSize).map(mapRecordListItem);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
   const totals = await getEntityTotals(employeeId);
 
   return {
@@ -1822,7 +1835,9 @@ export async function listIndividualPaymentRecords(
   employeeId: string,
   input: PaymentRecordFilters = {},
 ) {
-  const pageSize = Math.min(Math.max(Number(input.limit || 25), 1), 200);
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const records = await findRecords(
     await applyPaymentRecordFilters(
       { ...ACTIVE_RECORD_FILTER, entity: employeeId },
@@ -1831,9 +1846,9 @@ export async function listIndividualPaymentRecords(
     {
       populate: PAYMENT_POPULATE_FIELDS,
       sort: getPaymentSortMap(input.sort),
-      skip: Number(input.pageNumber || 0) * pageSize,
-      limit: pageSize + 1,
-    }
+      skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+      limit: isAll ? undefined : pageSize + 1,
+    },
   );
 
   if (!records || records.length === 0) {
@@ -1849,9 +1864,10 @@ export async function listIndividualPaymentRecords(
     };
   }
 
-  const hasMore = records.length > pageSize;
-  const individualRecords = records.slice(0, pageSize);
-  const transformedData = individualRecords.map(mapRecordListItem);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
   const totals = await getEntityTotals(employeeId);
 
   return {
