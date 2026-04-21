@@ -37,7 +37,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
     color?: string;
     type: string;
   } | null>(null);
-  const [entityListLimit, setEntityListLimit] = useState<number>(8);
+  const SUGGESTION_LIMIT = 8;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -56,7 +56,6 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
         name: initialEntity.name,
         type: initialEntity.type,
       });
-      setEntityListLimit(8);
       setFormData((prev) => ({
         ...prev,
         entity: initialEntity.id,
@@ -65,7 +64,6 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
       setSelectedOption("");
       setSearchValue("");
       setSelectedEntitySummary(null);
-      setEntityListLimit(8);
       setSearchSuggestions([]);
       setFormData({
         entity: "",
@@ -153,7 +151,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
   const inputClass =
     "w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-800 outline-none transition focus:border-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-cyan-400 dark:disabled:bg-slate-800";
   const labelClass = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500";
-  const visibleSuggestions = searchSuggestions.slice(0, entityListLimit);
+  const visibleSuggestions = searchSuggestions.slice(0, SUGGESTION_LIMIT);
 
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-10 backdrop-blur-sm">
@@ -209,25 +207,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
               </div>
             </div>
 
-            <div>
-              <label className={labelClass}>Entity List Size</label>
-              <div className="relative z-20">
-                <select
-                  title="How many entities to show in suggestions"
-                  value={entityListLimit}
-                  onChange={(e) => setEntityListLimit(Number(e.target.value))}
-                  className={inputClass}
-                >
-                  <option value={5}>Show 5 entities</option>
-                  <option value={8}>Show 8 entities</option>
-                  <option value={12}>Show 12 entities</option>
-                  <option value={20}>Show 20 entities</option>
-                </select>
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <FiChevronDown />
-                </span>
-              </div>
-            </div>
+
 
             <div className="relative">
               <label className={labelClass}>
@@ -259,7 +239,7 @@ const AddHandoverModal = ({ isOpen, onSuccess, onCancel, initialEntity }: AddHan
                         <EntityAvatar name={s.name} color={s.color} size="sm" />
                         <div className="flex flex-col">
                           <span className="font-medium">{s.name}</span>
-                          <span className="text-[10px] uppercase tracking-wider text-slate-400">{s.entityType || selectedOption}</span>
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400">{s.entityType === "employee" && s.company ? s.company.name : (s.entityType || selectedOption)}</span>
                         </div>
                       </div>
                     </li>

@@ -267,7 +267,7 @@ const AddExpiryDocumentModal = ({ isOpen, onSuccess, onCancel }: AddExpiryDocume
                         <div className="flex flex-col">
                           <span className="max-w-[220px] truncate font-medium">{entity.name}</span>
                           <span className="text-[10px] uppercase tracking-wider text-slate-400">
-                            {entity.entityType || selectedOption}
+                            {entity.entityType === "employee" && entity.company ? entity.company.name : (entity.entityType || selectedOption)}
                           </span>
                         </div>
                       </div>
