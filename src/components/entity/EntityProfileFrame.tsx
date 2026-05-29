@@ -206,6 +206,7 @@ export function EntityProfileHeader({
   companyName,
   companyAvatarInitials,
   companyAvatarColor,
+  companyHref,
   onEditHref,
   onDelete,
   isDeleting,
@@ -217,6 +218,7 @@ export function EntityProfileHeader({
   companyName?: string;
   companyAvatarInitials?: string;
   companyAvatarColor?: string;
+  companyHref?: string;
   onEditHref: string;
   onDelete: () => void;
   isDeleting?: boolean;
@@ -239,15 +241,30 @@ export function EntityProfileHeader({
                   {entityType}
                 </span>
                 {companyName && companyAvatarInitials && companyAvatarColor && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
-                    <span
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black text-white"
-                      style={{ backgroundColor: companyAvatarColor }}
+                  companyHref ? (
+                    <Link
+                      href={companyHref}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900"
                     >
-                      {companyAvatarInitials}
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black text-white"
+                        style={{ backgroundColor: companyAvatarColor }}
+                      >
+                        {companyAvatarInitials}
+                      </span>
+                      {companyName}
+                    </Link>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black text-white"
+                        style={{ backgroundColor: companyAvatarColor }}
+                      >
+                        {companyAvatarInitials}
+                      </span>
+                      {companyName}
                     </span>
-                    {companyName}
-                  </span>
+                  )
                 )}
               </div>
               <h1 className="truncate text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">

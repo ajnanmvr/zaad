@@ -689,18 +689,18 @@ const ExpiryDocumentsPage = () => {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
-                            <div className="flex flex-col">
+                            <div className="min-w-0 flex-1">
                               {entityHref ? (
                                 <Link
                                   href={entityHref}
-                                  className="text-sm font-semibold capitalize text-primary hover:underline"
+                                  className="block max-w-[14rem] text-sm font-semibold capitalize leading-5 text-primary hover:underline line-clamp-2"
                                 >
                                   {entityName}
                                 </Link>
                               ) : (
-                                <span className="text-sm font-medium capitalize text-slate-700 dark:text-slate-300">
+                                <span className="block max-w-[14rem] text-sm font-medium capitalize leading-5 text-slate-700 line-clamp-2 dark:text-slate-300">
                                   {entityName}
                                 </span>
                               )}

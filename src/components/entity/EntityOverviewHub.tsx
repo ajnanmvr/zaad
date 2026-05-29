@@ -444,6 +444,8 @@ export default function EntityOverviewHub({
   const avatarInitials = initialsFromName(entity?.name || details?.name);
   const avatarColor = resolveAvatarColorWithFallback(entity?.color || details?.color, entity?.name || details?.name);
   const companyName = entity?.company?.name || details?.company?.name;
+  const companyId = (entity?.company as any)?._id || (entity?.company as any)?.id || (details?.company as any)?._id || (details?.company as any)?.id;
+  const companyHref = entityType === "employee" && companyId ? `/company/${companyId}` : undefined;
   const companyAvatarInitials = initialsFromName(companyName);
   const companyAvatarColor = resolveAvatarColorWithFallback(
     entity?.company?.color || details?.company?.color,
@@ -503,6 +505,7 @@ export default function EntityOverviewHub({
             companyName={entityType === "employee" ? companyName : undefined}
             companyAvatarInitials={entityType === "employee" ? companyAvatarInitials : undefined}
             companyAvatarColor={entityType === "employee" ? companyAvatarColor : undefined}
+            companyHref={entityType === "employee" ? companyHref : undefined}
             onEditHref={`/${entityType}/${id}/edit`}
             onDelete={handleDeleteEntity}
             isDeleting={isDeletingEntity}

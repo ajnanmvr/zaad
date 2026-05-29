@@ -122,14 +122,14 @@ type OverviewResponse = {
       company?: { id: string; name: string; color?: string };
     };
     counts: {
-      details: number;
-      documents: number;
-      credentials: number;
-      handovers: number;
-      tasks: number;
-      employees: number;
-      invoices: number;
-      records: number;
+        details: number;
+        documents: number;
+        credentials: number;
+        handovers: number;
+        tasks: number;
+        employees: number;
+        invoices: number;
+        records: number;
     };
   };
 };
@@ -310,6 +310,13 @@ export default function EntitySectionPage({
     entity?.name || details?.name,
   );
   const companyName = entity?.company?.name || details?.company?.name;
+  const companyId =
+    (entity?.company as any)?._id ||
+    (entity?.company as any)?.id ||
+    (details?.company as any)?._id ||
+    (details?.company as any)?.id;
+  const companyHref =
+    entityType === "employee" && companyId ? `/company/${companyId}` : undefined;
   const companyAvatarInitials = initialsFromName(companyName);
   const companyAvatarColor = resolveAvatarColorWithFallback(
     entity?.company?.color || details?.company?.color,
@@ -1048,6 +1055,7 @@ export default function EntitySectionPage({
           companyAvatarColor={
             entityType === "employee" ? companyAvatarColor : undefined
           }
+          companyHref={entityType === "employee" ? companyHref : undefined}
           onEditHref={`/${entityType}/${id}/edit`}
           onDelete={handleDeleteEntity}
           isDeleting={isDeletingEntity}
