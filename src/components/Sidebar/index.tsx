@@ -581,16 +581,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
-              {canViewPermissions && (
-                <li>
-                  <NavItem
-                    href="/settings/permissions"
-                    icon={<FiKey />}
-                    label="Permissions"
-                    active={pathname === "/settings/permissions"}
-                  />
-                </li>
-              )}
+            
               <li>
                 <NavItem
                   href="/settings/my-activity"
