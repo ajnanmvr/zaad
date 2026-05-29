@@ -41,7 +41,7 @@ export default function FinanceReportsPage() {
   const now = new Date();
   const { user } = useUserContext();
   const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
-  const canViewReports = hasPermission(permissions, "payments.view.records-summary") || hasPermission(permissions, "payments.view.finance-summary-page");
+  const canViewReports = hasPermission(permissions, "payments.view.records-summary") || hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.reports") || hasPermission(permissions, "payments.view.finance");
 
   const [reportMode, setReportMode] = useState<ReportMode>("month");
   const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));

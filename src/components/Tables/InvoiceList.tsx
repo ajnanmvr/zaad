@@ -8,6 +8,8 @@ import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import SkeletonList from "../common/SkeletonList";
@@ -26,6 +28,12 @@ type InvoicePagination = {
 
 const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: string; embedded?: boolean; returnTo?: string } = {}) => {
   const queryClient = useQueryClient();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const canViewInvoices = hasPermission(permissions, "payments.view.invoices");
+  const canCreateInvoices = hasPermission(permissions, "payments.create.invoices");
+  const canUpdateInvoices = hasPermission(permissions, "payments.update.invoices");
+  const canDeleteInvoices = hasPermission(permissions, "payments.delete.invoices");
   const [invoices, setInvoices] = useState<TInvoiceList[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
@@ -50,6 +58,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
       const response = await axios.get(`/api/invoice?${params.toString()}`);
       return response.data;
     },
+    enabled: canViewInvoices,
     placeholderData: keepPreviousData,
   });
 
@@ -87,6 +96,14 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
       toast.error("Failed to delete invoice");
     },
   });
+
+  if (!canViewInvoices) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+        You do not have permission to view invoices.
+      </div>
+    );
+  }
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -232,14 +249,16 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
 
               <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
 
-              <Link
-                href={`/accounts/invoice/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
-                className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 hover:shadow-emerald-500/30"
-              >
-                <FiPlus className="text-lg transition-transform group-hover:rotate-90" />
-                <span className="hidden sm:inline">Create Invoice</span>
-                <span className="sm:hidden">Create</span>
-              </Link>
+              {canCreateInvoices && (
+                <Link
+                  href={`/accounts/invoice/new${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+                  className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 hover:shadow-emerald-500/30"
+                >
+                  <FiPlus className="text-lg transition-transform group-hover:rotate-90" />
+                  <span className="hidden sm:inline">Create Invoice</span>
+                  <span className="sm:hidden">Create</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -340,23 +359,27 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                           >
                             <FiEye className="text-lg" />
                           </Link>
-                          <Link
-                            href={`/accounts/invoice/${record?.id}/edit`}
-                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-                            title="Edit Invoice"
-                          >
-                            <FiEdit2 className="text-lg" />
-                          </Link>
-                          <button
-                            title="Delete Invoice"
-                            onClick={() => {
-                              setSelectedRecordId(record?.id);
-                              setIsConfirmationOpen(true);
-                            }}
-                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
-                          >
-                            <FiTrash2 className="text-lg" />
-                          </button>
+                          {canUpdateInvoices && (
+                            <Link
+                              href={`/accounts/invoice/${record?.id}/edit`}
+                              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-emerald-600 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                              title="Edit Invoice"
+                            >
+                              <FiEdit2 className="text-lg" />
+                            </Link>
+                          )}
+                          {canDeleteInvoices && (
+                            <button
+                              title="Delete Invoice"
+                              onClick={() => {
+                                setSelectedRecordId(record?.id);
+                                setIsConfirmationOpen(true);
+                              }}
+                              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                            >
+                              <FiTrash2 className="text-lg" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -2,11 +2,28 @@ export type AppRole = string;
 export type AppPermission = string;
 
 const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
+  "payments.admin": ["payments.write"],
   "settings.write": ["settings.read"],
   "entities.write": ["entities.read"],
   "documents.write": ["documents.read"],
-  "tasks.manage": ["tasks.read", "tasks.complete", "tasks.notifications.read"],
-  "tasks.complete": ["tasks.read"],
+  "tasks.read": ["tasks.view.my", "tasks.view.detail", "tasks.calendar.view", "tasks.links.suggest"],
+  "tasks.manage": [
+    "tasks.read",
+    "tasks.view.all",
+    "tasks.create",
+    "tasks.assign",
+    "tasks.update",
+    "tasks.delete",
+    "tasks.export",
+    "tasks.complete",
+    "tasks.notifications.read",
+    "tasks.calendar.view",
+    "tasks.links.suggest",
+  ],
+  "tasks.view.all": ["tasks.view.my", "tasks.view.detail"],
+  "tasks.complete": ["tasks.view.my", "tasks.view.detail"],
+  "tasks.update": ["tasks.view.detail"],
+  "tasks.assign": ["tasks.view.all"],
 
   // Broad finance permissions imply detailed user-view permissions.
   "payments.read": [
@@ -19,12 +36,17 @@ const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
     "payments.view.invoices",
     "payments.view.monthly-stats",
     "payments.view.finance-summary-page",
+    "payments.view.reports",
+    "payments.view.finance",
   ],
   "payments.write": [
     "payments.read",
     "payments.create.transactions",
     "payments.update.transactions",
     "payments.delete.transactions",
+    "payments.create.invoices",
+    "payments.update.invoices",
+    "payments.delete.invoices",
     "payments.manage.self-transfers",
     "payments.manage.recompute-monthly-stats",
     "payments.manage.particular-suggestions",

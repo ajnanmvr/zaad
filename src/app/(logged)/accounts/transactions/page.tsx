@@ -22,7 +22,7 @@ const TablesPageContent = () => {
   const canViewSelfTransfers = hasPermission(permissions, "payments.view.self-transfers");
   const canViewLiability = hasPermission(permissions, "payments.view.liability-records");
   const canViewCreditDebit = hasPermission(permissions, "payments.view.credit-debit-lists");
-  const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page");
+  const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.finance") || hasPermission(permissions, "payments.view.reports");
 
   useEffect(() => {
     if (user && !canViewTransactions) {

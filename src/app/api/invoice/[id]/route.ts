@@ -1,5 +1,6 @@
 import Invoice from "@/models/invoice";
 import connect from "@/db/mongo";
+import { requirePermission } from "@/auth/guards";
 import { TInvoiceItemsData } from "@/types/invoice";
 import formatDate from "@/utils/formatDate";
 import { NextRequest } from "next/server";
@@ -8,6 +9,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await requirePermission(request, "payments.delete.invoices");
   const { id } = params;
   await Invoice.findByIdAndUpdate(id, { published: false });
   return Response.json({ message: "data deleted" }, { status: 200 });
@@ -18,6 +20,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   await connect();
+  await requirePermission(request, "payments.update.invoices");
   const { id } = params;
   const reqBody = await request.json();
 
@@ -46,6 +49,7 @@ export async function GET(
 ) {
   try {
     await connect();
+    await requirePermission(request, "payments.view.invoices");
     const searchParams = request.nextUrl.searchParams;
     const editmode = searchParams.get("editmode");
     const res = await Invoice.findById(params.id).populate("createdBy");

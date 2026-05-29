@@ -1,8 +1,33 @@
+"use client";
+
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import InvoiceList from "@/components/Tables/InvoiceList";
+import { hasPermission } from "@/auth/permissions";
+import { useUserContext } from "@/contexts/UserContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { FiFileText, FiLayers, FiSearch } from "react-icons/fi";
 
 export default function Invoice() {
+  const router = useRouter();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const canViewInvoices = hasPermission(permissions, "payments.view.invoices");
+
+  useEffect(() => {
+    if (user && !canViewInvoices) {
+      router.push("/");
+    }
+  }, [user, canViewInvoices, router]);
+
+  if (!user || !canViewInvoices) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Breadcrumb pageName="Invoices" />

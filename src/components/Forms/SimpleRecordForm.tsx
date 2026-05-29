@@ -217,10 +217,10 @@ const SimpleRecordForm = ({
       type: EntityOption["entityType"];
       url: string;
     }> = [
-      { type: "company", url: `/api/company/${id}` },
-      { type: "employee", url: `/api/employee/${id}` },
-      { type: "individual", url: `/api/individual/${id}` },
-    ];
+        { type: "company", url: `/api/company/${id}` },
+        { type: "employee", url: `/api/employee/${id}` },
+        { type: "individual", url: `/api/individual/${id}` },
+      ];
 
     for (const source of sources) {
       try {
@@ -875,45 +875,27 @@ const SimpleRecordForm = ({
   const usesNeutralTheme = ["instant_profit", "self_transfer"].includes(
     effectiveRecordKind || "",
   );
-  const nextType: RecordType =
-    formData.type === "income" ? "expense" : "income";
-  const switchTheme = usesNeutralTheme
+
+const theme = usesNeutralTheme
     ? {
-        bg: isDarkMode ? "#10223a" : "#eaf2ff",
-        border: isDarkMode ? "#1e3a5f" : "#bfdbfe",
-        text: isDarkMode ? "#93c5fd" : "#1d4ed8",
-      }
-    : nextType === "expense"
-      ? {
-          bg: isDarkMode ? "#3b0f12" : "#ffe7e7",
-          border: isDarkMode ? "#7f1d1d" : "#fecaca",
-          text: isDarkMode ? "#fca5a5" : "#b91c1c",
-        }
-      : {
-          bg: isDarkMode ? "#0f2a1b" : "#e9fbe9",
-          border: isDarkMode ? "#166534" : "#bbf7d0",
-          text: isDarkMode ? "#86efac" : "#166534",
-        };
-  const theme = usesNeutralTheme
-    ? {
-        panel: isDarkMode ? "#0f172a" : "#f8fbff",
-        border: isDarkMode ? "#1e293b" : "#dbeafe",
-        soft: isDarkMode ? "#172554" : "#eef4ff",
-        strong: isDarkMode ? "#60a5fa" : "#2563eb",
-      }
+      panel: isDarkMode ? "#0f172a" : "#eff6ff", // Darkened slightly from #f8fbff
+      border: isDarkMode ? "#1e293b" : "#dbeafe",
+      soft: isDarkMode ? "#172554" : "#eef4ff",
+      strong: isDarkMode ? "#60a5fa" : "#2563eb",
+    }
     : formData.type === "income"
       ? {
-          panel: isDarkMode ? "#0b1a13" : "#fbfefc",
-          border: isDarkMode ? "#1f5138" : "#cdeed8",
-          soft: isDarkMode ? "#10251b" : "#f2fbf4",
-          strong: isDarkMode ? "#22c55e" : "#16a34a",
-        }
+        panel: isDarkMode ? "#0b1a13" : "#f0fdf4", // Darkened slightly from #fbfefc
+        border: isDarkMode ? "#1f5138" : "#cdeed8",
+        soft: isDarkMode ? "#10251b" : "#f2fbf4",
+        strong: isDarkMode ? "#22c55e" : "#16a34a",
+      }
       : {
-          panel: isDarkMode ? "#1a1213" : "#fffafa",
-          border: isDarkMode ? "#5b2a2a" : "#f3cdcd",
-          soft: isDarkMode ? "#241718" : "#fff4f4",
-          strong: isDarkMode ? "#ef4444" : "#dc2626",
-        };
+        panel: isDarkMode ? "#1a1213" : "#fef2f2", // Darkened slightly from #fffafa
+        border: isDarkMode ? "#5b2a2a" : "#f3cdcd",
+        soft: isDarkMode ? "#241718" : "#fff4f4",
+        strong: isDarkMode ? "#ef4444" : "#dc2626",
+      };
 
   const createHeader = useMemo(() => {
     const kind = String(formData.recordKind || "").toLowerCase();
@@ -1088,7 +1070,7 @@ const SimpleRecordForm = ({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                   Transaction No
                 </p>
-                <button
+                {/* <button
                   type="button"
                   onClick={() => setIsEditingTransactionNumber((prev) => !prev)}
                   className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-slate-100"
@@ -1104,7 +1086,7 @@ const SimpleRecordForm = ({
                   ) : (
                     <FiEdit2 className="h-3.5 w-3.5" />
                   )}
-                </button>
+                </button> */}
               </div>
 
               {isEditingTransactionNumber ? (
@@ -1137,7 +1119,7 @@ const SimpleRecordForm = ({
                   />
                 </div>
               ) : (
-                <p className="mt-1.5 text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                <p className="mt-1.5 font-bold text-right tracking-tight text-slate-900 dark:text-slate-100">
                   {transactionNumber || "-"}
                 </p>
               )}
@@ -1158,19 +1140,18 @@ const SimpleRecordForm = ({
                     handleRecordKindChange(tile.kind);
                   }}
                   disabled={isEdit}
-                  className={`rounded-2xl border p-3 text-left transition-all duration-200 ${
-                    selected
+                  className={`rounded-2xl border p-3 text-left transition-all duration-200 ${selected
                       ? "border-transparent shadow-lg"
                       : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-                  } ${isEdit ? "cursor-not-allowed opacity-70" : ""}`}
+                    } ${isEdit ? "cursor-not-allowed opacity-70" : ""}`}
                   style={
                     selected
                       ? {
-                          backgroundColor: getRecordKindSelectedColor(
-                            tile.kind,
-                          ),
-                          color: "#fff",
-                        }
+                        backgroundColor: getRecordKindSelectedColor(
+                          tile.kind,
+                        ),
+                        color: "#fff",
+                      }
                       : undefined
                   }
                 >
@@ -1442,7 +1423,7 @@ const SimpleRecordForm = ({
                       step="0.01"
                       min="0"
                       required
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      className={clsx("w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100", needsSwapMethods && "text-7xl")}
                       placeholder="0.00"
                     />
                   </div>
@@ -1478,11 +1459,10 @@ const SimpleRecordForm = ({
                             method: method.id,
                           }))
                         }
-                        className={`rounded-xl border p-2 text-left transition-all duration-200 ${
-                          formData.method === method.id
+                        className={`rounded-xl border p-2 text-left transition-all duration-200 ${formData.method === method.id
                             ? `border-transparent shadow-lg ${selectedTextClass}`
                             : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
-                        }`}
+                          }`}
                         style={
                           formData.method === method.id
                             ? { backgroundColor: selectedMethodColor }
@@ -1515,7 +1495,7 @@ const SimpleRecordForm = ({
                     className={clsx(
                       "space-y-5",
                       isSelfTransferSwap &&
-                        "rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-800/40 dark:bg-rose-900/10",
+                      "rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-800/40 dark:bg-rose-900/10",
                     )}
                   >
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
@@ -1544,11 +1524,10 @@ const SimpleRecordForm = ({
                                 from: methodValue,
                               }))
                             }
-                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${
-                              formData.from === methodValue
+                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${formData.from === methodValue
                                 ? `border-transparent shadow-lg ${selectedTextClass}`
                                 : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
-                            }`}
+                              }`}
                             style={
                               formData.from === methodValue
                                 ? { backgroundColor: selectedMethodColor }
@@ -1577,7 +1556,7 @@ const SimpleRecordForm = ({
                     className={clsx(
                       "space-y-5",
                       isSelfTransferSwap &&
-                        "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/10",
+                      "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/10",
                     )}
                   >
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
@@ -1606,11 +1585,10 @@ const SimpleRecordForm = ({
                                 to: methodValue,
                               }))
                             }
-                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${
-                              formData.to === methodValue
+                            className={`rounded-xl border p-2 text-left transition-all duration-200 ${formData.to === methodValue
                                 ? `border-transparent shadow-lg ${selectedTextClass}`
                                 : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
-                            }`}
+                              }`}
                             style={
                               formData.to === methodValue
                                 ? { backgroundColor: selectedMethodColor }
@@ -1660,11 +1638,10 @@ const SimpleRecordForm = ({
                             status: status.id,
                           }))
                         }
-                        className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-all duration-200 ${
-                          formData.status === status.id
+                        className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-all duration-200 ${formData.status === status.id
                             ? `border-transparent shadow-lg ${selectedTextClass}`
                             : "border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
-                        }`}
+                          }`}
                         style={
                           formData.status === status.id
                             ? { backgroundColor: selectedStatusColor }

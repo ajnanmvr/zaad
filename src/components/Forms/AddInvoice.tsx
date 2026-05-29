@@ -11,6 +11,7 @@ import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, 
 import clsx from "clsx";
 import EntityAvatar from "../common/EntityAvatar";
 import toast from "react-hot-toast";
+import { hasPermission } from "@/auth/permissions";
 
 const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 const INVOICE_PREFILL_MAX_AGE_MS = 30 * 60 * 1000;
@@ -34,6 +35,10 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const returnTo = searchParams.get("returnTo");
     const prefillSource = searchParams.get("prefill");
     const { user } = useUserContext();
+    const isEditRoute = Boolean(edit);
+    const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+    const canCreateInvoice = hasPermission(permissions, "payments.create.invoices");
+    const canUpdateInvoice = hasPermission(permissions, "payments.update.invoices");
 
     const [isEditMode, setisEditMode] = useState(false);
     const [connectionMode, setConnectionMode] = useState<"detached" | "connected">("connected");
@@ -153,8 +158,25 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         fetchData()
     }, [fetchData])
 
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        const canAccess = isEditRoute ? canUpdateInvoice : canCreateInvoice;
+        if (!canAccess) {
+            router.push("/");
+        }
+    }, [user, isEditRoute, canCreateInvoice, canUpdateInvoice, router]);
+
     const handleSubmit = async (e: any) => {
         e.preventDefault()
+        const canSubmit = isEditRoute ? canUpdateInvoice : canCreateInvoice;
+        if (!canSubmit) {
+            toast.error("You do not have permission to submit invoices.");
+            return;
+        }
+
         try {
             if (connectionMode === "connected" && (!invoiceData?.entityId || !invoiceData?.entityType)) {
                 toast.error("Please select an entity to connect this invoice.");
@@ -268,6 +290,14 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     // UI Helpers
     const inputClass = "w-full appearance-none rounded-2xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-900";
     const labelClass = "mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400";
+
+    if (!user || (isEditRoute ? !canUpdateInvoice : !canCreateInvoice)) {
+        return (
+            <div className="flex min-h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

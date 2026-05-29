@@ -20,7 +20,14 @@ function escapeRegex(input: string) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requireAnyPermission(request, ["tasks.read", "tasks.manage", "tasks.complete"]);
+    await requireAnyPermission(request, [
+      "tasks.links.suggest",
+      "tasks.create",
+      "tasks.update",
+      "tasks.read",
+      "tasks.manage",
+      "tasks.complete",
+    ]);
 
     const targetType = String(request.nextUrl.searchParams.get("targetType") || "")
       .trim()

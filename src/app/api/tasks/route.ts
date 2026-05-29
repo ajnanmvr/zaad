@@ -2,6 +2,7 @@ import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
+import { hasPermission } from "@/auth/permissions";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
@@ -56,6 +57,10 @@ export async function GET(request: NextRequest) {
   try {
     await connect();
     const principal = await requireAnyPermission(request, [
+      "tasks.view.my",
+      "tasks.view.all",
+      "tasks.view.detail",
+      "tasks.calendar.view",
       "tasks.read",
       "tasks.manage",
       "tasks.complete",
@@ -79,15 +84,15 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, any> = { published: true };
 
-    const canManage = principal.permissions.includes("tasks.manage");
-    if (scope === "mine" || (!canManage && scope !== "related")) {
+    const canViewAll = hasPermission(principal.permissions, "tasks.view.all");
+    if (scope === "mine" || (!canViewAll && scope !== "related")) {
       query.assignedTo = principal.userId;
     } else if (assignee) {
       query.assignedTo = assignee;
     }
 
     if (scope === "related") {
-      if (!canManage) {
+      if (!canViewAll) {
         query.assignedTo = principal.userId;
       }
 
@@ -299,7 +304,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    const principal = await requirePermission(request, "tasks.manage");
+    const principal = await requireAnyPermission(request, ["tasks.create", "tasks.manage"]);
 
     const {
       title,
@@ -329,6 +334,14 @@ export async function POST(request: NextRequest) {
 
     if (!assignedTo) {
       return Response.json({ error: "Assignee is required" }, { status: 400 });
+    }
+
+    const canAssign = hasPermission(principal.permissions, "tasks.assign");
+    if (!canAssign && String(assignedTo) !== principal.userId) {
+      return Response.json(
+        { error: "Missing permission: tasks.assign" },
+        { status: 403 },
+      );
     }
 
     const normalizedLinks = parseLinkedTargets(linkedTargets);

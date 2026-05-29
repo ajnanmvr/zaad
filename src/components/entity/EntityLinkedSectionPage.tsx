@@ -4,11 +4,14 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
+import { hasPermission } from "@/auth/permissions";
+import { useUserContext } from "@/contexts/UserContext";
 import { TEntityListItem, TPaginatedResponse } from "@/types/types";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
 
 type EntityType = "company" | "employee" | "individual";
@@ -27,8 +30,18 @@ export default function EntityLinkedSectionPage({
   id: string;
   section: LinkedSection;
 }) {
+  const router = useRouter();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const canViewInvoices = hasPermission(permissions, "payments.view.invoices");
   const [employeePage, setEmployeePage] = useState(1);
   const [employeePageSize, setEmployeePageSize] = useState(10);
+
+  useEffect(() => {
+    if (user && section === "invoices" && !canViewInvoices) {
+      router.push("/");
+    }
+  }, [user, section, canViewInvoices, router]);
 
   const { data: entityResponse } = useQuery({
     queryKey: ["entity-linked-page", entityType, id],
@@ -61,6 +74,14 @@ export default function EntityLinkedSectionPage({
       : section === "invoices"
         ? `${entityName} Invoices`
         : `${entityName} Employees`;
+
+  if (section === "invoices" && (!user || !canViewInvoices)) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <>

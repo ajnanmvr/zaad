@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission } from "@/auth/guards";
+import { hasPermission } from "@/auth/permissions";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
@@ -24,7 +25,7 @@ export async function PATCH(
       return Response.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const canManage = principal.permissions.includes("tasks.manage");
+    const canManage = hasPermission(principal.permissions, "tasks.view.all");
     const isAssignee = task.assignedTo.toString() === principal.userId;
 
     if (!canManage && !isAssignee) {

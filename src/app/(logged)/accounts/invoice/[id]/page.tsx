@@ -1,9 +1,11 @@
 "use client";
 import { TInvoiceData } from "@/types/invoice";
 import { formatAmountInWords } from "@/utils/numberToWords";
+import { hasPermission } from "@/auth/permissions";
+import { useUserContext } from "@/contexts/UserContext";
 import axios from "axios";
-import { useParams } from "next/navigation";
-import { useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import ReactToPrint from "react-to-print";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
@@ -11,7 +13,17 @@ import Image from "next/image";
 
 function SingleInvoice() {
   const { id }: { id: string } = useParams();
+  const router = useRouter();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const canViewInvoice = hasPermission(permissions, "payments.view.invoices");
   const componentRef = useRef(null);
+
+  useEffect(() => {
+    if (user && !canViewInvoice) {
+      router.push("/");
+    }
+  }, [user, canViewInvoice, router]);
 
   const { data: invoice, isLoading } = useQuery<TInvoiceData>({
     queryKey: ["invoice", id],
@@ -19,8 +31,16 @@ function SingleInvoice() {
       const { data } = await axios.get(`/api/invoice/${id}`);
       return data;
     },
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewInvoice,
   });
+
+  if (!user || !canViewInvoice) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <>
