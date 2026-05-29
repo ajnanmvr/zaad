@@ -4,24 +4,36 @@ import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
 import {
+  FiActivity,
+  FiArrowDownRight,
   FiArrowUpRight,
   FiBarChart2,
   FiBookOpen,
+  FiBox,
   FiBriefcase,
   FiCalendar,
   FiCheckCircle,
+  FiClipboard,
   FiClock,
   FiCreditCard,
+  FiDollarSign,
+  FiEdit2,
+  FiFilePlus,
   FiFileText,
+  FiFolder,
+  FiGrid,
+  FiKey,
   FiLayers,
   FiLock,
-  FiPlusCircle,
+  FiPackage,
   FiRepeat,
   FiSettings,
   FiShield,
+  FiToggleRight,
   FiTrendingDown,
   FiTrendingUp,
   FiUser,
+  FiUserCheck,
   FiUserPlus
 } from "react-icons/fi";
 
@@ -30,7 +42,7 @@ const tiles = [
     label: "Business Pulse",
     href: "/business-pulse",
     description: "Quick analytics",
-    icon: <FiBarChart2 className="h-6 w-6" />,
+    icon: <FiActivity className="h-6 w-6" />,
     accent: "from-cyan-500 via-sky-500 to-blue-600",
     permissions: ["payments.view.finance-summary-page"],
     section: "Overview",
@@ -50,7 +62,7 @@ const tiles = [
     description: "Schedule view",
     icon: <FiCalendar className="h-6 w-6" />,
     accent: "from-emerald-500 via-lime-500 to-teal-500",
-    permissions: ["tasks.manage"],
+    permissions: ["tasks.calendar.view"],
     section: "Dashboard",
   },
   {
@@ -174,7 +186,7 @@ const tiles = [
     label: "Credit List",
     href: "/accounts/transactions/credit-list",
     description: "Credit entries",
-    icon: <FiTrendingUp className="h-6 w-6" />,
+    icon: <FiArrowUpRight className="h-6 w-6" />,
     accent: "from-emerald-500 via-teal-500 to-cyan-600",
     permissions: ["payments.view.credit-debit-lists"],
     section: "Finance",
@@ -183,7 +195,7 @@ const tiles = [
     label: "Debit List",
     href: "/accounts/transactions/debit-list",
     description: "Debit entries",
-    icon: <FiTrendingDown className="h-6 w-6" />,
+    icon: <FiArrowDownRight className="h-6 w-6" />,
     accent: "from-rose-500 via-pink-500 to-orange-500",
     permissions: ["payments.view.credit-debit-lists"],
     section: "Finance",
@@ -192,7 +204,7 @@ const tiles = [
     label: "Liability",
     href: "/accounts/transactions/liability",
     description: "Debt tracking",
-    icon: <FiTrendingDown className="h-6 w-6" />,
+    icon: <FiShield className="h-6 w-6" />,
     accent: "from-rose-500 via-red-500 to-orange-600",
     permissions: ["payments.view.liability-records"],
     section: "Finance",
@@ -201,7 +213,7 @@ const tiles = [
     label: "Invoices",
     href: "/accounts/invoice",
     description: "Invoice list",
-    icon: <FiFileText className="h-6 w-6" />,
+    icon: <FiClipboard className="h-6 w-6" />,
     accent: "from-rose-500 via-pink-500 to-orange-500",
     permissions: ["payments.view.invoices"],
     section: "Finance",
@@ -210,7 +222,7 @@ const tiles = [
     label: "New Invoice",
     href: "/accounts/invoice/new",
     description: "Create invoice",
-    icon: <FiPlusCircle className="h-6 w-6" />,
+    icon: <FiFilePlus className="h-6 w-6" />,
     accent: "from-slate-900 via-slate-800 to-cyan-900",
     permissions: ["payments.create.invoices"],
     section: "Finance",
@@ -228,7 +240,7 @@ const tiles = [
     label: "Physical Handover",
     href: "/documents/handover",
     description: "Handover logs",
-    icon: <FiFileText className="h-6 w-6" />,
+    icon: <FiFolder className="h-6 w-6" />,
     accent: "from-teal-500 via-cyan-500 to-sky-600",
     permissions: ["documents.read"],
     section: "Documents",
@@ -246,7 +258,7 @@ const tiles = [
     label: "Roles & Permissions",
     href: "/settings/roles",
     description: "Access control",
-    icon: <FiShield className="h-6 w-6" />,
+    icon: <FiKey className="h-6 w-6" />,
     accent: "from-slate-700 via-slate-800 to-cyan-900",
     permissions: ["settings.manage.roles", "settings.manage.permissions", "roles.manage"],
     section: "Administration",
@@ -264,7 +276,7 @@ const tiles = [
     label: "Document Types",
     href: "/settings/document-types",
     description: "Type templates",
-    icon: <FiLayers className="h-6 w-6" />,
+    icon: <FiGrid className="h-6 w-6" />,
     accent: "from-sky-500 via-cyan-500 to-blue-600",
     permissions: ["settings.manage.document-types"],
     section: "Types & Platforms",
@@ -273,7 +285,7 @@ const tiles = [
     label: "Credential Platforms",
     href: "/settings/credential-platforms",
     description: "Credential groups",
-    icon: <FiBriefcase className="h-6 w-6" />,
+    icon: <FiPackage className="h-6 w-6" />,
     accent: "from-emerald-500 via-teal-500 to-cyan-600",
     permissions: ["settings.manage.credential-platforms"],
     section: "Types & Platforms",
@@ -282,7 +294,7 @@ const tiles = [
     label: "Office Categories",
     href: "/settings/office-expense-categories",
     description: "Office groups",
-    icon: <FiBookOpen className="h-6 w-6" />,
+    icon: <FiBox className="h-6 w-6" />,
     accent: "from-orange-500 via-amber-500 to-yellow-500",
     permissions: ["settings.manage.office-categories"],
     section: "Types & Platforms",
@@ -291,7 +303,7 @@ const tiles = [
     label: "Payment Methods",
     href: "/settings/payment-methods",
     description: "Method list",
-    icon: <FiCreditCard className="h-6 w-6" />,
+    icon: <FiDollarSign className="h-6 w-6" />,
     accent: "from-violet-500 via-fuchsia-500 to-pink-600",
     permissions: ["settings.manage.payment-methods"],
     section: "Types & Platforms",
@@ -300,7 +312,7 @@ const tiles = [
     label: "Payment Statuses",
     href: "/settings/payment-statuses",
     description: "Status list",
-    icon: <FiFileText className="h-6 w-6" />,
+    icon: <FiToggleRight className="h-6 w-6" />,
     accent: "from-rose-500 via-pink-500 to-orange-500",
     permissions: ["settings.manage.payment-statuses"],
     section: "Types & Platforms",
@@ -309,7 +321,7 @@ const tiles = [
     label: "Particular Suggestions",
     href: "/settings/particular-suggestions",
     description: "Quick text",
-    icon: <FiFileText className="h-6 w-6" />,
+    icon: <FiEdit2 className="h-6 w-6" />,
     accent: "from-teal-500 via-cyan-500 to-sky-600",
     permissions: ["settings.manage.particular-suggestions"],
     section: "Types & Platforms",
@@ -318,7 +330,7 @@ const tiles = [
     label: "System Users",
     href: "/users",
     description: "User access",
-    icon: <FiUserPlus className="h-6 w-6" />,
+    icon: <FiUserCheck className="h-6 w-6" />,
     accent: "from-slate-700 via-slate-800 to-cyan-900",
     permissions: ["users.read"],
     section: "Users",
@@ -388,8 +400,7 @@ export default function Home() {
     .filter((section) => section.tiles.length > 0);
 
   return (
-    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-      <div className="space-y-6">
+    <div className="space-y-6 p-8">
         {visibleSections.map((section) => (
           <section key={section.title} className="space-y-3">
             <div className="flex items-end justify-between gap-3 px-1">
@@ -432,7 +443,6 @@ export default function Home() {
             </div>
           </section>
         ))}
-      </div>
     </div>
   );
 }
