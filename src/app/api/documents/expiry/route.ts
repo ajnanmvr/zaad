@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
     await connect();
     await requirePermission(request, "documents.read");
 
+    const name = request.nextUrl.searchParams.get("name") || undefined;
     const { page, limit } = parsePaginationParams(
       request.nextUrl.searchParams,
       PAGINATION.LIMITS.EXPIRY_DOCUMENTS
     );
 
-    const response = await listExpiryDocuments(page, limit);
+    const response = await listExpiryDocuments(page, limit, name);
 
     return Response.json(response, {
       status: 200,

@@ -135,7 +135,15 @@ export async function unarchiveDocumentById(documentId: string) {
   );
 }
 
-export async function listExpiryDocuments(page: number, limit: number) {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function listExpiryDocuments(
+  page: number,
+  limit: number,
+  name?: string,
+) {
   const normalizedPage = Math.max(page || PAGINATION.DEFAULT_PAGE, 1);
   const normalizedLimit = Math.max(
     limit || PAGINATION.LIMITS.EXPIRY_DOCUMENTS,
@@ -143,14 +151,43 @@ export async function listExpiryDocuments(page: number, limit: number) {
   );
   const skip = (normalizedPage - 1) * normalizedLimit;
 
+  const normalizedName = name?.trim();
+  const hasNameFilter = Boolean(normalizedName && normalizedName !== "all");
+  const query: Record<string, unknown> = { archived: { $ne: true } };
+
+  if (hasNameFilter) {
+    if (normalizedName === "unnamed") {
+      query.$or = [{ documentTemplate: { $exists: false } }, { documentTemplate: null }];
+    } else {
+      const matchingTemplate = await DocumentTemplate.findOne({
+        name: new RegExp(`^${escapeRegExp(normalizedName)}$`, "i"),
+        published: { $ne: false },
+      }).select("_id");
+
+      if (!matchingTemplate) {
+        return {
+          data: [],
+          pagination: {
+            page: normalizedPage,
+            limit: normalizedLimit,
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+
+      query.documentTemplate = matchingTemplate._id;
+    }
+  }
+
   const [documents, total] = await Promise.all([
-    EntityDocument.find({ archived: { $ne: true } })
+    EntityDocument.find(query)
       .populate("documentTemplate", "name color category")
       .select("entity documentTemplate issueDate expiryDate notes")
       .sort({ expiryDate: 1, createdAt: -1 })
       .skip(skip)
       .limit(normalizedLimit),
-    EntityDocument.countDocuments({ archived: { $ne: true } }),
+    EntityDocument.countDocuments(query),
   ]);
 
   const entityIds = documents

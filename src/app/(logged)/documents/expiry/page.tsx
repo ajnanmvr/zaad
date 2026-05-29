@@ -10,7 +10,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import { FiAlertCircle, FiArchive, FiCalendar, FiCheckSquare, FiEdit2, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
 import EntityAvatar from "@/components/common/EntityAvatar";
@@ -68,6 +68,7 @@ const ExpiryDocumentsPage = () => {
   ];
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
@@ -84,24 +85,17 @@ const ExpiryDocumentsPage = () => {
   const [deletingItem, setDeletingItem] = useState<TExpiryDocumentItem | null>(null);
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
 
-  const { data, isLoading, isError } = useQuery<
-    TPaginatedResponse<TExpiryDocumentItem>
-  >({
-    queryKey: ["expiry-documents", page, limit],
-    queryFn: () => fetchExpiryDocuments(page, limit),
+  const nameFilter = useMemo(() => {
+    return searchParams.get("name")?.trim() || "all";
+  }, [searchParams]);
+
+  const { data, isLoading, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
+    queryKey: ["expiry-documents", page, limit, nameFilter],
+    queryFn: () => fetchExpiryDocuments(page, limit, nameFilter === "all" ? undefined : { name: nameFilter }),
   });
 
   const rows = useMemo(() => data?.data || [], [data]);
   const pagination = data?.pagination;
-  const [nameFilter, setNameFilter] = useState("all");
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const documentName = searchParams.get("name")?.trim();
-    if (documentName) {
-      setNameFilter(documentName);
-    }
-  }, []);
 
   const documentNames = useMemo(() => {
     return Array.from(
@@ -303,6 +297,20 @@ const ExpiryDocumentsPage = () => {
     });
 
     router.push(`/tasks?${params.toString()}`);
+  };
+
+  const updateNameFilter = (nextValue: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextValue === "all") {
+      params.delete("name");
+    } else {
+      params.set("name", nextValue);
+    }
+
+    setPage(PAGINATION.DEFAULT_PAGE);
+    setSelectedIds([]);
+    router.replace(`/documents/expiry${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   return (
@@ -522,9 +530,7 @@ const ExpiryDocumentsPage = () => {
             <button
               type="button"
               onClick={() => {
-                setNameFilter("all");
-                setPage(PAGINATION.DEFAULT_PAGE);
-                setSelectedIds([]);
+                updateNameFilter("all");
               }}
               className="rounded-lg border border-amber-400 bg-white/80 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 transition hover:bg-white dark:border-amber-700 dark:bg-slate-900/50 dark:text-amber-200 dark:hover:bg-slate-900"
             >
@@ -546,7 +552,7 @@ const ExpiryDocumentsPage = () => {
             <select
               title="Filter expiry documents by name"
               value={nameFilter}
-              onChange={(event) => setNameFilter(event.target.value)}
+              onChange={(event) => updateNameFilter(event.target.value)}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="all">All documents</option>
@@ -669,9 +675,7 @@ const ExpiryDocumentsPage = () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setNameFilter(item.name || "unnamed");
-                                  setPage(PAGINATION.DEFAULT_PAGE);
-                                  setSelectedIds([]);
+                                  updateNameFilter(item.name || "unnamed");
                                 }}
                                 className="text-left text-sm font-bold text-primary hover:underline"
                                 title="Show all entities with this document name"
@@ -685,18 +689,18 @@ const ExpiryDocumentsPage = () => {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
-                            <div className="flex flex-col">
+                            <div className="min-w-0 flex-1">
                               {entityHref ? (
                                 <Link
                                   href={entityHref}
-                                  className="text-sm font-semibold capitalize text-primary hover:underline"
+                                  className="block max-w-[14rem] text-sm font-semibold capitalize leading-5 text-primary hover:underline line-clamp-2"
                                 >
                                   {entityName}
                                 </Link>
                               ) : (
-                                <span className="text-sm font-medium capitalize text-slate-700 dark:text-slate-300">
+                                <span className="block max-w-[14rem] text-sm font-medium capitalize leading-5 text-slate-700 line-clamp-2 dark:text-slate-300">
                                   {entityName}
                                 </span>
                               )}

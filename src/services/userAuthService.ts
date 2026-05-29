@@ -45,6 +45,8 @@ const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = "30d";
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
+const ACCESS_TOKEN_MAX_AGE_SECONDS = 15 * 60;
+const REFRESH_TOKEN_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -102,6 +104,7 @@ function setAuthCookies(
     secure: isProduction,
     sameSite: "lax",
     path: "/",
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
   });
 
   response.cookies.set("refresh", tokens.refreshToken, {
@@ -109,6 +112,7 @@ function setAuthCookies(
     secure: isProduction,
     sameSite: "lax",
     path: "/",
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
   });
 }
 

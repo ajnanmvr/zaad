@@ -26,7 +26,7 @@ const EntityAvatar = ({ name, color, size = "md", className }: EntityAvatarProps
   return (
     <div
       className={clsx(
-        "flex items-center justify-center rounded-xl font-bold text-white shadow-inner ring-1 ring-white/20",
+        "flex shrink-0 aspect-square items-center justify-center rounded-xl font-bold text-white shadow-inner ring-1 ring-white/20",
         sizeClasses[size],
         className
       )}

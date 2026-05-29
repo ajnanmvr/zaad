@@ -27,6 +27,7 @@ import {
   FiTrendingDown,
 } from "react-icons/fi";
 import { debounce } from "lodash";
+import { useQuery } from "@tanstack/react-query";
 
 type RecordType = "income" | "expense";
 type RecordKind =
@@ -182,16 +183,21 @@ const SimpleRecordForm = ({
   );
   const createdById = user?._id;
 
-  const fetchTemplates = useCallback(async () => {
-    try {
+  const { data: templateOptions } = useQuery({
+    queryKey: ["payment-form-template-options"],
+    queryFn: async () => {
       const res = await axios.get("/api/templates");
-      setPaymentMethods(res.data?.paymentOptions || []);
-      setPaymentStatuses(res.data?.paymentStatusOptions || []);
-      setOfficeExpenseCategories(res.data?.officeExpenseCategoryOptions || []);
-    } catch (error) {
-      console.error("Error fetching templates:", error);
-    }
-  }, []);
+      return {
+        paymentMethods: res.data?.paymentOptions || [],
+        paymentStatuses: res.data?.paymentStatusOptions || [],
+        officeExpenseCategories: res.data?.officeExpenseCategoryOptions || [],
+      };
+    },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
 
   const fetchPreviousSequence = useCallback(async () => {
     try {
@@ -208,6 +214,14 @@ const SimpleRecordForm = ({
       console.error("Error fetching previous payment sequence:", error);
     }
   }, []);
+
+  useEffect(() => {
+    if (!templateOptions) return;
+
+    setPaymentMethods(templateOptions.paymentMethods);
+    setPaymentStatuses(templateOptions.paymentStatuses);
+    setOfficeExpenseCategories(templateOptions.officeExpenseCategories);
+  }, [templateOptions]);
 
   const fetchEntityDetailsById = useCallback(async (entityId: string) => {
     const id = String(entityId || "").trim();
@@ -316,7 +330,6 @@ const SimpleRecordForm = ({
   }, [recordId, fetchEntityDetailsById]);
 
   useEffect(() => {
-    fetchTemplates();
     if (isEdit && recordId) {
       loadExistingRecord();
       return;
@@ -326,7 +339,6 @@ const SimpleRecordForm = ({
     recordId,
     isEdit,
     loadExistingRecord,
-    fetchTemplates,
     fetchPreviousSequence,
   ]);
 

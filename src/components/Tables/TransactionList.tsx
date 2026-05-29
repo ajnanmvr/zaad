@@ -439,6 +439,10 @@ const TransactionList = ({
         icon: item.icon,
       }));
     },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const { data: paymentStatusOptions = [] } = useQuery<TPaymentStatusOption[]>({
@@ -455,6 +459,10 @@ const TransactionList = ({
         }),
       );
     },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const { data: officeCategoryOptions = [] } = useQuery<
@@ -468,6 +476,10 @@ const TransactionList = ({
         label: item.label || item.category || "Office",
       }));
     },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const paymentMethodMap = useMemo(() => {
