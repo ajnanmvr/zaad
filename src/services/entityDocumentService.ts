@@ -151,7 +151,7 @@ export async function listExpiryDocuments(
   );
   const skip = (normalizedPage - 1) * normalizedLimit;
 
-  const normalizedName = name?.trim();
+  const normalizedName = name?.trim() ?? "";
   const hasNameFilter = Boolean(normalizedName && normalizedName !== "all");
   const query: Record<string, unknown> = { archived: { $ne: true } };
 
