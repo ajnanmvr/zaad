@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   FiArrowRight,
   FiBriefcase,
+  FiFileText,
   FiLayers,
   FiLink,
   FiSettings,
@@ -18,43 +19,76 @@ import { useUserContext } from "@/contexts/UserContext";
 export default function SettingsPage() {
   const { user } = useUserContext();
 
+  const userPermissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const can = (permission: string) => userPermissions.includes(permission);
+
   const canViewRoles =
-    Array.isArray(user?.permissions) &&
-    (user.permissions.includes("settings.read") || user.permissions.includes("roles.manage"));
-  const canViewPermissions =
-    Array.isArray(user?.permissions) && user.permissions.includes("settings.read");
-  const canViewTemplates =
-    Array.isArray(user?.permissions) && user.permissions.includes("entities.write");
+    can("settings.read") || can("roles.manage") || can("settings.manage.roles");
+  const canViewPermissions = can("settings.read") || can("settings.manage.permissions");
+  const canViewDocumentTypes = can("entities.write") || can("settings.write") || can("settings.manage.document-types");
+  const canViewCredentialPlatforms = can("entities.write") || can("settings.write") || can("settings.manage.credential-platforms");
+  const canViewOfficeCategories = can("payments.write") || can("settings.write") || can("settings.manage.office-categories");
+  const canViewPaymentMethods = can("payments.write") || can("settings.write") || can("settings.manage.payment-methods");
+  const canViewPaymentStatuses = can("payments.write") || can("settings.write") || can("settings.manage.payment-statuses");
+  const canViewParticularSuggestions = can("settings.write") || can("payments.manage.particular-suggestions") || can("settings.manage.particular-suggestions");
   const canViewAudit =
-    Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read");
+    can("users.activity.read");
   const canViewUsers =
-    Array.isArray(user?.permissions) && user.permissions.includes("users.read");
+    can("users.read");
 
   const navigationItems = [
     {
       href: "/settings/document-types",
-      title: "Templates & Platforms",
-      description: "Document types, platforms, payment methods, statuses, and suggestions.",
+      title: "Document Types",
+      description: "Manage document type templates.",
       icon: FiLayers,
-      visible: canViewTemplates,
+      visible: canViewDocumentTypes,
+    },
+    {
+      href: "/settings/credential-platforms",
+      title: "Credential Platforms",
+      description: "Manage credential platform options.",
+      icon: FiFileText,
+      visible: canViewCredentialPlatforms,
+    },
+    {
+      href: "/settings/office-expense-categories",
+      title: "Office Categories",
+      description: "Manage office expense categories.",
+      icon: FiBriefcase,
+      visible: canViewOfficeCategories,
+    },
+    {
+      href: "/settings/payment-methods",
+      title: "Payment Methods",
+      description: "Manage payment method options.",
+      icon: FiLink,
+      visible: canViewPaymentMethods,
+    },
+    {
+      href: "/settings/payment-statuses",
+      title: "Payment Statuses",
+      description: "Manage payment status options.",
+      icon: FiShield,
+      visible: canViewPaymentStatuses,
+    },
+    {
+      href: "/settings/particular-suggestions",
+      title: "Particular Suggestion",
+      description: "Review saved transaction description suggestions.",
+      icon: FiLink,
+      visible: canViewParticularSuggestions,
     },
     {
       href: "/settings/roles",
-      title: "Roles & Permissions",
+      title: "Roles",
       description: "Manage roles and inspect permission groups.",
       icon: FiShield,
       visible: canViewRoles,
     },
     {
-      href: "/settings/particular-suggestions",
-      title: "Particular Suggestions",
-      description: "Review saved transaction description suggestions.",
-      icon: FiLink,
-      visible: canViewTemplates,
-    },
-    {
       href: "/settings/permissions",
-      title: "Permission Matrix",
+      title: "Permissions",
       description: "View access permissions in one place.",
       icon: FiShield,
       visible: canViewPermissions,

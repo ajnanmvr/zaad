@@ -373,7 +373,7 @@ export default function FinanceAnalyticsPage() {
 
   useEffect(() => {
     if (user && !canViewFinanceSummary) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewFinanceSummary, router]);
 

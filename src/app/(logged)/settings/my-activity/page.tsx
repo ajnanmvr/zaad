@@ -4,7 +4,8 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { FiClock } from "react-icons/fi";
 
 type ActivityItem = {
@@ -22,9 +23,16 @@ type ActivityResponse = {
 const formatAction = (action: string) => action.replace(/_/g, " ");
 
 export default function MyActivityPage() {
-  const { user } = useUserContext();
+  const { user, isUserLoading } = useUserContext();
+  const router = useRouter();
   const canViewAudit =
     Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read");
+
+  useEffect(() => {
+    if (!isUserLoading && user && !canViewAudit) {
+      router.replace("/not-permitted");
+    }
+  }, [isUserLoading, user, canViewAudit, router]);
 
   const activitiesQuery = useQuery({
     queryKey: ["my-activity", user?._id],
@@ -42,14 +50,23 @@ export default function MyActivityPage() {
     [activitiesQuery.data?.activities],
   );
 
+  if (isUserLoading || (!canViewAudit && user)) {
+    return (
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+        <Breadcrumb pageName="My Activity" />
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+          <p className="text-sm text-slate-500">Loading access...</p>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
       <Breadcrumb pageName="My Activity" />
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-        {!canViewAudit ? (
-          <p className="text-sm text-slate-500">You do not have permission to view activity logs.</p>
-        ) : activitiesQuery.isLoading ? (
+        {activitiesQuery.isLoading ? (
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             Loading activity...

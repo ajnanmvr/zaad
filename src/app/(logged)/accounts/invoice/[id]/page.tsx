@@ -21,7 +21,7 @@ function SingleInvoice() {
 
   useEffect(() => {
     if (user && !canViewInvoice) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewInvoice, router]);
 

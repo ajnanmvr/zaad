@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import axios from "axios";
@@ -23,6 +23,7 @@ import {
   FiLayers,
   FiLock,
   FiLogOut,
+  FiPlusCircle,
   FiRepeat,
   FiSettings,
   FiShield,
@@ -77,15 +78,56 @@ function SectionTitle({ title }: { title: string }) {
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUserContext();
-  const can = (permission: string) =>
-    Array.isArray(user?.permissions) &&
-    hasPermission(user?.permissions as string[], permission);
+  const userPermissions = Array.isArray(user?.permissions)
+    ? (user.permissions as string[])
+    : [];
+  const can = (permission: string) => hasPermission(userPermissions, permission);
+  const canViewDocumentTypes =
+    can("settings.manage.document-types") || can("entities.write") || can("settings.write");
+  const canViewCredentialPlatforms =
+    can("settings.manage.credential-platforms") || can("entities.write") || can("settings.write");
+  const canViewOfficeCategories =
+    can("settings.manage.office-categories") || can("payments.write") || can("settings.write");
+  const canViewPaymentMethods =
+    can("settings.manage.payment-methods") || can("payments.write") || can("settings.write");
+  const canViewPaymentStatuses =
+    can("settings.manage.payment-statuses") || can("payments.write") || can("settings.write");
+  const canViewParticularSuggestions =
+    can("settings.manage.particular-suggestions") || can("payments.manage.particular-suggestions") || can("settings.write");
+  const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
+  const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
   const trigger = useRef<HTMLButtonElement | null>(null);
   const sidebar = useRef<HTMLElement | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const addRecordType = String(searchParams?.get("type") || "")
+    .trim()
+    .toLowerCase();
+  const addRecordKind = String(searchParams?.get("recordKind") || "")
+    .trim()
+    .toLowerCase();
+
+  const isAddRecordActive = (
+    expectedType?: string,
+    expectedKind?: string,
+  ) => {
+    if (pathname !== "/accounts/add-record") {
+      return false;
+    }
+
+    if (expectedType && addRecordType !== expectedType) {
+      return false;
+    }
+
+    if (expectedKind && addRecordKind !== expectedKind) {
+      return false;
+    }
+
+    return true;
+  };
 
   const handleLogout = async () => {
     try {
@@ -339,6 +381,54 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
+              {can("payments.create.transactions") && (
+                <SidebarLinkGroup activeCondition={pathname === "/accounts/add-record"}>
+                  {(handleClick, open) => (
+                    <>
+                      <Link
+                        href="#"
+                        className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                          pathname === "/accounts/add-record"
+                            ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                        }`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          sidebarExpanded
+                            ? handleClick()
+                            : setSidebarExpanded(true);
+                        }}
+                      >
+                        <FiPlusCircle className="text-lg opacity-80" />
+                        Create Records
+                        <FiChevronRight
+                          className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                        />
+                      </Link>
+                      <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                        <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          <li>
+                            <NavItem
+                              href="/accounts/add-record?type=income"
+                              icon={<FiTrendingUp />}
+                              label="Income Record"
+                              active={isAddRecordActive("income")}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/accounts/add-record?type=expense"
+                              icon={<FiTrendingDown />}
+                              label="Expense Record"
+                              active={isAddRecordActive("expense")}
+                            />
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </SidebarLinkGroup>
+              )}
               {can("payments.view.office-records") && (
                 <li>
                   <NavItem
@@ -481,22 +571,26 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/settings"}
                 />
               </li>
-              <li>
-                <NavItem
-                  href="/settings/roles"
-                  icon={<FiShield />}
-                  label="Roles"
-                  active={pathname === "/settings/roles"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/settings/permissions"
-                  icon={<FiKey />}
-                  label="Permissions"
-                  active={pathname === "/settings/permissions"}
-                />
-              </li>
+              {canViewRoles && (
+                <li>
+                  <NavItem
+                    href="/settings/roles"
+                    icon={<FiShield />}
+                    label="Roles"
+                    active={pathname === "/settings/roles"}
+                  />
+                </li>
+              )}
+              {canViewPermissions && (
+                <li>
+                  <NavItem
+                    href="/settings/permissions"
+                    icon={<FiKey />}
+                    label="Permissions"
+                    active={pathname === "/settings/permissions"}
+                  />
+                </li>
+              )}
               <li>
                 <NavItem
                   href="/settings/my-activity"
@@ -521,7 +615,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/settings/change-password"}
                 />
               </li>
-              {can("entities.write") && (
+              {(canViewDocumentTypes ||
+                canViewCredentialPlatforms ||
+                canViewOfficeCategories ||
+                canViewPaymentMethods ||
+                canViewPaymentStatuses ||
+                canViewParticularSuggestions) && (
                 <SidebarLinkGroup
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
@@ -571,6 +670,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       </Link>
                       <div className={`${open ? "mt-2 block" : "hidden"}`}>
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          {canViewDocumentTypes && (
                           <li>
                             <NavItem
                               href="/settings/document-types"
@@ -579,6 +679,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/document-types"}
                             />
                           </li>
+                          )}
+                          {canViewCredentialPlatforms && (
                           <li>
                             <NavItem
                               href="/settings/credential-platforms"
@@ -589,6 +691,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               }
                             />
                           </li>
+                          )}
+                          {canViewOfficeCategories && (
                           <li>
                             <NavItem
                               href="/settings/office-expense-categories"
@@ -600,6 +704,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               }
                             />
                           </li>
+                          )}
+                          {canViewPaymentMethods && (
                           <li>
                             <NavItem
                               href="/settings/payment-methods"
@@ -608,6 +714,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/payment-methods"}
                             />
                           </li>
+                          )}
+                          {canViewPaymentStatuses && (
                           <li>
                             <NavItem
                               href="/settings/payment-statuses"
@@ -616,16 +724,19 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/payment-statuses"}
                             />
                           </li>
-                          <li>
-                            <NavItem
-                              href="/settings/particular-suggestions"
-                              icon={<FiFileText />}
-                              label="Particular Suggestions"
-                              active={
-                                pathname === "/settings/particular-suggestions"
-                              }
-                            />
-                          </li>
+                          )}
+                          {canViewParticularSuggestions && (
+                            <li>
+                              <NavItem
+                                href="/settings/particular-suggestions"
+                                icon={<FiFileText />}
+                                label="Particular Suggestion"
+                                active={
+                                  pathname === "/settings/particular-suggestions"
+                                }
+                              />
+                            </li>
+                          )}
                         </ul>
                       </div>
                     </>

@@ -1,5 +1,6 @@
 import UserProvider from "@/contexts/UserContext";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
+import ReactQueryProvider from "@/providers/ReactQueryProvider";
 
 export default function RootLayout({
   children,
@@ -9,10 +10,10 @@ export default function RootLayout({
 
 
   return (
-    <UserProvider>
-      <DefaultLayout>
-        {children}
-      </DefaultLayout>
-    </UserProvider>
+    <ReactQueryProvider>
+      <UserProvider>
+        <DefaultLayout>{children}</DefaultLayout>
+      </UserProvider>
+    </ReactQueryProvider>
   );
 }

@@ -4,6 +4,16 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "settings.read",
     "settings.write",
     "roles.manage",
+    "settings.manage.roles",
+    "settings.manage.permissions",
+  ],
+  settings: [
+    "settings.manage.document-types",
+    "settings.manage.credential-platforms",
+    "settings.manage.office-categories",
+    "settings.manage.payment-methods",
+    "settings.manage.payment-statuses",
+    "settings.manage.particular-suggestions",
   ],
   users: [
     "users.read",

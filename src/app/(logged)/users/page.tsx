@@ -15,7 +15,7 @@ const UsersPage = () => {
 
     useEffect(() => {
         if (user && !canReadUsers) {
-            router.push("/");
+            router.push("/not-permitted");
         }
     }, [user, canReadUsers, router]);
 

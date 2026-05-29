@@ -16,6 +16,11 @@ const CredentialPlatformsPage = () => {
         inputPlaceholder="e.g., Gmail, Outlook, GitHub"
         usageLabel="credentials"
         accent="blue"
+        requiredPermissions={[
+          "settings.manage.credential-platforms",
+          "entities.write",
+          "settings.write",
+        ]}
         itemHrefBuilder={(item) => `/credentials?platform=${encodeURIComponent(item.platform || "")}`}
       />
     </>

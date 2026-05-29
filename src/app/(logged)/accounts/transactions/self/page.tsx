@@ -181,7 +181,7 @@ export default function SelfTransfersPage() {
 
   useEffect(() => {
     if (user && !canViewSelfTransfers) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewSelfTransfers, router]);
 

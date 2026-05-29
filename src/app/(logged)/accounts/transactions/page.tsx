@@ -26,7 +26,7 @@ const TablesPageContent = () => {
 
   useEffect(() => {
     if (user && !canViewTransactions) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewTransactions, router]);
 

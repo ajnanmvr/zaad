@@ -228,7 +228,7 @@ export default function OfficeRecordsPage() {
 
   useEffect(() => {
     if (user && !canViewOfficeRecords) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewOfficeRecords, router]);
 

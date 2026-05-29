@@ -3,8 +3,22 @@ export type AppPermission = string;
 
 const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
   "payments.admin": ["payments.write"],
-  "settings.write": ["settings.read"],
-  "entities.write": ["entities.read"],
+  "settings.write": [
+    "settings.read",
+    "settings.manage.roles",
+    "settings.manage.permissions",
+    "settings.manage.document-types",
+    "settings.manage.credential-platforms",
+    "settings.manage.office-categories",
+    "settings.manage.payment-methods",
+    "settings.manage.payment-statuses",
+    "settings.manage.particular-suggestions",
+  ],
+  "entities.write": [
+    "entities.read",
+    "settings.manage.document-types",
+    "settings.manage.credential-platforms",
+  ],
   "documents.write": ["documents.read"],
   "tasks.read": ["tasks.view.my", "tasks.view.detail", "tasks.calendar.view", "tasks.links.suggest"],
   "tasks.manage": [
@@ -50,7 +64,12 @@ const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
     "payments.manage.self-transfers",
     "payments.manage.recompute-monthly-stats",
     "payments.manage.particular-suggestions",
+    "settings.manage.office-categories",
+    "settings.manage.payment-methods",
+    "settings.manage.payment-statuses",
+    "settings.manage.particular-suggestions",
   ],
+  "settings.read": ["settings.manage.roles", "settings.manage.permissions"],
 };
 
 function collectImpliedPermissions(

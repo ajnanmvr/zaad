@@ -4,7 +4,8 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FiCalendar, FiFileText, FiArrowRight } from "react-icons/fi";
 
 type ReportMode = "month" | "year" | "financial-year" | "custom";
@@ -38,10 +39,17 @@ function getFiscalYearOptions(now: Date) {
 }
 
 export default function FinanceReportsPage() {
-  const now = new Date();
-  const { user } = useUserContext();
+  const now = useMemo(() => new Date(), []);
+  const { user, isUserLoading } = useUserContext();
+  const router = useRouter();
   const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
   const canViewReports = hasPermission(permissions, "payments.view.records-summary") || hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.reports") || hasPermission(permissions, "payments.view.finance");
+
+  useEffect(() => {
+    if (!isUserLoading && user && !canViewReports) {
+      router.replace("/not-permitted");
+    }
+  }, [isUserLoading, user, canViewReports, router]);
 
   const [reportMode, setReportMode] = useState<ReportMode>("month");
   const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
@@ -106,12 +114,12 @@ export default function FinanceReportsPage() {
     return `/accounts/transactions/reports/view?${params.toString()}`;
   }, [customFrom, customTo, financialYearStart, monthOptions, now, reportMode, selectedMonth, selectedYear]);
 
-  if (!canViewReports) {
+  if (isUserLoading || (!canViewReports && user)) {
     return (
       <div className="space-y-6">
         <Breadcrumb pageName="Finance Reports" />
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
-          You do not have permission to view reports.
+          Loading access...
         </div>
       </div>
     );

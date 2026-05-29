@@ -39,7 +39,7 @@ export default function EntityLinkedSectionPage({
 
   useEffect(() => {
     if (user && section === "invoices" && !canViewInvoices) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, section, canViewInvoices, router]);
 

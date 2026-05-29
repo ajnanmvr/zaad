@@ -16,6 +16,11 @@ const PaymentStatusesPage = () => {
         inputPlaceholder="e.g., Office Expense, Liability Payment, Ready Cash"
         usageLabel="transactions"
         accent="amber"
+        requiredPermissions={[
+          "settings.manage.payment-statuses",
+          "payments.write",
+          "settings.write",
+        ]}
         itemHrefBuilder={(item) => `/accounts/transactions?s=${encodeURIComponent(item.id)}`}
       />
     </>

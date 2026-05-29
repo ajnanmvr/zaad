@@ -165,7 +165,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
         const canAccess = isEditRoute ? canUpdateInvoice : canCreateInvoice;
         if (!canAccess) {
-            router.push("/");
+            router.push("/not-permitted");
         }
     }, [user, isEditRoute, canCreateInvoice, canUpdateInvoice, router]);
 

@@ -16,7 +16,7 @@ export default function Invoice() {
 
   useEffect(() => {
     if (user && !canViewInvoices) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewInvoices, router]);
 

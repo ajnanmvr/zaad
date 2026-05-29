@@ -47,7 +47,7 @@ export default function LiabilityPage() {
 
   useEffect(() => {
     if (user && !canViewLiability) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canViewLiability, router]);
 

@@ -2,10 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import axios from "axios";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FiAlertCircle,
   FiEdit2,
@@ -32,6 +32,8 @@ import {
   normalizeDocumentCategory,
   TDocumentCategory,
 } from "@/config/documentCategoryVisuals";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
 type ManagerType =
   | "document"
@@ -66,6 +68,7 @@ type TypePlatformManagerProps = {
   inputPlaceholder: string;
   usageLabel: string;
   accent: "emerald" | "blue" | "amber";
+  requiredPermissions?: string[];
   itemHrefBuilder?: (item: ItemOption) => string | null;
 };
 
@@ -78,9 +81,17 @@ function TypePlatformManager({
   inputPlaceholder,
   usageLabel,
   accent,
+  requiredPermissions = [],
   itemHrefBuilder,
 }: TypePlatformManagerProps) {
   const queryClient = useQueryClient();
+  const { user, isUserLoading } = useUserContext();
+  const userPermissions = Array.isArray(user?.permissions)
+    ? (user.permissions as string[])
+    : [];
+  const canAccess =
+    requiredPermissions.length === 0 ||
+    requiredPermissions.some((permission) => hasPermission(userPermissions, permission));
 
   const [value, setValue] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>("");
@@ -272,6 +283,14 @@ function TypePlatformManager({
       setDeletingId(null);
     }
   };
+
+  if (!canAccess) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400 sm:p-8">
+        You do not have permission to manage {title.toLowerCase()}.
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:p-8">
