@@ -41,6 +41,7 @@ const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
 
   // Broad finance permissions imply detailed user-view permissions.
   "payments.read": [
+    "dashboard.view.business-pulse",
     "payments.view.transactions",
     "payments.view.records-summary",
     "payments.view.office-records",

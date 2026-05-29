@@ -8,6 +8,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   FiActivity,
+  FiArrowDownRight,
+  FiArrowUpRight,
   FiBarChart2,
   FiBookOpen,
   FiBriefcase,
@@ -16,22 +18,33 @@ import {
   FiChevronRight,
   FiClock,
   FiCreditCard,
+  FiClipboard,
+  FiDollarSign,
+  FiEdit2,
   FiFileText,
+  FiFilePlus,
+  FiFolder,
   FiFolderPlus,
   FiHome,
   FiKey,
+  FiGrid,
   FiLayers,
   FiLock,
   FiLogOut,
   FiPlusCircle,
   FiRepeat,
+  FiSliders,
+  FiBox,
   FiSettings,
   FiShield,
   FiMonitor,
+  FiPackage,
+  FiToggleRight,
   FiTrendingDown,
   FiTrendingUp,
   FiUser,
   FiUserPlus,
+  FiUserCheck,
   FiUsers,
   FiX,
 } from "react-icons/fi";
@@ -91,6 +104,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const canViewPaymentMethods = can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
+  const canViewBusinessPulse =
+    can("dashboard.view.business-pulse") || can("payments.view.finance-summary-page");
   const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
   const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
@@ -227,14 +242,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/"}
                 />
               </li>
-              <li>
+              {canViewBusinessPulse && (
+                <li>
                 <NavItem
                   href="/business-pulse"
-                  icon={<FiBarChart2 />}
+                    icon={<FiActivity />}
                   label="Business Pulse"
                   active={pathname === "/business-pulse"}
                 />
-              </li>
+                </li>
+              )}
               {(can("tasks.read") ||
                 can("tasks.complete") ||
                 can("tasks.manage")) && (
@@ -247,7 +264,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
-              {can("tasks.manage") && (
+              {can("tasks.calendar.view") && (
                 <li>
                   <NavItem
                     href="/tasks/manage"
@@ -337,7 +354,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         <li>
                           <NavItem
                             href="/individual/register"
-                            icon={<FiUsers />}
+                            icon={<FiMonitor />}
                             label="New Individual"
                             active={pathname === "/individual/register"}
                           />
@@ -483,7 +500,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           : setSidebarExpanded(true);
                       }}
                     >
-                      <FiCreditCard className="text-lg opacity-80" />
+                      <FiSliders className="text-lg opacity-80" />
                       Credit / Debit Lists
                       <FiChevronRight
                         className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
@@ -494,7 +511,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         <li>
                           <NavItem
                             href="/accounts/transactions/credit-list"
-                            icon={<FiTrendingUp />}
+                            icon={<FiArrowUpRight />}
                             label="Credit List"
                             active={
                               pathname === "/accounts/transactions/credit-list"
@@ -504,7 +521,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         <li>
                           <NavItem
                             href="/accounts/transactions/debit-list"
-                            icon={<FiTrendingDown />}
+                            icon={<FiArrowDownRight />}
                             label="Debit List"
                             active={
                               pathname === "/accounts/transactions/debit-list"
@@ -521,7 +538,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/accounts/transactions/liability"
-                    icon={<FiTrendingDown />}
+                    icon={<FiShield />}
                     label="Liability"
                     active={pathname === "/accounts/transactions/liability"}
                   />
@@ -531,9 +548,19 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/accounts/invoice"
-                    icon={<FiFileText />}
+                    icon={<FiClipboard />}
                     label="Invoices"
                     active={pathname === "/accounts/invoice"}
+                  />
+                </li>
+              )}
+              {can("payments.create.invoices") && (
+                <li>
+                  <NavItem
+                    href="/accounts/invoice/new"
+                    icon={<FiFilePlus />}
+                    label="New Invoice"
+                    active={pathname === "/accounts/invoice/new"}
                   />
                 </li>
               )}
@@ -554,7 +581,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               <li>
                 <NavItem
                   href="/documents/handover"
-                  icon={<FiFileText />}
+                  icon={<FiFolder />}
                   label="Physical Handover"
                   active={pathname === "/documents/handover"}
                 />
@@ -577,7 +604,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/settings/roles"
-                    icon={<FiShield />}
+                    icon={<FiKey />}
                     label="Permissions & Roles"
                     active={pathname === "/settings/roles"}
                   />
@@ -652,7 +679,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           <li>
                             <NavItem
                               href="/settings/document-types"
-                              icon={<FiLayers />}
+                              icon={<FiGrid />}
                               label="Document Types"
                               active={pathname === "/settings/document-types"}
                             />
@@ -662,7 +689,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           <li>
                             <NavItem
                               href="/settings/credential-platforms"
-                              icon={<FiFileText />}
+                              icon={<FiPackage />}
                               label="Credentials"
                               active={
                                 pathname === "/settings/credential-platforms"
@@ -674,7 +701,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           <li>
                             <NavItem
                               href="/settings/office-expense-categories"
-                              icon={<FiBriefcase />}
+                              icon={<FiBox />}
                               label="Office Categories"
                               active={
                                 pathname ===
@@ -687,7 +714,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           <li>
                             <NavItem
                               href="/settings/payment-methods"
-                              icon={<FiCreditCard />}
+                              icon={<FiDollarSign />}
                               label="Payment Methods"
                               active={pathname === "/settings/payment-methods"}
                             />
@@ -697,7 +724,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           <li>
                             <NavItem
                               href="/settings/payment-statuses"
-                              icon={<FiCheckCircle />}
+                              icon={<FiToggleRight />}
                               label="Payment Statuses"
                               active={pathname === "/settings/payment-statuses"}
                             />
@@ -707,7 +734,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             <li>
                               <NavItem
                                 href="/settings/particular-suggestions"
-                                icon={<FiFileText />}
+                                icon={<FiEdit2 />}
                                 label="Particulars"
                                 active={pathname === "/settings/particular-suggestions"}
                               />
@@ -729,7 +756,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/users"
-                    icon={<FiUserPlus />}
+                    icon={<FiUserCheck />}
                     label="System Users"
                     active={pathname.startsWith("/users")}
                   />

@@ -25,6 +25,9 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
   audit: [
     "users.activity.read",
   ],
+  dashboard: [
+    "dashboard.view.business-pulse",
+  ],
   entities: [
     "entities.read",
     "entities.write",
@@ -32,6 +35,12 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
   documents: [
     "documents.read",
     "documents.write",
+  ],
+  invoices: [
+    "payments.view.invoices",
+    "payments.create.invoices",
+    "payments.update.invoices",
+    "payments.delete.invoices",
   ],
   payments: [
     "payments.admin",
@@ -43,7 +52,6 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "payments.view.self-transfers",
     "payments.view.liability-records",
     "payments.view.credit-debit-lists",
-    "payments.view.invoices",
     "payments.view.monthly-stats",
     "payments.view.finance-summary-page",
     "payments.view.reports",
@@ -51,9 +59,6 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "payments.create.transactions",
     "payments.update.transactions",
     "payments.delete.transactions",
-    "payments.create.invoices",
-    "payments.update.invoices",
-    "payments.delete.invoices",
     "payments.manage.self-transfers",
     "payments.manage.recompute-monthly-stats",
     "payments.manage.particular-suggestions",
