@@ -91,6 +91,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const canViewPaymentMethods = can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
+  const canViewBusinessPulse =
+    can("dashboard.view.business-pulse") || can("payments.view.finance-summary-page");
   const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
   const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
@@ -227,14 +229,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/"}
                 />
               </li>
-              <li>
+              {canViewBusinessPulse && (
+                <li>
                 <NavItem
                   href="/business-pulse"
                   icon={<FiBarChart2 />}
                   label="Business Pulse"
                   active={pathname === "/business-pulse"}
                 />
-              </li>
+                </li>
+              )}
               {(can("tasks.read") ||
                 can("tasks.complete") ||
                 can("tasks.manage")) && (

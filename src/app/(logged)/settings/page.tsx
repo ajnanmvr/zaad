@@ -9,7 +9,6 @@ import {
   FiLink,
   FiSettings,
   FiShield,
-  FiUser,
   FiUsers,
 } from "react-icons/fi";
 
@@ -31,8 +30,7 @@ export default function SettingsPage() {
   const canViewPaymentMethods = can("payments.write") || can("settings.write") || can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("payments.write") || can("settings.write") || can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.write") || can("payments.manage.particular-suggestions") || can("settings.manage.particular-suggestions");
-  const canViewAudit =
-    can("users.activity.read");
+  const canViewAudit = can("users.activity.read");
   const canViewUsers =
     can("users.read");
 
@@ -92,13 +90,6 @@ export default function SettingsPage() {
       description: "View access permissions in one place.",
       icon: FiShield,
       visible: canViewPermissions,
-    },
-    {
-      href: "/settings/my-activity",
-      title: "My Activity",
-      description: "Open your activity log.",
-      icon: FiUser,
-      visible: canViewAudit,
     },
     {
       href: "/settings/change-password",
