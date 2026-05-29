@@ -60,7 +60,7 @@ function buildRecordCategoryFilter(category: ParticularCategory) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requireAnyPermission(request, ["payments.read", "payments.write"]);
+    await requireAnyPermission(request, ["payments.read", "payments.write", "payments.create.transactions"]);
 
     const searchParams = request.nextUrl.searchParams;
     const q = String(searchParams.get("q") || "").trim();
