@@ -177,7 +177,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   return (
     <aside
       ref={sidebar}
-      className={`absolute left-0 top-0 z-9999 flex h-screen w-72.5 flex-col overflow-y-hidden border-r border-slate-200/70 bg-white/85 shadow-2xl shadow-slate-200/40 backdrop-blur-xl duration-300 ease-linear dark:border-slate-800/70 dark:bg-slate-900/90 dark:shadow-none lg:static lg:translate-x-0 ${
+      className={`absolute left-0 top-0 z-9999 flex h-screen w-65 flex-col overflow-y-hidden border-r border-slate-200/70 bg-white/85 shadow-2xl shadow-slate-200/40 backdrop-blur-xl duration-300 ease-linear dark:border-slate-800/70 dark:bg-slate-900/90 dark:shadow-none lg:static lg:translate-x-0 ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -413,7 +413,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             <NavItem
                               href="/accounts/add-record?type=income"
                               icon={<FiTrendingUp />}
-                              label="Income Record"
+                              label="New Income"
                               active={isAddRecordActive("income")}
                             />
                           </li>
@@ -421,7 +421,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             <NavItem
                               href="/accounts/add-record?type=expense"
                               icon={<FiTrendingDown />}
-                              label="Expense Record"
+                              label="New Expense"
                               active={isAddRecordActive("expense")}
                             />
                           </li>
@@ -663,7 +663,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             <NavItem
                               href="/settings/credential-platforms"
                               icon={<FiFileText />}
-                              label="Credential Platforms"
+                              label="Credentials"
                               active={
                                 pathname === "/settings/credential-platforms"
                               }
@@ -708,7 +708,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               <NavItem
                                 href="/settings/particular-suggestions"
                                 icon={<FiFileText />}
-                                label="Particular Suggestions"
+                                label="Particulars"
                                 active={pathname === "/settings/particular-suggestions"}
                               />
                             </li>
