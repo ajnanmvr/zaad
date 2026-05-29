@@ -51,11 +51,21 @@ export const fetchIndividuals = async (
 
 export const fetchExpiryDocuments = async (
   page: number = PAGINATION.DEFAULT_PAGE,
-  limit: number = PAGINATION.LIMITS.EXPIRY_DOCUMENTS
+  limit: number = PAGINATION.LIMITS.EXPIRY_DOCUMENTS,
+  options?: {
+    name?: string;
+  }
 ) => {
-  const { data } = await axios.get(
-    `/api/documents/expiry?page=${page}&limit=${limit}`
-  );
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  if (options?.name) {
+    params.set("name", options.name);
+  }
+
+  const { data } = await axios.get(`/api/documents/expiry?${params.toString()}`);
   return data;
 };
 
