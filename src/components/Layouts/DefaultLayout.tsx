@@ -32,7 +32,8 @@ export default function DefaultLayout({
               {children}
             </div>
           </main>
-          </div>
+        </div>
+
       </div>
     </Suspense>
   );
