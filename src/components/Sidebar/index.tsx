@@ -227,6 +227,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/"}
                 />
               </li>
+              <li>
+                <NavItem
+                  href="/business-pulse"
+                  icon={<FiBarChart2 />}
+                  label="Business Pulse"
+                  active={pathname === "/business-pulse"}
+                />
+              </li>
               {(can("tasks.read") ||
                 can("tasks.complete") ||
                 can("tasks.manage")) && (

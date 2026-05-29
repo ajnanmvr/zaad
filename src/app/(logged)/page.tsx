@@ -1,349 +1,436 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import axios from "axios";
 import Link from "next/link";
-import clsx from "clsx";
-import { useQuery } from "@tanstack/react-query";
-import { ApexOptions } from "apexcharts";
-import { TDashboardOverview } from "@/types/dashboard";
 import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 import {
-  FiAlertCircle,
   FiArrowUpRight,
+  FiBookOpen,
   FiBriefcase,
   FiCalendar,
-  FiCheckCircle,
-  FiClock,
+  FiCreditCard,
+  FiFileText,
+  FiFolder,
+  FiFolderPlus,
+  FiHome,
+  FiLayers,
+  FiLock,
+  FiSettings,
+  FiShield,
   FiTrendingDown,
-  FiUser,
+  FiTrendingUp,
+  FiUserPlus,
   FiUsers,
 } from "react-icons/fi";
-import PrintReportButton from "@/components/common/PrintReportButton";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+const tiles = [
+  {
+    label: "Business Pulse",
+    href: "/business-pulse",
+    description: "Quick analytics",
+    icon: <FiTrendingUp className="h-6 w-6" />,
+    accent: "from-cyan-500 via-sky-500 to-blue-600",
+    permissions: ["payments.view.finance-summary-page"],
+    section: "Dashboard",
+  },
+  {
+    label: "My Tasks",
+    href: "/tasks",
+    description: "Assigned work",
+    icon: <FiCalendar className="h-6 w-6" />,
+    accent: "from-lime-500 via-emerald-500 to-teal-500",
+    permissions: ["tasks.read", "tasks.complete", "tasks.manage"],
+    section: "Dashboard",
+  },
+  {
+    label: "Task Calendar",
+    href: "/tasks/manage",
+    description: "Schedule view",
+    icon: <FiCalendar className="h-6 w-6" />,
+    accent: "from-emerald-500 via-lime-500 to-teal-500",
+    permissions: ["tasks.manage"],
+    section: "Dashboard",
+  },
+  {
+    label: "Companies",
+    href: "/company",
+    description: "Company records",
+    icon: <FiBriefcase className="h-6 w-6" />,
+    accent: "from-sky-500 via-indigo-500 to-violet-600",
+    permissions: ["entities.read"],
+    section: "Entities",
+  },
+  {
+    label: "Employees",
+    href: "/employee",
+    description: "Team records",
+    icon: <FiUsers className="h-6 w-6" />,
+    accent: "from-emerald-500 via-teal-500 to-cyan-600",
+    permissions: ["entities.read"],
+    section: "Entities",
+  },
+  {
+    label: "Individuals",
+    href: "/individual",
+    description: "Personal files",
+    icon: <FiUserPlus className="h-6 w-6" />,
+    accent: "from-amber-500 via-orange-500 to-rose-500",
+    permissions: ["entities.read"],
+    section: "Entities",
+  },
+  {
+    label: "Add Company",
+    href: "/company/register",
+    description: "New company",
+    icon: <FiLayers className="h-6 w-6" />,
+    accent: "from-sky-500 via-cyan-500 to-blue-600",
+    permissions: ["entities.write"],
+    section: "Entities",
+  },
+  {
+    label: "Add Employee",
+    href: "/employee/register",
+    description: "New employee",
+    icon: <FiUserPlus className="h-6 w-6" />,
+    accent: "from-emerald-500 via-lime-500 to-teal-500",
+    permissions: ["entities.write"],
+    section: "Entities",
+  },
+  {
+    label: "Add Individual",
+    href: "/individual/register",
+    description: "New individual",
+    icon: <FiUserPlus className="h-6 w-6" />,
+    accent: "from-amber-500 via-orange-500 to-yellow-500",
+    permissions: ["entities.write"],
+    section: "Entities",
+  },
+  {
+    label: "Finance Summary",
+    href: "/accounts/transactions/analytics",
+    description: "Overview charts",
+    icon: <FiTrendingUp className="h-6 w-6" />,
+    accent: "from-cyan-500 via-sky-500 to-indigo-600",
+    permissions: ["payments.view.finance-summary-page"],
+    section: "Finance",
+  },
+  {
+    label: "Finance Reports",
+    href: "/accounts/transactions/reports",
+    description: "Summary reports",
+    icon: <FiFileText className="h-6 w-6" />,
+    accent: "from-slate-600 via-slate-800 to-slate-950",
+    permissions: ["payments.view.records-summary"],
+    section: "Finance",
+  },
+  {
+    label: "All Transactions",
+    href: "/accounts/transactions",
+    description: "All payments",
+    icon: <FiCreditCard className="h-6 w-6" />,
+    accent: "from-violet-500 via-fuchsia-500 to-rose-500",
+    permissions: ["payments.view.transactions"],
+    section: "Finance",
+  },
+  {
+    label: "New Income",
+    href: "/accounts/add-record?type=income",
+    description: "Create income",
+    icon: <FiTrendingUp className="h-6 w-6" />,
+    accent: "from-emerald-500 via-teal-500 to-cyan-600",
+    permissions: ["payments.create.transactions"],
+    section: "Finance",
+  },
+  {
+    label: "New Expense",
+    href: "/accounts/add-record?type=expense",
+    description: "Create expense",
+    icon: <FiTrendingDown className="h-6 w-6" />,
+    accent: "from-rose-500 via-pink-500 to-orange-500",
+    permissions: ["payments.create.transactions"],
+    section: "Finance",
+  },
+  {
+    label: "Office Records",
+    href: "/accounts/transactions/office",
+    description: "Office flow",
+    icon: <FiBookOpen className="h-6 w-6" />,
+    accent: "from-orange-500 via-amber-500 to-yellow-500",
+    permissions: ["payments.view.office-records"],
+    section: "Finance",
+  },
+  {
+    label: "Self Transfers",
+    href: "/accounts/transactions/self",
+    description: "Internal moves",
+    icon: <FiArrowUpRight className="h-6 w-6" />,
+    accent: "from-teal-500 via-cyan-500 to-sky-600",
+    permissions: ["payments.view.self-transfers"],
+    section: "Finance",
+  },
+  {
+    label: "Credit List",
+    href: "/accounts/transactions/credit-list",
+    description: "Credit entries",
+    icon: <FiTrendingUp className="h-6 w-6" />,
+    accent: "from-emerald-500 via-teal-500 to-cyan-600",
+    permissions: ["payments.view.credit-debit-lists"],
+    section: "Finance",
+  },
+  {
+    label: "Debit List",
+    href: "/accounts/transactions/debit-list",
+    description: "Debit entries",
+    icon: <FiTrendingDown className="h-6 w-6" />,
+    accent: "from-rose-500 via-pink-500 to-orange-500",
+    permissions: ["payments.view.credit-debit-lists"],
+    section: "Finance",
+  },
+  {
+    label: "Liability",
+    href: "/accounts/transactions/liability",
+    description: "Debt tracking",
+    icon: <FiShield className="h-6 w-6" />,
+    accent: "from-rose-500 via-red-500 to-orange-600",
+    permissions: ["payments.view.liability-records"],
+    section: "Finance",
+  },
+  {
+    label: "Invoices",
+    href: "/accounts/invoice",
+    description: "Invoice list",
+    icon: <FiFileText className="h-6 w-6" />,
+    accent: "from-rose-500 via-pink-500 to-orange-500",
+    permissions: ["payments.view.invoices"],
+    section: "Finance",
+  },
+  {
+    label: "New Invoice",
+    href: "/accounts/invoice/new",
+    description: "Create invoice",
+    icon: <FiArrowUpRight className="h-6 w-6" />,
+    accent: "from-slate-900 via-slate-800 to-cyan-900",
+    permissions: ["payments.create.invoices"],
+    section: "Finance",
+  },
+  {
+    label: "Expiry Documents",
+    href: "/documents/expiry",
+    description: "Expiry docs",
+    icon: <FiBookOpen className="h-6 w-6" />,
+    accent: "from-orange-500 via-amber-500 to-yellow-500",
+    permissions: ["documents.read"],
+    section: "Documents",
+  },
+  {
+    label: "Physical Handover",
+    href: "/documents/handover",
+    description: "Handover logs",
+    icon: <FiFolder className="h-6 w-6" />,
+    accent: "from-teal-500 via-cyan-500 to-sky-600",
+    permissions: ["documents.read"],
+    section: "Documents",
+  },
+  {
+    label: "Settings Home",
+    href: "/settings",
+    description: "Main settings",
+    icon: <FiSettings className="h-6 w-6" />,
+    accent: "from-slate-600 via-slate-800 to-slate-950",
+    permissions: ["settings.read", "settings.write"],
+    section: "Administration",
+  },
+  {
+    label: "Roles & Permissions",
+    href: "/settings/roles",
+    description: "Access control",
+    icon: <FiShield className="h-6 w-6" />,
+    accent: "from-slate-700 via-slate-800 to-cyan-900",
+    permissions: ["settings.manage.roles", "settings.manage.permissions", "roles.manage"],
+    section: "Administration",
+  },
+  {
+    label: "Change Password",
+    href: "/settings/change-password",
+    description: "Security update",
+    icon: <FiLock className="h-6 w-6" />,
+    accent: "from-slate-900 via-slate-800 to-slate-700",
+    permissions: ["users.read", "settings.read"],
+    section: "Administration",
+  },
+  {
+    label: "Document Types",
+    href: "/settings/document-types",
+    description: "Type templates",
+    icon: <FiLayers className="h-6 w-6" />,
+    accent: "from-sky-500 via-cyan-500 to-blue-600",
+    permissions: ["settings.manage.document-types"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "Credential Platforms",
+    href: "/settings/credential-platforms",
+    description: "Credential groups",
+    icon: <FiBriefcase className="h-6 w-6" />,
+    accent: "from-emerald-500 via-teal-500 to-cyan-600",
+    permissions: ["settings.manage.credential-platforms"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "Office Categories",
+    href: "/settings/office-expense-categories",
+    description: "Office groups",
+    icon: <FiBookOpen className="h-6 w-6" />,
+    accent: "from-orange-500 via-amber-500 to-yellow-500",
+    permissions: ["settings.manage.office-categories"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "Payment Methods",
+    href: "/settings/payment-methods",
+    description: "Method list",
+    icon: <FiCreditCard className="h-6 w-6" />,
+    accent: "from-violet-500 via-fuchsia-500 to-pink-600",
+    permissions: ["settings.manage.payment-methods"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "Payment Statuses",
+    href: "/settings/payment-statuses",
+    description: "Status list",
+    icon: <FiFileText className="h-6 w-6" />,
+    accent: "from-rose-500 via-pink-500 to-orange-500",
+    permissions: ["settings.manage.payment-statuses"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "Particular Suggestions",
+    href: "/settings/particular-suggestions",
+    description: "Quick text",
+    icon: <FiFileText className="h-6 w-6" />,
+    accent: "from-teal-500 via-cyan-500 to-sky-600",
+    permissions: ["settings.manage.particular-suggestions"],
+    section: "Types & Platforms",
+  },
+  {
+    label: "System Users",
+    href: "/users",
+    description: "User access",
+    icon: <FiUsers className="h-6 w-6" />,
+    accent: "from-slate-700 via-slate-800 to-cyan-900",
+    permissions: ["users.read"],
+    section: "Users",
+  },
+];
 
-const formatTaskDate = (value?: string | null) => {
-  if (!value) return "No due date";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "No due date";
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
+const sections = [
+  {
+    title: "Overview",
+    subtitle: "Overview and workflow",
+    tileLabels: ["Dashboard", "Business Pulse", "My Tasks", "Task Calendar", "Expiry Documents", "Physical Handover"],
+  },
+  {
+    title: "Entities",
+    subtitle: "People and companies",
+    tileLabels: ["Companies", "Employees", "Individuals", "Add Company", "Add Employee", "Add Individual"],
+  },
+  {
+    title: "Finance",
+    subtitle: "Payments and billing",
+    tileLabels: [
+      "Finance Summary",
+      "Finance Reports",
+      "All Transactions",
+      "Create Records",
+      "New Income",
+      "New Expense",
+      "Office Records",
+      "Self Transfers",
+      "Credit / Debit Lists",
+      "Credit List",
+      "Debit List",
+      "Liability",
+      "Invoices",
+      "New Invoice",
+    ],
+  },
+  {
+    title: "Types & Platforms",
+    subtitle: "Settings groups",
+    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions"],
+  },
+  {
+    title: "Administration",
+    subtitle: "System control",
+    tileLabels: ["Settings Home", "Roles & Permissions", "Change Password", "System Users"],
+  },
 
-const statusBadgeMap: Record<string, string> = {
-  todo: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  in_progress: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-};
-
-const priorityBadgeMap: Record<string, string> = {
-  low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  medium: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
-  high: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  urgent: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-};
+];
 
 export default function Home() {
-  const { user, isUserLoading } = useUserContext();
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery<TDashboardOverview>({
-    queryKey: ["dashboard-overview"],
-    queryFn: async () => {
-      const response = await axios.get("/api/dashboard/overview");
-      return response.data;
-    },
-    enabled: !isUserLoading && Boolean(user),
-    retry: 2,
-  });
-
-  if (isUserLoading || isLoading || (!data && isFetching)) {
-    return (
-      <div className="flex h-[65vh] items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (isError && !data) {
-    return (
-      <div className="mx-auto flex h-[65vh] max-w-xl flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-          Dashboard data is still syncing after login. Please retry.
-        </p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const counts = data?.counts || { companies: 0, employees: 0, individuals: 0 };
-  const documentStats =
-    data?.documentStats ||
-    {
-      total: 0,
-      expired: 0,
-      renewal: 0,
-      valid: 0,
-      renewedThisMonth: 0,
-      expiringNext30Days: 0,
-    };
-  const upcomingTasks = data?.upcomingTasks || [];
-  const taskSummary = data?.taskSummary || { open: 0, inProgress: 0, completed: 0, overdue: 0 };
-
-  const expiryBarOptions: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false } },
-    colors: ["#EF4444", "#F59E0B", "#22C55E"],
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 6,
-      },
-    },
-    xaxis: {
-      categories: ["Expired", "Renewal", "Valid"],
-    },
-    dataLabels: { enabled: false },
-    legend: { show: false },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  const categoryRenewalsOptions: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false } },
-    colors: ["#EF4444", "#F59E0B"],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        borderRadius: 6,
-        columnWidth: "48%",
-      },
-    },
-    xaxis: {
-      categories: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.category),
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => `${Math.round(value)}`,
-      },
-    },
-    legend: { position: "top" },
-    dataLabels: { enabled: false },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  const monthlyRenewalsOptions: ApexOptions = {
-    chart: {
-      type: "line",
-      toolbar: { show: false },
-      zoom: { enabled: false },
-    },
-    stroke: { curve: "smooth", width: 3 },
-    colors: ["#06B6D4"],
-    xaxis: {
-      categories: (data?.monthlyRenewals || []).map((row) => row.month),
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => `${Math.round(value)}`,
-      },
-    },
-    dataLabels: { enabled: false },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  return (
-    <div id="financial-report-root" className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">
-      <section className="relative overflow-hidden rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 shadow-sm dark:border-cyan-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 md:p-7">
-        <div className="pointer-events-none absolute -left-20 -top-16 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-emerald-300/25 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-cyan-100/80 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
-              Live Operations Dashboard
-            </p>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
-              Business Pulse and Renewal Intelligence
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600 dark:text-slate-400">
-              Unified insight into entities, document expiries, renewals, and your upcoming tasks.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/tasks"
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
-            >
-              <FiCalendar />
-              Open Task Calendar
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <MetricCard label="Companies" value={String(counts.companies)} icon={<FiBriefcase />} tone="sky" />
-        <MetricCard label="Employees" value={String(counts.employees)} icon={<FiUsers />} tone="emerald" />
-        <MetricCard label="Individuals" value={String(counts.individuals)} icon={<FiUser />} tone="amber" />
-        <MetricCard label="Total Expiries" value={String(documentStats.expired)} icon={<FiAlertCircle />} tone="rose" />
-        <MetricCard label="Renewals" value={String(documentStats.renewal)} icon={<FiCheckCircle />} tone="violet" />
-        <MetricCard label="Renewed This Month" value={String(documentStats.renewedThisMonth)} icon={<FiArrowUpRight />} tone="teal" />
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Category-wise Expired vs Renewal</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Comparison of expired and renewal documents across Visa, License, and Other categories.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="bar"
-              height={300}
-              options={categoryRenewalsOptions}
-              series={[
-                {
-                  name: "Expired",
-                  data: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.expired),
-                },
-                {
-                  name: "Renewal",
-                  data: (data?.categoryExpiryRenewalBreakdown || []).map((row) => row.renewal),
-                },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Expiry Snapshot</h3>
-          <div className="mt-4 space-y-3 text-sm">
-            <StatRow label="Total Documents" value={String(documentStats.total)} icon={<FiBriefcase />} />
-            <StatRow label="Expiring in 30 Days" value={String(documentStats.expiringNext30Days)} icon={<FiClock />} />
-            <StatRow label="Current Open Tasks" value={String(taskSummary.open)} icon={<FiAlertCircle />} />
-            <StatRow label="Overdue Tasks" value={String(taskSummary.overdue)} icon={<FiTrendingDown />} />
-            <StatRow label="Completed Tasks" value={String(taskSummary.completed)} icon={<FiCheckCircle />} />
-            <StatRow label="In Progress Tasks" value={String(taskSummary.inProgress)} icon={<FiCalendar />} />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Renewals Trend (Last 6 Months)</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">How many documents were renewed by month.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="line"
-              height={320}
-              options={monthlyRenewalsOptions}
-              series={[
-                {
-                  name: "Renewed",
-                  data: (data?.monthlyRenewals || []).map((row) => row.count),
-                },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Upcoming Tasks</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your nearest due tasks in priority order.</p>
-
-          <div className="mt-4 space-y-3">
-            {upcomingTasks.length === 0 && (
-              <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                No upcoming tasks assigned right now.
-              </div>
-            )}
-
-            {upcomingTasks.map((task) => (
-              <div key={task.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{task.title}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Due: {formatTaskDate(task.dueDate)}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className={clsx("rounded-full px-2 py-0.5 text-[11px] font-bold uppercase", statusBadgeMap[task.status] || statusBadgeMap.todo)}>
-                    {task.status.replace("_", " ")}
-                  </span>
-                  <span className={clsx("rounded-full px-2 py-0.5 text-[11px] font-bold uppercase", priorityBadgeMap[task.priority] || priorityBadgeMap.medium)}>
-                    {task.priority}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <Link
-            href="/tasks"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-          >
-            View all tasks
-            <FiArrowUpRight />
-          </Link>
-        </div>
-      </section>
-    </div>
+  const visibleTiles = tiles.filter(
+    (tile) => tile.permissions.length === 0 || tile.permissions.some((permission) => hasPermission(permissions, permission)),
   );
-}
 
-function MetricCard({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  tone: "sky" | "emerald" | "amber" | "rose" | "violet" | "teal";
-}) {
-  const toneMap: Record<string, string> = {
-    sky: "border-sky-200/70 bg-sky-50/80 text-sky-700 dark:border-sky-900/30 dark:bg-sky-950/20 dark:text-sky-300",
-    emerald: "border-emerald-200/70 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-950/20 dark:text-emerald-300",
-    amber: "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300",
-    rose: "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-rose-300",
-    violet: "border-violet-200/70 bg-violet-50/80 text-violet-700 dark:border-violet-900/30 dark:bg-violet-950/20 dark:text-violet-300",
-    teal: "border-teal-200/70 bg-teal-50/80 text-teal-700 dark:border-teal-900/30 dark:bg-teal-950/20 dark:text-teal-300",
-  };
+  const tilesByLabel = new Map(visibleTiles.map((tile) => [tile.label, tile]));
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      tiles: section.tileLabels
+        .map((label) => tilesByLabel.get(label))
+        .filter((tile): tile is (typeof tiles)[number] => Boolean(tile)),
+    }))
+    .filter((section) => section.tiles.length > 0);
 
   return (
-    <div className={clsx("rounded-2xl border p-4", toneMap[tone])}>
-      <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em]">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-black">{value}</p>
-    </div>
-  );
-}
+    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+      <div className="space-y-6">
+        {visibleSections.map((section) => (
+          <section key={section.title} className="space-y-3">
+            <div className="flex items-end justify-between gap-3 px-1">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-300">
+                  {section.subtitle}
+                </p>
+                <h2 className="mt-1 text-sm font-black tracking-tight text-slate-950 dark:text-white sm:text-base">
+                  {section.title}
+                </h2>
+              </div>
+            </div>
 
-function StatRow({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900/70">
-      <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
-          {icon}
-        </span>
-        {label}
-      </p>
-      <p className="text-sm font-black text-slate-900 dark:text-slate-100">{value}</p>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              {section.tiles.map((tile) => (
+                <Link
+                  key={tile.label}
+                  href={tile.href}
+                  className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${tile.accent} opacity-0 transition group-hover:opacity-20`} />
+                  <div className="relative flex min-h-32 flex-col items-start justify-between gap-4">
+                    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${tile.accent} text-white shadow-lg shadow-slate-950/15 transition group-hover:scale-105`}>
+                      {tile.icon}
+                    </div>
+                    <div className="flex w-full items-end justify-between gap-3">
+                      <div>
+                        <span className="block text-sm font-black tracking-tight text-slate-950 dark:text-white">
+                          {tile.label}
+                        </span>
+                        <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                          {tile.description}
+                        </span>
+                      </div>
+                      <FiArrowUpRight className="text-slate-400 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-slate-950 dark:group-hover:text-white" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
