@@ -58,7 +58,7 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
       href={href}
       className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
         active
-          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:ring-cyan-500/30"
           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
       }`}
     >
@@ -85,18 +85,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
     ? (user.permissions as string[])
     : [];
   const can = (permission: string) => hasPermission(userPermissions, permission);
-  const canViewDocumentTypes =
-    can("settings.manage.document-types") || can("entities.write") || can("settings.write");
-  const canViewCredentialPlatforms =
-    can("settings.manage.credential-platforms") || can("entities.write") || can("settings.write");
-  const canViewOfficeCategories =
-    can("settings.manage.office-categories") || can("payments.write") || can("settings.write");
-  const canViewPaymentMethods =
-    can("settings.manage.payment-methods") || can("payments.write") || can("settings.write");
-  const canViewPaymentStatuses =
-    can("settings.manage.payment-statuses") || can("payments.write") || can("settings.write");
-  const canViewParticularSuggestions =
-    can("settings.manage.particular-suggestions") || can("payments.manage.particular-suggestions") || can("settings.write");
+  const canViewDocumentTypes = can("settings.manage.document-types");
+  const canViewCredentialPlatforms = can("settings.manage.credential-platforms");
+  const canViewOfficeCategories = can("settings.manage.office-categories");
+  const canViewPaymentMethods = can("settings.manage.payment-methods");
+  const canViewPaymentStatuses = can("settings.manage.payment-statuses");
+  const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
   const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
   const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
@@ -576,28 +570,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   <NavItem
                     href="/settings/roles"
                     icon={<FiShield />}
-                    label="Roles"
+                    label="Permissions & Roles"
                     active={pathname === "/settings/roles"}
                   />
                 </li>
               )}
             
-              <li>
-                <NavItem
-                  href="/settings/my-activity"
-                  icon={<FiActivity />}
-                  label="My Activity"
-                  active={pathname === "/settings/my-activity"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/settings/active-sessions"
-                  icon={<FiMonitor />}
-                  label="Active Sessions"
-                  active={pathname === "/settings/active-sessions"}
-                />
-              </li>
+             
               <li>
                 <NavItem
                   href="/settings/change-password"
@@ -721,10 +700,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               <NavItem
                                 href="/settings/particular-suggestions"
                                 icon={<FiFileText />}
-                                label="Particular Suggestion"
-                                active={
-                                  pathname === "/settings/particular-suggestions"
-                                }
+                                label="Particular Suggestions"
+                                active={pathname === "/settings/particular-suggestions"}
                               />
                             </li>
                           )}
