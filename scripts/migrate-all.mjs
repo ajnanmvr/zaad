@@ -11,6 +11,10 @@ const steps = [
     script: path.join(rootDir, "scripts", "migrate-legacy-schema-to-entities.mjs"),
   },
   {
+    name: "Employee bulk upload",
+    script: path.join(rootDir, "scripts", "bulk-upload-employees.mjs"),
+  },
+  {
     name: "Users to super-admin",
     script: path.join(rootDir, "scripts", "migrate-legacy-users-to-superadmin.mjs"),
   },
