@@ -2,6 +2,7 @@ import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { createSwapTransfer } from "@/services/paymentService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
@@ -12,6 +13,10 @@ export async function POST(request: NextRequest) {
     const response = await createSwapTransfer({ amount, to, from }, principal);
     return Response.json(response.body, { status: response.status });
   } catch (error) {
-    return Response.json(error, { status: 401 });
+    const status = getServiceErrorStatus(error);
+    return Response.json(
+      { error: getServiceErrorMessage(error, "Failed to create swap transfer") },
+      { status }
+    );
   }
 }

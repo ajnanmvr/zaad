@@ -12,12 +12,28 @@ const SignIn: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
-    const handleSubmit = async (e: any) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const usernameFromForm = String(formData.get("username") || "").trim();
+        const passwordFromForm = String(formData.get("password") || "");
+
+        // Browser autofill can bypass onChange; always use live form values.
+        const payload = {
+            username: usernameFromForm || user.username.trim(),
+            password: passwordFromForm || user.password,
+        };
+
+        if (!payload.username || !payload.password) {
+            toast.error("Username and password are required", { id: "login" });
+            return;
+        }
+
         setIsLoading(true);
         try {
             toast.loading("Authenticating...", { id: "login" });
-            await axios.post("/api/users/auth/login", user);
+            await axios.post("/api/users/auth/login", payload);
             toast.success("Login successful! Redirecting...", { id: "login" });
             router.push("/");
         } catch (error: any) {
@@ -64,8 +80,10 @@ const SignIn: React.FC = () => {
                             type="text"
                             name="username"
                             onChange={handleChange}
+                            onInput={handleChange}
                             required
                             placeholder="Username"
+                            autoComplete="username"
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500"
                             disabled={isLoading}
                         />
@@ -78,7 +96,9 @@ const SignIn: React.FC = () => {
                             name="password"
                             placeholder="Password"
                             onChange={handleChange}
+                            onInput={handleChange}
                             required
+                            autoComplete="current-password"
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500"
                             disabled={isLoading}
                         />

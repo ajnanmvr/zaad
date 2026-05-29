@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import DocumentTemplate from "@/models/documentTemplates";
 import CredentialTemplate from "@/models/credentialTemplates";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 function normalizeValues(values: unknown[]) {
   const cleaned = values
@@ -52,10 +53,15 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching categories:", error);
+    }
+
     return Response.json(
-      { message: "Error fetching categories", options: [] },
-      { status: 500 }
+      { message: getServiceErrorMessage(error, "Error fetching categories"), options: [] },
+      { status }
     );
   }
 }
+

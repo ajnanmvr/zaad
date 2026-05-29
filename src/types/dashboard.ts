@@ -92,6 +92,15 @@ export type TDashboardOverview = {
     month: string;
     count: number;
   }[];
+  categoryRenewals?: {
+    category: string;
+    count: number;
+  }[];
+  categoryExpiryRenewalBreakdown?: {
+    category: string;
+    expired: number;
+    renewal: number;
+  }[];
   upcomingTasks: {
     id: string;
     title: string;

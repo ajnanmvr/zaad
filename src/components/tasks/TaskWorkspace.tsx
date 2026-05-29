@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addDays,
   addMonths,
@@ -18,6 +17,8 @@ import {
 } from "date-fns";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -33,13 +34,12 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
-import toast from "react-hot-toast";
 
 import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
-import { useUserContext } from "@/contexts/UserContext";
 import { getDocumentCategoryLabel, normalizeDocumentCategory } from "@/config/documentCategoryVisuals";
+import { useUserContext } from "@/contexts/UserContext";
+import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
@@ -92,6 +92,11 @@ type CalendarTask = {
   category?: "visa" | "license" | "other";
   dueDate: string;
   assignedTo?: { _id: string; username?: string; fullname?: string };
+  linkedTargets?: Array<{
+    targetType: string;
+    targetId: string;
+    targetLabel?: string;
+  }>;
 };
 
 type UserOption = {
@@ -158,9 +163,11 @@ function mapTaskExportRows(rows: TaskItem[]) {
 export default function TaskWorkspace({
   mode,
   initialView = "list",
+  initialStatusGroup = "",
 }: {
   mode: "mine" | "manage";
   initialView?: "list" | "calendar";
+  initialStatusGroup?: "" | "active" | "completed" | "cancelled" | "closed";
 }) {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
@@ -177,7 +184,7 @@ export default function TaskWorkspace({
       user.permissions.includes("tasks.manage"));
 
   const [activeView, setActiveView] = useState<"list" | "calendar">(initialView);
-  const [scope, setScope] = useState<"mine" | "manage">(mode === "manage" ? "manage" : "mine");
+  const [scope, setScope] = useState<"mine" | "manage">("mine");
 
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
@@ -195,7 +202,6 @@ export default function TaskWorkspace({
 
   const [selectedDate, setSelectedDate] = useState(normalizedDateFromQuery);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
-  const [calendarShowAll, setCalendarShowAll] = useState(false);
   const [showDateBrief, setShowDateBrief] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -226,7 +232,6 @@ export default function TaskWorkspace({
   useEffect(() => {
     if (!canManage) {
       setScope("mine");
-      setCalendarShowAll(false);
     }
   }, [canManage]);
 
@@ -238,6 +243,55 @@ export default function TaskWorkspace({
     return () => clearTimeout(handler);
   }, [linkSearch]);
 
+  // Prefill task form from URL parameters
+  useEffect(() => {
+    const prefillTitle = searchParams.get("title");
+    const prefillLinkedEntity = searchParams.get("linkedEntity");
+    const prefillCategory = searchParams.get("category");
+
+    if (prefillTitle || prefillLinkedEntity || prefillCategory) {
+      if (prefillTitle) {
+        setTaskTitle(prefillTitle);
+      }
+
+      if (prefillCategory && ["visa", "license", "other"].includes(prefillCategory)) {
+        setTaskCategory(prefillCategory as TaskCategory);
+      }
+
+      if (prefillLinkedEntity) {
+        // Format: "entityType:entityId:entityLabel"
+        const parts = prefillLinkedEntity.split(":");
+        if (parts.length >= 2) {
+          const entityType = parts[0];
+          const entityId = parts[1];
+          const entityLabel = parts.slice(2).join(":");
+
+          if (ALLOWED_LINK_TARGET_TYPES.has(entityType as LinkedTargetType)) {
+            setLinkTargetType(entityType as LinkedTargetType);
+            setTaskLinkedTargets([
+              {
+                targetType: entityType as LinkedTargetType,
+                targetId: entityId,
+                targetLabel: entityLabel || undefined,
+              },
+            ]);
+          }
+        }
+      }
+
+      // Auto-open the create modal
+      setShowCreateModal(true);
+
+      // Clean up URL parameters
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete("title");
+      nextParams.delete("linkedEntity");
+      nextParams.delete("category");
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
   const assigneesQuery = useQuery({
     queryKey: ["task-assignees", canManage],
     queryFn: async () => {
@@ -248,7 +302,7 @@ export default function TaskWorkspace({
   });
 
   const tasksQuery = useQuery({
-    queryKey: ["tasks", scope, status, priority, category, search, assignee, page, selectedDate],
+    queryKey: ["tasks", scope, status, initialStatusGroup, priority, category, search, assignee, page, selectedDate],
     queryFn: async () => {
       const params = new URLSearchParams({
         scope,
@@ -257,6 +311,7 @@ export default function TaskWorkspace({
       });
 
       if (status) params.set("status", status);
+      else if (initialStatusGroup) params.set("statusGroup", initialStatusGroup);
       if (priority) params.set("priority", priority);
       if (category) params.set("category", category);
       if (search.trim()) params.set("search", search.trim());
@@ -271,12 +326,12 @@ export default function TaskWorkspace({
   });
 
   const calendarQuery = useQuery({
-    queryKey: ["tasks-calendar", scope, monthKey, calendarShowAll],
+    queryKey: ["tasks-calendar", scope, monthKey],
     queryFn: async () => {
       const params = new URLSearchParams({
         scope,
         month: monthKey,
-        showAllUsers: String(canManage && calendarShowAll),
+        showAllUsers: String(canManage && scope === "manage"),
       });
 
       const { data } = await axios.get(`/api/tasks/calendar?${params.toString()}`);
@@ -301,7 +356,14 @@ export default function TaskWorkspace({
     staleTime: 30_000,
   });
 
-  const tasks = useMemo(() => tasksQuery.data?.tasks || [], [tasksQuery.data?.tasks]);
+  const tasks = useMemo(() => {
+    const allTasks = tasksQuery.data?.tasks || [];
+    // Hide completed/cancelled tasks unless we're explicitly viewing the closed tasks page
+    if (initialStatusGroup !== "closed") {
+      return allTasks.filter((task) => task.status !== "completed" && task.status !== "cancelled");
+    }
+    return allTasks;
+  }, [tasksQuery.data?.tasks, initialStatusGroup]);
   const pagination = tasksQuery.data?.pagination;
   const assignees = useMemo(() => assigneesQuery.data || [], [assigneesQuery.data]);
   const calendarTasks = useMemo(() => calendarQuery.data?.tasks || [], [calendarQuery.data?.tasks]);
@@ -487,6 +549,12 @@ export default function TaskWorkspace({
     createTaskMutation.mutate();
   };
 
+  const openCreateTaskModal = (prefillDate?: string) => {
+    if (!canManage) return;
+    setTaskDueDate(prefillDate || selectedDate || "");
+    setShowCreateModal(true);
+  };
+
   const onExport = async (formatType: "csv" | "excel" | "pdf", exportMode: "selected" | "all") => {
     const exportRows = mapTaskExportRows(tasks);
 
@@ -516,7 +584,7 @@ export default function TaskWorkspace({
     }
 
     const nextQuery = nextParams.toString();
-    router.push(nextQuery ? `${pathname}?${nextQuery}` : pathname);
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
   };
 
   const selectDate = (nextDate: string) => {
@@ -568,7 +636,8 @@ export default function TaskWorkspace({
         }}
       />
 
-      <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.18),transparent_46%),linear-gradient(135deg,#f0fdfa,#ffffff_48%,#eff6ff)] p-6 shadow-sm dark:border-cyan-900/30 dark:bg-[radial-gradient(circle_at_0%_0%,rgba(6,182,212,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.12),transparent_46%),linear-gradient(135deg,#0f172a,#0b1120_48%,#0a1726)]">
+      {initialStatusGroup !== "closed" ? (
+        <section className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.18),transparent_46%),linear-gradient(135deg,#f0fdfa,#ffffff_48%,#eff6ff)] p-6 shadow-sm dark:border-cyan-900/30 dark:bg-[radial-gradient(circle_at_0%_0%,rgba(6,182,212,0.22),transparent_42%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.12),transparent_46%),linear-gradient(135deg,#0f172a,#0b1120_48%,#0a1726)]">
         <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-cyan-700 dark:border-cyan-700/50 dark:bg-cyan-900/20 dark:text-cyan-300">
@@ -629,15 +698,29 @@ export default function TaskWorkspace({
             <p className="mt-1 text-2xl font-black text-rose-600 dark:text-rose-300">{stats.overdue}</p>
           </div>
         </div>
-      </section>
+        </section>
+      ) : null}
+
+      {initialStatusGroup === "closed" ? (
+        <div className="rounded-2xl border-l-4 border-amber-400 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20">
+          <div className="flex items-center gap-3">
+            <FiAlertCircle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                Completed & Cancelled Tasks
+              </p>
+              <p className="mt-0.5 text-sm text-amber-800 dark:text-amber-200">
+                You are viewing archived tasks. These tasks have been completed or cancelled.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-                Scope
-              </span>
               <div className="inline-flex rounded-xl border border-slate-300 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
                 <button
                   type="button"
@@ -675,10 +758,17 @@ export default function TaskWorkspace({
 
             <div className="flex flex-wrap items-center gap-2">
               <ExportActionsMenu onExport={onExport} />
+              <Link
+                href="/tasks/closed"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30"
+              >
+                <FiCheckCircle />
+                Closed Tasks
+              </Link>
               {canManage ? (
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => openCreateTaskModal()}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-emerald-700 hover:to-cyan-700"
                 >
                   <FiPlus />
@@ -832,13 +922,28 @@ export default function TaskWorkspace({
                             >
                               {task.title}
                             </Link>
-                            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                              <span>{task.assignedTo?.fullname || task.assignedTo?.username || "-"}</span>
-                              {task.category ? (
-                                <span className={clsx("rounded-full px-2 py-0.5 font-semibold", categoryBadgeMap[task.category])}>
-                                  {getDocumentCategoryLabel(task.category)}
-                                </span>
-                              ) : null}
+                            <div className="mt-1 flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                <span>{task.assignedTo?.fullname || task.assignedTo?.username || "-"}</span>
+                                {task.category ? (
+                                  <span className={clsx("rounded-full px-2 py-0.5 font-semibold", categoryBadgeMap[task.category])}>
+                                    {getDocumentCategoryLabel(task.category)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {task.linkedTargets && task.linkedTargets.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {task.linkedTargets.map((target, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700/50 dark:text-slate-300"
+                                    >
+                                      <FiTarget className="h-3 w-3" />
+                                      <span className="capitalize">{target.targetType}</span>: {target.targetLabel || target.targetId}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -939,27 +1044,47 @@ export default function TaskWorkspace({
           )}
         </section>
       ) : (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 sm:p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-3xl border border-sky-200/70 bg-[radial-gradient(circle_at_10%_0%,rgba(56,189,248,0.24),transparent_38%),radial-gradient(circle_at_100%_100%,rgba(34,197,94,0.12),transparent_44%),linear-gradient(140deg,#f8fbff,#ffffff_44%,#f5fffa)] p-4 shadow-sm dark:border-sky-900/30 dark:bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,0.22),transparent_38%),radial-gradient(circle_at_100%_100%,rgba(16,185,129,0.1),transparent_44%),linear-gradient(140deg,#0f172a,#0b1120_44%,#0a1726)] sm:p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Calendar</p>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">Task Due Dates</h3>
+                <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/60 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-sky-700 dark:border-sky-700/40 dark:bg-sky-900/20 dark:text-sky-300">
+                  <FiCalendar />
+                  Due Date Calendar
+                </p>
+                <h3 className="mt-2 text-base font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg">
+                  Visual Task Planner
+                </h3>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  Pick a day to inspect tasks, overdue items, and assignment details.
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => {
+                    setViewMonth(startOfMonth(new Date()));
+                    selectDate(todayKey);
+                  }}
+                  className="inline-flex h-9 items-center rounded-xl border border-cyan-300 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/40"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
                   onClick={() => setViewMonth((prev) => subMonths(prev, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <FiChevronLeft />
                 </button>
-                <p className="min-w-[130px] text-center text-sm font-bold text-slate-700 dark:text-slate-200">{format(viewMonth, "MMMM yyyy")}</p>
+                <p className="min-w-[140px] text-center text-sm font-black text-slate-800 dark:text-slate-100">
+                  {format(viewMonth, "MMMM yyyy")}
+                </p>
                 <button
                   type="button"
                   onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   <FiChevronRight />
                 </button>
@@ -967,63 +1092,39 @@ export default function TaskWorkspace({
             </div>
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarShowAll(false);
-                  setScope("mine");
-                }}
-                className={clsx(
-                  "rounded-full border px-3 py-1 text-xs font-semibold",
-                  !calendarShowAll
-                    ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                    : "border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300",
-                )}
-              >
-                My Tasks
-              </button>
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => {
-                  setCalendarShowAll(true);
-                  setScope("manage");
-                }}
-                className={clsx(
-                  "rounded-full border px-3 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50",
-                  calendarShowAll
-                    ? "border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
-                    : "border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300",
-                )}
-              >
-                All Tasks
-              </button>
-              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
                 <FiAlertCircle />
-                Red marker means overdue
+                Overdue day
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:border-cyan-800/40 dark:bg-cyan-900/20 dark:text-cyan-300">
+                <FiTarget />
+                Selected day
               </span>
             </div>
 
             {calendarQuery.isLoading ? (
-              <div className="rounded-2xl border border-slate-200 p-8 text-center text-slate-500 dark:border-slate-700">Loading calendar...</div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900/50">
+                Loading calendar...
+              </div>
             ) : (
               <>
-                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">
-                  <div>Mon</div>
-                  <div>Tue</div>
-                  <div>Wed</div>
-                  <div>Thu</div>
-                  <div>Fri</div>
-                  <div>Sat</div>
-                  <div>Sun</div>
+                <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Mon</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Tue</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Wed</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Thu</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Fri</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Sat</div>
+                  <div className="rounded-lg bg-slate-100/80 py-1 dark:bg-slate-800/70">Sun</div>
                 </div>
 
-                <div className="mt-1 grid grid-cols-7 gap-1">
+                <div className="mt-2 grid grid-cols-7 gap-2">
                   {calendarDays.map((day) => {
                     const dayKey = format(day, "yyyy-MM-dd");
                     const dayTasks = calendarTasksByDay[dayKey] || [];
                     const muted = !isSameMonth(day, viewMonth);
                     const isToday = isSameDay(day, new Date());
+                    const isPast = day < new Date() && !isToday;
                     const overdueCount = dayTasks.filter((task) => {
                       if (task.status === "completed" || task.status === "cancelled") return false;
                       return new Date(task.dueDate).getTime() < Date.now();
@@ -1035,25 +1136,38 @@ export default function TaskWorkspace({
                         type="button"
                         onClick={() => selectDate(dayKey)}
                         className={clsx(
-                          "min-h-[84px] rounded-lg border p-1.5 text-left transition",
+                          "min-h-[108px] rounded-xl border p-2 text-left shadow-[0_1px_0_rgba(15,23,42,0.02)] transition",
                           muted
-                            ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-800/70",
-                          isToday && "border-cyan-300 bg-cyan-50/70 dark:border-cyan-700 dark:bg-cyan-900/20",
-                          selectedDate === dayKey && "ring-2 ring-cyan-400/60 dark:ring-cyan-500/60",
-                          overdueCount > 0 && "border-rose-300 dark:border-rose-700/70",
+                            ? "border-slate-200/60 bg-slate-50/70 text-slate-400 dark:border-slate-800 dark:bg-slate-900/30"
+                            : isPast
+                              ? "border-slate-200 bg-white/90 text-slate-500 opacity-70 hover:opacity-90 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400"
+                              : "border-slate-200 bg-white text-slate-700 hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/75 dark:text-slate-200 dark:hover:bg-slate-800/80",
+                          isToday && "border-cyan-400 bg-gradient-to-br from-cyan-50 to-sky-100/70 ring-2 ring-cyan-300/60 dark:border-cyan-600 dark:from-cyan-900/30 dark:to-sky-900/20 dark:ring-cyan-500/60",
+                          selectedDate === dayKey && !isToday && "ring-2 ring-cyan-400/70 dark:ring-cyan-500/70",
+                          overdueCount > 0 && !isToday && "border-rose-300 dark:border-rose-700/70",
                         )}
                         title={`View tasks on ${dayKey}`}
                       >
-                        <div className="mb-1 flex items-center justify-between">
-                          <span className="text-[11px] font-bold">{format(day, "d")}</span>
-                          <span className="rounded-full bg-slate-900 px-1 py-0.5 text-[9px] font-bold text-white dark:bg-slate-100 dark:text-slate-900">
-                            {dayTasks.length}
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <span className={clsx("text-xs font-black", isToday && "text-cyan-700 dark:text-cyan-300")}>
+                            {format(day, "d")}
                           </span>
+                          {dayTasks.length > 0 ? (
+                            <span
+                              className={clsx(
+                                "rounded-full px-1.5 py-0.5 text-[10px] font-black",
+                                isToday
+                                  ? "bg-cyan-600 text-white dark:bg-cyan-500"
+                                  : "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900",
+                              )}
+                            >
+                              {dayTasks.length}
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="space-y-1">
-                          {dayTasks.slice(0, 2).map((task) => {
+                          {dayTasks.slice(0, 3).map((task) => {
                             const overdue =
                               task.status !== "completed" &&
                               task.status !== "cancelled" &&
@@ -1063,7 +1177,7 @@ export default function TaskWorkspace({
                               <div
                                 key={task._id}
                                 className={clsx(
-                                  "truncate rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                                  "truncate rounded-lg px-1.5 py-1 text-[10px] font-semibold",
                                   overdue
                                     ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
                                     : statusBadgeMap[task.status],
@@ -1073,8 +1187,10 @@ export default function TaskWorkspace({
                               </div>
                             );
                           })}
-                          {dayTasks.length > 2 ? (
-                            <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">+{dayTasks.length - 2} more</p>
+                          {dayTasks.length > 3 ? (
+                            <p className="pl-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              +{dayTasks.length - 3} more
+                            </p>
                           ) : null}
                         </div>
                       </button>
@@ -1085,9 +1201,14 @@ export default function TaskWorkspace({
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">{selectedDate ? "Selected Day" : "Day Brief"}</h4>
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Day Inspector</p>
+                <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">
+                  {selectedDate ? "Selected Day" : "Day Brief"}
+                </h4>
+              </div>
               {selectedDate ? (
                 <button
                   type="button"
@@ -1101,47 +1222,59 @@ export default function TaskWorkspace({
             </div>
 
             {selectedDate ? (
-              <div className="mb-3 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800 dark:border-cyan-800/40 dark:bg-cyan-900/20 dark:text-cyan-300">
+              <div className="mb-3 rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-emerald-50 px-3 py-3 text-xs font-semibold text-cyan-800 dark:border-cyan-800/40 dark:from-cyan-900/20 dark:to-emerald-900/10 dark:text-cyan-300">
                 {new Date(`${selectedDate}T00:00:00`).toLocaleDateString()}
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => goRelativeDate(-1)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Prev
                   </button>
                   <button
                     type="button"
                     onClick={() => goRelativeDate(1)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Next
                   </button>
                   <button
                     type="button"
                     onClick={() => selectDate(todayKey)}
-                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] dark:border-cyan-700"
+                    className="rounded-md border border-cyan-300 px-2 py-1 text-[11px] font-semibold dark:border-cyan-700"
                   >
                     Today
                   </button>
                   <button
                     type="button"
                     onClick={clearDateFilter}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] dark:border-slate-700"
+                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold dark:border-slate-700"
                   >
                     Clear
                   </button>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      onClick={() => openCreateTaskModal(selectedDate)}
+                      className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                    >
+                      <FiPlus />
+                      Add Task
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : (
-              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">Click any date to see tasks for that day.</p>
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                Click any date to inspect tasks for that day.
+              </p>
             )}
 
             {showDateBrief && selectedDate ? (
               <div className="space-y-2">
                 {selectedDateTasks.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 px-3 py-4 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                     No tasks on this day.
                   </div>
                 ) : (
@@ -1152,9 +1285,14 @@ export default function TaskWorkspace({
                       new Date(task.dueDate).getTime() < Date.now();
 
                     return (
-                      <div key={task._id} className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{task.title}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
+                      <div
+                        key={task._id}
+                        className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800/50"
+                      >
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {task.title}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
                           <span className={clsx("rounded-full px-2 py-0.5 font-semibold capitalize", statusBadgeMap[task.status])}>
                             {task.status.replace("_", " ")}
                           </span>
@@ -1176,6 +1314,19 @@ export default function TaskWorkspace({
                         <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                           {task.assignedTo?.fullname || task.assignedTo?.username || "-"}
                         </p>
+                        {task.linkedTargets && task.linkedTargets.length > 0 ? (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {task.linkedTargets.map((target, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-0.5 rounded-full bg-slate-300/60 px-1.5 py-0.5 text-[9px] font-semibold text-slate-700 dark:bg-slate-600/50 dark:text-slate-200"
+                              >
+                                <FiTarget className="h-2.5 w-2.5" />
+                                <span className="capitalize">{target.targetType}</span>: {target.targetLabel || target.targetId}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })

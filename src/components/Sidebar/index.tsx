@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import axios from "axios";
+import toast from "react-hot-toast";
 import {
-  FiCalendar,
+  FiActivity,
+  FiBarChart2,
   FiBookOpen,
   FiBriefcase,
+  FiCalendar,
   FiCheckCircle,
-  FiRepeat,
   FiChevronRight,
   FiClock,
   FiCreditCard,
@@ -19,11 +22,15 @@ import {
   FiKey,
   FiLayers,
   FiLock,
-  FiPieChart,
+  FiLogOut,
+  FiPlusCircle,
+  FiRepeat,
   FiSettings,
   FiShield,
+  FiMonitor,
   FiTrendingDown,
   FiTrendingUp,
+  FiUser,
   FiUserPlus,
   FiUsers,
   FiX,
@@ -31,6 +38,7 @@ import {
 
 import { useUserContext } from "@/contexts/UserContext";
 import SidebarLinkGroup from "./SidebarLinkGroup";
+import { hasPermission } from "@/auth/permissions";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -50,7 +58,7 @@ function NavItem({ href, icon, label, active }: NavItemProps) {
       href={href}
       className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
         active
-          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:ring-cyan-500/30"
           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
       }`}
     >
@@ -70,15 +78,65 @@ function SectionTitle({ title }: { title: string }) {
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useUserContext();
-  const can = (permission: string) =>
-    Array.isArray(user?.permissions) &&
-    (user?.permissions as string[]).includes(permission);
+  const userPermissions = Array.isArray(user?.permissions)
+    ? (user.permissions as string[])
+    : [];
+  const can = (permission: string) => hasPermission(userPermissions, permission);
+  const canViewDocumentTypes = can("settings.manage.document-types");
+  const canViewCredentialPlatforms = can("settings.manage.credential-platforms");
+  const canViewOfficeCategories = can("settings.manage.office-categories");
+  const canViewPaymentMethods = can("settings.manage.payment-methods");
+  const canViewPaymentStatuses = can("settings.manage.payment-statuses");
+  const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
+  const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
+  const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
   const trigger = useRef<HTMLButtonElement | null>(null);
   const sidebar = useRef<HTMLElement | null>(null);
-
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const addRecordType = String(searchParams?.get("type") || "")
+    .trim()
+    .toLowerCase();
+  const addRecordKind = String(searchParams?.get("recordKind") || "")
+    .trim()
+    .toLowerCase();
+
+  const isAddRecordActive = (
+    expectedType?: string,
+    expectedKind?: string,
+  ) => {
+    if (pathname !== "/accounts/add-record") {
+      return false;
+    }
+
+    if (expectedType && addRecordType !== expectedType) {
+      return false;
+    }
+
+    if (expectedKind && addRecordKind !== expectedKind) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleLogout = async () => {
+    try {
+      toast.loading("Logging out");
+      await axios.get("/api/users/auth/logout");
+      toast.dismiss();
+      toast.success("Logged out");
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Logout failed");
+      console.log({ message: "logout failed", error });
+    }
+  };
 
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
@@ -156,10 +214,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
         </div>
       </div>
 
-      <div className="no-scrollbar flex flex-col overflow-y-auto px-4 py-4">
+      <div className="no-scrollbar flex flex-1 flex-col overflow-y-auto px-4 py-4">
         <nav className="space-y-7">
           <div>
-            <SectionTitle title="Workspace" />
+            <SectionTitle title="Overview" />
             <ul className="space-y-1.5">
               <li>
                 <NavItem
@@ -169,11 +227,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/"}
                 />
               </li>
-              {(can("tasks.read") || can("tasks.complete") || can("tasks.manage")) && (
+              {(can("tasks.read") ||
+                can("tasks.complete") ||
+                can("tasks.manage")) && (
                 <li>
                   <NavItem
                     href="/tasks"
-                    icon={<FiCalendar />}
+                    icon={<FiCheckCircle />}
                     label="My Tasks"
                     active={pathname === "/tasks"}
                   />
@@ -183,8 +243,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 <li>
                   <NavItem
                     href="/tasks/manage"
-                    icon={<FiCheckCircle />}
-                    label="Task Management"
+                    icon={<FiCalendar />}
+                    label="Task Calendar"
                     active={pathname === "/tasks/manage"}
                   />
                 </li>
@@ -209,7 +269,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               <li>
                 <NavItem
                   href="/employee"
-                  icon={<FiUsers />}
+                  icon={<FiUser />}
                   label="Employees"
                   active={
                     pathname.startsWith("/employee") &&
@@ -225,7 +285,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname.startsWith("/individual")}
                 />
               </li>
-
               <SidebarLinkGroup activeCondition={pathname.includes("register")}>
                 {(handleClick, open) => (
                   <>
@@ -284,6 +343,196 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
+            <SectionTitle title="Finance" />
+            <ul className="space-y-1.5">
+              {can("payments.view.finance-summary-page") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/analytics"
+                    icon={<FiBarChart2 />}
+                    label="Finance Summary"
+                    active={pathname === "/accounts/transactions/analytics"}
+                  />
+                </li>
+              )}
+              {can("payments.view.records-summary") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/reports"
+                    icon={<FiFileText />}
+                    label="Finance Reports"
+                    active={pathname === "/accounts/transactions/reports"}
+                  />
+                </li>
+              )}
+              {can("payments.view.transactions") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions"
+                    icon={<FiTrendingUp />}
+                    label="All Transactions"
+                    active={pathname === "/accounts/transactions"}
+                  />
+                </li>
+              )}
+              {can("payments.create.transactions") && (
+                <SidebarLinkGroup activeCondition={pathname === "/accounts/add-record"}>
+                  {(handleClick, open) => (
+                    <>
+                      <Link
+                        href="#"
+                        className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                          pathname === "/accounts/add-record"
+                            ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                        }`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          sidebarExpanded
+                            ? handleClick()
+                            : setSidebarExpanded(true);
+                        }}
+                      >
+                        <FiPlusCircle className="text-lg opacity-80" />
+                        Create Records
+                        <FiChevronRight
+                          className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                        />
+                      </Link>
+                      <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                        <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          <li>
+                            <NavItem
+                              href="/accounts/add-record?type=income"
+                              icon={<FiTrendingUp />}
+                              label="Income Record"
+                              active={isAddRecordActive("income")}
+                            />
+                          </li>
+                          <li>
+                            <NavItem
+                              href="/accounts/add-record?type=expense"
+                              icon={<FiTrendingDown />}
+                              label="Expense Record"
+                              active={isAddRecordActive("expense")}
+                            />
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </SidebarLinkGroup>
+              )}
+              {can("payments.view.office-records") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/office"
+                    icon={<FiBookOpen />}
+                    label="Office Records"
+                    active={pathname === "/accounts/transactions/office"}
+                  />
+                </li>
+              )}
+              {can("payments.view.self-transfers") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/self"
+                    icon={<FiRepeat />}
+                    label="Self Transfers"
+                    active={pathname === "/accounts/transactions/self"}
+                  />
+                </li>
+              )}
+              {can("payments.view.credit-debit-lists") && (
+                <SidebarLinkGroup
+                activeCondition={
+                  pathname.startsWith("/accounts/transactions/credit-list") ||
+                  pathname.startsWith("/accounts/transactions/debit-list") ||
+                  pathname.startsWith("/accounts/transactions/credit-debit")
+                }
+              >
+                {(handleClick, open) => (
+                  <>
+                    <Link
+                      href="#"
+                      className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                        pathname.startsWith(
+                          "/accounts/transactions/credit-list",
+                        ) ||
+                        pathname.startsWith(
+                          "/accounts/transactions/debit-list",
+                        ) ||
+                        pathname.startsWith(
+                          "/accounts/transactions/credit-debit",
+                        )
+                          ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
+                      }`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        sidebarExpanded
+                          ? handleClick()
+                          : setSidebarExpanded(true);
+                      }}
+                    >
+                      <FiCreditCard className="text-lg opacity-80" />
+                      Credit / Debit Lists
+                      <FiChevronRight
+                        className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
+                      />
+                    </Link>
+                    <div className={`${open ? "mt-2 block" : "hidden"}`}>
+                      <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                        <li>
+                          <NavItem
+                            href="/accounts/transactions/credit-list"
+                            icon={<FiTrendingUp />}
+                            label="Credit List"
+                            active={
+                              pathname === "/accounts/transactions/credit-list"
+                            }
+                          />
+                        </li>
+                        <li>
+                          <NavItem
+                            href="/accounts/transactions/debit-list"
+                            icon={<FiTrendingDown />}
+                            label="Debit List"
+                            active={
+                              pathname === "/accounts/transactions/debit-list"
+                            }
+                          />
+                        </li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </SidebarLinkGroup>
+              )}
+              {can("payments.view.liability-records") && (
+                <li>
+                  <NavItem
+                    href="/accounts/transactions/liability"
+                    icon={<FiTrendingDown />}
+                    label="Liability"
+                    active={pathname === "/accounts/transactions/liability"}
+                  />
+                </li>
+              )}
+              {can("payments.view.invoices") && (
+                <li>
+                  <NavItem
+                    href="/accounts/invoice"
+                    icon={<FiFileText />}
+                    label="Invoices"
+                    active={pathname === "/accounts/invoice"}
+                  />
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <div>
             <SectionTitle title="Documents" />
             <ul className="space-y-1.5">
               <li>
@@ -306,71 +555,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <SectionTitle title="Finance" />
-            <ul className="space-y-1.5">
-              {can("payments.read") && (
-                <li>
-                  <NavItem
-                    href="/accounts/transactions/analytics"
-                    icon={<FiPieChart />}
-                    label="Analytics"
-                    active={pathname === "/accounts/transactions/analytics"}
-                  />
-                </li>
-              )}
-              <li>
-                <NavItem
-                  href="/accounts/transactions"
-                  icon={<FiTrendingUp />}
-                  label="All Transactions"
-                  active={pathname === "/accounts/transactions"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/add-record"
-                  icon={<FiFolderPlus />}
-                  label="Add Record"
-                  active={pathname === "/accounts/add-record"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/self"
-                  icon={<FiBookOpen />}
-                  label="Office Records"
-                  active={pathname === "/accounts/transactions/self"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/liability"
-                  icon={<FiTrendingDown />}
-                  label="Liability"
-                  active={pathname === "/accounts/transactions/liability"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/transactions/credit-debit"
-                  icon={<FiCreditCard />}
-                  label="Credit / Debit"
-                  active={pathname === "/accounts/transactions/credit-debit"}
-                />
-              </li>
-              <li>
-                <NavItem
-                  href="/accounts/invoice"
-                  icon={<FiFileText />}
-                  label="Invoices"
-                  active={pathname === "/accounts/invoice"}
-                />
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <SectionTitle title="Settings & Access" />
+            <SectionTitle title="Administration" />
             <ul className="space-y-1.5">
               <li>
                 <NavItem
@@ -380,12 +565,39 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   active={pathname === "/settings"}
                 />
               </li>
-              {can("entities.write") && (
+              {canViewRoles && (
+                <li>
+                  <NavItem
+                    href="/settings/roles"
+                    icon={<FiShield />}
+                    label="Permissions & Roles"
+                    active={pathname === "/settings/roles"}
+                  />
+                </li>
+              )}
+            
+             
+              <li>
+                <NavItem
+                  href="/settings/change-password"
+                  icon={<FiLock />}
+                  label="Change Password"
+                  active={pathname === "/settings/change-password"}
+                />
+              </li>
+              {(canViewDocumentTypes ||
+                canViewCredentialPlatforms ||
+                canViewOfficeCategories ||
+                canViewPaymentMethods ||
+                canViewPaymentStatuses ||
+                canViewParticularSuggestions) && (
                 <SidebarLinkGroup
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
                     pathname.startsWith("/settings/credential-platforms") ||
-                    pathname.startsWith("/settings/office-expense-categories") ||
+                    pathname.startsWith(
+                      "/settings/office-expense-categories",
+                    ) ||
                     pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates") ||
@@ -398,12 +610,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         href="#"
                         className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
                           pathname.startsWith("/settings/document-types") ||
-                          pathname.startsWith("/settings/credential-platforms") ||
-                          pathname.startsWith("/settings/office-expense-categories") ||
+                          pathname.startsWith(
+                            "/settings/credential-platforms",
+                          ) ||
+                          pathname.startsWith(
+                            "/settings/office-expense-categories",
+                          ) ||
                           pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates") ||
-                          pathname.startsWith("/settings/particular-suggestions")
+                          pathname.startsWith(
+                            "/settings/particular-suggestions",
+                          )
                             ? "bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200 dark:bg-cyan-500/12 dark:text-cyan-300 dark:ring-cyan-500/30"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white"
                         }`}
@@ -414,7 +632,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                             : setSidebarExpanded(true);
                         }}
                       >
-                        <FiLock className="text-lg opacity-80" />
+                        <FiLayers className="text-lg opacity-80" />
                         Types & Platforms
                         <FiChevronRight
                           className={`ml-auto text-base transition-transform ${open ? "rotate-90" : ""}`}
@@ -422,6 +640,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                       </Link>
                       <div className={`${open ? "mt-2 block" : "hidden"}`}>
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          {canViewDocumentTypes && (
                           <li>
                             <NavItem
                               href="/settings/document-types"
@@ -430,22 +649,33 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/document-types"}
                             />
                           </li>
+                          )}
+                          {canViewCredentialPlatforms && (
                           <li>
                             <NavItem
                               href="/settings/credential-platforms"
                               icon={<FiFileText />}
                               label="Credential Platforms"
-                              active={pathname === "/settings/credential-platforms"}
+                              active={
+                                pathname === "/settings/credential-platforms"
+                              }
                             />
                           </li>
+                          )}
+                          {canViewOfficeCategories && (
                           <li>
                             <NavItem
                               href="/settings/office-expense-categories"
                               icon={<FiBriefcase />}
                               label="Office Categories"
-                              active={pathname === "/settings/office-expense-categories"}
+                              active={
+                                pathname ===
+                                "/settings/office-expense-categories"
+                              }
                             />
                           </li>
+                          )}
+                          {canViewPaymentMethods && (
                           <li>
                             <NavItem
                               href="/settings/payment-methods"
@@ -454,6 +684,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/payment-methods"}
                             />
                           </li>
+                          )}
+                          {canViewPaymentStatuses && (
                           <li>
                             <NavItem
                               href="/settings/payment-statuses"
@@ -462,46 +694,29 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                               active={pathname === "/settings/payment-statuses"}
                             />
                           </li>
-                          <li>
-                            <NavItem
-                              href="/settings/particular-suggestions"
-                              icon={<FiFileText />}
-                              label="Particular Suggestions"
-                              active={pathname === "/settings/particular-suggestions"}
-                            />
-                          </li>
+                          )}
+                          {canViewParticularSuggestions && (
+                            <li>
+                              <NavItem
+                                href="/settings/particular-suggestions"
+                                icon={<FiFileText />}
+                                label="Particular Suggestions"
+                                active={pathname === "/settings/particular-suggestions"}
+                              />
+                            </li>
+                          )}
                         </ul>
                       </div>
                     </>
                   )}
                 </SidebarLinkGroup>
               )}
-              {(can("roles.manage") || can("settings.read")) && (
-                <li>
-                  <NavItem
-                    href="/settings/roles"
-                    icon={<FiShield />}
-                    label="Role Management"
-                    active={pathname === "/settings/roles"}
-                  />
-                </li>
-              )}
-              {can("settings.read") && (
-                <li>
-                  <NavItem
-                    href="/settings/roles"
-                    icon={<FiShield />}
-                    label="Permission Overview"
-                    active={pathname === "/settings/roles"}
-                  />
-                </li>
-              )}
             </ul>
           </div>
 
           {can("users.read") && (
             <div>
-              <SectionTitle title="Administration" />
+              <SectionTitle title="Users" />
               <ul className="space-y-1.5">
                 <li>
                   <NavItem
@@ -515,6 +730,17 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
             </div>
           )}
         </nav>
+      </div>
+
+      <div className="border-t border-slate-200/70 px-4 py-4 dark:border-slate-800/80">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-800/40 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/15"
+        >
+          <FiLogOut className="text-lg" />
+          Logout
+        </button>
       </div>
     </aside>
   );

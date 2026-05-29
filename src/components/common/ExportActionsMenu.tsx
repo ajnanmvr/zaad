@@ -59,7 +59,7 @@ export default function ExportActionsMenu({ onExport, disabled, className, iconO
   }, [selectedCount]);
 
   return (
-    <div className={clsx("relative z-50 inline-flex", className)}>
+    <div className={clsx("relative z-10 inline-flex", className)}>
       <button
         type="button"
         onClick={() => {

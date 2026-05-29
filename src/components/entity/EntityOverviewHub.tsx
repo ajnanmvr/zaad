@@ -43,6 +43,7 @@ import {
   resolveAvatarColorWithFallback,
 } from "./EntityProfileFrame";
 import calculateStatus from "@/utils/calculateStatus";
+import { getDocumentCategoryLabel } from "@/config/documentCategoryVisuals";
 
 type OverviewResponse = {
   data: {
@@ -90,6 +91,7 @@ type EntityDetailsResponse = {
       _id: string;
       documentTemplate?: string;
       name?: string;
+      templateCategory?: "visa" | "license" | "other";
       issueDate?: string;
       expiryDate?: string;
       notes?: string;
@@ -672,6 +674,9 @@ export default function EntityOverviewHub({
                               <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 <FiFileText className="text-slate-400" />
                                 {doc.name || "Untitled document"}
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
+                                  {getDocumentCategoryLabel(doc.templateCategory)}
+                                </span>
                               </p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">Issue: {formatDate(doc.issueDate)}</p>
                               <p className="text-sm text-slate-600 dark:text-slate-300">Expiry: {formatDate(doc.expiryDate)}</p>

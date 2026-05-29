@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import axios from "axios";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -52,6 +53,8 @@ const LIMIT_OPTIONS = [10, 20, 50];
 type ModalMode = "create" | "edit";
 
 export default function ParticularSuggestionsManager() {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [suggestionToDelete, setSuggestionToDelete] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<TSuggestion[]>([]);
   const [pagination, setPagination] = useState<TPaginationInfo>({
     page: 0,
@@ -231,8 +234,16 @@ export default function ParticularSuggestionsManager() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this suggestion?")) return;
+  const handleDelete = (id: string) => {
+    setSuggestionToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!suggestionToDelete) return;
+    const id = suggestionToDelete;
+    setIsDeleteModalOpen(false);
+    setSuggestionToDelete(null);
 
     try {
       await axios.delete("/api/payment/particular-suggestions", {
@@ -520,6 +531,21 @@ export default function ParticularSuggestionsManager() {
         </div>
       </div>
 
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Suggestion"
+        message="Are you sure you want to delete this suggestion? This action cannot be undone."
+        confirmLabel="Delete Suggestion"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (modalSaving) return;
+          setIsDeleteModalOpen(false);
+          setSuggestionToDelete(null);
+        }}
+      />
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
           <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
@@ -621,3 +647,4 @@ export default function ParticularSuggestionsManager() {
     </>
   );
 }
+

@@ -33,7 +33,7 @@ const ActivityAuditPage = () => {
     Array.isArray(user?.permissions) && user.permissions.includes("users.activity.read");
 
   if (user && !canReadAudit) {
-    router.push("/");
+    router.push("/not-permitted");
   }
 
   const query = useQuery({

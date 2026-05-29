@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, type Model } from "mongoose";
 
 const RecordSchema = new Schema(
   {
@@ -18,7 +18,13 @@ const RecordSchema = new Schema(
     method: {
       type: Schema.Types.ObjectId,
       ref: "paymentTemplates",
-      required: [true, "Please provide a payment method template"],
+      required: [
+        function (this: any) {
+          const kind = String(this?.recordKind || "").toLowerCase();
+          return kind !== "liability" && kind !== "self_transfer";
+        },
+        "Please provide a payment method template",
+      ],
       index: true,
     },
     type: {
@@ -42,7 +48,6 @@ const RecordSchema = new Schema(
         "standard",
         "self_transfer",
         "liability",
-        "instant_profit",
         "office_records",
       ],
       default: "standard",
@@ -97,7 +102,15 @@ const RecordSchema = new Schema(
   },
 );
 
-const Records =
-  mongoose.models.Record || mongoose.model("Record", RecordSchema);
+const Records: Model<any> =
+  process.env.NODE_ENV === "development"
+    ? (() => {
+        if (mongoose.models.Record) {
+          delete mongoose.models.Record;
+        }
+        return mongoose.model("Record", RecordSchema) as Model<any>;
+      })()
+    : (mongoose.models.Record as Model<any>) ||
+      (mongoose.model("Record", RecordSchema) as Model<any>);
 
 export default Records;

@@ -1,4 +1,5 @@
 import connect from "@/db/mongo";
+import { requirePermission } from "@/auth/guards";
 import Invoice from "@/models/invoice";
 import { NextRequest } from "next/server";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     await connect();
+    await requirePermission(request, "payments.create.invoices");
     let { suffix, invoiceNo, title } = await Invoice.findOne({
       published: true,
     })

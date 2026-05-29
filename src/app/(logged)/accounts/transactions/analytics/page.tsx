@@ -1,644 +1,687 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
-import { ApexOptions } from "apexcharts";
-import { TAccountsData } from "@/types/dashboard";
+import clsx from "clsx";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
+import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
+import toast from "react-hot-toast";
 import {
   FiActivity,
+  FiArrowLeft,
   FiBarChart2,
-  FiCalendar,
-  FiChevronDown,
-  FiFilter,
-  FiPieChart,
-  FiRefreshCw,
+  FiChevronRight,
+  FiDollarSign,
+  FiFileText,
+  FiLayers,
   FiTrendingDown,
   FiTrendingUp,
-  FiUsers,
 } from "react-icons/fi";
-import clsx from "clsx";
 
-const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
-
-const baseFilter = {
-  mode: "current" as "current" | "year" | "month" | "range",
-  m: "",
-  y: "",
-  from: "",
-  to: "",
+type MonthlyCategory = {
+  categoryId: string;
+  categoryLabel: string;
+  income: number;
+  expense: number;
+  balance: number;
 };
 
-const formatCurrency = (value: number) => `${(value || 0).toFixed(2)} AED`;
+type MonthlyPaymentMethod = {
+  method?: string | null;
+  methodId: string;
+  methodLabel: string;
+  methodColor?: string;
+  methodIcon?: string;
+  income: number;
+  expense: number;
+  net?: number;
+  balance: number;
+};
 
-const toTitleCase = (value: string) =>
-  value
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-
-const currentMonthYearLabel = new Date().toLocaleString("en-US", {
-  month: "long",
-  year: "numeric",
-});
-const currentYear = new Date().getFullYear();
-const startYear = 2024;
-const yearOptions = Array.from(
-  { length: Math.max(currentYear - startYear + 1, 1) },
-  (_, index) => String(startYear + index),
-);
-
-const monthLabel = (m: string) => {
-  const map: Record<string, string> = {
-    "1": "January",
-    "2": "February",
-    "3": "March",
-    "4": "April",
-    "5": "May",
-    "6": "June",
-    "7": "July",
-    "8": "August",
-    "9": "September",
-    "10": "October",
-    "11": "November",
-    "12": "December",
+type MonthlyStatsData = {
+  year: number;
+  month: number;
+  totalTransactions: number;
+  officeRecords: {
+    totalIncome: number;
+    totalExpense: number;
+    byCategory?: MonthlyCategory[];
   };
-  return map[m] ?? "Unknown";
+  profit: number;
+  netProfit: number;
+  paymentMethods: MonthlyPaymentMethod[];
 };
 
-const queryFromFilter = (filter: typeof baseFilter) => {
-  if (filter.mode === "range") {
-    if (filter.from && filter.to) return `?from=${filter.from}&to=${filter.to}`;
-    if (filter.from) return `?from=${filter.from}`;
-    if (filter.to) return `?to=${filter.to}`;
-  }
-
-  if (filter.mode === "year" && filter.y) {
-    return `?y=${filter.y}`;
-  }
-
-  if (filter.mode === "month") {
-    if (filter.m && filter.y) return `?m=${filter.m}&y=${filter.y}`;
-    if (filter.m) return `?m=${filter.m}`;
-    if (filter.y) return `?y=${filter.y}`;
-  }
-
-  return "";
+type MonthlyStatsListResponse = {
+  success: boolean;
+  summary: MonthlyStatsData[];
 };
 
-export default function AccountsAnalyticsPage() {
-  const [isFilterOpen, setFilterOpen] = useState(false);
-  const [draft, setDraft] = useState({ ...baseFilter });
-  const [filter, setFilter] = useState({ ...baseFilter });
+const formatCurrency = (value: number) => `AED ${Number(value || 0).toFixed(2)}`;
 
-  const query = useMemo(() => queryFromFilter(filter), [filter]);
+const monthLabel = (month: number, year: number) =>
+  new Date(year, month - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
-  const { data: accountsData, isLoading } = useQuery<TAccountsData>({
-    queryKey: ["accounts-analytics-immersive", query],
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  tone,
+  icon,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  tone: "emerald" | "rose" | "cyan" | "amber" | "violet";
+  icon: React.ReactNode;
+}) {
+  const tones = {
+    emerald: "border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/20 dark:text-emerald-300",
+    rose: "border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/20 dark:text-rose-300",
+    cyan: "border-cyan-200 bg-cyan-50/80 text-cyan-700 dark:border-cyan-800/60 dark:bg-cyan-950/20 dark:text-cyan-300",
+    amber: "border-amber-200 bg-amber-50/80 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-300",
+    violet: "border-violet-200 bg-violet-50/80 text-violet-700 dark:border-violet-800/60 dark:bg-violet-950/20 dark:text-violet-300",
+  };
+
+  return (
+    <article className={clsx("rounded-3xl relative border p-5 shadow-sm backdrop-blur", tones[tone])}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">{title}</p>
+          <p className="mt-3 min-w-[9ch] tabular-nums text-2xl font-black leading-none text-slate-950 dark:text-white">{value}</p>
+          <p className="mt-2 text-xs font-medium opacity-80">{subtitle}</p>
+        </div>
+        <div className="flex absolute right-4 h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/80 p-2 shadow-sm dark:bg-slate-900/80">{icon}</div>
+      </div>
+    </article>
+  );
+}
+
+function ChartCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">{title}</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PieChart({
+  slices,
+  centerTitle,
+  centerValue,
+}: {
+  slices: Array<{
+    label: string;
+    value: number;
+    color: string;
+  }>;
+  centerTitle: string;
+  centerValue: string;
+}) {
+  const size = 220;
+  const strokeWidth = 26;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const total = Math.max(slices.reduce((sum, slice) => sum + Math.max(slice.value, 0), 0), 1);
+  let runningOffset = 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="relative mx-auto h-[220px] w-[220px] shrink-0">
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth={strokeWidth} />
+          {slices.map((slice, index) => {
+            const sliceLength = (Math.max(slice.value, 0) / total) * circumference;
+            const dashArray = `${sliceLength} ${circumference - sliceLength}`;
+            const dashOffset = circumference - runningOffset;
+            runningOffset += sliceLength;
+            return (
+              <circle
+                key={`${slice.label}-${index}`}
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="butt"
+                strokeDasharray={dashArray}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{centerTitle}</span>
+          <span className="mt-1 text-xl font-black text-slate-900 dark:text-white">{centerValue}</span>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {slices.map((slice) => {
+          const percent = ((Math.max(slice.value, 0) / total) * 100).toFixed(1);
+          return (
+            <div key={slice.label} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-950/30">
+              <div className="flex items-center gap-3">
+                <span className="h-3.5 w-3.5 rounded-full" style={{ background: slice.color }} />
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">{slice.label}</span>
+              </div>
+              <span className="text-sm font-black text-slate-900 dark:text-slate-100">{percent}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LineChart({
+  labels,
+  series,
+}: {
+  labels: string[];
+  series: Array<{
+    label: string;
+    values: number[];
+    color: string;
+  }>;
+}) {
+  const width = 760;
+  const height = 280;
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const allValues = series.flatMap((item) => item.values);
+  const max = Math.max(...allValues, 1);
+  const min = Math.min(...allValues, 0);
+  const range = max - min || 1;
+  const padding = 28;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
+  const activeIndex = hoveredIndex ?? (labels.length > 0 ? labels.length - 1 : null);
+
+  const resolveIndexFromClientX = (clientX: number) => {
+    if (!svgRef.current || labels.length === 0) return null;
+
+    const rect = svgRef.current.getBoundingClientRect();
+    if (!rect.width) return null;
+
+    const xRatio = (clientX - rect.left) / rect.width;
+    const chartX = padding + xRatio * width;
+    const clampedChartX = Math.min(width - padding, Math.max(padding, chartX));
+    const relative = (clampedChartX - padding) / Math.max(innerWidth, 1);
+    const index = Math.round(relative * Math.max(labels.length - 1, 1));
+    return Math.min(labels.length - 1, Math.max(0, index));
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-950/40">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-72 w-full"
+        onMouseMove={(event) => {
+          const index = resolveIndexFromClientX(event.clientX);
+          setHoveredIndex(index);
+        }}
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+          const y = padding + innerHeight - ratio * innerHeight;
+          return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />;
+        })}
+
+        {activeIndex !== null && (
+          <line
+            x1={padding + (activeIndex / Math.max(labels.length - 1, 1)) * innerWidth}
+            y1={padding}
+            x2={padding + (activeIndex / Math.max(labels.length - 1, 1)) * innerWidth}
+            y2={height - padding}
+            stroke="currentColor"
+            className="text-slate-300 dark:text-slate-700"
+            strokeDasharray="5 5"
+          />
+        )}
+
+        {series.map((entry) => {
+          const points = entry.values.map((value, index) => {
+            const x = padding + (index / Math.max(entry.values.length - 1, 1)) * innerWidth;
+            const normalized = (value - min) / range;
+            const y = padding + innerHeight - normalized * innerHeight;
+            return { x, y, value, label: labels[index] };
+          });
+
+          const path = entry.values
+            .map((value, index) => {
+              const x = padding + (index / Math.max(entry.values.length - 1, 1)) * innerWidth;
+              const normalized = (value - min) / range;
+              const y = padding + innerHeight - normalized * innerHeight;
+              return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+            })
+            .join(" ");
+
+          return (
+            <g key={entry.label}>
+              <path
+                d={path}
+                fill="none"
+                stroke={entry.color}
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={clsx("transition-opacity duration-200", activeIndex !== null ? "opacity-90" : "opacity-80")}
+              />
+              {points.map((point, pointIndex) => (
+                <g key={`${entry.label}-${pointIndex}`}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={activeIndex === pointIndex ? 7 : 3.5}
+                    fill={entry.color}
+                    className={clsx("transition-all duration-150", activeIndex === pointIndex ? "opacity-100" : "opacity-55")}
+                  />
+                  {activeIndex === pointIndex && (
+                    <circle cx={point.x} cy={point.y} r={11} fill="none" stroke={entry.color} strokeOpacity={0.35} strokeWidth="2" />
+                  )}
+                </g>
+              ))}
+            </g>
+          );
+        })}
+
+        {labels.map((label, index) => {
+          const x = padding + (index / Math.max(labels.length - 1, 1)) * innerWidth;
+          return (
+            <text
+              key={label}
+              x={x}
+              y={height - 6}
+              textAnchor="middle"
+              className={clsx("fill-slate-400 text-[10px] font-semibold transition-colors", activeIndex === index && "fill-slate-700 dark:fill-slate-200")}
+            >
+              {label}
+            </text>
+          );
+        })}
+      </svg>
+      {activeIndex !== null && labels[activeIndex] && (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Hovered Month</p>
+          <p className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">{labels[activeIndex]}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {series.map((entry) => {
+              const value = Number(entry.values[activeIndex] || 0);
+              return (
+                <div key={`hover-${entry.label}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/40">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{entry.label}</p>
+                  <p className="mt-1 text-sm font-black tabular-nums" style={{ color: entry.color }}>{formatCurrency(value)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {series.map((entry) => (
+          <span key={entry.label} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: entry.color }} />
+            {entry.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function FinanceAnalyticsPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user } = useUserContext();
+  const permissions = user?.permissions && Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
+  const canViewFinanceSummary = user ? hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.finance") || hasPermission(permissions, "payments.view.reports") : false;
+
+  const LIMITS = {
+    paymentMethodRows: 6,
+    topMethods: 5,
+  } as const;
+
+  const { data, isLoading, isError } = useQuery<MonthlyStatsListResponse>({
+    queryKey: ["finance-summary-monthly-list"],
+    enabled: canViewFinanceSummary,
     queryFn: async () => {
-      const { data } = await axios.get(`/api/payment/accounts${query}`);
+      const { data } = await axios.get("/api/payment/monthly-stats/list");
       return data;
     },
   });
 
-  const filterDisplay = useMemo(() => {
-    if (filter.mode === "range" && filter.from && filter.to) {
-      return `${filter.from} to ${filter.to}`;
+  useEffect(() => {
+    if (user && !canViewFinanceSummary) {
+      router.push("/not-permitted");
     }
-    if (filter.mode === "year" && filter.y) {
-      return `Year ${filter.y}`;
+  }, [user, canViewFinanceSummary, router]);
+
+  const monthlyStats = useMemo(() => data?.summary ?? [], [data?.summary]);
+
+  const sortedStats = useMemo(
+    () => [...monthlyStats].sort((a, b) => a.year - b.year || a.month - b.month),
+    [monthlyStats],
+  );
+
+  const latestStats = sortedStats[sortedStats.length - 1];
+  const recentTwelve = sortedStats.slice(-12);
+
+  const totals = useMemo(() => {
+    return sortedStats.reduce(
+      (acc, item) => {
+        acc.transactions += Number(item.totalTransactions || 0);
+        acc.income += Number(item.officeRecords?.totalIncome || 0);
+        acc.officeExpense += Number(item.officeRecords?.totalExpense || 0);
+        acc.profit += Number(item.profit || 0);
+        acc.netProfit += Number(item.netProfit || 0);
+        return acc;
+      },
+      { transactions: 0, income: 0, officeExpense: 0, profit: 0, netProfit: 0 },
+    );
+  }, [sortedStats]);
+
+  const averages = useMemo(() => {
+    const divisor = Math.max(sortedStats.length, 1);
+    return {
+      transactions: totals.transactions / divisor,
+      income: totals.income / divisor,
+      officeExpense: totals.officeExpense / divisor,
+      profit: totals.profit / divisor,
+      netProfit: totals.netProfit / divisor,
+    };
+  }, [sortedStats.length, totals]);
+
+  const oneYearTrend = useMemo(() => {
+    const labels = recentTwelve.map((item) => monthLabel(item.month, item.year));
+    return {
+      labels,
+      profit: recentTwelve.map((item) => Number(item.profit || 0)),
+      officeExpense: recentTwelve.map((item) => Number(item.officeRecords?.totalExpense || 0)),
+    };
+  }, [recentTwelve]);
+
+  const currentMonthCategories = latestStats?.officeRecords?.byCategory || [];
+  const currentMonthMethods = [...(latestStats?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
+  const currentMonthMethodsLimited = currentMonthMethods.slice(0, LIMITS.paymentMethodRows);
+  const currentMonthTotalBalance = useMemo(
+    () => currentMonthMethods.reduce((sum, method) => sum + Number(method.balance || 0), 0),
+    [currentMonthMethods],
+  );
+
+  const isNetPositive = Number(latestStats?.netProfit || 0) >= 0;
+
+  const monthShortLabels = oneYearTrend.labels.map((label) => label.split(" ")[0]);
+
+  const officeExpenseSlices = currentMonthCategories
+    .map((category, index) => ({
+      label: category.categoryLabel,
+      value: Math.max(category.expense, 0),
+      color: ["#F43F5E", "#FB7185", "#EC4899", "#F97316", "#8B5CF6", "#10B981", "#06B6D4", "#F59E0B"][index % 8],
+    }))
+    .filter((slice) => slice.value > 0);
+
+  const handleRefresh = async () => {
+    try {
+      const [ledgerResponse, monthlyResponse] = await Promise.all([
+        axios.post("/api/payment/entity-stats/recompute"),
+        axios.post("/api/admin/payment/backfill-monthly-stats"),
+      ]);
+
+      const updatedEntities = Number(ledgerResponse?.data?.updatedEntities || 0);
+      const updatedOfficeCategories = Number(ledgerResponse?.data?.updatedOfficeCategories || 0);
+      const updatedLiabilityEntities = Number(ledgerResponse?.data?.updatedLiabilityEntities || 0);
+      const monthlyComputedMonths = Number(monthlyResponse?.data?.computedMonths || 0);
+
+      await queryClient.invalidateQueries({ queryKey: ["entity-record-stats"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary-monthly-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary-monthly"] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
+      await queryClient.refetchQueries({ queryKey: ["finance-summary-monthly-list"] });
+
+      toast.success(
+        `Refreshed precomputed stats (${updatedEntities} entities, ${updatedOfficeCategories} office categories, ${updatedLiabilityEntities} liability entities, ${monthlyComputedMonths} monthly periods)`,
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to refresh finance summary");
     }
-    if (filter.mode === "month") {
-      if (filter.m && filter.y) return `${monthLabel(filter.m)} ${filter.y}`;
-      if (filter.m) return `${monthLabel(filter.m)} (current year)`;
-      if (filter.y) return `Year ${filter.y}`;
-    }
-    return currentMonthYearLabel;
-  }, [filter]);
-
-  const rangeInvalid =
-    draft.mode === "range" &&
-    ((!draft.from && !draft.to) || (draft.from && draft.to && draft.from > draft.to));
-  const yearInvalid = draft.mode === "year" && !draft.y.trim();
-  const monthInvalid = draft.mode === "month" && !draft.m && !draft.y.trim();
-  const disableApply = rangeInvalid || yearInvalid || monthInvalid;
-
-  const applyFilter = () => {
-    setFilter({ ...draft });
-    setFilterOpen(false);
   };
 
-  const resetCurrentMonth = () => {
-    setFilter({ ...baseFilter });
-    setDraft({ ...baseFilter });
-    setFilterOpen(false);
-  };
-
-  const methodRows = useMemo(() => {
-    const rows = accountsData?.methodBreakdown || [];
-    return rows.map((row) => ({
-      key: row.method,
-      method: toTitleCase(row.method),
-      income: row.income,
-      expense: row.expense,
-      balance: row.balance,
-    }));
-  }, [accountsData?.methodBreakdown]);
-
-  const incomeAmount = accountsData?.totalIncomeAmount ?? 0;
-  const expenseAmount = accountsData?.totalExpenseAmount ?? 0;
-  const netBalance = accountsData?.totalBalance ?? 0;
-  const netProfit = accountsData?.profitAfterOfficeExpenses ?? accountsData?.netProfit ?? 0;
-  const grossProfit = accountsData?.grossProfit ?? accountsData?.profit ?? 0;
-
-  const ratioOptions: ApexOptions = {
-    chart: { type: "donut", toolbar: { show: false } },
-    labels: ["Income", "Expense"],
-    colors: ["#10B981", "#F43F5E"],
-    legend: { position: "bottom", fontSize: "12px" },
-    dataLabels: { enabled: false },
-    stroke: { colors: ["#ffffff"], width: 2 },
-    plotOptions: {
-      pie: {
-        donut: {
-          size: "70%",
-          labels: {
-            show: true,
-            total: {
-              show: true,
-              label: "Net",
-              formatter: () => formatCurrency(netBalance),
-            },
-          },
-        },
-      },
-    },
-  };
-
-  const methodBarOptions: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false }, stacked: false },
-    colors: ["#10B981", "#F43F5E"],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        borderRadius: 6,
-        columnWidth: "48%",
-      },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: methodRows.map((item) => item.method),
-      labels: { rotate: -20 },
-    },
-    yaxis: {
-      labels: {
-        formatter: (value) => `${Math.round(value)}`,
-      },
-    },
-    legend: { position: "top", horizontalAlign: "left" },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  const dailyTrend = accountsData?.dailyTrend || [];
-  const dailyTrendOptions: ApexOptions = {
-    chart: { type: "area", toolbar: { show: false }, zoom: { enabled: false } },
-    colors: ["#10B981", "#F43F5E"],
-    stroke: { curve: "smooth", width: 2 },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: dailyTrend.map((item) => item.date.slice(5)),
-    },
-    fill: {
-      type: "gradient",
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.35,
-        opacityTo: 0.05,
-      },
-    },
-    legend: { position: "top", horizontalAlign: "left" },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  const statusRows = accountsData?.statusBreakdown || [];
-  const statusOptions: ApexOptions = {
-    chart: { type: "bar", stacked: true, toolbar: { show: false } },
-    colors: ["#0EA5E9", "#F97316"],
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 4,
-      },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: statusRows.map((item) => toTitleCase(item.status)),
-    },
-    legend: { position: "top", horizontalAlign: "left" },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  const topEntities = accountsData?.topEntities || [];
-  const topEntityOptions: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false } },
-    colors: ["#6366F1"],
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 5,
-      },
-    },
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: topEntities.map((item) => item.label),
-    },
-    grid: { borderColor: "#E2E8F0" },
-  };
-
-  if (isLoading) {
+  if (!user || !canViewFinanceSummary) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-5 shadow-sm dark:border-sky-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-sky-300/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-emerald-300/25 blur-3xl" />
+    <div className="mx-auto max-w-screen-2xl space-y-6 p-4 md:p-6 2xl:p-10">
+      <Breadcrumb pageName="Finance Summary" />
 
-        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/60 bg-sky-100/80 px-3 py-1 text-xs font-black uppercase tracking-wider text-sky-700 dark:border-sky-700/40 dark:bg-sky-900/30 dark:text-sky-300">
-              <FiBarChart2 />
-              Immersive Finance Analytics
-            </p>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
-              Transactions Intelligence Hub
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600 dark:text-slate-400">
-              Live visual analytics connected to payment APIs with trend, ratio, method, status, and counterparty insights.
-            </p>
+      <section className="relative overflow-hidden rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-white to-emerald-50 p-6 shadow-sm dark:border-cyan-900/30 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 md:p-7">
+        <div className="pointer-events-none absolute -left-20 -top-16 h-56 w-56 rounded-full bg-cyan-300/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-emerald-300/25 blur-3xl" />
+        <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-cyan-100/80 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-900/30 dark:text-cyan-300">
+              <FiBarChart2 /> Monthly Finance Intelligence
+            </div>
+            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 dark:text-slate-50">Financial Summary</h1>
           </div>
 
-          <button
-            onClick={() => setFilterOpen(true)}
-            className="inline-flex min-w-[250px] items-center justify-between gap-3 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
-          >
-            <span className="inline-flex items-center gap-2">
-              <FiFilter />
-              {filterDisplay}
-            </span>
-            <FiChevronDown />
-          </button>
-        </div>
-      </section>
-
-      {isFilterOpen && (
-        <div className="fixed inset-0 z-99999 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-8">
-            <h3 className="mb-6 text-xl font-black text-slate-900 dark:text-white">Analytics Filter</h3>
-
-            <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-4">
-              <button
-                onClick={() => setDraft({ ...draft, mode: "current", m: "", y: "", from: "", to: "" })}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  draft.mode === "current"
-                    ? "bg-emerald-600 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                {currentMonthYearLabel}
-              </button>
-              <button
-                onClick={() => setDraft({ ...draft, mode: "year", m: "", from: "", to: "" })}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  draft.mode === "year"
-                    ? "bg-emerald-600 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                Year
-              </button>
-              <button
-                onClick={() => setDraft({ ...draft, mode: "month", from: "", to: "" })}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  draft.mode === "month"
-                    ? "bg-emerald-600 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                Month / Year
-              </button>
-              <button
-                onClick={() => setDraft({ ...draft, mode: "range", m: "", y: "" })}
-                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
-                  draft.mode === "range"
-                    ? "bg-emerald-600 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                }`}
-              >
-                Custom Date Range
-              </button>
-            </div>
-
-            {draft.mode === "year" && (
-              <div className="mb-6">
-                <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Year</label>
-                <select
-                  value={draft.y}
-                  onChange={(e) => setDraft({ ...draft, y: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">Select year</option>
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {draft.mode === "month" && (
-              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Month</label>
-                  <select
-                    value={draft.m}
-                    onChange={(e) => setDraft({ ...draft, m: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  >
-                    <option value="">Current Month</option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Year</label>
-                  <select
-                    value={draft.y}
-                    onChange={(e) => setDraft({ ...draft, y: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  >
-                    <option value="">Current year</option>
-                    {yearOptions.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {draft.mode === "range" && (
-              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">From</label>
-                  <input
-                    type="date"
-                    value={draft.from}
-                    onChange={(e) => setDraft({ ...draft, from: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">To</label>
-                  <input
-                    type="date"
-                    value={draft.to}
-                    onChange={(e) => setDraft({ ...draft, to: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/accounts/transactions/reports"
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+            >
+              <FiFileText /> Reports
+            </Link>
+            {process.env.NODE_ENV === "development" && (
               <button
                 type="button"
-                onClick={resetCurrentMonth}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                onClick={() => void handleRefresh()}
+                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
               >
-                <FiRefreshCw />
-                Reset to {currentMonthYearLabel}
+                <FiBarChart2 /> Refresh Precomputations
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setFilterOpen(false)}
-                  className="rounded-xl border border-slate-200 bg-slate-100 px-5 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={applyFilter}
-                  disabled={disableApply}
-                  className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400"
-                >
-                  Apply
-                </button>
+            )}
+            <Link
+              href="/accounts/transactions"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <FiArrowLeft /> Back to Transactions
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          title="Transactions"
+          value={isLoading ? "..." : totals.transactions.toLocaleString() + " Transactions"}
+          subtitle={`Average ${averages.transactions.toFixed(0)} transactions per month`}
+          tone="cyan"
+          icon={<FiActivity className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />}
+        />
+        <MetricCard
+          title="Total Balance"
+          value={isLoading ? "..." : formatCurrency(currentMonthTotalBalance)}
+          subtitle="Current month total across payment methods"
+          tone="emerald"
+          icon={<FiDollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />}
+        />
+        <MetricCard
+          title="Office Expense"
+          value={isLoading ? "..." : formatCurrency(totals.officeExpense)}
+          subtitle={`Average ${formatCurrency(averages.officeExpense)} per month`}
+          tone="rose"
+          icon={<FiTrendingDown className="h-6 w-6 text-rose-600 dark:text-rose-300" />}
+        />
+        <MetricCard
+          title="Profit"
+          value={isLoading ? "..." : formatCurrency(totals.profit)}
+          subtitle="Precomputed monthly profit total"
+          tone="amber"
+          icon={<FiTrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-300" />}
+        />
+        <MetricCard
+          title="Net Profit"
+          value={isLoading ? "..." : formatCurrency(totals.netProfit)}
+          subtitle="Profit after office expense"
+          tone="violet"
+          icon={<FiLayers className="h-6 w-6 text-violet-600 dark:text-violet-300" />}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <ChartCard title="Office Expense Pie" subtitle={`Category split for ${latestStats ? monthLabel(latestStats.month, latestStats.year) : "the latest month"}`}>
+          {officeExpenseSlices.length > 0 ? (
+            <PieChart
+              slices={officeExpenseSlices}
+              centerTitle="Office Expense"
+              centerValue={formatCurrency(officeExpenseSlices.reduce((sum, slice) => sum + slice.value, 0))}
+            />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+              No category expense data in current month.
+            </div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Current Month Pulse" subtitle={latestStats ? monthLabel(latestStats.month, latestStats.year) : "No month loaded"}>
+          {latestStats ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-gradient-to-br from-cyan-50 to-emerald-50 p-5 text-slate-900 ring-1 ring-cyan-100 dark:from-slate-950 dark:to-cyan-950 dark:text-white dark:ring-cyan-900/40">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Net Profit</p>
+                <p className={clsx("mt-2 text-3xl font-black", isNetPositive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
+                  {formatCurrency(latestStats.netProfit)}
+                </p>
+                <p className="mt-2 text-xs text-slate-500 dark:text-cyan-100/80">
+                  {isNetPositive ? "Positive momentum" : "Needs attention"}
+                </p>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Total Income" value={formatCurrency(incomeAmount)} tone="emerald" icon={<FiTrendingUp />} />
-        <MetricCard label="Total Expense" value={formatCurrency(expenseAmount)} tone="rose" icon={<FiTrendingDown />} />
-        <MetricCard label="Net Balance" value={formatCurrency(netBalance)} tone="sky" icon={<FiActivity />} />
-        <MetricCard label="Gross Profit" value={formatCurrency(grossProfit)} tone="violet" icon={<FiTrendingUp />} />
-        <MetricCard label="Net Profit" value={formatCurrency(netProfit)} tone="amber" icon={<FiPieChart />} />
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-1">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Income vs Expense Ratio</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Visual split of current filtered amounts.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="donut"
-              height={320}
-              options={ratioOptions}
-              series={[incomeAmount, expenseAmount]}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Daily Trend</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Income and expense movement by date.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="area"
-              height={320}
-              options={dailyTrendOptions}
-              series={[
-                { name: "Income", data: dailyTrend.map((item) => item.income) },
-                { name: "Expense", data: dailyTrend.map((item) => item.expense) },
-              ]}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Payment Method Performance</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Method-level income and expense comparison.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="bar"
-              height={330}
-              options={methodBarOptions}
-              series={[
-                { name: "Income", data: methodRows.map((item) => item.income) },
-                { name: "Expense", data: methodRows.map((item) => item.expense) },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Status Distribution</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Top statuses with income/expense stack.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="bar"
-              height={330}
-              options={statusOptions}
-              series={[
-                { name: "Income", data: statusRows.map((item) => item.income) },
-                { name: "Expense", data: statusRows.map((item) => item.expense) },
-              ]}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 xl:col-span-2">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Top Counterparties by Volume</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Most active entities in selected period.</p>
-          <div className="mt-4">
-            <ReactApexChart
-              type="bar"
-              height={340}
-              options={topEntityOptions}
-              series={[
-                { name: "Volume", data: topEntities.map((item) => item.volume) },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Quick Insights</h3>
-          <div className="mt-4 space-y-3 text-sm">
-            <InsightRow label="Income Records" value={String(accountsData?.incomeCount ?? 0)} icon={<FiTrendingUp />} tone="emerald" />
-            <InsightRow label="Expense Records" value={String(accountsData?.expenseCount ?? 0)} icon={<FiTrendingDown />} tone="rose" />
-            <InsightRow label="Tracked Statuses" value={String(statusRows.length)} icon={<FiActivity />} tone="sky" />
-            <InsightRow label="Top Entities" value={String(topEntities.length)} icon={<FiUsers />} tone="violet" />
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Method Snapshot</p>
-            <div className="mt-2 space-y-2">
-              {methodRows.slice(0, 4).map((row) => (
-                <div key={row.key} className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{row.method}</span>
-                  <span
-                    className={clsx(
-                      "rounded-full px-2 py-0.5 font-bold",
-                      row.balance >= 0
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-                    )}
-                  >
-                    {formatCurrency(row.balance)}
-                  </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950/40">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Profit</p>
+                  <p className="mt-2 text-lg font-black text-emerald-600 dark:text-emerald-300">{formatCurrency(latestStats.profit)}</p>
                 </div>
-              ))}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950/40">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Office Expense</p>
+                  <p className="mt-2 text-lg font-black text-rose-600 dark:text-rose-300">{formatCurrency(latestStats.officeRecords.totalExpense)}</p>
+                </div>
+              </div>
+
+              <Link
+                href={`/accounts/transactions/analytics/${latestStats.year}/${latestStats.month}`}
+                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-900/40 dark:bg-cyan-950/20 dark:text-cyan-300"
+              >
+                Open month detail <FiChevronRight />
+              </Link>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+              No monthly stats available yet.
+            </div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Top Payment Methods" subtitle={`Latest month balances (showing ${Math.min(currentMonthMethodsLimited.length, LIMITS.paymentMethodRows)} of ${currentMonthMethods.length})`}>
+          {currentMonthMethods.length > 0 ? (
+            <>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50/80 dark:bg-slate-800/40">
+                    <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      <th className="px-4 py-3">Method</th>
+                      <th className="px-4 py-3 text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentMonthMethodsLimited.map((method) => {
+                      const positive = Number(method.balance || 0) >= 0;
+                      const methodColor = String(method.methodColor || "").trim() || "#64748B";
+                      const MethodIcon = getPaymentMethodIcon(method.methodIcon);
+                      const netValue = Number(method.net ?? Number(method.income || 0) - Number(method.expense || 0));
+
+                      return (
+                        <tr key={method.methodId} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                          <td className="px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: methodColor }}>
+                                <MethodIcon className="h-4 w-4" />
+                              </div>
+                              <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{method.methodLabel}</span>
+                            </div>
+                          </td>
+                          <td className={clsx("px-4 py-3 text-right text-sm font-bold tabular-nums", positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>{formatCurrency(method.balance)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3">
+                {currentMonthMethods.length > LIMITS.paymentMethodRows && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+                    Payment methods are intentionally capped here to keep the dashboard compact.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+              No payment method data in current month.
+            </div>
+          )}
+        </ChartCard>
       </section>
-    </div>
-  );
-}
 
-function MetricCard({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: string;
-  tone: "emerald" | "rose" | "sky" | "violet" | "amber";
-  icon: React.ReactNode;
-}) {
-  const toneMap: Record<string, string> = {
-    emerald: "border-emerald-200/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-950/20 dark:text-emerald-300",
-    rose: "border-rose-200/70 bg-rose-50/70 text-rose-700 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-rose-300",
-    sky: "border-sky-200/70 bg-sky-50/70 text-sky-700 dark:border-sky-900/30 dark:bg-sky-950/20 dark:text-sky-300",
-    violet: "border-violet-200/70 bg-violet-50/70 text-violet-700 dark:border-violet-900/30 dark:bg-violet-950/20 dark:text-violet-300",
-    amber: "border-amber-200/70 bg-amber-50/70 text-amber-700 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-300",
-  };
+      <section className="grid grid-cols-1 gap-5">
+        <ChartCard title="One-Year Trend" subtitle="Profit and office expense for the last 12 months including this month. Hover points to see values.">
+          {oneYearTrend.labels.length > 0 ? (
+            <LineChart
+              labels={monthShortLabels}
+              series={[
+                { label: "Profit", values: oneYearTrend.profit, color: "#10B981" },
+                { label: "Office Expense", values: oneYearTrend.officeExpense, color: "#F43F5E" },
+              ]}
+            />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+              No monthly stats found.
+            </div>
+          )}
+        </ChartCard>
+      </section>
 
-  return (
-    <div className={clsx("rounded-2xl border p-4", toneMap[tone])}>
-      <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em]">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-black">{value}</p>
-    </div>
-  );
-}
-
-function InsightRow({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  tone: "emerald" | "rose" | "sky" | "violet";
-}) {
-  const toneMap: Record<string, string> = {
-    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    rose: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-    sky: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
-    violet: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
-  };
-
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900/70">
-      <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-        <span className={clsx("inline-flex h-6 w-6 items-center justify-center rounded-lg", toneMap[tone])}>
-          {icon}
-        </span>
-        {label}
-      </p>
-      <p className="text-sm font-black text-slate-900 dark:text-slate-100">{value}</p>
+      {isError && (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
+          Failed to load monthly stats.
+        </section>
+      )}
     </div>
   );
 }

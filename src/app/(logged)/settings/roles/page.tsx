@@ -45,15 +45,18 @@ const RolesPage = () => {
   const canReadRoles =
     Array.isArray(user?.permissions) &&
     (user.permissions.includes("settings.read") ||
-      user.permissions.includes("roles.manage"));
+      user.permissions.includes("roles.manage") ||
+      user.permissions.includes("settings.manage.roles") ||
+      user.permissions.includes("settings.manage.permissions"));
   const canWriteRoles =
     Array.isArray(user?.permissions) &&
     (user.permissions.includes("settings.write") ||
-      user.permissions.includes("roles.manage"));
+      user.permissions.includes("roles.manage") ||
+      user.permissions.includes("settings.manage.roles"));
 
   useEffect(() => {
     if (user && !canReadRoles) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canReadRoles, router]);
 

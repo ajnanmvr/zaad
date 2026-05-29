@@ -1,9 +1,14 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
+import { hasPermission } from "@/auth/permissions";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
+import Company from "@/models/companies";
+import Employee from "@/models/employees";
+import Individual from "@/models/individuals";
 
 const ALLOWED_LINK_TARGET_TYPES = new Set(["company", "employee", "individual"]);
 
@@ -52,6 +57,10 @@ export async function GET(request: NextRequest) {
   try {
     await connect();
     const principal = await requireAnyPermission(request, [
+      "tasks.view.my",
+      "tasks.view.all",
+      "tasks.view.detail",
+      "tasks.calendar.view",
       "tasks.read",
       "tasks.manage",
       "tasks.complete",
@@ -59,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     const params = request.nextUrl.searchParams;
     const scope = params.get("scope") || "mine";
-    const statusGroup = params.get("statusGroup") || "active";
+    const statusGroup = params.get("statusGroup") || "";
     const status = params.get("status") || "";
     const priority = params.get("priority") || "";
     const assignee = params.get("assignee") || "";
@@ -75,21 +84,28 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, any> = { published: true };
 
-    const canManage = principal.permissions.includes("tasks.manage");
-    if (scope === "mine" || (!canManage && scope !== "related")) {
+    const canViewAll = hasPermission(principal.permissions, "tasks.view.all");
+    if (scope === "mine" || (!canViewAll && scope !== "related")) {
       query.assignedTo = principal.userId;
     } else if (assignee) {
       query.assignedTo = assignee;
     }
 
     if (scope === "related") {
-      if (!canManage) {
+      if (!canViewAll) {
         query.assignedTo = principal.userId;
       }
 
       if (!linkType || !linkId) {
         return Response.json(
           { error: "linkType and linkId are required for related scope" },
+          { status: 400 },
+        );
+      }
+
+      if (!ALLOWED_LINK_TARGET_TYPES.has(linkType)) {
+        return Response.json(
+          { error: "Unsupported linkType for related scope" },
           { status: 400 },
         );
       }
@@ -106,6 +122,8 @@ export async function GET(request: NextRequest) {
       query.status = status;
     } else if (statusGroup === "active") {
       query.status = { $in: ["todo", "in_progress"] };
+    } else if (statusGroup === "closed") {
+      query.status = { $in: ["completed", "cancelled"] };
     } else if (statusGroup === "completed") {
       query.status = "completed";
     } else if (statusGroup === "cancelled") {
@@ -142,10 +160,15 @@ export async function GET(request: NextRequest) {
       query.dueDate = { $gte: start, $lt: end };
     }
 
+    const aggregateMatch: Record<string, any> = { ...query };
+    if (typeof aggregateMatch.assignedTo === "string" && mongoose.Types.ObjectId.isValid(aggregateMatch.assignedTo)) {
+      aggregateMatch.assignedTo = new mongoose.Types.ObjectId(aggregateMatch.assignedTo);
+    }
+
     const farFutureDate = new Date("9999-12-31T23:59:59.999Z");
     const [tasks, total] = await Promise.all([
       Task.aggregate([
-        { $match: query },
+        { $match: aggregateMatch },
         {
           $addFields: {
             priorityRank: {
@@ -224,9 +247,43 @@ export async function GET(request: NextRequest) {
       Task.countDocuments(query),
     ]);
 
+    // Enrich linkedTargets with entity details
+    const enrichedTasks = await Promise.all(
+      tasks.map(async (task: any) => {
+        if (!task.linkedTargets || task.linkedTargets.length === 0) {
+          return task;
+        }
+
+        const enrichedTargets = await Promise.all(
+          task.linkedTargets.map(async (target: any) => {
+            try {
+              let entity: any = null;
+
+              if (target.targetType === "company") {
+                entity = await Company.findById(target.targetId).select("name").lean();
+              } else if (target.targetType === "employee") {
+                entity = await Employee.findById(target.targetId).select("name").lean();
+              } else if (target.targetType === "individual") {
+                entity = await Individual.findById(target.targetId).select("name").lean();
+              }
+
+              return {
+                ...target,
+                targetLabel: entity?.name || target.targetLabel || target.targetId,
+              };
+            } catch (err) {
+              return target;
+            }
+          })
+        );
+
+        return { ...task, linkedTargets: enrichedTargets };
+      })
+    );
+
     return Response.json(
       {
-        tasks,
+        tasks: enrichedTasks,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(total / limit),
@@ -247,7 +304,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    const principal = await requirePermission(request, "tasks.manage");
+    const principal = await requireAnyPermission(request, ["tasks.create", "tasks.manage"]);
 
     const {
       title,
@@ -277,6 +334,14 @@ export async function POST(request: NextRequest) {
 
     if (!assignedTo) {
       return Response.json({ error: "Assignee is required" }, { status: 400 });
+    }
+
+    const canAssign = hasPermission(principal.permissions, "tasks.assign");
+    if (!canAssign && String(assignedTo) !== principal.userId) {
+      return Response.json(
+        { error: "Missing permission: tasks.assign" },
+        { status: 403 },
+      );
     }
 
     const normalizedLinks = parseLinkedTargets(linkedTargets);
@@ -325,3 +390,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

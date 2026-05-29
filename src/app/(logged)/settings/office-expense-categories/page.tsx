@@ -16,6 +16,12 @@ const OfficeExpenseCategoriesPage = () => {
         inputPlaceholder="e.g., Utilities, Rent, Supplies"
         usageLabel="transactions"
         accent="amber"
+        requiredPermissions={[
+          "settings.manage.office-categories",
+          "payments.write",
+          "settings.write",
+        ]}
+        itemHrefBuilder={(item) => `/accounts/transactions?category=office_records&oc=${encodeURIComponent(item.id)}`}
       />
     </>
   );

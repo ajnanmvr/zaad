@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 import type { ReactNode } from "react";
 import {
   FiClipboard,
@@ -9,6 +11,7 @@ import {
   FiFolder,
   FiKey,
   FiList,
+  FiTarget,
   FiTrash2,
   FiUsers,
 } from "react-icons/fi";
@@ -20,6 +23,7 @@ export type EntitySectionKey =
   | "documents"
   | "credentials"
   | "handovers"
+  | "tasks"
   | "employees"
   | "records"
   | "invoices";
@@ -128,6 +132,11 @@ export function getEntitySectionLinks(entityType: EntityType, id: string): Entit
       label: "Handovers",
       active: false,
     },
+    {
+      href: `/${entityType}/${id}/tasks`,
+      label: "Tasks",
+      active: false,
+    },
   ];
 
   if (entityType === "company") {
@@ -178,6 +187,8 @@ export function getSectionTitle(section: EntitySectionKey) {
       return "Credentials";
     case "handovers":
       return "Handovers";
+    case "tasks":
+      return "Tasks";
     case "employees":
       return "Employees";
     case "records":
@@ -286,6 +297,7 @@ export function EntityProfileTabs({
     documents: <FiFolder className="text-base" />,
     credentials: <FiKey className="text-base" />,
     handovers: <FiFileText className="text-base" />,
+    tasks: <FiTarget className="text-base" />,
     employees: <FiUsers className="text-base" />,
     records: <FiList className="text-base" />,
     invoices: <FiFileText className="text-base" />,
@@ -296,10 +308,35 @@ export function EntityProfileTabs({
     active: link.label.toLowerCase() === activeSection,
   }));
 
+  const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+
+  const sectionPermissionMap: Partial<Record<EntitySectionKey, string | string[] | null>> = {
+    overview: null,
+    details: null,
+    documents: "documents.read",
+    credentials: "entities.read",
+    handovers: "documents.read",
+    tasks: "tasks.read",
+    employees: "entities.read",
+    records: ["payments.view.transactions", "payments.view.records-summary"],
+    invoices: "payments.view.invoices",
+  };
+
+  const visibleLinks = links.filter((link) => {
+    const sectionKey = link.label.toLowerCase() as EntitySectionKey;
+    const required = sectionPermissionMap[sectionKey];
+    if (!required) return true;
+    if (Array.isArray(required)) {
+      return required.some((p) => hasPermission(permissions, p));
+    }
+    return hasPermission(permissions, required);
+  });
+
   return (
     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
       <div className="flex flex-wrap gap-2">
-        {links.map((link) => (
+        {visibleLinks.map((link) => (
           (() => {
             const sectionKey = link.label.toLowerCase() as EntitySectionKey;
             const count = sectionCounts?.[sectionKey] || 0;

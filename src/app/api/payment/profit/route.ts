@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
       { message: "Created new payment instant profit record" },
       { status: 201 }
     );
-  } catch (error) {
-    return Response.json(error, { status: 401 });
+  } catch (error: any) {
+    const message = error?.message || "Failed to create instant profit record";
+    const status = typeof error?.status === "number" ? error.status : 400;
+    return Response.json({ error: message }, { status });
   }
 }

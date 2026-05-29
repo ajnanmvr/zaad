@@ -3,6 +3,7 @@ import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Employee from "@/models/employees";
 import { NextRequest } from "next/server";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(
   request: NextRequest,
@@ -15,14 +16,20 @@ export async function GET(
     const companies = await Employee.find({
       name: { $regex: params.search, $options: "i" },
       published: true,
-    }).select("name color entityType");
+    })
+      .populate("company", "name")
+      .select("name color entityType company");
 
     return Response.json(companies, { status: 200 });
   } catch (error) {
-    console.error("Error fetching employees:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching employees:", error);
+    }
+
     return Response.json(
-      { error: "An error occurred while fetching emloyees" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "An error occurred while fetching emloyees") },
+      { status }
     );
   }
 }

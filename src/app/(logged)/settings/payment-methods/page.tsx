@@ -16,6 +16,12 @@ const PaymentMethodsPage = () => {
         inputPlaceholder="e.g., Bank, Cash, Tasdeed, Swiper"
         usageLabel="transactions"
         accent="amber"
+        requiredPermissions={[
+          "settings.manage.payment-methods",
+          "payments.write",
+          "settings.write",
+        ]}
+        itemHrefBuilder={(item) => `/accounts/transactions?m=${encodeURIComponent(item.id)}`}
       />
     </>
   );

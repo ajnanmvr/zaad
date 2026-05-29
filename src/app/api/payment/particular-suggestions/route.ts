@@ -1,7 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
-import Records from "@/models/records";
 import PaymentParticularTemplate from "@/models/paymentParticularTemplates";
 
 type ParticularCategory =
@@ -61,7 +60,7 @@ function buildRecordCategoryFilter(category: ParticularCategory) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requireAnyPermission(request, ["payments.read", "payments.write"]);
+    await requireAnyPermission(request, ["payments.read", "payments.write", "payments.create.transactions"]);
 
     const searchParams = request.nextUrl.searchParams;
     const q = String(searchParams.get("q") || "").trim();
@@ -78,31 +77,19 @@ export async function GET(request: NextRequest) {
       ...buildRecordCategoryFilter(category),
     };
 
-    const [templateRows, recordRows] = await Promise.all([
-      PaymentParticularTemplate.find({
-        published: true,
-        category,
-        particular: { $regex: regex },
-      })
-        .select("particular")
-        .sort({ updatedAt: -1 })
-        .limit(12)
-        .lean(),
-      Records.find(recordFilter)
-        .select("particular")
-        .sort({ updatedAt: -1 })
-        .limit(24)
-        .lean(),
-    ]);
+    const templateRows = await PaymentParticularTemplate.find({
+      published: true,
+      category,
+      particular: { $regex: regex },
+    })
+      .select("particular")
+      .sort({ updatedAt: -1 })
+      .limit(12)
+      .lean();
 
     const unique = new Set<string>();
 
     for (const row of templateRows as any[]) {
-      const value = String(row?.particular || "").trim();
-      if (value) unique.add(value);
-    }
-
-    for (const row of recordRows as any[]) {
       const value = String(row?.particular || "").trim();
       if (value) unique.add(value);
     }
@@ -119,7 +106,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const particular = String(body?.particular || "").trim();
@@ -163,7 +150,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const id = String(body?.id || "").trim();
@@ -190,7 +177,7 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "payments.write");
+    await requirePermission(request, "payments.manage.particular-suggestions");
 
     const body = await request.json();
     const id = String(body?.id || "").trim();

@@ -14,10 +14,10 @@ interface ConfirmationModalProps {
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     isOpen,
-    title = "Please Confirm",
+    title = "Secure Confirmation Required",
     message,
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
+    confirmLabel = "Proceed Safely",
+    cancelLabel = "Go Back",
     variant = "danger",
     isLoading = false,
     onConfirm,
@@ -60,3 +60,4 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 };
 
 export default ConfirmationModal;
+

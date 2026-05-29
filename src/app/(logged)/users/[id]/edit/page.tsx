@@ -29,7 +29,7 @@ const EditUserPage = () => {
 
   useEffect(() => {
     if (user && (!canReadUsers || !canUpdateUsers)) {
-      router.push("/");
+      router.push("/not-permitted");
     }
   }, [user, canReadUsers, canUpdateUsers, router]);
 

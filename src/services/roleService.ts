@@ -4,6 +4,7 @@ import { ServiceError } from "./serviceError";
 import { NextRequest } from "next/server";
 import { logUserActivity } from "@/helpers/userActivityLogger";
 import { ALL_PERMISSIONS } from "@/auth/permissionCatalog";
+import { expandPermissions } from "@/auth/permissions";
 
 const CACHE_TTL_SECONDS = 5 * 60;
 
@@ -18,7 +19,7 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
   }
 
   if (["superadmin", "super_admin", "super-admin", "super admin"].includes(normalizedRole)) {
-    return ALL_PERMISSIONS;
+    return expandPermissions(ALL_PERMISSIONS);
   }
 
   const cacheKey = getRoleCacheKey(normalizedRole);
@@ -26,7 +27,7 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached);
+      return expandPermissions(JSON.parse(cached));
     }
   } catch {
     // fall back to DB/defaults
@@ -37,6 +38,7 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
   );
 
   const permissions = role?.permissions || [];
+  const expandedPermissions = expandPermissions(permissions);
 
   try {
     await redis.set(cacheKey, JSON.stringify(permissions), {
@@ -46,7 +48,7 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
     // ignore cache failures
   }
 
-  return permissions;
+  return expandedPermissions;
 }
 
 export async function invalidateRolePermissionCache(roleName: string) {

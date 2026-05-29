@@ -7,10 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:rbac": "node scripts/rbac-matrix-check.mjs",
-    "seed:roles": "node scripts/seed-system-roles.mjs",
-    "migrate:category-templates": "node scripts/migrate-category-templates.mjs",
-    "seed:expiry-documents": "node scripts/seed-expiry-documents.cjs"
+    "migrate:all": "node scripts/migrate-all.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.63.0",

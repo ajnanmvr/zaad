@@ -1,3 +1,4 @@
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
@@ -41,7 +42,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    return Response.json(error, { status: 401 });
+    const status = getServiceErrorStatus(error);
+    return Response.json(
+      { error: getServiceErrorMessage(error, "Failed to create employee") },
+      { status }
+    );
   }
 }
 
@@ -58,10 +63,15 @@ export async function GET(request: NextRequest) {
 
     return Response.json(response, { status: 200 });
   } catch (error) {
-    console.error("Error fetching employees:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching employees:", error);
+    }
     return Response.json(
-      { error: "Error fetching employees" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "Error fetching employees") },
+      { status }
     );
   }
 }
+
+

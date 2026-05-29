@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
+import { hasPermission } from "@/auth/permissions";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 import TaskNotification from "@/models/taskNotifications";
@@ -55,6 +56,9 @@ export async function GET(
   try {
     await connect();
     const principal = await requireAnyPermission(request, [
+      "tasks.view.my",
+      "tasks.view.all",
+      "tasks.view.detail",
       "tasks.read",
       "tasks.manage",
       "tasks.complete",
@@ -69,10 +73,10 @@ export async function GET(
       return Response.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const canManage = principal.permissions.includes("tasks.manage");
+    const canViewAll = hasPermission(principal.permissions, "tasks.view.all");
     const isAssignee = task.assignedTo && task.assignedTo._id?.toString() === principal.userId;
 
-    if (!canManage && !isAssignee) {
+    if (!canViewAll && !isAssignee) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -92,6 +96,7 @@ export async function PUT(
   try {
     await connect();
     const principal = await requireAnyPermission(request, [
+      "tasks.update",
       "tasks.manage",
       "tasks.complete",
     ]);
@@ -102,16 +107,17 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const canManage = principal.permissions.includes("tasks.manage");
+    const canUpdateTask = hasPermission(principal.permissions, "tasks.update");
+    const canAssignTask = hasPermission(principal.permissions, "tasks.assign");
     const isAssignee = existing.assignedTo?.toString() === principal.userId;
 
-    if (!canManage && !isAssignee) {
+    if (!canUpdateTask && !isAssignee) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const update: Record<string, any> = {};
 
-    if (canManage) {
+    if (canUpdateTask) {
       if (body.title !== undefined) update.title = String(body.title || "").trim();
       if (body.description !== undefined) update.description = String(body.description || "").trim();
       if (body.priority !== undefined) update.priority = body.priority;
@@ -120,7 +126,16 @@ export async function PUT(
         update.category = normalizedCategory || undefined;
       }
       if (body.status !== undefined) update.status = body.status;
-      if (body.assignedTo !== undefined) update.assignedTo = body.assignedTo;
+      if (body.assignedTo !== undefined) {
+        if (!canAssignTask && String(body.assignedTo) !== existing.assignedTo.toString()) {
+          return Response.json(
+            { error: "Missing permission: tasks.assign" },
+            { status: 403 },
+          );
+        }
+
+        update.assignedTo = body.assignedTo;
+      }
       if (body.dueDate !== undefined) update.dueDate = body.dueDate ? new Date(body.dueDate) : null;
       if (body.completionNote !== undefined) update.completionNote = String(body.completionNote || "");
       if (body.cancellationNote !== undefined) {
@@ -212,7 +227,7 @@ export async function DELETE(
 ) {
   try {
     await connect();
-    await requirePermission(request, "tasks.manage");
+    await requireAnyPermission(request, ["tasks.delete", "tasks.manage"]);
 
     const task = await Task.findOne({ _id: params.id, published: true });
     if (!task) {

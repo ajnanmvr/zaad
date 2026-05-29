@@ -1,4 +1,5 @@
 import connect from "@/db/mongo";
+import { requirePermission } from "@/auth/guards";
 import Invoice from "@/models/invoice";
 import Entity from "@/models/entities";
 import { TInvoiceItemsData } from "@/types/invoice";
@@ -8,7 +9,9 @@ import { NextRequest } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     await connect();
+    const principal = await requirePermission(request, "payments.create.invoices");
     const reqBody = await request.json();
+    reqBody.createdBy = principal.userId;
     const hasEntityId = Boolean(reqBody?.entityId);
     const hasEntityType = Boolean(reqBody?.entityType);
 
@@ -35,6 +38,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await connect();
+    await requirePermission(request, "payments.view.invoices");
     const searchParams = request.nextUrl.searchParams;
     const pageNumber = Number(searchParams.get("page") || 0);
     const limit = Math.max(Number(searchParams.get("limit") || 10), 1);

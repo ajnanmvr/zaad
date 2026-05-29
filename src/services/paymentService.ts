@@ -1,24 +1,35 @@
-import { filterData } from "@/utils/filterData";
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
-import { randomUUID } from "crypto";
 import {
+  aggregateEntityRecordStatsByEntityIds,
+  aggregateLiabilityEntityStatsByKeys,
+  aggregateOfficeRecordCategoryStatsByKeys,
   aggregateRecords,
+  bulkUpsertEntityRecordStats,
+  bulkUpsertLiabilityEntityStats,
+  bulkUpsertOfficeRecordCategoryStats,
+  countRecordsByQuery,
   createPaymentEditNotification,
   createRecord,
   distinctEmployeeIdsByCompany,
   findEntitiesByIds,
+  findEntityRecordStatsByEntityIds,
+  findLiabilityEntityStatsByKeys,
+  findMonthlyFinanceStatsByYearMonth,
+  findOfficeRecordCategoryStatsByKeys,
   findOneRecord,
-  findPaymentTemplateMethods,
-  findPaymentTemplateByMethodName,
   findPaymentStatusTemplateByStatusName,
-  findPaymentStatusTemplates,
+  findPaymentTemplateByMethodName,
+  findPaymentTemplateMethods,
   findRecordById,
   findRecordByIdAndPopulate,
   findRecordByIdLean,
   findRecords,
   updateManyRecords,
   updateRecordById,
+  upsertMonthlyFinanceStats
 } from "@/repositories/paymentRepository";
+import { filterData } from "@/utils/filterData";
+import { randomUUID } from "crypto";
 
 const CONTENT_PER_SECTION = 25;
 
@@ -124,13 +135,644 @@ async function resolveMethodFilter(method?: string | null) {
   return template?._id?.toString?.() || value;
 }
 
+type PaymentRecordFilters = {
+  pageNumber?: number;
+  limit?: number;
+  sort?: string | null;
+  query?: string | null;
+  method?: string | null;
+  type?: string | null;
+  status?: string | null;
+  recordKind?: string | null;
+  entityIds?: string | null;
+  officeCategory?: string | null;
+  employeeCompanyId?: string | null;
+  category?: string | null;
+};
+
+async function applyPaymentRecordFilters(query: Record<string, any>, input: PaymentRecordFilters) {
+  if (input.method) {
+    query.method = await resolveMethodFilter(input.method);
+  }
+
+  if (input.type) {
+    query.type = input.type;
+  }
+
+  if (input.status) {
+    query.status = input.status;
+  }
+
+  if (input.recordKind) {
+    query.recordKind = input.recordKind;
+  }
+
+  if (input.entityIds) {
+    const ids = input.entityIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (ids.length > 0) {
+      query.entity = { $in: ids };
+    }
+  }
+
+  if (input.employeeCompanyId) {
+    const employeeIds = await distinctEmployeeIdsByCompany(input.employeeCompanyId);
+    const employeeIdStrings = employeeIds.map((id: any) => String(id));
+
+    if (query.entity?.$in) {
+      const intersection = query.entity.$in.filter((id: string) =>
+        employeeIdStrings.includes(String(id)),
+      );
+      query.entity = { $in: intersection };
+    } else {
+      query.entity = { $in: employeeIdStrings };
+    }
+  }
+
+  if (input.officeCategory) {
+    query.category = input.officeCategory;
+  }
+
+  if (input.query) {
+    const escapedQuery = String(input.query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escapedQuery, "i");
+    query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
+  }
+
+  if (input.category) {
+    if (input.category === "office_records") {
+      query.recordKind = "office_records";
+    } else if (input.category === "liability") {
+      query.recordKind = "liability";
+    } else {
+      query.category = input.category;
+    }
+  }
+
+  return query;
+}
+
 function generateGroupId() {
   return randomUUID();
 }
 
+function getPaymentSortMap(sort?: string | null) {
+  const sortMap: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    amount_asc: { amount: 1, createdAt: -1 },
+    amount_desc: { amount: -1, createdAt: -1 },
+  };
+
+  return sortMap[String(sort || "newest")] || sortMap.newest;
+}
+
+type EntityLedgerTotals = {
+  totalIncome: number;
+  totalExpense: number;
+  totalTransactions: number;
+  balance: number;
+  lastRecomputedAt?: string;
+};
+
+type OfficeCategorySummaryRow = {
+  categoryKey: string;
+  categoryId?: string;
+  category: string;
+  totalIncome: number;
+  totalExpense: number;
+  incomeCount: number;
+  expenseCount: number;
+  totalCount: number;
+  lastRecomputedAt?: string;
+};
+
+type LiabilityEntitySummaryRow = {
+  entityKey: string;
+  entityId?: string;
+  entity: string;
+  income: number;
+  expense: number;
+  net: number;
+  totalTransactions: number;
+  lastRecomputedAt?: string;
+};
+
+const ZERO_ENTITY_TOTALS: EntityLedgerTotals = {
+  totalIncome: 0,
+  totalExpense: 0,
+  totalTransactions: 0,
+  balance: 0,
+};
+
+function normalizeEntityIds(entityIds: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      entityIds
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizeOfficeCategoryKeys(categoryKeys: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      categoryKeys
+        .map((value) => String(value || "").trim())
+        .map((value) => (value ? value : "__uncategorized__"))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function normalizeLiabilityEntityKeys(entityKeys: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      entityKeys
+        .map((value) => String(value || "").trim())
+        .map((value) => (value ? value : "__unknown__"))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function mapStatsRowsToTotalsByEntity(statsRows: any[]) {
+  const totalsByEntity = new Map<string, EntityLedgerTotals>();
+
+  for (const row of statsRows || []) {
+    const entityId = String(row?.entity || row?._id || "").trim();
+    if (!entityId) continue;
+
+    const totalIncome = Number(row?.totalIncome || 0);
+    const totalExpense = Number(row?.totalExpense || 0);
+    const totalServiceFee = Number(row?.totalServiceFee || 0);
+    const totalTransactions = Number(row?.totalTransactions || 0);
+    const balance = Number(row?.balance ?? totalIncome - (totalExpense + totalServiceFee));
+    const lastRecomputedAt = row?.lastRecomputedAt
+      ? new Date(row.lastRecomputedAt).toISOString()
+      : undefined;
+
+    totalsByEntity.set(entityId, {
+      totalIncome,
+      totalExpense,
+      totalTransactions,
+      balance,
+      lastRecomputedAt,
+    });
+  }
+
+  return totalsByEntity;
+}
+
+function sumEntityTotals(rows: EntityLedgerTotals[]) {
+  return rows.reduce<EntityLedgerTotals>(
+    (acc, row) => {
+      acc.totalIncome += Number(row.totalIncome || 0);
+      acc.totalExpense += Number(row.totalExpense || 0);
+      acc.totalTransactions += Number(row.totalTransactions || 0);
+      acc.balance += Number(row.balance || 0);
+      return acc;
+    },
+    { ...ZERO_ENTITY_TOTALS },
+  );
+}
+
+function mapOfficeStatsRows(statsRows: any[]) {
+  const rows: OfficeCategorySummaryRow[] = [];
+
+  for (const row of statsRows || []) {
+    const categoryKey = String(row?.categoryKey || row?._id || "").trim();
+    if (!categoryKey) continue;
+
+    rows.push({
+      categoryKey,
+      categoryId: row?.category ? String(row.category) : undefined,
+      category: String(row?.categoryLabel || "Office"),
+      totalIncome: Number(row?.incomeTotal || 0),
+      totalExpense: Number(row?.expenseTotal || 0),
+      incomeCount: Number(row?.incomeCount || 0),
+      expenseCount: Number(row?.expenseCount || 0),
+      totalCount: Number(row?.totalCount || 0),
+      lastRecomputedAt: row?.lastRecomputedAt
+        ? new Date(row.lastRecomputedAt).toISOString()
+        : undefined,
+    });
+  }
+
+  return rows;
+}
+
+function mapLiabilityStatsRows(statsRows: any[]) {
+  const rows: LiabilityEntitySummaryRow[] = [];
+
+  for (const row of statsRows || []) {
+    const entityKey = String(row?.entityKey || row?._id || "").trim();
+    if (!entityKey) continue;
+
+    const income = Number(row?.income || 0);
+    const expense = Number(row?.expense || 0);
+    rows.push({
+      entityKey,
+      entityId: row?.entity ? String(row.entity) : undefined,
+      entity: String(row?.entityName || "Unknown Entity"),
+      income,
+      expense,
+      net: Number(row?.net ?? income - expense),
+      totalTransactions: Number(row?.totalTransactions || 0),
+      lastRecomputedAt: row?.lastRecomputedAt
+        ? new Date(row.lastRecomputedAt).toISOString()
+        : undefined,
+    });
+  }
+
+  return rows;
+}
+
+async function recomputeEntityRecordStats(entityIds?: string[]) {
+  const normalizedEntityIds = normalizeEntityIds(entityIds || []);
+  const recomputeAll = normalizedEntityIds.length === 0;
+
+  // When recomputing all, get aggregates first to determine which entities have records
+  if (recomputeAll) {
+    const aggregateRows = await aggregateEntityRecordStatsByEntityIds();
+    const aggregateByEntity = new Map<string, any>();
+    for (const row of aggregateRows || []) {
+      const key = String(row?._id || "").trim();
+      if (key) {
+        aggregateByEntity.set(key, row);
+      }
+    }
+
+    if (aggregateByEntity.size === 0) {
+      return {
+        updatedEntities: 0,
+        lastRecomputedAt: new Date().toISOString(),
+      };
+    }
+
+    const now = new Date();
+    const upsertRows = Array.from(aggregateByEntity.values()).map((aggregated) => {
+      const entityId = String(aggregated?._id || "");
+      const totalIncome = Number(aggregated?.totalIncome || 0);
+      const totalExpense = Number(aggregated?.totalExpense || 0);
+      const totalServiceFee = Number(aggregated?.totalServiceFee || 0);
+      const totalTransactions = Number(aggregated?.totalTransactions || 0);
+      return {
+        entity: entityId,
+        entityType: String(aggregated?.entityType || "company"),
+        totalIncome,
+        totalExpense,
+        totalServiceFee,
+        totalTransactions,
+        balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
+        lastRecomputedAt: now,
+      };
+    });
+
+    await bulkUpsertEntityRecordStats(upsertRows);
+
+    return {
+      updatedEntities: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
+    };
+  }
+
+  // For specific entities, compute and upsert only those with records
+  const aggregateRows = await aggregateEntityRecordStatsByEntityIds(normalizedEntityIds);
+  const aggregateByEntity = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByEntity.set(key, row);
+    }
+  }
+
+  if (aggregateByEntity.size === 0) {
+    return {
+      updatedEntities: 0,
+      lastRecomputedAt: new Date().toISOString(),
+    };
+  }
+
+  const now = new Date();
+  const upsertRows = Array.from(aggregateByEntity.values()).map((aggregated) => {
+    const entityId = String(aggregated?._id || "");
+    const totalIncome = Number(aggregated?.totalIncome || 0);
+    const totalExpense = Number(aggregated?.totalExpense || 0);
+    const totalServiceFee = Number(aggregated?.totalServiceFee || 0);
+    const totalTransactions = Number(aggregated?.totalTransactions || 0);
+    return {
+      entity: entityId,
+      entityType: String(aggregated?.entityType || "company"),
+      totalIncome,
+      totalExpense,
+      totalServiceFee,
+      totalTransactions,
+      balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertEntityRecordStats(upsertRows);
+
+  return {
+    updatedEntities: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function recomputeOfficeRecordCategoryStats(categoryKeys?: string[]) {
+  const normalizedKeys = normalizeOfficeCategoryKeys(categoryKeys || []);
+  const recomputeAll = normalizedKeys.length === 0;
+
+  const aggregateRows = await aggregateOfficeRecordCategoryStatsByKeys(
+    recomputeAll ? undefined : normalizedKeys,
+  );
+
+  const now = new Date();
+
+  if (recomputeAll) {
+    const upsertRows = (aggregateRows || []).map((row: any) => ({
+      categoryKey: String(row?._id || ""),
+      category: row?.category || null,
+      categoryLabel: String(row?.categoryLabel || "Office"),
+      incomeTotal: Number(row?.incomeTotal || 0),
+      incomeCount: Number(row?.incomeCount || 0),
+      expenseTotal: Number(row?.expenseTotal || 0),
+      expenseCount: Number(row?.expenseCount || 0),
+      totalCount: Number(row?.totalCount || 0),
+      lastRecomputedAt: now,
+    }));
+
+    await bulkUpsertOfficeRecordCategoryStats(upsertRows);
+
+    return {
+      updatedOfficeCategories: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
+    };
+  }
+
+  const aggregateByKey = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByKey.set(key, row);
+    }
+  }
+
+  const upsertRows = normalizedKeys.map((key) => {
+    const aggregated = aggregateByKey.get(key);
+    return {
+      categoryKey: key,
+      category: aggregated?.category || (key === "__uncategorized__" ? null : key),
+      categoryLabel: String(aggregated?.categoryLabel || "Office"),
+      incomeTotal: Number(aggregated?.incomeTotal || 0),
+      incomeCount: Number(aggregated?.incomeCount || 0),
+      expenseTotal: Number(aggregated?.expenseTotal || 0),
+      expenseCount: Number(aggregated?.expenseCount || 0),
+      totalCount: Number(aggregated?.totalCount || 0),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertOfficeRecordCategoryStats(upsertRows);
+
+  return {
+    updatedOfficeCategories: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function recomputeLiabilityEntityStats(entityKeys?: string[]) {
+  const normalizedKeys = normalizeLiabilityEntityKeys(entityKeys || []);
+  const recomputeAll = normalizedKeys.length === 0;
+
+  const aggregateRows = await aggregateLiabilityEntityStatsByKeys(
+    recomputeAll ? undefined : normalizedKeys,
+  );
+
+  const now = new Date();
+
+  if (recomputeAll) {
+    const upsertRows = (aggregateRows || []).map((row: any) => {
+      const income = Number(row?.income || 0);
+      const expense = Number(row?.expense || 0);
+      return {
+        entityKey: String(row?._id || ""),
+        entity: row?.entity || null,
+        entityName: String(row?.entityName || "Unknown Entity"),
+        income,
+        expense,
+        net: Number(row?.net ?? income - expense),
+        totalTransactions: Number(row?.totalTransactions || 0),
+        lastRecomputedAt: now,
+      };
+    });
+
+    await bulkUpsertLiabilityEntityStats(upsertRows);
+
+    return {
+      updatedLiabilityEntities: upsertRows.length,
+      lastRecomputedAt: now.toISOString(),
+    };
+  }
+
+  const aggregateByKey = new Map<string, any>();
+  for (const row of aggregateRows || []) {
+    const key = String(row?._id || "").trim();
+    if (key) {
+      aggregateByKey.set(key, row);
+    }
+  }
+
+  const upsertRows = normalizedKeys.map((key) => {
+    const aggregated = aggregateByKey.get(key);
+    const income = Number(aggregated?.income || 0);
+    const expense = Number(aggregated?.expense || 0);
+
+    return {
+      entityKey: key,
+      entity: aggregated?.entity || (key === "__unknown__" ? null : key),
+      entityName: String(aggregated?.entityName || "Unknown Entity"),
+      income,
+      expense,
+      net: Number(aggregated?.net ?? income - expense),
+      totalTransactions: Number(aggregated?.totalTransactions || 0),
+      lastRecomputedAt: now,
+    };
+  });
+
+  await bulkUpsertLiabilityEntityStats(upsertRows);
+
+  return {
+    updatedLiabilityEntities: upsertRows.length,
+    lastRecomputedAt: now.toISOString(),
+  };
+}
+
+async function getEntityTotals(entityId: string): Promise<EntityLedgerTotals> {
+  const normalizedEntityId = String(entityId || "").trim();
+  if (!normalizedEntityId) {
+    return { ...ZERO_ENTITY_TOTALS };
+  }
+
+  let statsRows = await findEntityRecordStatsByEntityIds([normalizedEntityId]);
+  let byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+
+  // Backfill on first read for existing entities that do not yet have cached stats.
+  if (!byEntity.has(normalizedEntityId)) {
+    await recomputeEntityRecordStats([normalizedEntityId]);
+    statsRows = await findEntityRecordStatsByEntityIds([normalizedEntityId]);
+    byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+  }
+
+  return byEntity.get(normalizedEntityId) || { ...ZERO_ENTITY_TOTALS };
+}
+
+async function getCompanyScopedEntityTotals(
+  companyId: string,
+  recordScope: "company" | "employees" | "mixed",
+) {
+  const employeeIds = await distinctEmployeeIdsByCompany(companyId);
+  const employeeIdStrings = employeeIds.map((id: any) => String(id));
+
+  const scopedEntityIds =
+    recordScope === "employees"
+      ? employeeIdStrings
+      : recordScope === "mixed"
+        ? [companyId, ...employeeIdStrings]
+        : [companyId];
+
+  const normalizedIds = normalizeEntityIds(scopedEntityIds);
+  if (!normalizedIds.length) {
+    return { ...ZERO_ENTITY_TOTALS };
+  }
+
+  let statsRows = await findEntityRecordStatsByEntityIds(normalizedIds);
+  let byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+
+  const missingEntityIds = normalizedIds.filter((entityId) => !byEntity.has(entityId));
+  if (missingEntityIds.length > 0) {
+    await recomputeEntityRecordStats(missingEntityIds);
+    statsRows = await findEntityRecordStatsByEntityIds(normalizedIds);
+    byEntity = mapStatsRowsToTotalsByEntity(statsRows);
+  }
+
+  const scopedTotals = sumEntityTotals(
+    normalizedIds.map((entityId) => byEntity.get(entityId) || { ...ZERO_ENTITY_TOTALS }),
+  );
+
+  return scopedTotals;
+}
+
 export function isAdminRole(role?: string) {
-  const normalized = (role || "").toLowerCase();
+  const normalized = (role || "").toLowerCase().replace(/[\s_-]+/g, "");
   return normalized === "admin" || normalized === "superadmin";
+}
+
+export async function recomputeAllEntityLedgerStats() {
+  const [entityStats, officeStats, liabilityStats] = await Promise.all([
+    recomputeEntityRecordStats(),
+    recomputeOfficeRecordCategoryStats(),
+    recomputeLiabilityEntityStats(),
+  ]);
+
+  return {
+    ...entityStats,
+    ...officeStats,
+    ...liabilityStats,
+    lastRecomputedAt: new Date().toISOString(),
+  };
+}
+
+export async function getOfficeRecordCategorySummaryFromStats() {
+  let statsRows = await findOfficeRecordCategoryStatsByKeys();
+  let rows = mapOfficeStatsRows(statsRows).filter((row) => row.totalCount > 0);
+
+  if (!rows.length) {
+    await recomputeOfficeRecordCategoryStats();
+    statsRows = await findOfficeRecordCategoryStatsByKeys();
+    rows = mapOfficeStatsRows(statsRows).filter((row) => row.totalCount > 0);
+  }
+
+  const incomeByCategory = rows
+    .filter((row) => row.incomeCount > 0)
+    .map((row) => ({
+      category: row.category,
+      total: Number(row.totalIncome.toFixed(2)),
+      count: row.incomeCount,
+      categoryKey: row.categoryKey,
+      categoryId: row.categoryId,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const expenseByCategory = rows
+    .filter((row) => row.expenseCount > 0)
+    .map((row) => ({
+      category: row.category,
+      total: Number(row.totalExpense.toFixed(2)),
+      count: row.expenseCount,
+      categoryKey: row.categoryKey,
+      categoryId: row.categoryId,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    incomeByCategory,
+    expenseByCategory,
+    totalIncome: Number(rows.reduce((sum, row) => sum + row.totalIncome, 0).toFixed(2)),
+    totalExpense: Number(rows.reduce((sum, row) => sum + row.totalExpense, 0).toFixed(2)),
+    lastRecomputedAt: rows[0]?.lastRecomputedAt,
+  };
+}
+
+export async function getLiabilityEntitySummaryFromStats() {
+  let statsRows = await findLiabilityEntityStatsByKeys();
+  let rows = mapLiabilityStatsRows(statsRows).filter((row) => row.totalTransactions > 0);
+
+  if (!rows.length) {
+    await recomputeLiabilityEntityStats();
+    statsRows = await findLiabilityEntityStatsByKeys();
+    rows = mapLiabilityStatsRows(statsRows).filter((row) => row.totalTransactions > 0);
+  }
+
+  const entities = rows
+    .map((row) => ({
+      entity: row.entity,
+      income: Number(row.income.toFixed(2)),
+      expense: Number(row.expense.toFixed(2)),
+      net: Number(row.net.toFixed(2)),
+      entityKey: row.entityKey,
+      entityId: row.entityId,
+      totalTransactions: row.totalTransactions,
+      lastRecomputedAt: row.lastRecomputedAt,
+    }))
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
+  const totals = entities.reduce(
+    (acc, row) => {
+      acc.income += row.income;
+      acc.expense += row.expense;
+      acc.net += row.net;
+      return acc;
+    },
+    { income: 0, expense: 0, net: 0 },
+  );
+
+  return {
+    entities,
+    totals: {
+      income: Number(totals.income.toFixed(2)),
+      expense: Number(totals.expense.toFixed(2)),
+      net: Number(totals.net.toFixed(2)),
+    },
+    lastRecomputedAt: rows[0]?.lastRecomputedAt,
+  };
 }
 
 async function resolveLinkedRecordIds(record: any, includeArchived = false) {
@@ -143,21 +785,23 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
   const linkedIds = new Set<string>([recordId]);
   const publicationFilter = includeArchived ? {} : ACTIVE_RECORD_FILTER;
 
-  if (recordKind === "self_transfer") {
-    if (record.transferGroupId) {
-      const partners = await findRecords(
-        {
-          ...publicationFilter,
-          transferGroupId: record.transferGroupId,
-          _id: { $ne: record._id },
-        },
-        { select: "_id" }
-      );
+  if (record.transferGroupId) {
+    const partners = await findRecords(
+      {
+        ...publicationFilter,
+        transferGroupId: record.transferGroupId,
+        _id: { $ne: record._id },
+      },
+      { select: "_id" }
+    );
 
-      partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
+    partners.forEach((partner: any) => linkedIds.add(String(partner._id)));
+    if (linkedIds.size > 1) {
       return Array.from(linkedIds);
     }
+  }
 
+  if (recordKind === "self_transfer") {
     const partners = await findRecords({
       ...publicationFilter,
       recordKind: "self_transfer",
@@ -171,50 +815,54 @@ async function resolveLinkedRecordIds(record: any, includeArchived = false) {
     return Array.from(linkedIds);
   }
 
-  if (recordKind === "instant_profit") {
-    const recordNumber = Number(record.number);
+  return Array.from(linkedIds);
+}
 
-    if (record.type === "income") {
-      const partner = await findOneRecord(
-        {
-          ...publicationFilter,
-          recordKind: "instant_profit",
-          createdBy: record.createdBy,
-          type: "expense",
-          serviceFee: record.amount,
-          amount: 0,
-          number: Number.isFinite(recordNumber) ? recordNumber + 1 : undefined,
-          _id: { $ne: record._id },
-        },
-        "_id"
-      );
+async function refreshEntityStatsForRecordRows(records: any[]) {
+  const affectedEntityIds = normalizeEntityIds(
+    (records || []).map((record) => record?.entity?.toString?.() || record?.entity),
+  );
 
-      if (partner) {
-        linkedIds.add(String(partner._id));
-      }
-    }
+  const affectedOfficeCategoryKeys = normalizeOfficeCategoryKeys(
+    (records || [])
+      .filter((record) => String(record?.recordKind || "").toLowerCase() === "office_records")
+      .map((record) => record?.category?.toString?.() || record?.category),
+  );
 
-    if (record.type === "expense") {
-      const partner = await findOneRecord(
-        {
-          ...publicationFilter,
-          recordKind: "instant_profit",
-          createdBy: record.createdBy,
-          type: "income",
-          amount: record.serviceFee,
-          number: Number.isFinite(recordNumber) ? recordNumber - 1 : undefined,
-          _id: { $ne: record._id },
-        },
-        "_id"
-      );
+  const affectedLiabilityEntityKeys = normalizeLiabilityEntityKeys(
+    (records || [])
+      .filter((record) => String(record?.recordKind || "").toLowerCase() === "liability")
+      .map((record) => record?.entity?.toString?.() || record?.entity),
+  );
 
-      if (partner) {
-        linkedIds.add(String(partner._id));
-      }
-    }
+  const affectedMonths = new Set<string>();
+  (records || []).forEach((record) => {
+    const date = record?.createdAt ? new Date(record.createdAt) : new Date();
+    affectedMonths.add(`${date.getFullYear()}-${date.getMonth() + 1}`);
+  });
+
+  if (
+    !affectedEntityIds.length &&
+    !affectedOfficeCategoryKeys.length &&
+    !affectedLiabilityEntityKeys.length &&
+    !affectedMonths.size
+  ) {
+    return;
   }
 
-  return Array.from(linkedIds);
+  await Promise.all([
+    affectedEntityIds.length ? recomputeEntityRecordStats(affectedEntityIds) : Promise.resolve(),
+    affectedOfficeCategoryKeys.length
+      ? recomputeOfficeRecordCategoryStats(affectedOfficeCategoryKeys)
+      : Promise.resolve(),
+    affectedLiabilityEntityKeys.length
+      ? recomputeLiabilityEntityStats(affectedLiabilityEntityKeys)
+      : Promise.resolve(),
+    ...Array.from(affectedMonths).map((monthStr) => {
+      const [year, month] = monthStr.split("-").map(Number);
+      return computeMonthlyFinanceStats(year, month);
+    }),
+  ]);
 }
 
 function buildTotals(records: any[]) {
@@ -307,6 +955,7 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
   const normalizedPayload = normalizeEntityFields(reqBody);
   const recordKind = String(normalizedPayload.recordKind || "").toLowerCase();
+  const requiresMethod = !["liability", "self_transfer"].includes(recordKind);
 
   // Validate required fields before creating
   const missingFields: string[] = [];
@@ -323,7 +972,10 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     missingFields.push("type");
   }
   
-  if (!normalizedPayload.method || String(normalizedPayload.method).trim() === "") {
+  if (
+    requiresMethod &&
+    (!normalizedPayload.method || String(normalizedPayload.method).trim() === "")
+  ) {
     missingFields.push("method");
   }
   
@@ -352,45 +1004,52 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
     ],
   });
 
+  await refreshEntityStatsForRecordRows([data]);
+
   return data;
 }
 
 export async function listPaymentRecords(input: {
   pageNumber: number;
+  limit?: number;
+  sort?: string | null;
+  query?: string | null;
   method?: string | null;
   type?: string | null;
+  status?: string | null;
+  recordKind?: string | null;
+  entityIds?: string | null;
+  officeCategory?: string | null;
+  employeeCompanyId?: string | null;
   category?: string | null;
 }) {
-  const contentPerSection = 25;
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const contentPerSection = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
-  if (input.method) {
-    query.method = await resolveMethodFilter(input.method);
-  }
-  if (input.type) {
-    query.type = input.type;
-  }
-  if (input.category) {
-    if (input.category === "office_records") {
-      query.recordKind = "office_records";
-    } else {
-      query.category = input.category;
-    }
-  }
+  const sortMap: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    amount_asc: { amount: 1, createdAt: -1 },
+    amount_desc: { amount: -1, createdAt: -1 },
+  };
+
+  await applyPaymentRecordFilters(query, input);
 
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    skip: input.pageNumber * contentPerSection,
-    limit: contentPerSection + 1,
-    sort: { createdAt: -1 },
+    skip: isAll ? 0 : input.pageNumber * contentPerSection,
+    limit: isAll ? undefined : contentPerSection + 1,
+    sort: sortMap[String(input.sort || "newest")] || sortMap.newest,
   });
 
   if (!records || records.length === 0) {
     return { message: "No records found", count: 0, hasMore: false, records: [] };
   }
 
-  const hasMore = records.length > contentPerSection;
-  const transformedData = records.slice(0, contentPerSection).map(mapRecordListItem);
+  const hasMore = isAll ? false : records.length > contentPerSection;
+  const transformedData = (isAll ? records : records.slice(0, contentPerSection)).map(mapRecordListItem);
 
   return { count: transformedData.length, hasMore, records: transformedData };
 }
@@ -432,16 +1091,20 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     return { status: 400, body: { message: "The amount should be greater than 0" } };
   }
 
+  const fromMethod = await resolveMethodFilter(from);
+  const toMethod = await resolveMethodFilter(to);
+
   const latest = await findOneRecord({ ...ACTIVE_RECORD_FILTER }, "suffix number", { createdAt: -1 });
   const newSuffix = latest?.suffix || "";
   const newNumber = latest?.number || 0;
   const transferGroupId = generateGroupId();
 
-  await createRecord({
+  const firstRecord = await createRecord({
     createdBy: principal.userId,
     type: "expense",
     recordKind: "self_transfer",
     transferGroupId,
+    method: fromMethod,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 1,
@@ -458,11 +1121,12 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     ],
   });
 
-  await createRecord({
+  const secondRecord = await createRecord({
     createdBy: principal.userId,
     type: "income",
     recordKind: "self_transfer",
     transferGroupId,
+    method: toMethod,
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 2,
@@ -526,6 +1190,12 @@ export async function listSelfDepositPayments(input: {
   pageNumber: number;
   type?: string | null;
   method?: string | null;
+  query?: string | null;
+  sort?: string | null;
+  from?: string | null;
+  to?: string | null;
+  month?: string | null;
+  year?: string | null;
 }) {
   const contentPerSection = 10;
   const query: Record<string, any> = {
@@ -538,6 +1208,33 @@ export async function listSelfDepositPayments(input: {
   }
   if (input.method) {
     query.method = await resolveMethodFilter(input.method);
+  }
+
+  // Add date range filtering
+  if (input.from || input.to) {
+    const dateQuery: Record<string, any> = {};
+    if (input.from) {
+      dateQuery.$gte = new Date(input.from);
+    }
+    if (input.to) {
+      const toDate = new Date(input.to);
+      toDate.setHours(23, 59, 59, 999);
+      dateQuery.$lte = toDate;
+    }
+    query.createdAt = dateQuery;
+  } else if (input.month || input.year) {
+    // Handle month/year filtering
+    const now = new Date();
+    const monthNum = input.month ? Number(input.month) : now.getMonth() + 1;
+    const yearNum = input.year ? Number(input.year) : now.getFullYear();
+    
+    const monthStart = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(yearNum, monthNum, 1, 0, 0, 0, 0);
+    
+    query.createdAt = {
+      $gte: monthStart,
+      $lt: monthEnd,
+    };
   }
 
   const records = await findRecords(query, {
@@ -559,9 +1256,48 @@ export async function listSelfDepositPayments(input: {
   }
 
   const groupedTransfers = buildTransfers(records);
+  const normalizedQuery = String(input.query || "")
+    .trim()
+    .toLowerCase();
+
+  const filteredTransfers = groupedTransfers.filter((transfer) => {
+    if (!normalizedQuery) return true;
+
+    const expense = transfer.expense;
+    const income = transfer.income;
+    const blob = [
+      expense?.method || "",
+      income?.method || "",
+      expense?.particular || "",
+      income?.particular || "",
+      expense?.remarks || "",
+      income?.remarks || "",
+      expense?.suffix || "",
+      expense?.number || "",
+      income?.suffix || "",
+      income?.number || "",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return blob.includes(normalizedQuery);
+  });
+
+  const sortedTransfers = [...filteredTransfers].sort((a, b) => {
+    const amountA = Number(a.expense?.amount || a.income?.amount || 0);
+    const amountB = Number(b.expense?.amount || b.income?.amount || 0);
+    const dateA = new Date(String(a.expense?.createdAt || a.income?.createdAt || 0)).getTime();
+    const dateB = new Date(String(b.expense?.createdAt || b.income?.createdAt || 0)).getTime();
+
+    if (input.sort === "amount-asc") return amountA - amountB;
+    if (input.sort === "amount-desc") return amountB - amountA;
+    if (input.sort === "oldest") return dateA - dateB;
+    return dateB - dateA;
+  });
+
   const start = input.pageNumber * contentPerSection;
-  const transformedData = groupedTransfers.slice(start, start + contentPerSection);
-  const hasMore = groupedTransfers.length > start + contentPerSection;
+  const transformedData = sortedTransfers.slice(start, start + contentPerSection);
+  const hasMore = sortedTransfers.length > start + contentPerSection;
   const allRecords = (await findRecords(query)) as PaymentTotalRecord[];
 
   const totalIncome = allRecords.reduce<number>(
@@ -575,6 +1311,18 @@ export async function listSelfDepositPayments(input: {
     0
   );
 
+  const thisMonthStart = new Date();
+  thisMonthStart.setDate(1);
+  thisMonthStart.setHours(0, 0, 0, 0);
+
+  const thisMonthTransfers = filteredTransfers.filter((transfer) => {
+    const createdAt = transfer.expense?.createdAt || transfer.income?.createdAt;
+    if (!createdAt) return false;
+    const createdDate = new Date(createdAt);
+    if (Number.isNaN(createdDate.getTime())) return false;
+    return createdDate >= thisMonthStart;
+  }).length;
+
   return {
     count: transformedData.length,
     hasMore,
@@ -582,7 +1330,11 @@ export async function listSelfDepositPayments(input: {
     balance: totalIncome - totalExpense,
     totalIncome,
     totalExpense,
-    totalTransactions: groupedTransfers.length,
+    totalTransactions: filteredTransfers.length,
+    report: {
+      thisMonthTransfers,
+      allTimeTransfers: filteredTransfers.length,
+    },
   };
 }
 
@@ -645,27 +1397,25 @@ export async function listLiabilitySummary() {
 }
 
 export async function createProfitPair(reqBody: any, principal: TPrincipal) {
-  const serviceFeeTemplate = await findPaymentTemplateByMethodName("service fee");
-  if (!serviceFeeTemplate) {
-    throw new Error("Service fee payment template not found");
-  }
+  const toMethodId = String(reqBody?.to || "").trim();
+  const serviceFeeTemplate = toMethodId
+    ? null
+    : await findPaymentTemplateByMethodName("service fee");
 
   const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
-  const transferGroupId = generateGroupId();
 
   const normalizedPayload = normalizeEntityFields({
     ...reqBody,
-    recordKind: "instant_profit",
-    transferGroupId,
+    // Persist instant-profit pairs as standard records in DB.
+    recordKind: "standard",
   });
 
   if (profitStatusTemplate) {
     normalizedPayload.status = profitStatusTemplate._id;
   }
 
-  await createRecord({
+  const firstRecord = await createRecord({
     ...normalizedPayload,
-    transferGroupId,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -688,15 +1438,20 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     ...rest
   } = normalizedPayload;
 
-  await createRecord({
+  const mirrorMethod = toMethodId || serviceFeeTemplate?._id || originalMethod;
+  if (!mirrorMethod) {
+    throw new Error("Payment method is required for instant profit records");
+  }
+
+  const secondRecord = await createRecord({
     ...rest,
-    serviceFee: originalServiceFee || 0,
+    // Mirror expense carries the income amount as service fee.
+    serviceFee: Number(originalAmount || 0),
     amount: 0,
     type: "expense",
-    recordKind: "instant_profit",
-    method: serviceFeeTemplate._id,
+    recordKind: "standard",
+    method: mirrorMethod,
     number: +number + 1,
-    transferGroupId,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -709,6 +1464,8 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
       },
     ],
   });
+
+  await refreshEntityStatsForRecordRows([firstRecord, secondRecord]);
 }
 
 export async function listPaymentAccounts(searchParams: URLSearchParams) {
@@ -940,171 +1697,6 @@ export async function listPaymentAccounts(searchParams: URLSearchParams) {
   };
 }
 
-function aggregateEntityBalances(
-  rows: Array<{
-    entityId: string;
-    entityName: string;
-    balance: number;
-    serviceFee: number;
-    lastActivityAt?: string | Date | null;
-  }>
-) {
-  const over0balance: any[] = [];
-  const under0balance: any[] = [];
-
-  let totalProfitAll = 0;
-  let totalToGive = 0;
-  let totalToGet = 0;
-
-  for (const row of rows) {
-    if (row.balance > 0) {
-      over0balance.push({
-        id: row.entityId,
-        name: row.entityName,
-        balance: row.balance,
-        serviceFee: row.serviceFee,
-        lastActivityAt: row.lastActivityAt,
-      });
-      totalProfitAll += row.serviceFee;
-      totalToGive += row.balance;
-    } else if (row.balance < 0) {
-      under0balance.push({
-        id: row.entityId,
-        name: row.entityName,
-        balance: row.balance,
-        serviceFee: row.serviceFee,
-        lastActivityAt: row.lastActivityAt,
-      });
-      totalToGet += row.balance;
-    }
-  }
-
-  over0balance.sort((a, b) => a.name.localeCompare(b.name));
-  under0balance.sort((a, b) => a.name.localeCompare(b.name));
-
-  return { over0balance, under0balance, totalProfitAll, totalToGive, totalToGet };
-}
-
-export async function listProfitBalances(searchParams: URLSearchParams) {
-  const filter = filterData(searchParams, true);
-  const groupedBalances = await aggregateRecords<any>([
-    { $match: { ...filter, deletedAt: null } },
-    {
-      $project: {
-        type: 1,
-        amount: { $ifNull: ["$amount", 0] },
-        serviceFee: { $ifNull: ["$serviceFee", 0] },
-        createdAt: 1,
-        entityRef: "$entity",
-      },
-    },
-    { $match: { entityRef: { $ne: null } } },
-    {
-      $group: {
-        _id: { entityId: "$entityRef" },
-        incomeTotal: { $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] } },
-        expenseTotal: {
-          $sum: {
-            $cond: [{ $eq: ["$type", "expense"] }, { $add: ["$amount", "$serviceFee"] }, 0],
-          },
-        },
-        serviceFee: { $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$serviceFee", 0] } },
-        lastActivityAt: { $max: "$createdAt" },
-      },
-    },
-    {
-      $addFields: {
-        balance: { $subtract: ["$incomeTotal", "$expenseTotal"] },
-      },
-    },
-  ]);
-
-  if (!groupedBalances.length) {
-    return {
-      over0balanceCompanies: [],
-      under0balanceCompanies: [],
-      totalProfitAllCompanies: 0,
-      totalToGiveCompanies: 0,
-      totalToGetCompanies: 0,
-      over0balanceEmployees: [],
-      under0balanceEmployees: [],
-      totalProfitAllEmployees: 0,
-      totalToGiveEmployees: 0,
-      totalToGetEmployees: 0,
-      over0balanceIndividuals: [],
-      under0balanceIndividuals: [],
-      totalProfitAllIndividuals: 0,
-      totalToGiveIndividuals: 0,
-      totalToGetIndividuals: 0,
-      profit: 0,
-      totalToGive: 0,
-      totalToGet: 0,
-    };
-  }
-
-  const ids = groupedBalances.map((row: any) => row._id.entityId);
-  const entities = await findEntitiesByIds(ids);
-  const entityById = new Map((entities as any[]).map((entity: any) => [String(entity._id), entity]));
-
-  const companyRows: any[] = [];
-  const employeeRows: any[] = [];
-  const individualRows: any[] = [];
-
-  for (const row of groupedBalances as any[]) {
-    const entityId = String(row._id.entityId);
-    const entity = entityById.get(entityId);
-    if (!entity) continue;
-
-    const payload = {
-      entityId,
-      entityName: entity.name,
-      balance: row.balance,
-      serviceFee: row.serviceFee,
-      lastActivityAt: row.lastActivityAt,
-    };
-
-    if (entity.entityType === "company") {
-      companyRows.push(payload);
-    } else if (entity.entityType === "employee") {
-      employeeRows.push(payload);
-    } else if (entity.entityType === "individual") {
-      individualRows.push(payload);
-    }
-  }
-
-  const companies = aggregateEntityBalances(companyRows);
-  const employees = aggregateEntityBalances(employeeRows);
-  const individuals = aggregateEntityBalances(individualRows);
-
-  const profit =
-    employees.totalProfitAll + companies.totalProfitAll + individuals.totalProfitAll;
-  const totalToGive =
-    companies.totalToGive + employees.totalToGive + individuals.totalToGive;
-  const totalToGet =
-    companies.totalToGet + employees.totalToGet + individuals.totalToGet;
-
-  return {
-    over0balanceCompanies: companies.over0balance,
-    under0balanceCompanies: companies.under0balance,
-    totalProfitAllCompanies: companies.totalProfitAll,
-    totalToGiveCompanies: companies.totalToGive,
-    totalToGetCompanies: companies.totalToGet,
-    over0balanceEmployees: employees.over0balance,
-    under0balanceEmployees: employees.under0balance,
-    totalProfitAllEmployees: employees.totalProfitAll,
-    totalToGiveEmployees: employees.totalToGive,
-    totalToGetEmployees: employees.totalToGet,
-    over0balanceIndividuals: individuals.over0balance,
-    under0balanceIndividuals: individuals.under0balance,
-    totalProfitAllIndividuals: individuals.totalProfitAll,
-    totalToGiveIndividuals: individuals.totalToGive,
-    totalToGetIndividuals: individuals.totalToGet,
-    profit,
-    totalToGive,
-    totalToGet,
-  };
-}
-
 export async function listPaymentBin(input: {
   pageNumber: number;
   search?: string;
@@ -1134,21 +1726,31 @@ export async function listPaymentBin(input: {
   };
 }
 
-export async function listCompanyPaymentRecords(companyId: string, recordScope: "company" | "employees" | "mixed") {
+export async function listCompanyPaymentRecords(
+  companyId: string,
+  input: PaymentRecordFilters & { recordScope?: "company" | "employees" | "mixed" } = {},
+) {
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const employeeIds = await distinctEmployeeIdsByCompany(companyId);
   const query: Record<string, any> = { ...ACTIVE_RECORD_FILTER };
 
-  if (recordScope === "employees") {
+  if (input.recordScope === "employees") {
     query.entity = { $in: employeeIds };
-  } else if (recordScope === "mixed") {
+  } else if (input.recordScope === "mixed") {
     query.entity = { $in: [companyId, ...employeeIds] };
   } else {
     query.entity = companyId;
   }
 
+  await applyPaymentRecordFilters(query, input);
+
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    sort: { createdAt: -1 },
+    sort: getPaymentSortMap(input.sort),
+    skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+    limit: isAll ? undefined : pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1164,26 +1766,42 @@ export async function listCompanyPaymentRecords(companyId: string, recordScope: 
     };
   }
 
-  const transformedData = records.map(mapRecordListItem);
-  const allRecords = await findRecords(query);
-  const totals = buildTotals(allRecords);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
+  const totals = await getCompanyScopedEntityTotals(
+    companyId,
+    input.recordScope || "company",
+  );
 
   return {
     count: transformedData.length,
     records: transformedData,
     ...totals,
-    hasMore: false,
+    hasMore,
   };
 }
 
-export async function listEmployeePaymentRecords(employeeId: string) {
-  const query = {
+export async function listEmployeePaymentRecords(
+  employeeId: string,
+  input: PaymentRecordFilters = {},
+) {
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
+  const query: Record<string, any> = {
     ...ACTIVE_RECORD_FILTER,
     entity: employeeId,
   };
+
+  await applyPaymentRecordFilters(query, input);
+
   const records = await findRecords(query, {
     populate: PAYMENT_POPULATE_FIELDS,
-    sort: { createdAt: -1 },
+    sort: getPaymentSortMap(input.sort),
+    skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+    limit: isAll ? undefined : pageSize + 1,
   });
 
   if (!records || records.length === 0) {
@@ -1195,27 +1813,42 @@ export async function listEmployeePaymentRecords(employeeId: string) {
       totalIncome: 0,
       totalExpense: 0,
       totalTransactions: 0,
+      hasMore: false,
     };
   }
 
-  const transformedData = records.map(mapRecordListItem);
-  const allRecords = await findRecords(query);
-  const totals = buildTotals(allRecords);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
+  const totals = await getEntityTotals(employeeId);
 
   return {
     count: transformedData.length,
     records: transformedData,
     ...totals,
+    hasMore,
   };
 }
 
-export async function listIndividualPaymentRecords(employeeId: string) {
+export async function listIndividualPaymentRecords(
+  employeeId: string,
+  input: PaymentRecordFilters = {},
+) {
+  const requestedLimit = Number(input.limit);
+  const isAll = requestedLimit === 0;
+  const pageSize = isAll ? 0 : Math.min(Math.max(requestedLimit || 25, 1), 5000);
   const records = await findRecords(
-    { ...ACTIVE_RECORD_FILTER, entity: employeeId },
+    await applyPaymentRecordFilters(
+      { ...ACTIVE_RECORD_FILTER, entity: employeeId },
+      input,
+    ),
     {
       populate: PAYMENT_POPULATE_FIELDS,
-      sort: { createdAt: -1 },
-    }
+      sort: getPaymentSortMap(input.sort),
+      skip: isAll ? 0 : Number(input.pageNumber || 0) * pageSize,
+      limit: isAll ? undefined : pageSize + 1,
+    },
   );
 
   if (!records || records.length === 0) {
@@ -1227,21 +1860,21 @@ export async function listIndividualPaymentRecords(employeeId: string) {
       totalIncome: 0,
       totalExpense: 0,
       totalTransactions: 0,
+      hasMore: false,
     };
   }
 
-  const individualRecords = records.filter((record: any) => {
-    const resolvedType = String(record?.entity?.entityType || "").toLowerCase();
-    return resolvedType === "individual";
-  });
-
-  const transformedData = individualRecords.map(mapRecordListItem);
-  const totals = buildTotals(individualRecords);
+  const hasMore = isAll ? false : records.length > pageSize;
+  const transformedData = (isAll ? records : records.slice(0, pageSize)).map(
+    mapRecordListItem,
+  );
+  const totals = await getEntityTotals(employeeId);
 
   return {
     count: transformedData.length,
     records: transformedData,
     ...totals,
+    hasMore,
   };
 }
 
@@ -1252,6 +1885,11 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
   }
 
   const linkedIds = await resolveLinkedRecordIds(record);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity recordKind category createdAt" },
+  );
+
   await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
@@ -1272,7 +1910,54 @@ export async function deletePaymentRecord(id: string, principal: TPrincipal) {
     }
   );
 
+  await refreshEntityStatsForRecordRows(linkedRecords);
+
   return { status: 200, body: { message: "data deleted" } };
+}
+
+export async function deleteSelfTransferByGroupId(groupId: string, principal: TPrincipal) {
+  const normalizedGroupId = String(groupId || "").trim();
+
+  if (!normalizedGroupId) {
+    return { status: 400, body: { error: "Group ID is required" } };
+  }
+
+  const record = await findOneRecord({
+    ...ACTIVE_RECORD_FILTER,
+    recordKind: "self_transfer",
+    transferGroupId: normalizedGroupId,
+  });
+
+  if (!record) {
+    return { status: 404, body: { error: "Self transfer group not found" } };
+  }
+
+  const linkedIds = await resolveLinkedRecordIds(record);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity recordKind category createdAt" },
+  );
+
+  await updateManyRecords(
+    { _id: { $in: linkedIds } },
+    {
+      deletedAt: new Date(),
+      $push: {
+        activityLog: {
+          action: "delete",
+          at: new Date(),
+          by: principal.userId,
+          byUsername: principal.username,
+          byFullname: principal.fullname,
+          details: "Self transfer pair moved to bin",
+        },
+      },
+    },
+  );
+
+  await refreshEntityStatsForRecordRows(linkedRecords);
+
+  return { status: 200, body: { message: "Self transfer deleted", groupId: normalizedGroupId } };
 }
 
 export async function updatePaymentRecord(id: string, reqBody: any, principal: TPrincipal) {
@@ -1341,6 +2026,17 @@ export async function updatePaymentRecord(id: string, reqBody: any, principal: T
     { new: true }
   );
 
+  await refreshEntityStatsForRecordRows([
+    existingRecord,
+    data,
+    {
+      entity: normalizedPayload?.entity,
+      recordKind: normalizedPayload?.recordKind,
+      category: normalizedPayload?.category,
+      createdAt: (data as any)?.createdAt || (existingRecord as any)?.createdAt,
+    },
+  ]);
+
   const creatorId = existingRecord.createdBy?.toString?.();
   if (data && creatorId && creatorId !== principal.userId) {
     await createPaymentEditNotification({
@@ -1364,6 +2060,11 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
   }
 
   const linkedIds = await resolveLinkedRecordIds(record, true);
+  const linkedRecords = await findRecords(
+    { _id: { $in: linkedIds } },
+    { select: "entity recordKind category createdAt" },
+  );
+
   const data = await updateManyRecords(
     { _id: { $in: linkedIds } },
     {
@@ -1384,5 +2085,362 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
     }
   );
 
+  await refreshEntityStatsForRecordRows(linkedRecords);
+
   return { status: 200, body: { message: "Record recovered", data } };
+}
+
+/**
+ * Computes comprehensive monthly financial statistics including:
+ * - Total transaction count for the month
+ * - Office records income and expense
+ * - Profit (sum of service fees from entity records)
+ * - Net profit (profit - office expense)
+ * - Payment method breakdown (income, expense, balance per method, excluding service fees)
+ * - Includes self-transfer transactions
+ */
+export async function computeMonthlyFinanceStats(year?: number, month?: number) {
+  // Determine the month to compute
+  const now = new Date();
+  const computeYear = year || now.getFullYear();
+  const computeMonth = month || now.getMonth() + 1;
+
+  // Validate month is 1-12
+  if (computeMonth < 1 || computeMonth > 12) {
+    throw new Error(`Invalid month: ${computeMonth}. Month must be between 1 and 12`);
+  }
+
+  // Calculate month boundaries
+  const monthStart = new Date(computeYear, computeMonth - 1, 1, 0, 0, 0, 0);
+  const monthEnd = new Date(computeYear, computeMonth, 1, 0, 0, 0, 0);
+
+  const dateMatch = {
+    createdAt: {
+      $gte: monthStart,
+      $lt: monthEnd,
+    },
+    deletedAt: null,
+  };
+
+  // 1. Count total transactions for the month (all record kinds including self_transfer)
+  const totalTransactionCount = await countRecordsByQuery(dateMatch);
+
+  // 2. Aggregate office records for income and expense
+  const officeRecordsAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: "office_records",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalIncome: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        totalExpense: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              "$amount",
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  const officeRecordsData = officeRecordsAgg[0] || {
+    totalIncome: 0,
+    totalExpense: 0,
+  };
+
+  // 2a. Aggregate office records by category (income + expense)
+  const officeRecordsByCategoryAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: "office_records",
+      },
+    },
+    {
+      $group: {
+        _id: "$category",
+        incomeTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        expenseTotal: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "expense"] },
+              "$amount",
+              0,
+            ],
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "officeExpenseCategories",
+        localField: "_id",
+        foreignField: "_id",
+        as: "categoryDoc",
+      },
+    },
+    {
+      $unwind: {
+        path: "$categoryDoc",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $sort: { expenseTotal: -1, incomeTotal: -1 },
+    },
+  ]);
+
+  const officeRecordsByCategory = officeRecordsByCategoryAgg.map((row: any) => {
+    const income = Number(row.incomeTotal || 0);
+    const expense = Number(row.expenseTotal || 0);
+    return {
+      categoryId: String(row._id || ""),
+      categoryLabel: String(row.categoryDoc?.category || "Unknown"),
+      income: Number(income.toFixed(2)),
+      expense: Number(expense.toFixed(2)),
+      balance: Number((income - expense).toFixed(2)),
+    };
+  });
+
+  // 3. Aggregate profit from entity records (sum of service fees)
+  const profitAgg = await aggregateRecords([
+    {
+      $match: {
+        ...dateMatch,
+        recordKind: { $nin: ["office_records", "liability", "self_transfer"] },
+        type: "expense",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalServiceFee: {
+          $sum: { $ifNull: ["$serviceFee", 0] },
+        },
+      },
+    },
+  ]);
+
+  const profitData = profitAgg[0] || { totalServiceFee: 0 };
+  const profit = Number(profitData.totalServiceFee || 0);
+  const netProfit = profit - Number(officeRecordsData.totalExpense || 0);
+
+  // 4. Aggregate payment methods breakdown.
+  // Balance carries forward from the previous month: prevBalance + income - expense.
+  const previousMonth = computeMonth === 1 ? 12 : computeMonth - 1;
+  const previousYear = computeMonth === 1 ? computeYear - 1 : computeYear;
+  const previousMonthlyStats = await findMonthlyFinanceStatsByYearMonth(previousYear, previousMonth);
+
+  const resolveMonthlyMethodId = (row: any) => {
+    const fromMethodRef = row?.method?._id || row?.method;
+    const methodRefId = String(fromMethodRef || "").trim();
+    if (methodRefId) return methodRefId;
+    return String(row?.methodId || "").trim();
+  };
+
+  const previousBalancesByMethodId = new Map<string, { balance: number; methodLabel?: string; methodColor?: string; methodIcon?: string }>(
+    ((((previousMonthlyStats as any)?.paymentMethods || []) as any[])
+      .map((row: any) => {
+        const methodId = resolveMonthlyMethodId(row);
+        return [
+          methodId,
+          {
+            balance: Number(row?.balance || 0),
+            methodLabel: String(row?.methodLabel || ""),
+            methodColor: String(row?.methodColor || ""),
+            methodIcon: String(row?.methodIcon || ""),
+          },
+        ] as const;
+      })
+      .filter((entry: readonly [string, { balance: number; methodLabel?: string; methodColor?: string; methodIcon?: string }]) => Boolean(entry[0]))),
+  );
+
+  const paymentMethodsAgg = await aggregateRecords([
+    {
+      $match: dateMatch,
+    },
+    {
+      $group: {
+        _id: {
+          methodId: "$method",
+        },
+        incomeTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
+          },
+        },
+        expenseTotal: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { incomeTotal: -1, expenseTotal: -1 },
+    },
+  ]);
+
+  // Build payment methods array with labels and carried-forward balances
+  const paymentMethodsMap = new Map<string, any>();
+  const methods = await findPaymentTemplateMethods();
+  const methodTemplatesById = new Map(
+    (methods as any[]).map((m: any) => [String(m._id), m]),
+  );
+
+  const currentTotalsByMethodId = new Map<string, { income: number; expense: number }>();
+  for (const row of paymentMethodsAgg) {
+    const methodId = String(row._id?.methodId || "");
+    currentTotalsByMethodId.set(methodId, {
+      income: Number(row.incomeTotal || 0),
+      expense: Number(row.expenseTotal || 0),
+    });
+  }
+
+  const allMethodIds = Array.from(new Set<string>([
+    ...Array.from(previousBalancesByMethodId.keys()),
+    ...Array.from(currentTotalsByMethodId.keys()),
+  ]));
+
+  for (const methodId of allMethodIds) {
+    const method = methodTemplatesById.get(methodId);
+    const previous = previousBalancesByMethodId.get(methodId);
+    const current = currentTotalsByMethodId.get(methodId) || { income: 0, expense: 0 };
+    const prevBalance = Number(previous?.balance || 0);
+    const currentIncome = Number(current.income || 0);
+    const currentExpense = Number(current.expense || 0);
+    const methodLabel = method?.method || previous?.methodLabel || methodId || "Unknown";
+    const methodColor = String(method?.color || previous?.methodColor || "").trim();
+    const methodIcon = String(method?.icon || previous?.methodIcon || "").trim();
+
+    paymentMethodsMap.set(methodId, {
+      method: method?._id || undefined,
+      methodId,
+      methodLabel,
+      methodColor,
+      methodIcon,
+      income: Number(currentIncome.toFixed(2)),
+      expense: Number(currentExpense.toFixed(2)),
+      net: Number((currentIncome - currentExpense).toFixed(2)),
+      balance: Number((prevBalance + currentIncome - currentExpense).toFixed(2)),
+    });
+  }
+
+  // Build final response
+  const monthlyStats = {
+    year: computeYear,
+    month: computeMonth,
+    totalTransactions: totalTransactionCount,
+    officeRecords: {
+      totalIncome: Number((officeRecordsData.totalIncome || 0).toFixed(2)),
+      totalExpense: Number((officeRecordsData.totalExpense || 0).toFixed(2)),
+      byCategory: officeRecordsByCategory,
+    },
+    profit: Number(profit.toFixed(2)),
+    netProfit: Number(netProfit.toFixed(2)),
+    paymentMethods: Array.from(paymentMethodsMap.values()),
+  };
+
+  // Persist to database
+  await upsertMonthlyFinanceStats(computeYear, computeMonth, monthlyStats);
+
+  return monthlyStats;
+}
+
+/**
+ * Backfills monthly statistics for all historical months from the earliest
+ * record in the database to the current month.
+ * 
+ * @param startYear - Optional year to start backfill from (defaults to first record)
+ * @param startMonth - Optional month to start backfill from
+ * @returns { totalMonths, computedMonths, errors, summary }
+ */
+export async function backfillMonthlyFinanceStats(startYear?: number, startMonth?: number) {
+  const now = new Date();
+  
+  // Find the earliest record in the database
+  const earliestRecord = await findOneRecord({ deletedAt: null }, "createdAt", { createdAt: 1 });
+  if (!earliestRecord) {
+    return {
+      totalMonths: 0,
+      computedMonths: 0,
+      errors: ["No records found in database"],
+      summary: "No data to backfill",
+    };
+  }
+
+  // Determine start date
+  const earliestDate = new Date(earliestRecord.createdAt);
+  let startDate: Date;
+
+  if (startYear && startMonth) {
+    if (startMonth < 1 || startMonth > 12) {
+      throw new Error("Invalid month. Must be between 1 and 12");
+    }
+    startDate = new Date(startYear, startMonth - 1, 1);
+  } else {
+    // Start from the month of the earliest record
+    startDate = new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
+  }
+
+  // Generate all months between startDate and current month
+  const months: Array<{ year: number; month: number }> = [];
+  let currentDate = new Date(startDate);
+
+  while (currentDate < now) {
+    months.push({
+      year: currentDate.getFullYear(),
+      month: currentDate.getMonth() + 1,
+    });
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  // Also include current month
+  months.push({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  });
+
+  // Remove duplicates
+  const uniqueMonths = Array.from(
+    new Map(months.map((m) => [`${m.year}-${m.month}`, m])).values()
+  );
+
+  const errors: string[] = [];
+  let computedCount = 0;
+
+  // Compute each month
+  for (const { year, month } of uniqueMonths) {
+    try {
+      await computeMonthlyFinanceStats(year, month);
+      computedCount++;
+    } catch (error: any) {
+      errors.push(`Failed to compute ${year}-${String(month).padStart(2, "0")}: ${error?.message}`);
+    }
+  }
+
+  return {
+    totalMonths: uniqueMonths.length,
+    computedMonths: computedCount,
+    errors,
+    summary: `Successfully computed ${computedCount} out of ${uniqueMonths.length} months${
+      errors.length > 0 ? ` with ${errors.length} errors` : ""
+    }`,
+  };
 }

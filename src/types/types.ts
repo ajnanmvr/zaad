@@ -63,6 +63,7 @@ export type TBaseData = {
   name: string;
   color?: string;
   entityType?: "company" | "employee" | "individual";
+  company?: { name: string };
 };
 
 export type TEmployeeList = TCompanyList & {

@@ -259,7 +259,7 @@ const AddEmployee = ({
         }
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setEmployeeData({
             ...employeeData,
             [e.target.name]: e.target.value
@@ -396,14 +396,72 @@ const AddEmployee = ({
                                 </div>
                                 <div className="w-full sm:w-1/2">
                                     <label className={labelClasses}>Nationality</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="nationality"
                                         value={employeeData?.nationality || ""}
                                         onChange={handleChange}
-                                        placeholder="e.g. Indian, British"
                                         className={inputClasses}
-                                    />
+                                    >
+                                        <option value="">Select nationality</option>
+                                        <option value="Emirati">Emirati</option>
+                                        <option value="Indian">Indian</option>
+                                        <option value="Pakistani">Pakistani</option>
+                                        <option value="Philippine">Philippine</option>
+                                        <option value="British">British</option>
+                                        <option value="American">American</option>
+                                        <option value="Egyptian">Egyptian</option>
+                                        <option value="Lebanese">Lebanese</option>
+                                        <option value="Syrian">Syrian</option>
+                                        <option value="Jordanian">Jordanian</option>
+                                        <option value="Saudi">Saudi</option>
+                                        <option value="Kuwaiti">Kuwaiti</option>
+                                        <option value="Qatari">Qatari</option>
+                                        <option value="Bahraini">Bahraini</option>
+                                        <option value="Omani">Omani</option>
+                                        <option value="Palestinian">Palestinian</option>
+                                        <option value="Iraqi">Iraqi</option>
+                                        <option value="Bangladeshi">Bangladeshi</option>
+                                        <option value="Thai">Thai</option>
+                                        <option value="Vietnamese">Vietnamese</option>
+                                        <option value="Chinese">Chinese</option>
+                                        <option value="Japanese">Japanese</option>
+                                        <option value="Korean">Korean</option>
+                                        <option value="Turkish">Turkish</option>
+                                        <option value="Iranian">Iranian</option>
+                                        <option value="Afghan">Afghan</option>
+                                        <option value="Sri Lankan">Sri Lankan</option>
+                                        <option value="Nepali">Nepali</option>
+                                        <option value="Russian">Russian</option>
+                                        <option value="German">German</option>
+                                        <option value="French">French</option>
+                                        <option value="Italian">Italian</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="Greek">Greek</option>
+                                        <option value="Dutch">Dutch</option>
+                                        <option value="Belgian">Belgian</option>
+                                        <option value="Swedish">Swedish</option>
+                                        <option value="Norwegian">Norwegian</option>
+                                        <option value="Danish">Danish</option>
+                                        <option value="Polish">Polish</option>
+                                        <option value="Ukrainian">Ukrainian</option>
+                                        <option value="Czech">Czech</option>
+                                        <option value="Hungarian">Hungarian</option>
+                                        <option value="Romanian">Romanian</option>
+                                        <option value="Australian">Australian</option>
+                                        <option value="Canadian">Canadian</option>
+                                        <option value="New Zealander">New Zealander</option>
+                                        <option value="South African">South African</option>
+                                        <option value="Nigerian">Nigerian</option>
+                                        <option value="Ghanaian">Ghanaian</option>
+                                        <option value="Kenyan">Kenyan</option>
+                                        <option value="Portuguese">Portuguese</option>
+                                        <option value="Brazilian">Brazilian</option>
+                                        <option value="Mexican">Mexican</option>
+                                        <option value="Colombian">Colombian</option>
+                                        <option value="Argentinian">Argentinian</option>
+                                        <option value="Israeli">Israeli</option>
+                                        <option value="Other">Other</option>
+                                    </select>
                                 </div>
                             </div>
 

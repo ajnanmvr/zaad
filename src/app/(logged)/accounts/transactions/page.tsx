@@ -1,13 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect } from "react";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import TransactionList from "@/components/Tables/TransactionList";
 import Link from "next/link";
-import { FiBookOpen, FiCreditCard, FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2 } from "react-icons/fi";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FiTrendingUp, FiPlusCircle, FiDollarSign, FiTrash2, FiCreditCard, FiBarChart2 } from "react-icons/fi";
 import { FiArrowDownLeft } from "react-icons/fi";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 
-const TablesPage = () => {
+const TablesPageContent = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user } = useUserContext();
+
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canViewTransactions = hasPermission(permissions, "payments.view.transactions");
+  const canCreateTransactions = hasPermission(permissions, "payments.create.transactions");
+  const canViewOfficeRecords = hasPermission(permissions, "payments.view.office-records");
+  const canViewSelfTransfers = hasPermission(permissions, "payments.view.self-transfers");
+  const canViewLiability = hasPermission(permissions, "payments.view.liability-records");
+  const canViewCreditDebit = hasPermission(permissions, "payments.view.credit-debit-lists");
+  const canViewFinanceSummary = hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.finance") || hasPermission(permissions, "payments.view.reports");
+
+  useEffect(() => {
+    if (user && !canViewTransactions) {
+      router.push("/not-permitted");
+    }
+  }, [user, canViewTransactions, router]);
+
+  if (!user || !canViewTransactions) {
+    return (
+      <div className="flex min-h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  const categoryParam = searchParams.get("category");
+  const category = categoryParam === "office_records" || categoryParam === "liability" ? categoryParam : undefined;
 
   return (
     <>
@@ -29,35 +61,70 @@ const TablesPage = () => {
             Track all incoming and outgoing transactions with filters, quick actions, and clear client context.
           </p>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Scope</p>
-              <p className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">All Accounts</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-200/80 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Actions</p>
-              <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                <FiBookOpen />
-                Income / Expense
-              </p>
-            </div>
-            <div className="rounded-2xl border border-cyan-200/80 bg-white/80 p-4 dark:border-cyan-800/40 dark:bg-slate-900/70">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Review</p>
-              <p className="mt-1 inline-flex items-center gap-2 text-sm font-black text-cyan-600 dark:text-cyan-400">
-                <FiCreditCard />
-                Detailed History
-              </p>
-            </div>
-          </div>
-
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link
-              href="/accounts/add-record"
-              className="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-300"
-            >
-              <FiPlusCircle />
-              Add Record
-            </Link>
+            {canCreateTransactions && (
+              <Link
+                href="/accounts/add-record"
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-300 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-300"
+              >
+                <FiPlusCircle />
+                Add Record
+              </Link>
+            )}
+            {canViewOfficeRecords && (
+              <Link
+                href="/accounts/transactions/office"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <FiDollarSign />
+                Office Records
+              </Link>
+            )}
+            {canViewSelfTransfers && (
+              <Link
+                href="/accounts/transactions/self"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+              >
+                <FiDollarSign />
+                Self Transfers
+              </Link>
+            )}
+            {canViewLiability && (
+              <Link
+                href="/accounts/transactions/liability"
+                className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50 dark:border-violet-700 dark:bg-slate-900 dark:text-violet-300"
+              >
+                <FiArrowDownLeft />
+                Liability
+              </Link>
+            )}
+            {canViewCreditDebit && (
+              <Link
+                href="/accounts/transactions/credit-list"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <FiCreditCard />
+                Credit List
+              </Link>
+            )}
+            {canViewCreditDebit && (
+              <Link
+                href="/accounts/transactions/debit-list"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:bg-slate-900 dark:text-rose-300"
+              >
+                <FiArrowDownLeft />
+                Debit List
+              </Link>
+            )}
+            {canViewFinanceSummary && (
+              <Link
+                href="/accounts/transactions/analytics"
+                className="inline-flex items-center gap-2 rounded-xl border border-indigo-300 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-700 dark:bg-slate-900 dark:text-indigo-300"
+              >
+                <FiBarChart2 />
+                Finance Summary
+              </Link>
+            )}
             <Link
               href="/accounts/transactions/bin"
               className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300"
@@ -70,10 +137,16 @@ const TablesPage = () => {
       </section>
 
       <div className="mt-6">
-      <TransactionList />
+        <TransactionList category={category} />
       </div>
     </>
   );
 };
 
-export default TablesPage;
+export default function TablesPage() {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="text-sm text-slate-500">Loading...</div></div>}>
+      <TablesPageContent />
+    </Suspense>
+  );
+}

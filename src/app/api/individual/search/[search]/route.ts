@@ -3,6 +3,7 @@ import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import Individual from "@/models/individuals";
 import { NextRequest } from "next/server";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(
   request: NextRequest,
@@ -19,10 +20,14 @@ export async function GET(
 
     return Response.json(individuals, { status: 200 });
   } catch (error) {
-    console.error("Error fetching individuals:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching individuals:", error);
+    }
+
     return Response.json(
-      { error: "An error occurred while fetching individuals" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "An error occurred while fetching individuals") },
+      { status }
     );
   }
 }

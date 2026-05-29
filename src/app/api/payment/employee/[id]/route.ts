@@ -2,6 +2,7 @@ import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { listEmployeePaymentRecords } from "@/services/paymentService";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +11,25 @@ export async function GET(
   try {
     await connect();
     await requirePermission(request, "payments.read");
-    const response = await listEmployeePaymentRecords(params.id);
+    const searchParams = request.nextUrl.searchParams;
+    const response = await listEmployeePaymentRecords(params.id, {
+      pageNumber: Number(searchParams.get("page") || 0),
+      limit: Number(searchParams.get("limit") || 25),
+      sort: searchParams.get("sort"),
+      query: searchParams.get("q"),
+      method: searchParams.get("m"),
+      type: searchParams.get("t"),
+      status: searchParams.get("s"),
+      recordKind: searchParams.get("k"),
+      officeCategory: searchParams.get("oc"),
+      category: searchParams.get("category"),
+    });
     return Response.json(response, { status: 200 });
   } catch (error) {
-    return Response.json({ error }, { status: 401 });
+    const status = getServiceErrorStatus(error);
+    return Response.json(
+      { error: getServiceErrorMessage(error, "Failed to fetch employee payment records") },
+      { status }
+    );
   }
 }

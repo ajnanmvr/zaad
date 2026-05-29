@@ -1,6 +1,7 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission } from "@/auth/guards";
+import { hasPermission } from "@/auth/permissions";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 import Task from "@/models/tasks";
 
@@ -26,6 +27,9 @@ export async function GET(request: NextRequest) {
   try {
     await connect();
     const principal = await requireAnyPermission(request, [
+      "tasks.calendar.view",
+      "tasks.view.my",
+      "tasks.view.all",
       "tasks.read",
       "tasks.manage",
       "tasks.complete",
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
     const monthEnd = new Date(year, month + 1, 1, 0, 0, 0, 0);
 
-    const canManage = principal.permissions.includes("tasks.manage");
+    const canViewAll = hasPermission(principal.permissions, "tasks.view.all");
 
     const query: Record<string, unknown> = {
       published: true,
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    if (!canManage || scope === "mine" || !showAllUsers) {
+    if (!canViewAll || scope === "mine" || !showAllUsers) {
       query.assignedTo = principal.userId;
     }
 
@@ -67,3 +71,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

@@ -3,6 +3,7 @@ import { requirePermission } from "@/auth/guards";
 import { NextRequest } from "next/server";
 import { listArchivedDocuments } from "@/services/entityDocumentService";
 import { PAGINATION, parsePaginationParams } from "@/config/pagination";
+import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,10 +27,15 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching archived documents:", error);
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching archived documents:", error);
+    }
+
     return Response.json(
-      { error: "Error fetching archived documents" },
-      { status: 500 }
+      { error: getServiceErrorMessage(error, "Error fetching archived documents") },
+      { status }
     );
   }
 }
+

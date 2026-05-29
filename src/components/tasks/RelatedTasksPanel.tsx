@@ -29,6 +29,13 @@ const statusBadgeMap: Record<TaskStatus, string> = {
   cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
+const priorityBadgeMap: Record<TaskPriority, string> = {
+  low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  medium: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  high: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  urgent: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+};
+
 export default function RelatedTasksPanel({
   targetType,
   targetId,
@@ -105,7 +112,7 @@ export default function RelatedTasksPanel({
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4">
         {isLoading ? (
           <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
             Loading related tasks...
@@ -115,32 +122,71 @@ export default function RelatedTasksPanel({
             No tasks linked yet.
           </div>
         ) : (
-          tasks.map((task) => (
-            <div
-              key={task._id}
-              className="rounded-xl border border-slate-200 bg-white/90 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {task.title}
-                </p>
-                <span
-                  className={clsx(
-                    "rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize",
-                    statusBadgeMap[task.status],
-                  )}
-                >
-                  {task.status.replace("_", " ")}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <FiCalendar />
-                {task.dueDate
-                  ? `Due ${new Date(task.dueDate).toLocaleDateString()}`
-                  : "No due date"}
-              </div>
-            </div>
-          ))
+          <div className="max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/40">
+                <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <th className="min-w-[280px] px-4 pb-3 pt-3">Task</th>
+                  <th className="min-w-[120px] px-4 pb-3">Status</th>
+                  <th className="min-w-[120px] px-4 pb-3">Priority</th>
+                  <th className="min-w-[140px] px-4 pb-3">Due Date</th>
+                  <th className="min-w-[100px] px-4 pb-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task) => (
+                  <tr
+                    key={task._id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                  >
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {task.title}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={clsx(
+                          "rounded-full px-2 py-1 text-xs font-semibold capitalize",
+                          statusBadgeMap[task.status],
+                        )}
+                      >
+                        {task.status.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={clsx(
+                          "rounded-full px-2 py-1 text-xs font-semibold uppercase",
+                          priorityBadgeMap[task.priority],
+                        )}
+                      >
+                        {task.priority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      <span className="inline-flex items-center gap-1.5">
+                        <FiCalendar className="text-slate-400" />
+                        {task.dueDate
+                          ? new Date(task.dueDate).toLocaleDateString()
+                          : "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <Link
+                          href={`/tasks/${task._id}`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 dark:border-cyan-700 dark:text-cyan-300"
+                        >
+                          Open
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>

@@ -15,6 +15,8 @@ type MonthBucket = {
   count: number;
 };
 
+type DocumentCategory = "visa" | "license" | "other";
+
 function startOfDay(value: Date) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
@@ -47,6 +49,29 @@ function initRecentMonths(size: number, now: Date): string[] {
   });
 }
 
+function normalizeCategory(value: unknown): DocumentCategory {
+  if (typeof value !== "string") return "other";
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "visa" || normalized === "license") return normalized;
+  return "other";
+}
+
+async function runSafe<T>(
+  enabled: boolean,
+  runner: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  if (!enabled) {
+    return fallback;
+  }
+
+  try {
+    return await runner();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -54,8 +79,12 @@ export async function GET(request: NextRequest) {
     const principal = await requireAuth(request);
     const permissions = principal.permissions || [];
 
-    const canReadEntities = hasPermission(permissions, "entities.read");
-    const canReadDocuments = hasPermission(permissions, "documents.read");
+    const canReadEntities =
+      hasPermission(permissions, "entities.read") ||
+      hasPermission(permissions, "entities.write");
+    const canReadDocuments =
+      hasPermission(permissions, "documents.read") ||
+      hasPermission(permissions, "documents.write");
     const canReadTasks =
       hasPermission(permissions, "tasks.read") ||
       hasPermission(permissions, "tasks.manage") ||
@@ -82,14 +111,22 @@ export async function GET(request: NextRequest) {
       completedTaskCount,
       overdueTaskCount,
     ] = await Promise.all([
-      canReadEntities ? Company.countDocuments({ published: true }) : Promise.resolve(0),
-      canReadEntities ? Employee.countDocuments({ published: true }) : Promise.resolve(0),
-      canReadEntities ? Individual.countDocuments({ published: true }) : Promise.resolve(0),
-      canReadDocuments
-        ? EntityDocument.find({ archived: { $ne: true } }).select("issueDate expiryDate")
-        : Promise.resolve([]),
-      canReadTasks
-        ? Task.find({
+      runSafe(canReadEntities, () => Company.countDocuments({ published: true }), 0),
+      runSafe(canReadEntities, () => Employee.countDocuments({ published: true }), 0),
+      runSafe(canReadEntities, () => Individual.countDocuments({ published: true }), 0),
+      runSafe(
+        canReadDocuments,
+        () =>
+          EntityDocument.find({ archived: { $ne: true } })
+            .select("issueDate expiryDate documentTemplate createdAt updatedAt")
+            .populate("documentTemplate", "category")
+            .lean(),
+        [] as Array<any>,
+      ),
+      runSafe(
+        canReadTasks,
+        () =>
+          Task.find({
             published: true,
             assignedTo: principal.userId,
             status: { $nin: ["completed", "cancelled"] },
@@ -97,37 +134,50 @@ export async function GET(request: NextRequest) {
           })
             .select("title priority status dueDate")
             .sort({ dueDate: 1, priority: -1, createdAt: -1 })
-            .limit(6)
-        : Promise.resolve([]),
-      canReadTasks
-        ? Task.countDocuments({
+            .limit(6),
+        [] as Array<any>,
+      ),
+      runSafe(
+        canReadTasks,
+        () =>
+          Task.countDocuments({
             published: true,
             assignedTo: principal.userId,
             status: { $nin: ["completed", "cancelled"] },
-          })
-        : Promise.resolve(0),
-      canReadTasks
-        ? Task.countDocuments({
+          }),
+        0,
+      ),
+      runSafe(
+        canReadTasks,
+        () =>
+          Task.countDocuments({
             published: true,
             assignedTo: principal.userId,
             status: "in_progress",
-          })
-        : Promise.resolve(0),
-      canReadTasks
-        ? Task.countDocuments({
+          }),
+        0,
+      ),
+      runSafe(
+        canReadTasks,
+        () =>
+          Task.countDocuments({
             published: true,
             assignedTo: principal.userId,
             status: "completed",
-          })
-        : Promise.resolve(0),
-      canReadTasks
-        ? Task.countDocuments({
+          }),
+        0,
+      ),
+      runSafe(
+        canReadTasks,
+        () =>
+          Task.countDocuments({
             published: true,
             assignedTo: principal.userId,
             status: { $nin: ["completed", "cancelled"] },
             dueDate: { $lt: now },
-          })
-        : Promise.resolve(0),
+          }),
+        0,
+      ),
     ]);
 
     const documentStats = {
@@ -142,10 +192,22 @@ export async function GET(request: NextRequest) {
     const monthlyRenewalsMap = new Map<string, number>();
     recentMonthKeys.forEach((key) => monthlyRenewalsMap.set(key, 0));
 
-    for (const row of documentsRaw as Array<{ issueDate?: string; expiryDate?: string }>) {
+    const categoryRenewalsMap = new Map<string, number>();
+    categoryRenewalsMap.set("visa", 0);
+    categoryRenewalsMap.set("license", 0);
+    categoryRenewalsMap.set("other", 0);
+
+    const categoryExpiredMap = new Map<string, number>();
+    categoryExpiredMap.set("visa", 0);
+    categoryExpiredMap.set("license", 0);
+    categoryExpiredMap.set("other", 0);
+
+    for (const row of documentsRaw as Array<{ issueDate?: string; expiryDate?: string; createdAt?: string; updatedAt?: string; documentTemplate?: any }>) {
       const status = calculateStatus(row.expiryDate || "");
       const expiryDate = parseDate(row.expiryDate);
-      const issueDate = parseDate(row.issueDate);
+      const createdAt = parseDate(row.createdAt);
+      const updatedAt = parseDate(row.updatedAt);
+      const isEdited = Boolean(createdAt && updatedAt && updatedAt.getTime() > createdAt.getTime());
 
       documentStats.total += 1;
 
@@ -153,7 +215,7 @@ export async function GET(request: NextRequest) {
       if (status === "renewal") documentStats.renewal += 1;
       if (status === "valid") documentStats.valid += 1;
 
-      if (issueDate && issueDate >= monthStart && issueDate < monthEnd) {
+      if (isEdited && updatedAt && updatedAt >= monthStart && updatedAt < monthEnd) {
         documentStats.renewedThisMonth += 1;
       }
 
@@ -161,13 +223,44 @@ export async function GET(request: NextRequest) {
         documentStats.expiringNext30Days += 1;
       }
 
-      if (issueDate) {
-        const key = formatMonthKey(issueDate);
+      const normalizedCategory = normalizeCategory((row.documentTemplate as any)?.category);
+      if (status === "renewal") {
+        categoryRenewalsMap.set(normalizedCategory, (categoryRenewalsMap.get(normalizedCategory) || 0) + 1);
+      } else if (status === "expired") {
+        categoryExpiredMap.set(normalizedCategory, (categoryExpiredMap.get(normalizedCategory) || 0) + 1);
+      }
+
+      if (isEdited && updatedAt) {
+        const key = formatMonthKey(updatedAt);
         if (monthlyRenewalsMap.has(key)) {
           monthlyRenewalsMap.set(key, (monthlyRenewalsMap.get(key) || 0) + 1);
         }
       }
     }
+
+    const categoryRenewals = [
+      { category: "Visa Related", count: categoryRenewalsMap.get("visa") || 0 },
+      { category: "License Related", count: categoryRenewalsMap.get("license") || 0 },
+      { category: "Other", count: categoryRenewalsMap.get("other") || 0 },
+    ];
+
+    const categoryExpiryRenewalBreakdown = [
+      {
+        category: "Visa Related",
+        expired: categoryExpiredMap.get("visa") || 0,
+        renewal: categoryRenewalsMap.get("visa") || 0,
+      },
+      {
+        category: "License Related",
+        expired: categoryExpiredMap.get("license") || 0,
+        renewal: categoryRenewalsMap.get("license") || 0,
+      },
+      {
+        category: "Other",
+        expired: categoryExpiredMap.get("other") || 0,
+        renewal: categoryRenewalsMap.get("other") || 0,
+      },
+    ];
 
     const monthlyRenewals: MonthBucket[] = recentMonthKeys.map((key) => ({
       month: formatMonthLabel(key),
@@ -183,6 +276,8 @@ export async function GET(request: NextRequest) {
         },
         documentStats,
         monthlyRenewals,
+        categoryRenewals,
+        categoryExpiryRenewalBreakdown,
         upcomingTasks: (upcomingTasks as Array<any>).map((task) => ({
           id: task._id.toString(),
           title: task.title,
@@ -200,9 +295,15 @@ export async function GET(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const status = getServiceErrorStatus(error);
+    if (status >= 500) {
+      console.error("Error fetching dashboard overview:", error);
+    }
+
     return Response.json(
       { error: getServiceErrorMessage(error, "Failed to fetch dashboard overview") },
-      { status: getServiceErrorStatus(error) },
+      { status },
     );
   }
 }
+

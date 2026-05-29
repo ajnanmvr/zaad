@@ -13,7 +13,7 @@ const AddUserPage = () => {
 
     useEffect(() => {
         if (user && !canCreateUsers) {
-            router.push("/");
+            router.push("/not-permitted");
         }
     }, [user, canCreateUsers, router]);
 
