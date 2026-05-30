@@ -5,6 +5,8 @@ import ReactQueryProvider from "@/providers/ReactQueryProvider";
 import { Toaster } from "react-hot-toast";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
+export const dynamic = "force-dynamic";
+
 
 export default function RootLayout({
   children,
