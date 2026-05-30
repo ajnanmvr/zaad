@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useUserContext } from "@/contexts/UserContext";
+import { hasPermission } from "@/auth/permissions";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import AdminRefreshButton from "@/components/common/AdminRefreshButton";
+import { FiRefreshCw } from "react-icons/fi";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
@@ -73,6 +78,12 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
       return data;
     },
   });
+
+  const queryClient = useQueryClient();
+  const { user } = useUserContext();
+  const permissions = user?.permissions && Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
+  const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const baseRows = useMemo(() => {
     const rows = isCredit ? data?.summary?.creditRows || [] : data?.summary?.debitRows || [];
@@ -163,12 +174,20 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
               Clients with {isCredit ? "positive" : "negative"} balance. Zero balance is hidden.
             </p>
           </div>
-          <Link
-            href="/accounts/transactions/analytics"
-            className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
-          >
-            <FiTrendingUp /> Finance Summary
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/accounts/transactions/analytics"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300"
+            >
+              <FiTrendingUp /> Finance Summary
+            </Link>
+            {canAdminRefresh && (
+              <AdminRefreshButton
+                invalidateKeys={[["entity-record-stats", mode]]}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+              />
+            )}
+          </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">

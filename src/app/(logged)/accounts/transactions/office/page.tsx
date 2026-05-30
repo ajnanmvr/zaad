@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import AdminRefreshButton from "@/components/common/AdminRefreshButton";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { FiFilter, FiPlusCircle, FiRefreshCw, FiChevronDown } from "react-icons/fi";
@@ -118,6 +120,9 @@ export default function OfficeRecordsPage() {
   const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
   const canViewOfficeRecords = hasPermission(permissions, "payments.view.office-records");
   const canCreateTransactions = hasPermission(permissions, "payments.create.transactions");
+  const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const filterDisplay = useMemo(() => {
     if (filter.mode === "alltime") {
@@ -296,6 +301,13 @@ export default function OfficeRecordsPage() {
               >
                 <FiPlusCircle /> Expense
               </Link>
+            )}
+            {canAdminRefresh && (
+              <AdminRefreshButton
+                invalidateKeys={["office-records-page-summary", "office-expense-category-options"]}
+                label="Refresh Precomputations"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+              />
             )}
           </div>
         </div>
