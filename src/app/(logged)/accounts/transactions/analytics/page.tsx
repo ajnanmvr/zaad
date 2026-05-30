@@ -1,16 +1,17 @@
 "use client";
 
+import { hasPermission } from "@/auth/permissions";
+import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
+import AdminRefreshButton from "@/components/common/AdminRefreshButton";
+import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
+import { useUserContext } from "@/contexts/UserContext";
+import { formatDubaiMonthLabel } from "@/utils/dubaiTime";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
-import { useUserContext } from "@/contexts/UserContext";
-import { hasPermission } from "@/auth/permissions";
-import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
-import { formatDubaiMonthLabel } from "@/utils/dubaiTime";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
   FiActivity,
@@ -356,6 +357,7 @@ export default function FinanceAnalyticsPage() {
   const { user } = useUserContext();
   const permissions = user?.permissions && Array.isArray(user.permissions) ? (user.permissions as string[]) : [];
   const canViewFinanceSummary = user ? hasPermission(permissions, "payments.view.finance-summary-page") || hasPermission(permissions, "payments.view.finance") || hasPermission(permissions, "payments.view.reports") : false;
+  const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
 
   const LIMITS = {
     paymentMethodRows: 6,
@@ -497,14 +499,12 @@ export default function FinanceAnalyticsPage() {
             >
               <FiFileText /> Reports
             </Link>
-            {process.env.NODE_ENV === "development" && (
-              <button
-                type="button"
-                onClick={() => void handleRefresh()}
+            {canAdminRefresh && (
+              <AdminRefreshButton
+                invalidateKeys={["entity-record-stats", "finance-summary-monthly-list", "finance-summary-monthly", "finance-summary"]}
+                label="Refresh Precomputations"
                 className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-white px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
-              >
-                <FiBarChart2 /> Refresh Precomputations
-              </button>
+              />
             )}
             <Link
               href="/accounts/transactions"

@@ -18,7 +18,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { hasPermission } from "@/auth/permissions";
+import { FiRefreshCw } from "react-icons/fi";
 import toast from "react-hot-toast";
+import AdminRefreshButton from "@/components/common/AdminRefreshButton";
 import {
   FiArrowDownLeft,
   FiArrowRight,
@@ -339,6 +342,9 @@ const TransactionList = ({
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { user } = useUserContext();
+  const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
+  const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const normalizedRole = (user?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
   const isAdmin = ["admin", "superadmin"].includes(normalizedRole);
 
@@ -1275,6 +1281,13 @@ const TransactionList = ({
                 onExport={handleExport}
                 selectedCount={selectedRecordIds.length}
               />
+
+              {canAdminRefresh && (
+                <AdminRefreshButton
+                  invalidateKeys={["payment", ["entity-record-stats"]]}
+                  className="order-3 inline-flex h-10 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              )}
 
               <button
                 onClick={() => setFilterOpen(true)}

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { findAllMonthlyFinanceStats } from "@/repositories/paymentRepository";
-import { backfillMonthlyFinanceStats } from "@/services/paymentService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
@@ -13,9 +12,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = Number(searchParams.get("limit") || "0");
 
-    // Self-heal the cached monthly stats so analytics always reflect the full
-    // historical dataset instead of only the months that were previously computed.
-    await backfillMonthlyFinanceStats();
+    // Return cached stats immediately. Backfills should be triggered
+    // explicitly by an admin action — do not compute on read requests.
 
     const stats = await findAllMonthlyFinanceStats(true);
     const data = limit > 0 ? stats.slice(0, limit) : stats;
