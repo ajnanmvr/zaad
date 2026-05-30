@@ -61,7 +61,8 @@ export default function AnalyticsPaymentMethodsPage() {
     () => [...(data?.summary || [])].sort((a, b) => a.year - b.year || a.month - b.month),
     [data?.summary],
   );
-  const latest = sorted[0];
+  // `sorted` is oldest -> newest, so latest month is the last item.
+  const latest = sorted[sorted.length - 1];
   const rows = useMemo(
     () => [...(latest?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)),
     [latest?.paymentMethods],
