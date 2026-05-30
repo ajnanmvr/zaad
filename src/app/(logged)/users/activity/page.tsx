@@ -6,6 +6,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useQuery } from "@tanstack/react-query";
 import { useUserContext } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 
 const actions = [
   "",
@@ -97,7 +98,7 @@ const ActivityAuditPage = () => {
                   <td className="px-3 py-2 font-medium">{row.action}</td>
                   <td className="px-3 py-2">{row.targetUser?.username || "---"}</td>
                   <td className="px-3 py-2">{row.performedBy?.username || "---"}</td>
-                  <td className="px-3 py-2">{new Date(row.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-2">{formatDubaiDate(row.createdAt, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
                 </tr>
               ))}
             </tbody>

@@ -61,9 +61,10 @@ export default function MonthlyStatsPage({
   });
 
   const monthName = useMemo(() => {
-    return new Date(displayYear, displayMonth - 1).toLocaleDateString("en-US", {
+    return new Date(Date.UTC(displayYear, displayMonth - 1, 1)).toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
+      timeZone: "Asia/Dubai",
     });
   }, [displayYear, displayMonth]);
 

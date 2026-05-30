@@ -10,12 +10,10 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { FiArrowRight, FiArrowLeft, FiChevronsRight, FiFilter, FiRefreshCw, FiChevronDown } from "react-icons/fi";
 import { useUserContext } from "@/contexts/UserContext";
 import { hasPermission } from "@/auth/permissions";
+import { formatDubaiMonthLabel, getDubaiCurrentYearMonth } from "@/utils/dubaiTime";
 
-const currentMonthYearLabel = new Date().toLocaleString("en-US", {
-  month: "long",
-  year: "numeric",
-});
-const currentYear = new Date().getFullYear();
+const { year: currentYear, month: currentMonth } = getDubaiCurrentYearMonth();
+const currentMonthYearLabel = formatDubaiMonthLabel(currentYear, currentMonth);
 const startYear = 2024;
 const yearOptions = Array.from(
   { length: Math.max(currentYear - startYear + 1, 1) },

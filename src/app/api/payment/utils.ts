@@ -1,6 +1,5 @@
-import { format, toZonedTime } from "date-fns-tz";
-
-const DUBAI_TIME_ZONE = "Asia/Dubai";
+import { format } from "date-fns-tz";
+import { DUBAI_TIME_ZONE } from "@/utils/dubaiTime";
 
 export const PAYMENT_POPULATE_FIELDS = [
   "createdBy",
@@ -46,7 +45,6 @@ export function getRecordClient(record: any) {
 }
 
 export function mapRecordListItem(record: any) {
-  const createdAtInDubai = toZonedTime(record.createdAt, DUBAI_TIME_ZONE);
   const now = new Date();
   const diffInMs = now.getTime() - new Date(record.createdAt).getTime();
   const diffInSeconds = Math.floor(diffInMs / 1000);
@@ -74,7 +72,7 @@ export function mapRecordListItem(record: any) {
     return `${diffInYears} year${diffInYears === 1 ? "" : "s"} ago`;
   })();
 
-  const dateTime = format(createdAtInDubai, "MMM-dd hh:mma", {
+  const dateTime = format(record.createdAt, "MMM-dd hh:mma", {
     timeZone: DUBAI_TIME_ZONE,
   });
 

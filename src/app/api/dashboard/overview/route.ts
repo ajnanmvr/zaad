@@ -9,6 +9,7 @@ import EntityDocument from "@/models/entityDocuments";
 import Task from "@/models/tasks";
 import calculateStatus from "@/utils/calculateStatus";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
+import { formatDubaiMonthLabel, getDubaiCurrentYearMonth } from "@/utils/dubaiTime";
 
 type MonthBucket = {
   month: string;
@@ -36,10 +37,7 @@ function formatMonthKey(date: Date) {
 
 function formatMonthLabel(monthKey: string) {
   const [yearRaw, monthRaw] = monthKey.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw) - 1;
-  const date = new Date(year, month, 1);
-  return date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+  return formatDubaiMonthLabel(Number(yearRaw), Number(monthRaw));
 }
 
 function initRecentMonths(size: number, now: Date): string[] {
@@ -90,7 +88,8 @@ export async function GET(request: NextRequest) {
       hasPermission(permissions, "tasks.manage") ||
       hasPermission(permissions, "tasks.complete");
 
-    const now = new Date();
+    const { year: currentYear, month: currentMonth } = getDubaiCurrentYearMonth();
+    const now = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
     const today = startOfDay(now);
     const next30Days = new Date(today);
     next30Days.setDate(next30Days.getDate() + 30);

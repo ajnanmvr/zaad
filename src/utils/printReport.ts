@@ -52,7 +52,7 @@ export function printElementById(elementId: string, reportTitle: string) {
   </head>
   <body>
     <h1 class="report-print-title">${reportTitle}</h1>
-    <p class="report-print-meta">Generated on ${new Date().toLocaleString()}</p>
+    <p class="report-print-meta">Generated on ${new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" }).format(new Date())}</p>
     <div>${reportRoot.innerHTML}</div>
   </body>
 </html>`);

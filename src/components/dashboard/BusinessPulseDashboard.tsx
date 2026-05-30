@@ -20,18 +20,13 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import PrintReportButton from "@/components/common/PrintReportButton";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 const formatTaskDate = (value?: string | null) => {
   if (!value) return "No due date";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "No due date";
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatDubaiDate(value);
 };
 
 const statusBadgeMap: Record<string, string> = {

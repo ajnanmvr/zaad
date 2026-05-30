@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -136,9 +137,7 @@ const categoryBadgeMap: Record<Exclude<TaskCategory, "">, string> = {
 
 function parseIsoDate(value?: string | null) {
   if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
+  return formatDubaiDate(value);
 }
 
 function normalizeTaskCategory(value?: string | null): TaskCategory {
@@ -870,7 +869,7 @@ export default function TaskWorkspace({
           {selectedDate ? (
             <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 dark:border-cyan-800/50 dark:bg-cyan-900/20 dark:text-cyan-300">
               <FiCalendar />
-              Due on {new Date(`${selectedDate}T00:00:00`).toLocaleDateString()}
+              Due on {formatDubaiDate(`${selectedDate}T00:00:00`)}
               <button
                 type="button"
                 onClick={clearDateFilter}
@@ -1223,7 +1222,7 @@ export default function TaskWorkspace({
 
             {selectedDate ? (
               <div className="mb-3 rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-emerald-50 px-3 py-3 text-xs font-semibold text-cyan-800 dark:border-cyan-800/40 dark:from-cyan-900/20 dark:to-emerald-900/10 dark:text-cyan-300">
-                {new Date(`${selectedDate}T00:00:00`).toLocaleDateString()}
+                {formatDubaiDate(`${selectedDate}T00:00:00`)}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"

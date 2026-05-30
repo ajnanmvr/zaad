@@ -3,6 +3,7 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
+import { formatDubaiMonthLabel, getDubaiCurrentYearMonth } from "@/utils/dubaiTime";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ function toInputDate(date: Date) {
 }
 
 function formatMonthLabel(year: number, month: number) {
-  return new Date(year, month - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return formatDubaiMonthLabel(year, month);
 }
 
 function buildMonthOptions(year: number, now: Date) {
@@ -39,7 +40,10 @@ function getFiscalYearOptions(now: Date) {
 }
 
 export default function FinanceReportsPage() {
-  const now = useMemo(() => new Date(), []);
+  const now = useMemo(() => {
+    const { year, month } = getDubaiCurrentYearMonth();
+    return new Date(Date.UTC(year, month - 1, 1));
+  }, []);
   const { user, isUserLoading } = useUserContext();
   const router = useRouter();
   const permissions = Array.isArray(user?.permissions) ? (user.permissions as string[]) : [];
@@ -230,7 +234,7 @@ export default function FinanceReportsPage() {
         </div>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-400">
-          Available data starts from <span className="font-bold text-slate-900 dark:text-slate-100">July 2024</span> and ends at <span className="font-bold text-slate-900 dark:text-slate-100">{now.toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>.
+          Available data starts from <span className="font-bold text-slate-900 dark:text-slate-100">July 2024</span> and ends at <span className="font-bold text-slate-900 dark:text-slate-100">{formatDubaiMonthLabel(now.getFullYear(), now.getMonth() + 1)}</span>.
         </div>
       </section>
 

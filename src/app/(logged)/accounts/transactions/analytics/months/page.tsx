@@ -45,7 +45,11 @@ type MonthlyStatsListResponse = {
 const formatCurrency = (value: number) => `AED ${Number(value || 0).toFixed(2)}`;
 
 const monthLabel = (month: number, year: number) =>
-  new Date(year, month - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Dubai",
+  });
 
 export default function AnalyticsMonthsPage() {
   const { data, isLoading, isError } = useQuery<MonthlyStatsListResponse>({
