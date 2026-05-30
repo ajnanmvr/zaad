@@ -1,5 +1,17 @@
 import FinanceReportView from "@/components/Reports/FinanceReportView";
 import { redirect } from "next/navigation";
+import { getDubaiCurrentYearMonth, getDubaiDateParts } from "@/utils/dubaiTime";
+
+function formatDubaiInputDate(date: Date) {
+  const { year, month, day } = getDubaiDateParts(date);
+  const monthText = String(month).padStart(2, "0");
+  const dayText = String(day).padStart(2, "0");
+  return `${year}-${monthText}-${dayText}`;
+}
+
+function buildDubaiDateString(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
 
 type PageProps = {
   searchParams?: {
@@ -14,8 +26,7 @@ type PageProps = {
 function resolveRange(searchParams?: PageProps["searchParams"]) {
   const mode = String(searchParams?.mode || "month").trim();
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const { year: currentYear, month: currentMonth } = getDubaiCurrentYearMonth();
 
   if (mode === "month") {
     const year = Number(searchParams?.year || currentYear);
@@ -24,16 +35,19 @@ function resolveRange(searchParams?: PageProps["searchParams"]) {
       return null;
     }
 
-    const start = new Date(year, month - 1, 1);
-    const end = new Date(year, month, 0);
-    const cappedEnd = end > now ? now : end;
-    if (start < new Date(2024, 6, 1)) return null;
-    if (start > now) return null;
+    const start = buildDubaiDateString(year, month, 1);
+    const end = month === 12
+      ? buildDubaiDateString(year + 1, 1, 1)
+      : buildDubaiDateString(year, month + 1, 1);
+    const today = formatDubaiInputDate(now);
+    const cappedEnd = end > today ? today : end;
+    if (start < "2024-07-01") return null;
+    if (start > today) return null;
 
     return {
       mode: "month" as const,
-      from: start.toISOString().slice(0, 10),
-      to: cappedEnd.toISOString().slice(0, 10),
+      from: start,
+      to: cappedEnd,
       year: String(year),
       month: String(month).padStart(2, "0"),
     };
@@ -43,14 +57,15 @@ function resolveRange(searchParams?: PageProps["searchParams"]) {
     const year = Number(searchParams?.year || currentYear);
     if (!Number.isFinite(year) || year < 2024 || year > currentYear) return null;
 
-    const start = new Date(year, 0, 1);
-    const end = new Date(year, 11, 31);
-    const cappedEnd = end > now ? now : end;
+    const start = buildDubaiDateString(year, 1, 1);
+    const end = buildDubaiDateString(year + 1, 1, 1);
+    const today = formatDubaiInputDate(now);
+    const cappedEnd = end > today ? today : end;
 
     return {
       mode: "year" as const,
-      from: start.toISOString().slice(0, 10),
-      to: cappedEnd.toISOString().slice(0, 10),
+      from: start,
+      to: cappedEnd,
       year: String(year),
     };
   }
@@ -59,14 +74,15 @@ function resolveRange(searchParams?: PageProps["searchParams"]) {
     const startYear = Number(searchParams?.year || (currentMonth >= 7 ? currentYear : currentYear - 1));
     if (!Number.isFinite(startYear) || startYear < 2024 || startYear > (currentMonth >= 7 ? currentYear : currentYear - 1)) return null;
 
-    const start = new Date(startYear, 6, 1);
-    const end = new Date(startYear + 1, 5, 30);
-    const cappedEnd = end > now ? now : end;
+    const start = buildDubaiDateString(startYear, 7, 1);
+    const end = buildDubaiDateString(startYear + 1, 7, 1);
+    const today = formatDubaiInputDate(now);
+    const cappedEnd = end > today ? today : end;
 
     return {
       mode: "financial-year" as const,
-      from: start.toISOString().slice(0, 10),
-      to: cappedEnd.toISOString().slice(0, 10),
+      from: start,
+      to: cappedEnd,
       year: String(startYear),
     };
   }
@@ -75,9 +91,9 @@ function resolveRange(searchParams?: PageProps["searchParams"]) {
     const from = String(searchParams?.from || "").trim();
     const to = String(searchParams?.to || "").trim();
     if (!from || !to) return null;
-    if (new Date(from) > new Date(to)) return null;
+    if (from > to) return null;
     if (from < "2024-07-01") return null;
-    if (to > now.toISOString().slice(0, 10)) return null;
+    if (to > formatDubaiInputDate(now)) return null;
 
     return { mode: "custom" as const, from, to };
   }

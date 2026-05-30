@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FiCalendar, FiLink2, FiPlus, FiTarget } from "react-icons/fi";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 
 type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
@@ -167,9 +168,7 @@ export default function RelatedTasksPanel({
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1.5">
                         <FiCalendar className="text-slate-400" />
-                        {task.dueDate
-                          ? new Date(task.dueDate).toLocaleDateString()
-                          : "-"}
+                        {task.dueDate ? formatDubaiDate(task.dueDate) : "-"}
                       </span>
                     </td>
                     <td className="px-4 py-3">

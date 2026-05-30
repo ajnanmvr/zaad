@@ -1,4 +1,6 @@
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
+import { toZonedTime } from "date-fns-tz";
+import { DUBAI_TIME_ZONE, getDubaiCurrentYearMonth, getDubaiMonthRange } from "@/utils/dubaiTime";
 import {
   aggregateEntityRecordStatsByEntityIds,
   aggregateLiabilityEntityStatsByKeys,
@@ -2195,18 +2197,17 @@ export async function recoverPaymentRecord(id: string, principal: TPrincipal) {
  */
 export async function computeMonthlyFinanceStats(year?: number, month?: number) {
   // Determine the month to compute
-  const now = new Date();
-  const computeYear = year || now.getFullYear();
-  const computeMonth = month || now.getMonth() + 1;
+  const currentBusinessMonth = getDubaiCurrentYearMonth();
+  const computeYear = year || currentBusinessMonth.year;
+  const computeMonth = month || currentBusinessMonth.month;
 
   // Validate month is 1-12
   if (computeMonth < 1 || computeMonth > 12) {
     throw new Error(`Invalid month: ${computeMonth}. Month must be between 1 and 12`);
   }
 
-  // Calculate month boundaries
-  const monthStart = new Date(computeYear, computeMonth - 1, 1, 0, 0, 0, 0);
-  const monthEnd = new Date(computeYear, computeMonth, 1, 0, 0, 0, 0);
+  // Calculate month boundaries in the fixed business timezone so prod/dev match.
+  const { monthStart, monthEnd } = getDubaiMonthRange(computeYear, computeMonth);
 
   const dateMatch = {
     createdAt: {
@@ -2466,7 +2467,7 @@ export async function computeMonthlyFinanceStats(year?: number, month?: number) 
  * @returns { totalMonths, computedMonths, errors, summary }
  */
 export async function backfillMonthlyFinanceStats(startYear?: number, startMonth?: number) {
-  const now = new Date();
+  const currentBusinessMonth = getDubaiCurrentYearMonth();
   
   // Find the earliest record in the database
   const earliestRecord = await findOneRecord({ deletedAt: null }, "createdAt", { createdAt: 1 });
@@ -2480,36 +2481,46 @@ export async function backfillMonthlyFinanceStats(startYear?: number, startMonth
   }
 
   // Determine start date
-  const earliestDate = new Date(earliestRecord.createdAt);
-  let startDate: Date;
+  const earliestDateInDubai = toZonedTime(new Date(earliestRecord.createdAt), DUBAI_TIME_ZONE);
+  let startYearValue: number;
+  let startMonthValue: number;
 
   if (startYear && startMonth) {
     if (startMonth < 1 || startMonth > 12) {
       throw new Error("Invalid month. Must be between 1 and 12");
     }
-    startDate = new Date(startYear, startMonth - 1, 1);
+    startYearValue = startYear;
+    startMonthValue = startMonth;
   } else {
     // Start from the month of the earliest record
-    startDate = new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
+    startYearValue = earliestDateInDubai.getFullYear();
+    startMonthValue = earliestDateInDubai.getMonth() + 1;
   }
 
-  // Generate all months between startDate and current month
+  // Generate all months between the start month and current business month.
   const months: Array<{ year: number; month: number }> = [];
-  let currentDate = new Date(startDate);
+  let cursorYear = startYearValue;
+  let cursorMonth = startMonthValue;
 
-  while (currentDate < now) {
+  while (
+    cursorYear < currentBusinessMonth.year ||
+    (cursorYear === currentBusinessMonth.year && cursorMonth <= currentBusinessMonth.month)
+  ) {
     months.push({
-      year: currentDate.getFullYear(),
-      month: currentDate.getMonth() + 1,
+      year: cursorYear,
+      month: cursorMonth,
     });
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
 
-  // Also include current month
-  months.push({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-  });
+    if (cursorYear === currentBusinessMonth.year && cursorMonth === currentBusinessMonth.month) {
+      break;
+    }
+
+    cursorMonth += 1;
+    if (cursorMonth > 12) {
+      cursorMonth = 1;
+      cursorYear += 1;
+    }
+  }
 
   // Remove duplicates
   const uniqueMonths = Array.from(

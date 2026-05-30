@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useUserContext } from "@/contexts/UserContext";
 import { hasPermission } from "@/auth/permissions";
 import type { ReactNode } from "react";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 import {
   FiClipboard,
   FiEdit2,
@@ -102,12 +103,7 @@ export function resolveAvatarColorWithFallback(preferredColor?: string, seed?: s
 
 export function formatDate(value?: string) {
   if (!value) return "-";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString();
+  return formatDubaiDate(value);
 }
 
 export function getEntitySectionLinks(entityType: EntityType, id: string): EntityProfileLink[] {

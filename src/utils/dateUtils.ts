@@ -1,23 +1,19 @@
+import { DUBAI_TIME_ZONE, formatDubaiDate, formatDubaiDateTime, getDubaiNow } from "@/utils/dubaiTime";
+
 /**
- * Formats a date string to a localized format
+ * Formats a date string to a localized format in Dubai time.
  * @param dateString - The date string to format
  * @param options - Optional formatting options
  * @returns Formatted date string or "N/A" for invalid dates
  */
-export function formatDate(
-    dateString: string | null | undefined,
-    options: Intl.DateTimeFormatOptions = {
+export function formatDate(dateString: string | null | undefined): string {
+    const formatted = formatDubaiDate(dateString, {
         day: "2-digit",
         month: "short",
-        year: "numeric"
-    }
-): string {
-    if (!dateString) return "N/A";
+        year: "numeric",
+    });
 
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "N/A";
-
-    return date.toLocaleDateString("en-GB", options);
+    return formatted === "---" ? "N/A" : formatted;
 }
 
 /**
@@ -26,13 +22,8 @@ export function formatDate(
  * @returns Formatted date and time string or "N/A" for invalid dates
  */
 export function formatDateTime(dateString: string | null | undefined): string {
-    return formatDate(dateString, {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+    const formatted = formatDubaiDateTime(dateString);
+    return formatted === "---" ? "N/A" : formatted;
 }
 
 /**
@@ -46,12 +37,13 @@ export function formatRelativeDate(dateString: string | null | undefined): strin
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "N/A";
 
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
+    const now = getDubaiNow();
+    const dubaiDate = new Date(date.toLocaleString("en-US", { timeZone: DUBAI_TIME_ZONE }));
+    const diffInMs = now.getTime() - dubaiDate.getTime();
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-    if (diffInDays === 0) return "Today";
-    if (diffInDays === 1) return "Yesterday";
+    if (now.toDateString() === dubaiDate.toDateString()) return "Today";
+    if (now.getTime() - dubaiDate.getTime() < 2 * 24 * 60 * 60 * 1000 && diffInDays >= 1) return "Yesterday";
     if (diffInDays < 7) return `${diffInDays} days ago`;
     if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
     if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;

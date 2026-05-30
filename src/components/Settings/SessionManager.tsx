@@ -5,6 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FiMonitor, FiTrash2, FiLogOut } from "react-icons/fi";
+import { formatDubaiDateTime } from "@/utils/dubaiTime";
 
 type UserSessionItem = {
   id: string;
@@ -21,11 +22,7 @@ type SessionsResponse = {
 };
 
 function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "---";
-  }
-  return date.toLocaleString();
+  return formatDubaiDateTime(value);
 }
 
 const SessionManager = () => {

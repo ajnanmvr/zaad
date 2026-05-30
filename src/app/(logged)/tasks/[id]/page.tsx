@@ -19,6 +19,7 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 import toast from "react-hot-toast";
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
@@ -102,9 +103,7 @@ function normalizeTaskCategory(value?: string | null): TaskCategory {
 
 function parseIsoDate(value?: string | null) {
   if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
+  return formatDubaiDate(value);
 }
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {

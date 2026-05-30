@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserContext } from "@/contexts/UserContext";
+import { formatDubaiDateTime } from "@/utils/dubaiTime";
 
 type TaskNotification = {
   _id: string;
@@ -205,9 +206,7 @@ const DropdownNotification = () => {
                       <span className="text-black dark:text-white">{item.title}</span>
                       {item.message ? ` - ${item.message}` : ""}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(item.createdAt).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{formatDubaiDateTime(item.createdAt)}</p>
                   </Link>
                 </li>
               );

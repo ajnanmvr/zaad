@@ -10,6 +10,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
 import { hasPermission } from "@/auth/permissions";
 import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
+import { formatDubaiMonthLabel } from "@/utils/dubaiTime";
 import toast from "react-hot-toast";
 import {
   FiActivity,
@@ -64,8 +65,7 @@ type MonthlyStatsListResponse = {
 
 const formatCurrency = (value: number) => `AED ${Number(value || 0).toFixed(2)}`;
 
-const monthLabel = (month: number, year: number) =>
-  new Date(year, month - 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+const monthLabel = (month: number, year: number) => formatDubaiMonthLabel(year, month);
 
 function MetricCard({
   title,

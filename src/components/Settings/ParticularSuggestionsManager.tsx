@@ -14,6 +14,7 @@ import {
   FiTrash2,
   FiX,
 } from "react-icons/fi";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 
 type ParticularCategory =
   | "office_records"
@@ -465,9 +466,7 @@ export default function ParticularSuggestionsManager() {
                             {suggestion.published ? "✓" : "-"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                          {new Date(suggestion.updatedAt).toLocaleDateString()}
-                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{formatDubaiDate(suggestion.updatedAt)}</td>
                         <td className="px-4 py-3 text-center">
                           <div className="inline-flex gap-2">
                             <button

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDubaiDate } from "@/utils/dubaiTime";
 import {
   FiAlertCircle,
   FiEdit2,
@@ -593,9 +594,7 @@ function TypePlatformManager({
                   )}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {item.createdAt
-                    ? `Created: ${new Date(item.createdAt).toLocaleDateString()}`
-                    : ""}
+                  {item.createdAt ? `Created: ${formatDubaiDate(item.createdAt)}` : ""}
                 </p>
                 {type === "payment-status" && item.appliesTo ? (
                   <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">

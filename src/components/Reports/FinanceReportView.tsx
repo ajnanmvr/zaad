@@ -13,6 +13,7 @@ import {
   FiFileText,
 } from "react-icons/fi";
 import clsx from "clsx";
+import { formatDubaiDateTime } from "@/utils/dubaiTime";
 
 export type FinanceReportResponse = {
   success: boolean;
@@ -61,11 +62,7 @@ const formatHuman = (dateInput?: string) => {
   if (!dateInput) return "---";
   const date = new Date(dateInput);
   if (Number.isNaN(date.getTime())) return "---";
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
+  return formatDubaiDateTime(dateInput);
 };
 
 const modeLabelMap: Record<FinanceReportViewProps["mode"], string> = {
@@ -257,7 +254,7 @@ export default function FinanceReportView(props: FinanceReportViewProps) {
                     GENERATED
                   </td>
                   <td className="border border-slate-300 px-3 py-1 normal-case">
-                    {new Date().toLocaleString()}
+                    {formatDubaiDateTime(new Date())}
                   </td>
                 </tr>
               </tbody>
