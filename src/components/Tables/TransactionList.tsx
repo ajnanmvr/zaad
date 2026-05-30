@@ -1651,11 +1651,10 @@ const TransactionList = ({
                                       {record?.type === "expense" && serviceFee !== 0 && (
                                         <span
                                           className={clsx(
-                                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400",
                                           )}
                                         >
-                                          <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
-                                          Amount {amount.toFixed(2)} + Fee {serviceFee.toFixed(2)}
+                                          {amount.toFixed(2)} <span className="text-lg leading-none font-bold text-orange-500">+</span>Fee {serviceFee.toFixed(2)}
                                         </span>
                                       )}
                                     </>
