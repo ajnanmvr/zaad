@@ -98,6 +98,7 @@ export function mapRecordListItem(record: any) {
       (record?.recordKind === "office_records" ? "Office" : ""),
     categoryColor: record?.category?.color || "",
     categoryIcon: record?.category?.icon || "",
+    paymentMethodBalancesSnapshot: record?.paymentMethodBalancesSnapshot || {},
     amount: record.amount?.toFixed(2),
     serviceFee: record.serviceFee?.toFixed(2),
     creator: record?.createdBy?.username,

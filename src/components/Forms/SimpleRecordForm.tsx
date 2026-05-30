@@ -515,6 +515,13 @@ const SimpleRecordForm = ({
     setShowParticularDropdown(false);
   };
 
+  const handleSelectPaymentStatus = (statusId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      status: prev.status === statusId ? "" : statusId,
+    }));
+  };
+
   const handleSelectEntity = (entity: EntityOption) => {
     setSelectedEntity(entity);
     setEntitySearch(entity.name);
@@ -775,12 +782,15 @@ const SimpleRecordForm = ({
       return;
     }
 
+    const visibility = getFormVisibility(formData.recordKind, formData.type);
     const {
+      needsEntity,
+      needsCategory,
       needsParticular,
       needsMethod,
       needsSwapMethods,
-      needsPaymentStatus,
-    } = getFormVisibility(formData.recordKind, formData.type);
+      allowsServiceFee,
+    } = visibility;
 
     if (
       needsParticular &&
@@ -817,11 +827,6 @@ const SimpleRecordForm = ({
 
     if (allowsServiceFee && clientFee === "") {
       toast.error("Client Fee is required");
-      return;
-    }
-
-    if (needsPaymentStatus && !formData.status) {
-      toast.error("Payment status is required");
       return;
     }
 
@@ -1633,7 +1638,7 @@ const theme = usesNeutralTheme
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-700 dark:text-slate-300">
                     <FiCheckCircle className="h-4 w-4" />
-                    Payment Status
+                    Payment Status (optional)
                   </div>
                   {getApplicableStatuses().map((status) => {
                     const selectedStatusColor = status.color || "#16a34a";
@@ -1644,12 +1649,7 @@ const theme = usesNeutralTheme
                       <button
                         key={status.id}
                         type="button"
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            status: status.id,
-                          }))
-                        }
+                        onClick={() => handleSelectPaymentStatus(status.id)}
                         className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-all duration-200 ${formData.status === status.id
                             ? `border-transparent shadow-lg ${selectedTextClass}`
                             : "border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"

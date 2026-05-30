@@ -42,6 +42,7 @@ type SelfDepositResponse = {
 
 type PaymentMethodOption = {
   value: string;
+  id?: string;
   label: string;
   color?: string;
   icon?: string;
@@ -74,8 +75,9 @@ export default function SelfDepositTrackingList() {
     queryFn: async () => {
       const { data } = await axios.get("/api/templates", { params: { type: "payment" } });
       return (data?.options || []).map((item: any) => ({
-        value: item.method,
-        label: item.label || item.method,
+        id: item.id,
+        value: item.method || item.id,
+        label: item.label || item.method || item.id,
         color: item.color,
         icon: item.icon,
       }));
@@ -84,7 +86,8 @@ export default function SelfDepositTrackingList() {
 
   const paymentMethodMap = useMemo(() => {
     return paymentMethodOptions.reduce<Record<string, PaymentMethodOption>>((acc, item) => {
-      acc[item.value] = item;
+      if (item.value) acc[item.value] = item;
+      if (item.id) acc[item.id] = item;
       return acc;
     }, {});
   }, [paymentMethodOptions]);

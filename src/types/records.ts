@@ -7,6 +7,7 @@ type TRecordBase = {
   categoryColor?: string;
   categoryIcon?: string;
   serviceFee?: number;
+  paymentMethodBalancesSnapshot?: Record<string, number>;
   number: number;
   suffix: string;
   method?: string;

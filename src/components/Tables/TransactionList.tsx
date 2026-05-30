@@ -42,6 +42,7 @@ import SkeletonList from "../common/SkeletonList";
 
 type TPaymentMethodOption = {
   value: string;
+  id?: string;
   label: string;
   color?: string;
   icon?: string;
@@ -433,8 +434,10 @@ const TransactionList = ({
         params: { type: "payment" },
       });
       return (data?.options || []).map((item: any) => ({
-        value: item.id,
-        label: item.label || item.method,
+        id: item.id,
+        // use method (string) as the canonical `value`, but keep `id` for lookups
+        value: item.method || item.id,
+        label: item.label || item.method || item.id,
         color: item.color,
         icon: item.icon,
       }));
@@ -485,7 +488,9 @@ const TransactionList = ({
   const paymentMethodMap = useMemo(() => {
     return paymentMethodOptions.reduce<Record<string, TPaymentMethodOption>>(
       (acc, item) => {
-        acc[item.value] = item;
+        // index by both `method` value and `id` so lookups succeed regardless
+        if (item.value) acc[item.value] = item;
+        if (item.id) acc[item.id] = item;
         return acc;
       },
       {},

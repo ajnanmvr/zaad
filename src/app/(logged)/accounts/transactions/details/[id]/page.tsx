@@ -80,11 +80,12 @@ const TransactionDetailsPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: paymentMethodOptions = [] } = useQuery<Array<{ value: string; label: string; color?: string; icon?: string }>>({
+  const { data: paymentMethodOptions = [] } = useQuery<Array<{ id: string; value: string; label: string; color?: string; icon?: string }>>({
     queryKey: ["payment-method-templates"],
     queryFn: async () => {
       const { data } = await axios.get("/api/templates", { params: { type: "payment" } });
       return (data?.options || []).map((item: any) => ({
+        id: item.id,
         value: item.method,
         label: item.label || item.method,
         color: item.color,
@@ -95,6 +96,13 @@ const TransactionDetailsPage = () => {
 
   const paymentMethodMap = paymentMethodOptions.reduce<Record<string, { label: string; color?: string; icon?: string }>>((acc, item) => {
     acc[item.value] = item;
+    return acc;
+  }, {});
+
+  const paymentMethodByIdMap = paymentMethodOptions.reduce<Record<string, { label: string; color?: string; icon?: string }>>((acc, item) => {
+    if (item.id) {
+      acc[item.id] = item;
+    }
     return acc;
   }, {});
 
@@ -110,6 +118,41 @@ const TransactionDetailsPage = () => {
   const record = data?.record;
   const isOfficeRecord = record?.recordKind === "office_records";
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const paymentMethodSnapshotEntries = Object.entries(
+    record?.paymentMethodBalancesSnapshot || {},
+  ).sort(([left], [right]) => left.localeCompare(right));
+  const affectedPaymentMethodId = String(
+    record?.paymentMethodTemplate || record?.method || "",
+  ).trim();
+  const currentRecordAmount = Number(record?.amount || 0);
+  const currentRecordType = String(record?.type || "").toLowerCase();
+
+  const getBalancesForMethod = (methodId: string, currentBalance: number) => {
+    const isAffectedMethod = String(methodId || "").trim() === affectedPaymentMethodId;
+
+    if (!isAffectedMethod) {
+      return {
+        previousBalance: currentBalance,
+        currentBalance,
+        trend: "neutral" as const,
+      };
+    }
+
+    const previousBalance = Number(
+      (
+        currentRecordType === "expense"
+          ? currentBalance + currentRecordAmount
+          : currentBalance - currentRecordAmount
+      ).toFixed(2),
+    );
+    const trend = currentBalance > previousBalance ? ("increase" as const) : currentBalance < previousBalance ? ("decrease" as const) : ("neutral" as const);
+
+    return {
+      previousBalance,
+      currentBalance,
+      trend,
+    };
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -254,7 +297,7 @@ const TransactionDetailsPage = () => {
                       </span>,
                       <FiHash />
                     )}
-                    
+
                     {renderTableRow(
                       "Record Kind",
                       <span className="capitalize">{record.recordKind?.replace(/_/g, " ") || "-"}</span>,
@@ -374,6 +417,92 @@ const TransactionDetailsPage = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-800/80 dark:bg-slate-800/20">
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  <FiCreditCard className="text-cyan-500" />
+                  Payment Method Balance Snapshot
+                </h3>
+              </div>
+              <div className="p-6">
+                {!paymentMethodSnapshotEntries.length ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 py-10 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800/30 dark:text-slate-400">
+                    No balance snapshot was stored for this transaction.
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {paymentMethodSnapshotEntries.map(([methodId, balance]) => {
+                      const methodMeta = paymentMethodByIdMap[methodId] || paymentMethodMap[methodId];
+                      const numericBalance = Number(balance || 0);
+                      const { previousBalance, currentBalance, trend } = getBalancesForMethod(
+                        methodId,
+                        numericBalance,
+                      );
+                      const isActiveMethod = methodId === affectedPaymentMethodId;
+                      const hasChange = previousBalance !== currentBalance;
+                      // previous balance should be neutral (no green/red styling)
+                      const previousClass = "text-slate-700 dark:text-slate-300";
+                      // current balance colored by trend (increase -> green, decrease -> red, neutral -> default)
+                      const currentClass =
+                        trend === "increase"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : trend === "decrease"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-slate-900 dark:text-slate-100";
+
+                      return (
+                        <div
+                          key={methodId}
+                          className={clsx(
+                            "rounded-xl border bg-slate-50 p-2.5 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 dark:bg-slate-800/40",
+                            isActiveMethod
+                              ? "border-cyan-300 ring-1 ring-cyan-200 dark:border-cyan-700 dark:ring-cyan-900/40"
+                              : "border-slate-200 dark:border-slate-700",
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <PaymentMethodBadge
+                                label={methodMeta?.label || "Payment Method"}
+                                icon={methodMeta?.icon}
+                                color={methodMeta?.color}
+                                size="sm"
+                              />
+                            </div>
+                            <span
+                              className={clsx(
+                                "inline-flex rounded-full px-2 py-0.5 text-[11px] font-black tabular-nums",
+                                trend === "increase"
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                                  : trend === "decrease"
+                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+                                    : "bg-slate-100 text-slate-900 dark:bg-slate-900/50 dark:text-slate-100",
+                              )}
+                            >
+                              AED {currentBalance.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="mt-2">
+                            {hasChange ? (
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                                <span className="rounded-full px-2 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-400">
+                                  Previous: AED {previousBalance.toFixed(2)}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
+                                Balance unchanged
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
