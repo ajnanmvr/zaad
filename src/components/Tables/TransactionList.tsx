@@ -1630,29 +1630,37 @@ const TransactionList = ({
 
                             <td className="py-4 px-4 align-top">
                               <div className="flex flex-col items-start gap-1">
-                                <span
-                                  className={clsx(
-                                    "font-bold",
-                                    transactionVisual.amountClass,
-                                  )}
-                                >
-                                  {record?.amount}{" "}
-                                  <span className="text-xs font-medium">
-                                    AED
-                                  </span>
-                                </span>
-                                {record?.type === "expense" &&
-                                  record?.serviceFee &&
-                                  record.serviceFee != 0 && (
-                                    <span
-                                      className={clsx(
-                                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                {(() => {
+                                  const amount = Number(record?.amount || 0);
+                                  const serviceFee = Number(record?.serviceFee || 0);
+                                  const displayAmount = record?.type === "expense" ? amount + serviceFee : amount;
+
+                                  return (
+                                    <>
+                                      <span
+                                        className={clsx(
+                                          "font-bold",
+                                          transactionVisual.amountClass,
+                                        )}
+                                      >
+                                        {displayAmount.toFixed(2)}{" "}
+                                        <span className="text-xs font-medium">
+                                          AED
+                                        </span>
+                                      </span>
+                                      {record?.type === "expense" && serviceFee !== 0 && (
+                                        <span
+                                          className={clsx(
+                                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                          )}
+                                        >
+                                          <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
+                                          Amount {amount.toFixed(2)} + Fee {serviceFee.toFixed(2)}
+                                        </span>
                                       )}
-                                    >
-                                      <FiArrowDownLeft className="text-[11px] text-rose-500 dark:text-rose-400" />
-                                      Fee {record.serviceFee}
-                                    </span>
-                                  )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </td>
 
