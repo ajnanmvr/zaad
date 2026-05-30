@@ -952,10 +952,79 @@ function buildTransfers(records: any[]): SelfDepositTransfer[] {
   return transfers;
 }
 
+async function getPaymentMethodBalanceSnapshot() {
+  const rows = await aggregateRecords<{
+    _id: string;
+    income: number;
+    expense: number;
+  }>([
+    {
+      $match: {
+        ...ACTIVE_RECORD_FILTER,
+        method: { $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: "$method",
+        income: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "income"] }, { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
+        expense: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "expense"] }, { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  return rows.reduce<Record<string, number>>((acc, row) => {
+    const methodId = String(row?._id || "").trim();
+    if (!methodId) return acc;
+
+    acc[methodId] = Number((Number(row?.income || 0) - Number(row?.expense || 0)).toFixed(2));
+    return acc;
+  }, {});
+}
+
+function getPostTransactionPaymentMethodBalances(
+  snapshot: Record<string, number>,
+  payload: {
+  method?: string | null;
+  type?: string | null;
+  amount?: number | string | null;
+  },
+) {
+  const methodId = String(payload.method || "").trim();
+  const numericAmount = Number(payload.amount || 0);
+  const type = String(payload.type || "").trim().toLowerCase();
+
+  if (!methodId || !Number.isFinite(numericAmount) || numericAmount === 0) {
+    return snapshot;
+  }
+
+  const currentBalance = Number(snapshot[methodId] || 0);
+  const nextBalance = type === "expense" ? currentBalance - numericAmount : currentBalance + numericAmount;
+
+  return {
+    ...snapshot,
+    [methodId]: Number(nextBalance.toFixed(2)),
+  };
+}
+
 export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
   const normalizedPayload = normalizeEntityFields(reqBody);
   const recordKind = String(normalizedPayload.recordKind || "").toLowerCase();
   const requiresMethod = !["liability", "self_transfer"].includes(recordKind);
+  const basePaymentMethodBalancesSnapshot = await getPaymentMethodBalanceSnapshot();
+  const paymentMethodBalancesSnapshot = getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+    method: normalizedPayload.method,
+    type: normalizedPayload.type,
+    amount: normalizedPayload.amount,
+  });
 
   // Validate required fields before creating
   const missingFields: string[] = [];
@@ -991,6 +1060,7 @@ export async function createPaymentRecord(reqBody: any, principal: TPrincipal) {
       recordKind === "liability"
         ? normalizedPayload.status || undefined
         : normalizedPayload.status,
+    paymentMethodBalancesSnapshot,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -1098,6 +1168,12 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
   const newSuffix = latest?.suffix || "";
   const newNumber = latest?.number || 0;
   const transferGroupId = generateGroupId();
+  const basePaymentMethodBalancesSnapshot = await getPaymentMethodBalanceSnapshot();
+  const paymentMethodBalancesSnapshot = getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+    method: fromMethod,
+    type: "expense",
+    amount: numericAmount,
+  });
 
   const firstRecord = await createRecord({
     createdBy: principal.userId,
@@ -1108,6 +1184,7 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 1,
+    paymentMethodBalancesSnapshot,
     particular: `Money removed from ${from} to add in ${to}`,
     activityLog: [
       {
@@ -1130,6 +1207,11 @@ export async function createSwapTransfer(payload: { amount: any; to: string; fro
     amount: numericAmount,
     suffix: newSuffix,
     number: newNumber + 2,
+    paymentMethodBalancesSnapshot: getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+      method: toMethod,
+      type: "income",
+      amount: numericAmount,
+    }),
     particular: `Money recieved as exchange from ${from}`,
     activityLog: [
       {
@@ -1403,6 +1485,12 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     : await findPaymentTemplateByMethodName("service fee");
 
   const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
+  const basePaymentMethodBalancesSnapshot = await getPaymentMethodBalanceSnapshot();
+  const paymentMethodBalancesSnapshot = getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+    method: normalizedPayload.method,
+    type: normalizedPayload.type,
+    amount: normalizedPayload.amount,
+  });
 
   const normalizedPayload = normalizeEntityFields({
     ...reqBody,
@@ -1416,6 +1504,7 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
 
   const firstRecord = await createRecord({
     ...normalizedPayload,
+    paymentMethodBalancesSnapshot,
     createdBy: principal.userId,
     activityLog: [
       {
@@ -1452,6 +1541,11 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     recordKind: "standard",
     method: mirrorMethod,
     number: +number + 1,
+    paymentMethodBalancesSnapshot: getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+      method: mirrorMethod,
+      type: "expense",
+      amount: Number(originalAmount || 0),
+    }),
     createdBy: principal.userId,
     activityLog: [
       {

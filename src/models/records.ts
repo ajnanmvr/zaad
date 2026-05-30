@@ -11,6 +11,10 @@ const RecordSchema = new Schema(
       index: true,
     },
     serviceFee: Number,
+    paymentMethodBalancesSnapshot: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
     amount: {
       type: Number,
       required: true,
