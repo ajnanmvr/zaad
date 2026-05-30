@@ -1485,13 +1485,6 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
     : await findPaymentTemplateByMethodName("service fee");
 
   const profitStatusTemplate = await findPaymentStatusTemplateByStatusName("Profit");
-  const basePaymentMethodBalancesSnapshot = await getPaymentMethodBalanceSnapshot();
-  const paymentMethodBalancesSnapshot = getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
-    method: normalizedPayload.method,
-    type: normalizedPayload.type,
-    amount: normalizedPayload.amount,
-  });
-
   const normalizedPayload = normalizeEntityFields({
     ...reqBody,
     // Persist instant-profit pairs as standard records in DB.
@@ -1501,6 +1494,13 @@ export async function createProfitPair(reqBody: any, principal: TPrincipal) {
   if (profitStatusTemplate) {
     normalizedPayload.status = profitStatusTemplate._id;
   }
+
+  const basePaymentMethodBalancesSnapshot = await getPaymentMethodBalanceSnapshot();
+  const paymentMethodBalancesSnapshot = getPostTransactionPaymentMethodBalances(basePaymentMethodBalancesSnapshot, {
+    method: normalizedPayload.method,
+    type: normalizedPayload.type,
+    amount: normalizedPayload.amount,
+  });
 
   const firstRecord = await createRecord({
     ...normalizedPayload,
