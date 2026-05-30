@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connect from "@/db/mongo";
 import { requirePermission } from "@/auth/guards";
 import { findAllMonthlyFinanceStats } from "@/repositories/paymentRepository";
+import { computeMonthlyFinanceStats } from "@/services/paymentService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 export async function GET(request: NextRequest) {
@@ -13,7 +14,30 @@ export async function GET(request: NextRequest) {
     const limit = Number(searchParams.get("limit") || "0");
 
     const stats = await findAllMonthlyFinanceStats(true);
-    const data = limit > 0 ? stats.slice(0, limit) : stats;
+
+    // Keep current month accurate by recomputing it on list fetch.
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentKey = `${currentYear}-${currentMonth}`;
+
+    let currentMonthStats = null;
+    try {
+      currentMonthStats = await computeMonthlyFinanceStats(currentYear, currentMonth);
+    } catch (recomputeError) {
+      console.error("Failed to recompute current monthly stats:", recomputeError);
+    }
+
+    const mergedStats = currentMonthStats
+      ? [
+          currentMonthStats,
+          ...stats.filter(
+            (row: any) => `${Number(row?.year || 0)}-${Number(row?.month || 0)}` !== currentKey,
+          ),
+        ]
+      : stats;
+
+    const data = limit > 0 ? mergedStats.slice(0, limit) : mergedStats;
 
     return NextResponse.json({
       success: true,
