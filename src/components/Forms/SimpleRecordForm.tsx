@@ -777,8 +777,8 @@ const SimpleRecordForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.amount || formData.amount <= 0) {
-      toast.error("Amount is required and must be greater than 0");
+    if (formData.amount === undefined || Number.isNaN(formData.amount) || formData.amount < 0) {
+      toast.error("Amount is required and must be zero or greater");
       return;
     }
 
