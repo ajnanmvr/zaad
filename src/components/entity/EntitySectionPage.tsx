@@ -209,6 +209,54 @@ export default function EntitySectionPage({
   const [archiveNoteDraft, setArchiveNoteDraft] = useState("");
   const [employeePage, setEmployeePage] = useState<number>(1);
   const [employeePageSize, setEmployeePageSize] = useState<number>(20);
+  const [employeeSearchInput, setEmployeeSearchInput] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeeSortBy, setEmployeeSortBy] = useState<any>("newest");
+  const [employeeCreatedWithinDays, setEmployeeCreatedWithinDays] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setEmployeeSearch(employeeSearchInput.trim());
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [employeeSearchInput]);
+
+  useEffect(() => {
+    setEmployeePage(1);
+  }, [employeeSearch, employeeSortBy, employeeCreatedWithinDays]);
+
+  const { data: employeesByCompanyRes } = useQuery<{
+    data: TEntityListItem[];
+    pagination: TPagination;
+  }>({
+    queryKey: [
+      "company-employees",
+      id,
+      employeePage,
+      employeePageSize,
+      employeeSearch,
+      employeeSortBy,
+      employeeCreatedWithinDays,
+    ],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({
+        page: String(employeePage),
+        limit: String(employeePageSize),
+      });
+      if (employeeSearch) queryParams.set("search", employeeSearch);
+      if (employeeSortBy) queryParams.set("sortBy", employeeSortBy);
+      if (employeeCreatedWithinDays !== undefined) {
+        queryParams.set("createdWithinDays", String(employeeCreatedWithinDays));
+      }
+
+      const { data } = await axios.get(
+        `/api/employee/company/${id}?${queryParams.toString()}`,
+      );
+      return data;
+    },
+    enabled: section === "employees" && entityType === "company",
+  });
   const [documentDraft, setDocumentDraft] = useState({
     category: "" as "" | "visa" | "license" | "other",
     documentTemplate: "",
@@ -252,19 +300,7 @@ export default function EntitySectionPage({
         section === "invoices",
     });
 
-  const { data: employeesByCompanyRes } = useQuery<{
-    data: TEntityListItem[];
-    pagination: TPagination;
-  }>({
-    queryKey: ["company-employees", id, employeePage, employeePageSize],
-    queryFn: async () => {
-      const { data } = await axios.get(
-        `/api/employee/company/${id}?page=${employeePage}&limit=${employeePageSize}`,
-      );
-      return data;
-    },
-    enabled: section === "employees" && entityType === "company",
-  });
+
 
   const { data: documentTemplateRes } = useQuery<{ options: TemplateOption[] }>(
     {
@@ -1109,6 +1145,12 @@ export default function EntitySectionPage({
                     }}
                     addEntityHref={`/employee/register/${id}?returnTo=${encodeURIComponent(`/${entityType}/${id}/employees`)}`}
                     addEntityLabel="Add Employee"
+                    searchValue={employeeSearchInput}
+                    onSearchChange={setEmployeeSearchInput}
+                    sortBy={employeeSortBy}
+                    onSortChange={setEmployeeSortBy}
+                    createdWithinDays={employeeCreatedWithinDays}
+                    onCreatedWithinDaysChange={setEmployeeCreatedWithinDays}
                   />
                 )}
 

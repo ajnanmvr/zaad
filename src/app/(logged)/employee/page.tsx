@@ -6,15 +6,32 @@ import EmployeeList from "@/components/Tables/EmployeeList";
 import { useQuery } from "@tanstack/react-query";
 import { fetchEmployees } from "@/libs/queries";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PAGINATION } from "@/config/pagination";
 
 const TablesPage = () => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name-asc" | "name-desc">("newest");
+  const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(PAGINATION.DEFAULT_PAGE);
+  }, [search, sortBy, createdWithinDays]);
+
   const { data: employeesResponse, isLoading: employeeLoading, isError: employeeError } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["employees", page, limit],
-    queryFn: () => fetchEmployees(page, limit),
+    queryKey: ["employees", page, limit, search, sortBy, createdWithinDays],
+    queryFn: () => fetchEmployees(page, limit, { search, sortBy, createdWithinDays }),
   });
 
   const employees = employeesResponse?.data;
@@ -38,6 +55,12 @@ const TablesPage = () => {
           }}
           addEntityHref="/employee/register"
           addEntityLabel="Add Employee"
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          createdWithinDays={createdWithinDays}
+          onCreatedWithinDaysChange={setCreatedWithinDays}
         />
       </div>
     </>

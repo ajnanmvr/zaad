@@ -25,6 +25,12 @@ function EmployeeList({
   onPageSizeChange,
   addEntityHref,
   addEntityLabel,
+  searchValue,
+  onSearchChange,
+  sortBy: sortByProp,
+  onSortChange,
+  createdWithinDays: createdWithinDaysProp,
+  onCreatedWithinDaysChange,
 }: {
   employees: TEntityListItem[] | null | undefined;
   isLoading?: boolean;
@@ -34,19 +40,59 @@ function EmployeeList({
   onPageSizeChange?: (size: number) => void;
   addEntityHref?: string;
   addEntityLabel?: string;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  sortBy?: EntitySort;
+  onSortChange?: (value: EntitySort) => void;
+  createdWithinDays?: number | undefined;
+  onCreatedWithinDaysChange?: (value: number | undefined) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const [searchInput, setSearchInput] = useState("");
-  const [sortBy, setSortBy] = useState<EntitySort>("newest");
-  const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(
+  const isBackendFiltered = onSearchChange !== undefined;
+
+  const [localSearchInput, setLocalSearchInput] = useState("");
+  const [localSortBy, setLocalSortBy] = useState<EntitySort>("newest");
+  const [localCreatedWithinDays, setLocalCreatedWithinDays] = useState<number | undefined>(
     undefined
   );
+
+  const currentSearchInput = isBackendFiltered ? (searchValue ?? "") : localSearchInput;
+  const currentSortBy = isBackendFiltered ? (sortByProp ?? "newest") : localSortBy;
+  const currentCreatedWithinDays = isBackendFiltered ? createdWithinDaysProp : localCreatedWithinDays;
+
+  const handleSearchChange = (val: string) => {
+    if (isBackendFiltered && onSearchChange) {
+      onSearchChange(val);
+    } else {
+      setLocalSearchInput(val);
+    }
+  };
+
+  const handleSortChange = (val: EntitySort) => {
+    if (isBackendFiltered && onSortChange) {
+      onSortChange(val);
+    } else {
+      setLocalSortBy(val);
+    }
+  };
+
+  const handleCreatedWithinDaysChange = (val: number | undefined) => {
+    if (isBackendFiltered && onCreatedWithinDaysChange) {
+      onCreatedWithinDaysChange(val);
+    } else {
+      setLocalCreatedWithinDays(val);
+    }
+  };
 
   const list = useMemo(() => employees ?? [], [employees]);
 
   const filteredEmployees = useMemo(() => {
-    const normalizedSearch = searchInput.trim().toLowerCase();
+    if (isBackendFiltered) {
+      return list;
+    }
+
+    const normalizedSearch = localSearchInput.trim().toLowerCase();
     const now = Date.now();
 
     const filtered = list.filter((employee) => {
@@ -61,34 +107,34 @@ function EmployeeList({
         return false;
       }
 
-      if (!createdWithinDays || !employee.createdAt) {
+      if (!localCreatedWithinDays || !employee.createdAt) {
         return true;
       }
 
       const createdAt = new Date(employee.createdAt).getTime();
-      const daysMs = createdWithinDays * 24 * 60 * 60 * 1000;
+      const daysMs = localCreatedWithinDays * 24 * 60 * 60 * 1000;
       return now - createdAt <= daysMs;
     });
 
     filtered.sort((a, b) => {
-      if (sortBy === "newest") {
+      if (localSortBy === "newest") {
         return (
           new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
         );
       }
-      if (sortBy === "oldest") {
+      if (localSortBy === "oldest") {
         return (
           new Date(a.createdAt || "").getTime() - new Date(b.createdAt || "").getTime()
         );
       }
-      if (sortBy === "name-asc") {
+      if (localSortBy === "name-asc") {
         return a.name.localeCompare(b.name);
       }
       return b.name.localeCompare(a.name);
     });
 
     return filtered;
-  }, [list, searchInput, sortBy, createdWithinDays]);
+  }, [list, isBackendFiltered, localSearchInput, localSortBy, localCreatedWithinDays]);
 
   const totalCount = pagination?.total ?? filteredEmployees.length;
   const allSelected =
@@ -134,12 +180,12 @@ function EmployeeList({
         addEntityHref={addEntityHref}
         addEntityLabel={addEntityLabel}
         totalCount={totalCount}
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        createdWithinDays={createdWithinDays}
-        onCreatedWithinDaysChange={setCreatedWithinDays}
+        searchValue={currentSearchInput}
+        onSearchChange={handleSearchChange}
+        sortBy={currentSortBy}
+        onSortChange={handleSortChange}
+        createdWithinDays={currentCreatedWithinDays}
+        onCreatedWithinDaysChange={handleCreatedWithinDaysChange}
         isLoading={Boolean(isLoading)}
         loadingContent={
           <>

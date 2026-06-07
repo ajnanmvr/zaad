@@ -1,5 +1,6 @@
 import Employee from "@/models/employees";
 import Individual from "@/models/individuals";
+import Company from "@/models/companies";
 import EntityDocument from "@/models/entityDocuments";
 import { PAGINATION } from "@/config/pagination";
 import generateEntityColor from "@/utils/generateEntityColor";
@@ -208,15 +209,52 @@ export async function listCompanyEntities(
   };
 }
 
-export async function listEmployeeEntities(page: number, limit: number) {
+export async function listEmployeeEntities(
+  page: number,
+  limit: number,
+  options?: {
+    search?: string;
+    sortBy?: string;
+    createdWithinDays?: number;
+  }
+) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query = { published: true, entityType: "employee" };
+  const query: any = { published: true, entityType: "employee" };
+
+  if (options?.search) {
+    const matchingCompanies = await Company.find({
+      name: { $regex: options.search, $options: "i" },
+      published: true,
+    }).select("_id");
+    const companyIds = matchingCompanies.map((c: any) => c._id);
+
+    query.$or = [
+      { name: { $regex: options.search, $options: "i" } },
+      { company: { $in: companyIds } },
+    ];
+  }
+
+  if (options?.createdWithinDays && options.createdWithinDays > 0) {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - options.createdWithinDays);
+    query.createdAt = { $gte: sinceDate };
+  }
+
+  const SORT_CONFIG_BY_OPTION: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    "name-asc": { name: 1 },
+    "name-desc": { name: -1 },
+  };
+  const sort = options?.sortBy && SORT_CONFIG_BY_OPTION[options.sortBy]
+    ? SORT_CONFIG_BY_OPTION[options.sortBy]
+    : { createdAt: -1 };
 
   const [employees, total] = await Promise.all([
     Employee.find(query)
       .select("name company createdAt color")
       .populate("company", "name")
-      .sort({ createdAt: -1 })
+      .sort(sort as any)
       .skip(skip)
       .limit(normalizedLimit),
     Employee.countDocuments(query),
@@ -249,14 +287,42 @@ export async function listEmployeeEntities(page: number, limit: number) {
   };
 }
 
-export async function listIndividualEntities(page: number, limit: number) {
+export async function listIndividualEntities(
+  page: number,
+  limit: number,
+  options?: {
+    search?: string;
+    sortBy?: string;
+    createdWithinDays?: number;
+  }
+) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query = { published: true, entityType: "individual" };
+  const query: any = { published: true, entityType: "individual" };
+
+  if (options?.search) {
+    query.name = { $regex: options.search, $options: "i" };
+  }
+
+  if (options?.createdWithinDays && options.createdWithinDays > 0) {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - options.createdWithinDays);
+    query.createdAt = { $gte: sinceDate };
+  }
+
+  const SORT_CONFIG_BY_OPTION: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    "name-asc": { name: 1 },
+    "name-desc": { name: -1 },
+  };
+  const sort = options?.sortBy && SORT_CONFIG_BY_OPTION[options.sortBy]
+    ? SORT_CONFIG_BY_OPTION[options.sortBy]
+    : { createdAt: -1 };
 
   const [individuals, total] = await Promise.all([
     Individual.find(query)
       .select("name createdAt color")
-      .sort({ createdAt: -1 })
+      .sort(sort as any)
       .skip(skip)
       .limit(normalizedLimit),
     Individual.countDocuments(query),
@@ -291,20 +357,45 @@ export async function listIndividualEntities(page: number, limit: number) {
 export async function listEmployeesByCompanyEntity(
   companyId: string,
   page: number,
-  limit: number
+  limit: number,
+  options?: {
+    search?: string;
+    sortBy?: string;
+    createdWithinDays?: number;
+  }
 ) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query = {
+  const query: any = {
     published: true,
     company: companyId,
     entityType: "employee",
   };
 
+  if (options?.search) {
+    query.name = { $regex: options.search, $options: "i" };
+  }
+
+  if (options?.createdWithinDays && options.createdWithinDays > 0) {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - options.createdWithinDays);
+    query.createdAt = { $gte: sinceDate };
+  }
+
+  const SORT_CONFIG_BY_OPTION: Record<string, Record<string, 1 | -1>> = {
+    newest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    "name-asc": { name: 1 },
+    "name-desc": { name: -1 },
+  };
+  const sort = options?.sortBy && SORT_CONFIG_BY_OPTION[options.sortBy]
+    ? SORT_CONFIG_BY_OPTION[options.sortBy]
+    : { createdAt: -1 };
+
   const [employees, total] = await Promise.all([
     Employee.find(query)
       .select("name company createdAt color")
       .populate("company", "name")
-      .sort({ createdAt: -1 })
+      .sort(sort as any)
       .skip(skip)
       .limit(normalizedLimit),
     Employee.countDocuments(query),
