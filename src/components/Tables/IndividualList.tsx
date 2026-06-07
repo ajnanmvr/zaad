@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -24,65 +24,38 @@ function IndividualList() {
   const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.ENTITY_LIST);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<EntitySort>("newest");
   const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(
     undefined
   );
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setPage(PAGINATION.DEFAULT_PAGE);
+    setSelectedIds([]);
+  }, [search, sortBy, createdWithinDays]);
+
   const { data, isLoading } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["individuals", page, limit],
-    queryFn: () => fetchIndividuals(page, limit),
+    queryKey: ["individuals", page, limit, search, sortBy, createdWithinDays],
+    queryFn: () => fetchIndividuals(page, limit, { search, sortBy, createdWithinDays }),
   });
 
-  const individuals = useMemo(() => data?.data || [], [data]);
+  const individuals = data?.data || [];
   const pagination = data?.pagination;
 
-  const filteredIndividuals = useMemo(() => {
-    const normalizedSearch = searchInput.trim().toLowerCase();
-    const now = Date.now();
-
-    const filtered = individuals.filter((individual) => {
-      const nameMatch = individual.name.toLowerCase().includes(normalizedSearch);
-      const searchMatch = normalizedSearch.length === 0 ? true : nameMatch;
-
-      if (!searchMatch) {
-        return false;
-      }
-
-      if (!createdWithinDays || !individual.createdAt) {
-        return true;
-      }
-
-      const createdAt = new Date(individual.createdAt).getTime();
-      const daysMs = createdWithinDays * 24 * 60 * 60 * 1000;
-      return now - createdAt <= daysMs;
-    });
-
-    filtered.sort((a, b) => {
-      if (sortBy === "newest") {
-        return (
-          new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
-        );
-      }
-      if (sortBy === "oldest") {
-        return (
-          new Date(a.createdAt || "").getTime() - new Date(b.createdAt || "").getTime()
-        );
-      }
-      if (sortBy === "name-asc") {
-        return a.name.localeCompare(b.name);
-      }
-      return b.name.localeCompare(a.name);
-    });
-
-    return filtered;
-  }, [individuals, searchInput, sortBy, createdWithinDays]);
-
   const allSelected =
-    filteredIndividuals.length > 0 &&
-    filteredIndividuals.every((row) => selectedIds.includes(String(row.id)));
+    individuals.length > 0 &&
+    individuals.every((row) => selectedIds.includes(String(row.id)));
 
-  const selectedRows = filteredIndividuals.filter((row) => selectedIds.includes(String(row.id)));
+  const selectedRows = individuals.filter((row) => selectedIds.includes(String(row.id)));
 
   const mapExportRows = (rows: TEntityListItem[]) =>
     rows.map((row) => ({
@@ -95,7 +68,7 @@ function IndividualList() {
     }));
 
   const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
-    const sourceRows = mode === "selected" ? selectedRows : filteredIndividuals;
+    const sourceRows = mode === "selected" ? selectedRows : individuals;
     const rows = mapExportRows(sourceRows);
     if (!rows.length) {
       toast.error(mode === "selected" ? "Select individuals first" : "No individuals to export");
@@ -120,7 +93,7 @@ function IndividualList() {
         subtitle="Individual profiles linked to records, documents, and handovers."
         addEntityHref="/individual/register"
         addEntityLabel="Add Individual"
-        totalCount={pagination?.total ?? filteredIndividuals.length}
+        totalCount={pagination?.total ?? individuals.length}
         searchValue={searchInput}
         onSearchChange={setSearchInput}
         sortBy={sortBy}
@@ -140,7 +113,7 @@ function IndividualList() {
         }
         emptyTitle="No individuals found"
         emptyDescription="Try a broader search or switch filters to see more results."
-        hasData={filteredIndividuals.length > 0}
+        hasData={individuals.length > 0}
         pagination={pagination}
         onPrevPage={() => setPage((prev) => Math.max(prev - 1, 1))}
         onNextPage={() => setPage((prev) => prev + 1)}
@@ -166,7 +139,7 @@ function IndividualList() {
                     checked={allSelected}
                     onChange={(event) => {
                       if (event.target.checked) {
-                        setSelectedIds(filteredIndividuals.map((row) => String(row.id)));
+                        setSelectedIds(individuals.map((row) => String(row.id)));
                       } else {
                         setSelectedIds([]);
                       }
@@ -180,7 +153,7 @@ function IndividualList() {
               </tr>
             </thead>
             <tbody>
-              {filteredIndividuals.map((individual, key) => (
+              {individuals.map((individual, key) => (
                 <tr
                   key={key}
                   className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
