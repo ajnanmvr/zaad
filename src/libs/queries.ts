@@ -8,6 +8,7 @@ export const fetchEmployees = async (
     search?: string;
     sortBy?: "newest" | "oldest" | "name-asc" | "name-desc";
     createdWithinDays?: number;
+    deleted?: boolean;
   }
 ) => {
   const params = new URLSearchParams({
@@ -25,6 +26,10 @@ export const fetchEmployees = async (
 
   if (typeof options?.createdWithinDays === "number") {
     params.set("createdWithinDays", String(options.createdWithinDays));
+  }
+
+  if (options?.deleted) {
+    params.set("deleted", "true");
   }
 
   const { data } = await axios.get(`/api/employee?${params.toString()}`);
@@ -38,6 +43,7 @@ export const fetchCompanies = async (
     search?: string;
     sortBy?: "newest" | "oldest" | "name-asc" | "name-desc";
     createdWithinDays?: number;
+    deleted?: boolean;
   }
 ) => {
   const params = new URLSearchParams({
@@ -55,6 +61,10 @@ export const fetchCompanies = async (
 
   if (typeof options?.createdWithinDays === "number") {
     params.set("createdWithinDays", String(options.createdWithinDays));
+  }
+
+  if (options?.deleted) {
+    params.set("deleted", "true");
   }
 
   const { data } = await axios.get(`/api/company?${params.toString()}`);
@@ -68,6 +78,7 @@ export const fetchIndividuals = async (
     search?: string;
     sortBy?: "newest" | "oldest" | "name-asc" | "name-desc";
     createdWithinDays?: number;
+    deleted?: boolean;
   }
 ) => {
   const params = new URLSearchParams({
@@ -85,6 +96,10 @@ export const fetchIndividuals = async (
 
   if (typeof options?.createdWithinDays === "number") {
     params.set("createdWithinDays", String(options.createdWithinDays));
+  }
+
+  if (options?.deleted) {
+    params.set("deleted", "true");
   }
 
   const { data } = await axios.get(`/api/individual?${params.toString()}`);

@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
     ? Number(createdWithinDaysParam)
     : undefined;
 
+  const deleted = request.nextUrl.searchParams.get("deleted") === "true";
+
   const response = await listCompanyEntities(page, limit, {
     search: search || undefined,
     sortBy:
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
       typeof createdWithinDays === "number" && Number.isFinite(createdWithinDays)
         ? createdWithinDays
         : undefined,
+    deleted,
   });
 
   return Response.json(response, { status: 200 });

@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
 import {
   getCompanyEntityById,
+  restoreCompanyEntity,
   softDeleteCompanyEntity,
   splitEntityPayload,
   updateCompanyEntity,
@@ -71,6 +72,31 @@ export async function DELETE(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
+
+    const { id } = params;
+    const { action } = await request.json();
+
+    if (action === "restore") {
+      await restoreCompanyEntity(id);
+      return Response.json({ message: "Company restored" }, { status: 200 });
+    }
+
+    return Response.json({ message: "Unsupported action" }, { status: 400 });
+  } catch (error) {
+    return Response.json(
+      { message: getServiceErrorMessage(error, "Error updating company") },
+      { status: getServiceErrorStatus(error) }
+    );
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -113,6 +139,7 @@ export async function GET(
       id: company._id,
       name: company.name,
       color: company.color,
+      published: (company as any).published !== false,
       licenseNo: company.licenseNo,
       companyType: company.companyType,
       emirates: company.emirates,

@@ -44,7 +44,7 @@ export async function GET(
           : Individual;
     const entityQuery = entityModel
       .findById(entityId)
-      .select("name email phone1 phone2 color company");
+      .select("name email phone1 phone2 color company published");
 
     if (entityType === "employee") {
       entityQuery.populate("company", "name color");
@@ -109,6 +109,7 @@ export async function GET(
             phone1: entity.phone1 || "",
             phone2: entity.phone2 || "",
             color: entity.color || "",
+            published: (entity as any).published !== false,
             company:
               entityType === "employee" && (entity as any).company
                 ? {

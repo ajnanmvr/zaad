@@ -12,6 +12,7 @@ import {
   FiFolder,
   FiKey,
   FiList,
+  FiRefreshCw,
   FiTarget,
   FiTrash2,
   FiUsers,
@@ -206,6 +207,9 @@ export function EntityProfileHeader({
   onEditHref,
   onDelete,
   isDeleting,
+  isDeleted,
+  onRestore,
+  isRestoring,
 }: {
   entityType: EntityType;
   name: string;
@@ -218,6 +222,9 @@ export function EntityProfileHeader({
   onEditHref: string;
   onDelete: () => void;
   isDeleting?: boolean;
+  isDeleted?: boolean;
+  onRestore?: () => void;
+  isRestoring?: boolean;
 }) {
   return (
     <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
@@ -227,7 +234,7 @@ export function EntityProfileHeader({
           <div className="flex items-center gap-4 min-w-0">
             <div
               className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] text-2xl font-black text-white ring-4 ring-white/40 dark:ring-slate-950/40"
-              style={{ backgroundColor: avatarColor }}
+              style={{ backgroundColor: isDeleted ? "#94a3b8" : avatarColor }}
             >
               {avatarInitials}
             </div>
@@ -236,6 +243,11 @@ export function EntityProfileHeader({
                 <span className="inline-flex items-center rounded-full bg-slate-950 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-white dark:bg-white dark:text-slate-900">
                   {entityType}
                 </span>
+                {isDeleted && (
+                  <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                    Deleted
+                  </span>
+                )}
                 {companyName && companyAvatarInitials && companyAvatarColor && (
                   companyHref ? (
                     <Link
@@ -263,29 +275,43 @@ export function EntityProfileHeader({
                   )
                 )}
               </div>
-              <h1 className="truncate text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+              <h1 className={`truncate text-2xl font-black tracking-tight sm:text-3xl ${isDeleted ? "text-slate-400 dark:text-slate-500" : "text-slate-950 dark:text-white"}`}>
                 {name}
               </h1>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3 sm:justify-end">
-            <Link
-              href={onEditHref || "#"}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900"
-            >
-              <FiEdit2 className="mr-2" />
-              Edit profile
-            </Link>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isDeleting}
-              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <FiTrash2 className="mr-2" />
-              {isDeleting ? "Deleting..." : "Delete profile"}
-            </button>
+            {!isDeleted && (
+              <Link
+                href={onEditHref || "#"}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                <FiEdit2 className="mr-2" />
+                Edit profile
+              </Link>
+            )}
+            {isDeleted ? (
+              <button
+                type="button"
+                onClick={onRestore}
+                disabled={isRestoring}
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <FiRefreshCw className="mr-2" />
+                {isRestoring ? "Restoring..." : "Restore profile"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <FiTrash2 className="mr-2" />
+                {isDeleting ? "Deleting..." : "Delete profile"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -579,27 +605,52 @@ export function EntitySectionSkeleton({
 }) {
   return (
     <div className="space-y-6">
-      <EntityProfileSkeleton entityType={entityType} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
-        <SectionCard title={sectionTitle} description="Loading section content...">
-          <div className="space-y-3">
-            <SkeletonBlock className="h-20 rounded-2xl" />
-            <SkeletonBlock className="h-20 rounded-2xl" />
-            <SkeletonBlock className="h-20 rounded-2xl" />
-            <SkeletonBlock className="h-20 rounded-2xl" />
-          </div>
-        </SectionCard>
-
-        <aside className="space-y-6 xl:sticky xl:top-6 self-start">
-          <SectionCard title="Loading" description="Snapshot and status are loading...">
-            <div className="space-y-3">
-              <SkeletonBlock className="h-16 rounded-2xl" />
-              <SkeletonBlock className="h-16 rounded-2xl" />
-              <SkeletonBlock className="h-16 rounded-2xl" />
+      {/* Header skeleton matching EntityProfileHeader */}
+      <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <SkeletonBlock className="h-20 w-20 shrink-0 rounded-[1.5rem]" />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <SkeletonBlock className="h-6 w-20 rounded-full" />
+                </div>
+                <SkeletonBlock className="h-9 w-56 rounded-xl" />
+              </div>
             </div>
-          </SectionCard>
-        </aside>
+            <div className="flex gap-3">
+              <SkeletonBlock className="h-10 w-32 rounded-xl" />
+              <SkeletonBlock className="h-10 w-34 rounded-xl" />
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Tabs skeleton */}
+      <div className="rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="flex flex-wrap gap-2">
+          <SkeletonBlock className="h-11 w-24 rounded-full" />
+          <SkeletonBlock className="h-11 w-28 rounded-full" />
+          <SkeletonBlock className="h-11 w-28 rounded-full" />
+          <SkeletonBlock className="h-11 w-24 rounded-full" />
+          <SkeletonBlock className="h-11 w-20 rounded-full" />
+          {entityType === "company" && <SkeletonBlock className="h-11 w-28 rounded-full" />}
+          <SkeletonBlock className="h-11 w-24 rounded-full" />
+          <SkeletonBlock className="h-11 w-24 rounded-full" />
+        </div>
+      </div>
+
+      {/* Section content skeleton */}
+      <SectionCard title={sectionTitle} description="Loading section content...">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <SkeletonBlock className="h-20 rounded-2xl" />
+          <SkeletonBlock className="h-20 rounded-2xl" />
+          <SkeletonBlock className="h-20 rounded-2xl" />
+          <SkeletonBlock className="h-20 rounded-2xl" />
+          <SkeletonBlock className="h-20 rounded-2xl" />
+          <SkeletonBlock className="h-20 rounded-2xl" />
+        </div>
+      </SectionCard>
     </div>
   );
 }

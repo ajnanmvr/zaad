@@ -12,8 +12,11 @@ const SORT_CONFIG_BY_OPTION: Record<TCompanySort, Record<string, 1 | -1>> = {
 export function buildCompanyListQuery(input?: {
   search?: string;
   createdWithinDays?: number;
+  deleted?: boolean;
 }) {
-  const query: any = { published: true, entityType: "company" };
+  const query: any = input?.deleted
+    ? { published: false, entityType: "company" }
+    : { published: true, entityType: "company" };
 
   if (input?.search) {
     query.name = { $regex: input.search, $options: "i" };
@@ -52,13 +55,17 @@ export async function softDeleteCompanyById(entityId: string) {
   return Company.findByIdAndUpdate(entityId, { published: false });
 }
 
+export async function restoreCompanyById(entityId: string) {
+  return Company.findByIdAndUpdate(entityId, { published: true });
+}
+
 export async function findCompanyById(entityId: string) {
   return Company.findById(entityId);
 }
 
 export async function findCompanies(query: any, sort: Record<string, 1 | -1>, skip: number, limit: number) {
   return Company.find(query)
-    .select("name createdAt color")
+    .select("name createdAt color published")
     .sort(sort)
     .skip(skip)
     .limit(limit);

@@ -1,7 +1,7 @@
 "use client";
 
 import calculateStatus from "@/utils/calculateStatus";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
@@ -119,6 +119,7 @@ type OverviewResponse = {
       phone1?: string;
       phone2?: string;
       color?: string;
+      published?: boolean;
       company?: { id: string; name: string; color?: string };
     };
     counts: {
@@ -169,6 +170,7 @@ export default function EntitySectionPage({
   section: Section;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const sectionTitle = getSectionTitle(section);
   const [showAddDocument, setShowAddDocument] = useState(false);
   const [showAddCredential, setShowAddCredential] = useState(false);
@@ -190,6 +192,7 @@ export default function EntitySectionPage({
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
+  const [isRestoringEntity, setIsRestoringEntity] = useState(false);
   const [showDeleteEntityConfirm, setShowDeleteEntityConfirm] = useState(false);
   const [showDeleteDocumentConfirm, setShowDeleteDocumentConfirm] = useState(false);
   const [showDeleteCredentialConfirm, setShowDeleteCredentialConfirm] = useState(false);
@@ -330,6 +333,7 @@ export default function EntitySectionPage({
 
   const entity = overviewRes?.data.entity;
   const counts = overviewRes?.data.counts;
+  const isEntityDeleted = entity?.published === false;
   const details = entityRes?.data;
   const documents = useMemo(
     () => entityRes?.data?.documents || [],
@@ -889,6 +893,24 @@ export default function EntitySectionPage({
     }
   };
 
+  const performRestoreEntity = async () => {
+    try {
+      setIsRestoringEntity(true);
+      await axios.patch(`/api/${entityType}/${id}`, { action: "restore" });
+      toast.success(`${entityType} restored successfully`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["entity-overview", entityType, id] }),
+        queryClient.invalidateQueries({ queryKey: ["entity-section-base", entityType, id] }),
+        queryClient.invalidateQueries({ queryKey: ["entity-linked-page", entityType, id] }),
+      ]);
+    } catch (error) {
+      toast.error(`Failed to restore ${entityType}`);
+      console.error(error);
+    } finally {
+      setIsRestoringEntity(false);
+    }
+  };
+
   const handleDeleteEntity = async () => {
     setShowDeleteEntityConfirm(true);
   };
@@ -1095,6 +1117,9 @@ export default function EntitySectionPage({
           onEditHref={`/${entityType}/${id}/edit`}
           onDelete={handleDeleteEntity}
           isDeleting={isDeletingEntity}
+          isDeleted={isEntityDeleted}
+          onRestore={performRestoreEntity}
+          isRestoring={isRestoringEntity}
         />
 
         <EntityProfileTabs
@@ -1156,7 +1181,7 @@ export default function EntitySectionPage({
 
               {!isSectionLoading && section === "records" && (
                 <TransactionList
-                  type={entityType === "individual" ? "self" : entityType}
+                  type={entityType}
                   id={id}
                   embedded
                   enableSelection
