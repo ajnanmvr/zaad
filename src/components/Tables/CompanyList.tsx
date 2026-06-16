@@ -27,6 +27,7 @@ function CompanyList() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<CompanySort>("newest");
   const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(undefined);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -38,15 +39,16 @@ function CompanyList() {
 
   useEffect(() => {
     setPage(PAGINATION.DEFAULT_PAGE);
-  }, [search, sortBy, createdWithinDays]);
+    setSelectedIds([]);
+  }, [search, sortBy, createdWithinDays, showDeleted]);
 
   const {
     data: companiesResponse,
     isLoading: companyLoading,
     isError: companyError,
   } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["companies", page, limit, search, sortBy, createdWithinDays],
-    queryFn: () => fetchCompanies(page, limit, { search, sortBy, createdWithinDays }),
+    queryKey: ["companies", page, limit, search, sortBy, createdWithinDays, showDeleted],
+    queryFn: () => fetchCompanies(page, limit, { search, sortBy, createdWithinDays, deleted: showDeleted }),
   });
 
   const companies = companiesResponse?.data || [];
@@ -128,7 +130,25 @@ function CompanyList() {
       }}
       compactHeaderControls
       headerActions={
-        <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowDeleted(false)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!showDeleted ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleted(true)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${showDeleted ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            >
+              Deleted
+            </button>
+          </div>
+          <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
+        </div>
       }
     >
       <div className="max-w-full overflow-x-auto">
@@ -159,7 +179,7 @@ function CompanyList() {
             {companies.map(({ id, name, createdAt, color, documentStatusCounts }, key) => (
               <tr
                 key={key}
-                className="group border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                className={`group border-b border-slate-100 transition-colors last:border-0 dark:border-slate-800 ${showDeleted ? "opacity-70 hover:opacity-100" : "hover:bg-slate-50/70 dark:hover:bg-slate-800/40"}`}
               >
                 <td className="px-3 py-4">
                   <input
@@ -179,10 +199,17 @@ function CompanyList() {
                 <td className="py-4 pl-4">
                   <Link href={`/company/${id}`}>
                     <div className="flex items-center gap-3">
-                      <EntityAvatar name={name} color={color} size="md" />
-                      <h5 className="font-semibold capitalize text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">
-                        {name}
-                      </h5>
+                      <EntityAvatar name={name} color={showDeleted ? undefined : color} size="md" />
+                      <div className="flex flex-col gap-1">
+                        <h5 className={`font-semibold capitalize transition-colors group-hover:text-primary ${showDeleted ? "text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-200"}`}>
+                          {name}
+                        </h5>
+                        {showDeleted && (
+                          <span className="inline-flex w-fit items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:bg-rose-950 dark:text-rose-400">
+                            Deleted
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </td>

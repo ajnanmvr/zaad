@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { requirePermission } from "@/auth/guards";
 import {
   getEmployeeEntityById,
+  restoreEmployeeEntity,
   softDeleteEmployeeEntity,
   splitEntityPayload,
   updateEmployeeEntity,
@@ -55,6 +56,28 @@ export async function DELETE(
   return Response.json({ message: "data deleted" }, { status: 200 });
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
+
+    const { id } = params;
+    const { action } = await request.json();
+
+    if (action === "restore") {
+      await restoreEmployeeEntity(id);
+      return Response.json({ message: "Employee restored" }, { status: 200 });
+    }
+
+    return Response.json({ message: "Unsupported action" }, { status: 400 });
+  } catch (error) {
+    return Response.json({ message: "Error updating employee", error }, { status: 500 });
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -98,6 +121,7 @@ export async function GET(
       id: employee._id,
       name: employee.name,
       company: employee.company,
+      published: (employee as any).published !== false,
       emiratesId: employee.emiratesId,
       nationality: employee.nationality,
       phone1: employee.phone1,

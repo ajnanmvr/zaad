@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
@@ -55,6 +55,7 @@ type OverviewResponse = {
       phone1?: string;
       phone2?: string;
       color?: string;
+      published?: boolean;
       company?: { id: string; name: string; color?: string };
     };
     counts: {
@@ -131,6 +132,7 @@ export default function EntityOverviewHub({
   id: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [showAddDocument, setShowAddDocument] = useState(false);
   const [showAddCredential, setShowAddCredential] = useState(false);
   const [isAddingDocument, setIsAddingDocument] = useState(false);
@@ -142,6 +144,7 @@ export default function EntityOverviewHub({
   const [renewExpiryDate, setRenewExpiryDate] = useState("");
   const [isRenewingDoc, setIsRenewingDoc] = useState(false);
   const [isDeletingEntity, setIsDeletingEntity] = useState(false);
+  const [isRestoringEntity, setIsRestoringEntity] = useState(false);
   const [showDeleteEntityConfirm, setShowDeleteEntityConfirm] = useState(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [editingCredentialId, setEditingCredentialId] = useState<string | null>(null);
@@ -201,6 +204,7 @@ export default function EntityOverviewHub({
 
   const entity = overviewRes?.data.entity;
   const counts = overviewRes?.data.counts;
+  const isEntityDeleted = entity?.published === false;
   const details = detailRes?.data;
   const documents = useMemo(() => detailRes?.data?.documents || [], [detailRes?.data?.documents]);
   const credentials = useMemo(() => detailRes?.data?.credentials || [], [detailRes?.data?.credentials]);
@@ -466,6 +470,24 @@ export default function EntityOverviewHub({
     }
   };
 
+  const performRestoreEntity = async () => {
+    try {
+      setIsRestoringEntity(true);
+      await axios.patch(`/api/${entityType}/${id}`, { action: "restore" });
+      toast.success(`${entityType} restored successfully`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["entity-overview", entityType, id] }),
+        queryClient.invalidateQueries({ queryKey: ["entity-detail", entityType, id] }),
+        queryClient.invalidateQueries({ queryKey: ["entity-linked-page", entityType, id] }),
+      ]);
+    } catch (error) {
+      toast.error(`Failed to restore ${entityType}`);
+      console.error(error);
+    } finally {
+      setIsRestoringEntity(false);
+    }
+  };
+
   const handleDeleteEntity = async () => {
     setShowDeleteEntityConfirm(true);
   };
@@ -509,6 +531,9 @@ export default function EntityOverviewHub({
             onEditHref={`/${entityType}/${id}/edit`}
             onDelete={handleDeleteEntity}
             isDeleting={isDeletingEntity}
+            isDeleted={isEntityDeleted}
+            onRestore={performRestoreEntity}
+            isRestoring={isRestoringEntity}
           />
 
           <EntityProfileTabs

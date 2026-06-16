@@ -29,6 +29,7 @@ function IndividualList() {
   const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(
     undefined
   );
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,11 +42,11 @@ function IndividualList() {
   useEffect(() => {
     setPage(PAGINATION.DEFAULT_PAGE);
     setSelectedIds([]);
-  }, [search, sortBy, createdWithinDays]);
+  }, [search, sortBy, createdWithinDays, showDeleted]);
 
   const { data, isLoading } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["individuals", page, limit, search, sortBy, createdWithinDays],
-    queryFn: () => fetchIndividuals(page, limit, { search, sortBy, createdWithinDays }),
+    queryKey: ["individuals", page, limit, search, sortBy, createdWithinDays, showDeleted],
+    queryFn: () => fetchIndividuals(page, limit, { search, sortBy, createdWithinDays, deleted: showDeleted }),
   });
 
   const individuals = data?.data || [];
@@ -125,7 +126,25 @@ function IndividualList() {
         }}
         compactHeaderControls
         headerActions={
-          <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowDeleted(false)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!showDeleted ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleted(true)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${showDeleted ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+              >
+                Deleted
+              </button>
+            </div>
+            <ExportActionsMenu onExport={exportSelection} iconOnly selectedCount={selectedRows.length} />
+          </div>
         }
       >
         <div className="max-w-full overflow-x-auto">
@@ -156,7 +175,7 @@ function IndividualList() {
               {individuals.map((individual, key) => (
                 <tr
                   key={key}
-                  className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                  className={`group border-b border-slate-100 transition-colors last:border-0 dark:border-slate-800 ${showDeleted ? "opacity-70 hover:opacity-100" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/50"}`}
                 >
                   <td className="px-3 py-4">
                     <input
@@ -177,13 +196,20 @@ function IndividualList() {
                     <div className="flex items-center gap-3">
                       <EntityAvatar
                         name={individual.name}
-                        color={individual.color}
+                        color={showDeleted ? undefined : individual.color}
                         size="md"
                       />
                       <Link href={`/individual/${individual.id}`}>
-                        <h5 className="font-semibold capitalize text-slate-800 transition-colors hover:text-primary dark:text-slate-200">
-                          {individual.name}
-                        </h5>
+                        <div className="flex flex-col gap-1">
+                          <h5 className={`font-semibold capitalize transition-colors hover:text-primary ${showDeleted ? "text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-200"}`}>
+                            {individual.name}
+                          </h5>
+                          {showDeleted && (
+                            <span className="inline-flex w-fit items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:bg-rose-950 dark:text-rose-400">
+                              Deleted
+                            </span>
+                          )}
+                        </div>
                       </Link>
                     </div>
                   </td>

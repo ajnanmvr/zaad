@@ -13,10 +13,12 @@ import {
   findCompanyById,
   findPublishedCompanyColors,
   getCompanySort,
+  restoreCompanyById,
   softDeleteCompanyById,
   updateCompanyById,
 } from "@/repositories/companyRepository";
 import {
+  republishEntityRecordStats,
   unpublishEntityRecordStats,
 } from "@/repositories/paymentRepository";
 
@@ -128,10 +130,26 @@ export async function softDeleteCompanyEntity(entityId: string) {
   return company;
 }
 
+export async function restoreCompanyEntity(entityId: string) {
+  const company = await restoreCompanyById(entityId);
+  if (company) {
+    await republishEntityRecordStats(entityId);
+  }
+  return company;
+}
+
 export async function softDeleteEmployeeEntity(entityId: string) {
   const employee = await Employee.findByIdAndUpdate(entityId, { published: false });
   if (employee) {
     await unpublishEntityRecordStats(entityId);
+  }
+  return employee;
+}
+
+export async function restoreEmployeeEntity(entityId: string) {
+  const employee = await Employee.findByIdAndUpdate(entityId, { published: true });
+  if (employee) {
+    await republishEntityRecordStats(entityId);
   }
   return employee;
 }
@@ -142,6 +160,16 @@ export async function softDeleteIndividualEntity(entityId: string) {
   });
   if (individual) {
     await unpublishEntityRecordStats(entityId);
+  }
+  return individual;
+}
+
+export async function restoreIndividualEntity(entityId: string) {
+  const individual = await Individual.findByIdAndUpdate(entityId, {
+    published: true,
+  });
+  if (individual) {
+    await republishEntityRecordStats(entityId);
   }
   return individual;
 }
@@ -164,6 +192,7 @@ type TListCompanyEntitiesOptions = {
   search?: string;
   sortBy?: TCompanySort;
   createdWithinDays?: number;
+  deleted?: boolean;
 };
 
 export async function listCompanyEntities(
@@ -175,6 +204,7 @@ export async function listCompanyEntities(
   const query = buildCompanyListQuery({
     search: options?.search,
     createdWithinDays: options?.createdWithinDays,
+    deleted: options?.deleted,
   });
   const sortConfig = getCompanySort(options?.sortBy);
 
@@ -193,6 +223,7 @@ export async function listCompanyEntities(
       entityType: "company" as const,
       createdAt: company.createdAt,
       color: company.color,
+      published: company.published !== false,
       documentStatusCounts:
         documentStatusCountsMap.get(company._id.toString()) || {
           expired: 0,
@@ -216,10 +247,13 @@ export async function listEmployeeEntities(
     search?: string;
     sortBy?: string;
     createdWithinDays?: number;
+    deleted?: boolean;
   }
 ) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query: any = { published: true, entityType: "employee" };
+  const query: any = options?.deleted
+    ? { published: false, entityType: "employee" }
+    : { published: true, entityType: "employee" };
 
   if (options?.search) {
     const matchingCompanies = await Company.find({
@@ -252,7 +286,7 @@ export async function listEmployeeEntities(
 
   const [employees, total] = await Promise.all([
     Employee.find(query)
-      .select("name company createdAt color")
+      .select("name company createdAt color published")
       .populate("company", "name")
       .sort(sort as any)
       .skip(skip)
@@ -271,6 +305,7 @@ export async function listEmployeeEntities(
       company: employee.company,
       createdAt: employee.createdAt,
       color: employee.color,
+      published: employee.published !== false,
       documentStatusCounts:
         documentStatusCountsMap.get(employee._id.toString()) || {
           expired: 0,
@@ -294,10 +329,13 @@ export async function listIndividualEntities(
     search?: string;
     sortBy?: string;
     createdWithinDays?: number;
+    deleted?: boolean;
   }
 ) {
   const { normalizedPage, normalizedLimit, skip } = normalizePagination(page, limit);
-  const query: any = { published: true, entityType: "individual" };
+  const query: any = options?.deleted
+    ? { published: false, entityType: "individual" }
+    : { published: true, entityType: "individual" };
 
   if (options?.search) {
     query.name = { $regex: options.search, $options: "i" };
@@ -321,7 +359,7 @@ export async function listIndividualEntities(
 
   const [individuals, total] = await Promise.all([
     Individual.find(query)
-      .select("name createdAt color")
+      .select("name createdAt color published")
       .sort(sort as any)
       .skip(skip)
       .limit(normalizedLimit),
@@ -338,6 +376,7 @@ export async function listIndividualEntities(
       entityType: "individual" as const,
       createdAt: individual.createdAt,
       color: individual.color,
+      published: individual.published !== false,
       documentStatusCounts:
         documentStatusCountsMap.get(individual._id.toString()) || {
           expired: 0,

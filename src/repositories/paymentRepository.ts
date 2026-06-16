@@ -279,6 +279,18 @@ export async function unpublishEntityRecordStats(entityId: string) {
   );
 }
 
+export async function republishEntityRecordStats(entityId: string) {
+  return EntityRecordStats.findOneAndUpdate(
+    { entity: entityId },
+    {
+      $set: {
+        published: true,
+      },
+    },
+    { new: true },
+  );
+}
+
 export async function aggregateOfficeRecordCategoryStatsByKeys(categoryKeys?: string[]) {
   const matchStage: Record<string, any> = {
     deletedAt: null,

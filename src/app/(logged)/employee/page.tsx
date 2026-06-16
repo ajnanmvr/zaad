@@ -16,6 +16,7 @@ const TablesPage = () => {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name-asc" | "name-desc">("newest");
   const [createdWithinDays, setCreatedWithinDays] = useState<number | undefined>(undefined);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -27,11 +28,11 @@ const TablesPage = () => {
 
   useEffect(() => {
     setPage(PAGINATION.DEFAULT_PAGE);
-  }, [search, sortBy, createdWithinDays]);
+  }, [search, sortBy, createdWithinDays, showDeleted]);
 
   const { data: employeesResponse, isLoading: employeeLoading, isError: employeeError } = useQuery<TPaginatedResponse<TEntityListItem>>({
-    queryKey: ["employees", page, limit, search, sortBy, createdWithinDays],
-    queryFn: () => fetchEmployees(page, limit, { search, sortBy, createdWithinDays }),
+    queryKey: ["employees", page, limit, search, sortBy, createdWithinDays, showDeleted],
+    queryFn: () => fetchEmployees(page, limit, { search, sortBy, createdWithinDays, deleted: showDeleted }),
   });
 
   const employees = employeesResponse?.data;
@@ -61,6 +62,8 @@ const TablesPage = () => {
           onSortChange={setSortBy}
           createdWithinDays={createdWithinDays}
           onCreatedWithinDaysChange={setCreatedWithinDays}
+          showDeleted={showDeleted}
+          onShowDeletedChange={setShowDeleted}
         />
       </div>
     </>

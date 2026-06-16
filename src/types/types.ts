@@ -78,6 +78,7 @@ export type TEntityListItem = {
   entityType: "company" | "employee" | "individual";
   createdAt?: string;
   company?: TBaseData;
+  published?: boolean;
   documentStatusCounts?: {
     expired: number;
     renewal: number;

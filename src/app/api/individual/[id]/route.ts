@@ -13,6 +13,7 @@ import {
   replaceEntityDocuments,
 } from "@/services/entityDocumentService";
 import {
+  restoreIndividualEntity,
   softDeleteIndividualEntity,
   splitEntityPayload,
   updateEmployeeEntity,
@@ -55,6 +56,7 @@ export async function GET(
       id: individual._id,
       name: individual.name,
       color: individual.color,
+      published: (individual as any).published !== false,
       emiratesId: individual.emiratesId,
       nationality: individual.nationality,
       phone1: individual.phone1,
@@ -116,5 +118,26 @@ export async function DELETE(
     return Response.json({ message: "Data deleted" }, { status: 200 });
   } catch (error) {
     return Response.json({ message: "Error deleting individual data", error }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connect();
+    await requirePermission(request, "entities.write");
+
+    const { action } = await request.json();
+
+    if (action === "restore") {
+      await restoreIndividualEntity(params.id);
+      return Response.json({ message: "Individual restored" }, { status: 200 });
+    }
+
+    return Response.json({ message: "Unsupported action" }, { status: 400 });
+  } catch (error) {
+    return Response.json({ message: "Error updating individual data", error }, { status: 500 });
   }
 }
