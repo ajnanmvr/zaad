@@ -44,14 +44,18 @@ export async function GET(request: NextRequest) {
     const limit = Math.max(Number(searchParams.get("limit") || 10), 1);
     const sortBy = searchParams.get("sortBy") || "newest";
 
-    // Extract the single search parameter
     const search = searchParams.get("search");
     const entityId = searchParams.get("entityId");
+    const typeFilter = searchParams.get("type");
 
-    // Build the query object
     const query: any = { published: true };
     if (entityId) {
       query.entityId = entityId;
+    }
+    if (typeFilter === "quotation") {
+      query.quotation = true;
+    } else if (typeFilter === "invoice") {
+      query.quotation = { $ne: true };
     }
 
     if (search) {
@@ -141,6 +145,7 @@ export async function GET(request: NextRequest) {
           entityName: entityMeta?.name || invoice.client || null,
           purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
+          quotation: invoice.quotation === true,
           amount: invoice.items.reduce(
             (acc: number, item: TInvoiceItemsData) =>
               acc + item.rate * item.quantity,

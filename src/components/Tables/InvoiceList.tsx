@@ -44,9 +44,10 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<"all" | "invoice" | "quotation">("all");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["invoices", pageNumber, pageSize, sortBy, searchQuery, entityId],
+    queryKey: ["invoices", pageNumber, pageSize, sortBy, searchQuery, entityId, typeFilter],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(pageNumber),
@@ -55,6 +56,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
         search: searchQuery || "",
       });
       if (entityId) params.set("entityId", entityId);
+      if (typeFilter !== "all") params.set("type", typeFilter);
       const response = await axios.get(`/api/invoice?${params.toString()}`);
       return response.data;
     },
@@ -247,6 +249,23 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 <option value="invoice-desc">Invoice Number Desc</option>
               </select>
 
+              <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+                {(["all", "invoice", "quotation"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setTypeFilter(option);
+                      setPageNumber(0);
+                      setSelectedInvoiceIds([]);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${typeFilter === option ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                  >
+                    {option === "all" ? "All" : option === "invoice" ? "Invoices" : "Quotations"}
+                  </button>
+                ))}
+              </div>
+
               <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
 
               {canCreateInvoices && (
@@ -307,8 +326,10 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                         <div className="rounded-full bg-slate-100 p-3 dark:bg-slate-800">
                           <FiFileText className="text-2xl text-slate-400" />
                         </div>
-                        <p className="text-base font-medium text-slate-700 dark:text-slate-300">No invoices found</p>
-                        <p className="text-sm">Try adjusting your search criteria or create a new invoice.</p>
+                        <p className="text-base font-medium text-slate-700 dark:text-slate-300">
+                          No {typeFilter === "quotation" ? "quotations" : typeFilter === "invoice" ? "invoices" : "invoices"} found
+                        </p>
+                        <p className="text-sm">Try adjusting your search or filter criteria.</p>
                       </div>
                     </td>
                   </tr>
@@ -331,9 +352,16 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                          {record?.invoiceNo || "N/A"}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ring-inset ${record?.quotation ? "bg-violet-50 text-violet-700 ring-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300" : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"}`}>
+                            {record?.invoiceNo || "N/A"}
+                          </span>
+                          {record?.quotation && (
+                            <span className="inline-flex w-fit items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                              Quotation
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

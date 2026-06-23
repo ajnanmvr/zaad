@@ -31,6 +31,7 @@ export type TInvoiceList = {
   entityName?: string | null;
   amount: number;
   date: string;
+  quotation?: boolean;
 };
 
 export type TInvoiceItemsData = {

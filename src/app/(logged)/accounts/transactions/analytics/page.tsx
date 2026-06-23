@@ -373,11 +373,22 @@ export default function FinanceAnalyticsPage() {
     },
   });
 
+  const { data: financeSummaryData } = useQuery<{ summary: { totalTransactions: number; todayProfit: number } }>({
+    queryKey: ["finance-summary"],
+    enabled: canViewFinanceSummary,
+    queryFn: async () => {
+      const { data } = await axios.get("/api/payment/finance-summary");
+      return data;
+    },
+  });
+
   useEffect(() => {
     if (user && !canViewFinanceSummary) {
       router.push("/not-permitted");
     }
   }, [user, canViewFinanceSummary, router]);
+
+  const [trendWindow, setTrendWindow] = useState<"6m" | "1y" | "total">("6m");
 
   const monthlyStats = useMemo(() => data?.summary ?? [], [data?.summary]);
 
@@ -387,7 +398,12 @@ export default function FinanceAnalyticsPage() {
   );
 
   const latestStats = sortedStats[sortedStats.length - 1];
-  const recentTwelve = sortedStats.slice(-12);
+
+  const trendSlice = useMemo(() => {
+    if (trendWindow === "6m") return sortedStats.slice(-6);
+    if (trendWindow === "1y") return sortedStats.slice(-12);
+    return sortedStats.filter((item) => item.year > 2024 || (item.year === 2024 && item.month >= 7));
+  }, [sortedStats, trendWindow]);
 
   const totals = useMemo(() => {
     return sortedStats.reduce(
@@ -414,14 +430,14 @@ export default function FinanceAnalyticsPage() {
     };
   }, [sortedStats.length, totals]);
 
-  const oneYearTrend = useMemo(() => {
-    const labels = recentTwelve.map((item) => monthLabel(item.month, item.year));
+  const trendData = useMemo(() => {
+    const labels = trendSlice.map((item) => monthLabel(item.month, item.year));
     return {
       labels,
-      profit: recentTwelve.map((item) => Number(item.profit || 0)),
-      officeExpense: recentTwelve.map((item) => Number(item.officeRecords?.totalExpense || 0)),
+      profit: trendSlice.map((item) => Number(item.profit || 0)),
+      officeExpense: trendSlice.map((item) => Number(item.officeRecords?.totalExpense || 0)),
     };
-  }, [recentTwelve]);
+  }, [trendSlice]);
 
   const currentMonthCategories = latestStats?.officeRecords?.byCategory || [];
   const currentMonthMethods = [...(latestStats?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
@@ -433,7 +449,8 @@ export default function FinanceAnalyticsPage() {
 
   const isNetPositive = Number(latestStats?.netProfit || 0) >= 0;
 
-  const monthShortLabels = oneYearTrend.labels.map((label) => label.split(" ")[0]);
+  const todayProfit = financeSummaryData?.summary?.todayProfit ?? null;
+  const monthShortLabels = trendData.labels.map((label) => label.split(" ")[0]);
 
   const officeExpenseSlices = currentMonthCategories
     .map((category, index) => ({
@@ -593,6 +610,14 @@ export default function FinanceAnalyticsPage() {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-950/20">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Today's Profit</p>
+                <p className="mt-2 text-lg font-black text-amber-600 dark:text-amber-300">
+                  {todayProfit === null ? "..." : formatCurrency(todayProfit)}
+                </p>
+                <p className="mt-1 text-xs text-amber-600/70 dark:text-amber-400/70">Service fees collected today</p>
+              </div>
+
               <Link
                 href={`/accounts/transactions/analytics/${latestStats.year}/${latestStats.month}`}
                 className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-900/40 dark:bg-cyan-950/20 dark:text-cyan-300"
@@ -660,13 +685,37 @@ export default function FinanceAnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-5">
-        <ChartCard title="One-Year Trend" subtitle="Profit and office expense for the last 12 months including this month. Hover points to see values.">
-          {oneYearTrend.labels.length > 0 ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                {trendWindow === "6m" ? "6-Month Trend" : trendWindow === "1y" ? "One-Year Trend" : "All-Time Trend"}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Profit and office expense
+                {trendWindow === "6m" ? " for the last 6 months" : trendWindow === "1y" ? " for the last 12 months" : " from July 2024 to now"}.
+                {" "}Hover points to see values.
+              </p>
+            </div>
+            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+              {(["6m", "1y", "total"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setTrendWindow(option)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${trendWindow === option ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                >
+                  {option === "6m" ? "6M" : option === "1y" ? "1Y" : "Total"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {trendData.labels.length > 0 ? (
             <LineChart
               labels={monthShortLabels}
               series={[
-                { label: "Profit", values: oneYearTrend.profit, color: "#10B981" },
-                { label: "Office Expense", values: oneYearTrend.officeExpense, color: "#F43F5E" },
+                { label: "Profit", values: trendData.profit, color: "#10B981" },
+                { label: "Office Expense", values: trendData.officeExpense, color: "#F43F5E" },
               ]}
             />
           ) : (
@@ -674,7 +723,7 @@ export default function FinanceAnalyticsPage() {
               No monthly stats found.
             </div>
           )}
-        </ChartCard>
+        </section>
       </section>
 
       {isError && (
