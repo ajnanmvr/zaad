@@ -16,11 +16,8 @@ import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 import {
   FiArrowRight,
-  FiChevronLeft,
-  FiChevronRight,
   FiCreditCard,
   FiSearch,
-  FiTrendingDown,
   FiTrendingUp,
 } from "react-icons/fi";
 
@@ -45,8 +42,6 @@ type EntityRecordStatsResponse = {
   };
 };
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
 const formatAmount = (value: number) => `AED ${Math.abs(Number(value || 0)).toFixed(2)}`;
 
 const toEntityRouteType = (entityType: string) => {
@@ -66,8 +61,6 @@ const toEntityTypeLabel = (entityType: string) => {
 export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode }) {
   const [search, setSearch] = useState("");
   const [entityTypeFilter, setEntityTypeFilter] = useState<"all" | "company" | "employee" | "individual">("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
 
   const isCredit = mode === "credit";
 
@@ -108,14 +101,6 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
       );
     });
   }, [baseRows, entityTypeFilter, search]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const safePage = Math.min(page, pageCount);
-
-  const pagedRows = useMemo(() => {
-    const start = (safePage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, pageSize, safePage]);
 
   const totalBalance = useMemo(
     () => filteredRows.reduce((sum, row) => sum + Math.abs(Number(row.balance || 0)), 0),
@@ -210,7 +195,6 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
-                setPage(1);
               }}
               placeholder="Search by client name"
               className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -221,7 +205,6 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
             value={entityTypeFilter}
             onChange={(event) => {
               setEntityTypeFilter(event.target.value as "all" | "company" | "employee" | "individual");
-              setPage(1);
             }}
             className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
@@ -229,19 +212,6 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
             <option value="company">Company</option>
             <option value="employee">Employee</option>
             <option value="individual">Individual</option>
-          </select>
-
-          <select
-            value={String(pageSize)}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
-            }}
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            {PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option} / page</option>
-            ))}
           </select>
 
           <ExportActionsMenu onExport={onExport} />
@@ -255,7 +225,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
           <div className="rounded-2xl border border-rose-300 bg-rose-50/70 px-4 py-8 text-center text-sm text-rose-700 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-300">
             Failed to load data.
           </div>
-        ) : pagedRows.length === 0 ? (
+        ) : filteredRows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
             No rows found for current filters.
           </div>
@@ -270,7 +240,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr
                     key={row.entity}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 dark:border-slate-800 dark:hover:bg-slate-800/40"
@@ -307,28 +277,10 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Showing {(safePage - 1) * pageSize + (pagedRows.length ? 1 : 0)} to {(safePage - 1) * pageSize + pagedRows.length} of {filteredRows.length}
+            {filteredRows.length} {isCredit ? "credit" : "debit"} {filteredRows.length === 1 ? "entry" : "entries"}
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={safePage <= 1}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <FiChevronLeft /> Prev
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((prev) => Math.min(pageCount, prev + 1))}
-              disabled={safePage >= pageCount}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              Next <FiChevronRight />
-            </button>
-          </div>
         </div>
       </section>
     </div>

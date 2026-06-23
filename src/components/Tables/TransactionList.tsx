@@ -1,7 +1,7 @@
 "use client";
 import { useUserContext } from "@/contexts/UserContext";
 import { TRecordList } from "@/types/records";
-import { formatDateTime, formatRelativeDate } from "@/utils/dateUtils";
+import { formatDateTime } from "@/utils/dateUtils";
 import {
   exportRowsCsv,
   exportRowsExcel,
@@ -77,31 +77,25 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 
-const formatTransactionListDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "N/A";
+const DUBAI_TZ = "Asia/Dubai";
 
+const formatTransactionListDateParts = (dateString: string | null | undefined) => {
+  if (!dateString) return null;
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "N/A";
-
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isToday) {
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
-  }
-
-  if (isYesterday) {
-    return "Yesterday";
-  }
-
-  return formatRelativeDate(dateString);
+  if (isNaN(date.getTime())) return null;
+  const datePart = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: DUBAI_TZ,
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: DUBAI_TZ,
+  }).format(date);
+  return { datePart, timePart };
 };
 
 const getEditCountText = (count: number): string => {
@@ -1574,7 +1568,11 @@ const TransactionList = ({
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
                                   <p className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">
-                                    {record?.recordKind === "self_transfer"
+                                    {record?.particular}
+     
+                                  </p>
+                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
+                                                                   {record?.recordKind === "self_transfer"
                                       ? record?.type === "expense"
                                         ? "Self Transfer Out"
                                         : "Self Transfer In"
@@ -1582,9 +1580,6 @@ const TransactionList = ({
                                         ? record?.categoryName ||
                                         "Office Record"
                                         : record?.client?.name || "Unknown"}
-                                  </p>
-                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
-                                    {record?.particular}
                                   </p>
                                 </Link>
                               </div>
@@ -1664,15 +1659,16 @@ const TransactionList = ({
                             </td>
 
                             <td className="py-4 px-4 align-top text-sm text-slate-600 dark:text-slate-400">
-                              <span
-                                title={formatDateTime(
-                                  record.createdAt || record.dateTime || null,
-                                )}
-                              >
-                                {formatTransactionListDate(
-                                  record.createdAt || record.dateTime || null,
-                                )}
-                              </span>
+                              {(() => {
+                                const parts = formatTransactionListDateParts(record.createdAt || record.dateTime || null);
+                                if (!parts) return <span>N/A</span>;
+                                return (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">{parts.datePart}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{parts.timePart}</span>
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             {(type || category) && (
