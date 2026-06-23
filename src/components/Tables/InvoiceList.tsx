@@ -14,8 +14,6 @@ import { hasPermission } from "@/auth/permissions";
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import SkeletonList from "../common/SkeletonList";
 import EntityAvatar from "../common/EntityAvatar";
-import ExportActionsMenu from "../common/ExportActionsMenu";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 type InvoiceSort = "newest" | "oldest" | "client-asc" | "client-desc" | "invoice-asc" | "invoice-desc";
 
@@ -43,7 +41,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasMore, setHasMore] = useState(true);
-  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<"all" | "invoice" | "quotation">("all");
 
   const { data, isLoading } = useQuery({
@@ -114,40 +111,10 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
     (window as any).searchDebounceTimeout = setTimeout(() => {
       setSearchQuery(value);
       setPageNumber(0);
-      setSelectedInvoiceIds([]);
+
     }, 1000);
   };
 
-  const allSelected = invoices.length > 0 && invoices.every((record) => selectedInvoiceIds.includes(record.id));
-  const selectedRows = invoices.filter((record) => selectedInvoiceIds.includes(record.id));
-
-  const mapExportRows = (rows: TInvoiceList[]) =>
-    rows.map((row) => ({
-      InvoiceNo: row.invoiceNo,
-      Client: row.client,
-      Purpose: row.purpose,
-      Date: row.date,
-      Amount: Number(row.amount || 0).toFixed(2),
-    }));
-
-  const exportSelection = async (format: "csv" | "excel" | "pdf", mode: "selected" | "all") => {
-    const sourceRows = mode === "selected" ? selectedRows : invoices;
-    const rows = mapExportRows(sourceRows);
-    if (!rows.length) {
-      toast.error(mode === "selected" ? "Select invoices first" : "No invoices to export");
-      return;
-    }
-
-    if (format === "csv") {
-      exportRowsCsv(rows, "invoices");
-    } else if (format === "excel") {
-      exportRowsExcel(rows, "invoices");
-    } else {
-      await exportRowsPdf(rows, "invoices");
-    }
-
-    toast.success(`${mode === "selected" ? "Selected" : "Visible"} invoices exported as ${format.toUpperCase()}`);
-  };
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
@@ -205,7 +172,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                       setSearchInput("");
                       setSearchQuery("");
                       setPageNumber(0);
-                        setSelectedInvoiceIds([]);
+                  
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                   >
@@ -219,7 +186,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 onChange={(event) => {
                   setPageSize(Number(event.target.value));
                   setPageNumber(0);
-                  setSelectedInvoiceIds([]);
+            
                 }}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 title="Rows per page"
@@ -236,7 +203,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 onChange={(event) => {
                   setSortBy(event.target.value as InvoiceSort);
                   setPageNumber(0);
-                  setSelectedInvoiceIds([]);
+            
                 }}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 title="Sort invoices"
@@ -257,7 +224,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                     onClick={() => {
                       setTypeFilter(option);
                       setPageNumber(0);
-                      setSelectedInvoiceIds([]);
                     }}
                     className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${typeFilter === option ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
                   >
@@ -265,8 +231,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                   </button>
                 ))}
               </div>
-
-              <ExportActionsMenu onExport={exportSelection} selectedCount={selectedRows.length} />
 
               {canCreateInvoices && (
                 <Link
@@ -289,21 +253,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <table className="w-full whitespace-nowrap text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
-                  <th className="w-[44px] px-6 py-4">
-                    <input
-                      type="checkbox"
-                      aria-label="Select all invoices"
-                      checked={allSelected}
-                      onChange={(event) => {
-                        if (event.target.checked) {
-                          setSelectedInvoiceIds(invoices.map((record) => record.id));
-                        } else {
-                          setSelectedInvoiceIds([]);
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                  </th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Invoice No</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Client</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Purpose</th>
@@ -315,13 +264,13 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="p-0">
+                    <td colSpan={6} className="p-0">
                       <SkeletonList />
                     </td>
                   </tr>
                 ) : invoices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="rounded-full bg-slate-100 p-3 dark:bg-slate-800">
                           <FiFileText className="text-2xl text-slate-400" />
@@ -336,21 +285,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 ) : (
                   invoices.map((record) => (
                     <tr key={record.id} className="group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30">
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${record.invoiceNo}`}
-                          checked={selectedInvoiceIds.includes(record.id)}
-                          onChange={(event) => {
-                            setSelectedInvoiceIds((prev) =>
-                              event.target.checked
-                                ? Array.from(new Set([...prev, record.id]))
-                                : prev.filter((id) => id !== record.id),
-                            );
-                          }}
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                      </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ring-inset ${record?.quotation ? "bg-violet-50 text-violet-700 ring-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300" : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"}`}>
@@ -428,7 +362,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <button
               onClick={() => {
                 setPageNumber((prev) => Math.max(prev - 1, 0));
-                setSelectedInvoiceIds([]);
+          
               }}
               disabled={pageNumber === 0 || isLoading}
               className={clsx(
@@ -443,7 +377,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <button
               onClick={() => {
                 setPageNumber((prev) => prev + 1);
-                setSelectedInvoiceIds([]);
+          
               }}
               disabled={isLoading || !hasMore || invoices.length === 0}
               className={clsx(
