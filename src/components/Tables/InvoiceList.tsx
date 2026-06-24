@@ -172,7 +172,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                       setSearchInput("");
                       setSearchQuery("");
                       setPageNumber(0);
-                  
+
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
                   >
@@ -186,7 +186,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 onChange={(event) => {
                   setPageSize(Number(event.target.value));
                   setPageNumber(0);
-            
+
                 }}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 title="Rows per page"
@@ -203,7 +203,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 onChange={(event) => {
                   setSortBy(event.target.value as InvoiceSort);
                   setPageNumber(0);
-            
+
                 }}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 title="Sort invoices"
@@ -255,7 +255,6 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Invoice No</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Client</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Purpose</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">Amount</th>
                   <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-center">Actions</th>
@@ -287,7 +286,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                     <tr key={record.id} className="group transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30">
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ring-inset ${record?.quotation ? "bg-violet-50 text-violet-700 ring-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300" : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"}`}>
+                          <span className={`inline-flex w-min items-center rounded-lg px-2.5 py-1 text-xs font-bold tracking-wide ring-1 ring-inset ${record?.quotation ? "bg-violet-50 text-violet-700 ring-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300" : "bg-emerald-50 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"}`}>
                             {record?.invoiceNo || "N/A"}
                           </span>
                           {record?.quotation && (
@@ -304,10 +303,13 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
                             color={record?.entityColor || undefined}
                             size="sm"
                           />
-                          <div className="font-semibold capitalize text-slate-800 dark:text-slate-200">{record?.client}</div>
+                          <div>
+
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">{record?.purpose}</div>
+                            <div className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">{record?.client}</div>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{record?.purpose}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{record?.date || "N/A"}</td>
                       <td className="px-6 py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                         {(record?.amount || 0).toFixed(2)} <span className="ml-0.5 text-xs text-emerald-500/70">AED</span>
@@ -362,7 +364,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <button
               onClick={() => {
                 setPageNumber((prev) => Math.max(prev - 1, 0));
-          
+
               }}
               disabled={pageNumber === 0 || isLoading}
               className={clsx(
@@ -377,7 +379,7 @@ const InvoiceList = ({ entityId, embedded = false, returnTo }: { entityId?: stri
             <button
               onClick={() => {
                 setPageNumber((prev) => prev + 1);
-          
+
               }}
               disabled={isLoading || !hasMore || invoices.length === 0}
               className={clsx(
