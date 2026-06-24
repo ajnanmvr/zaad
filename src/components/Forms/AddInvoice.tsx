@@ -7,7 +7,7 @@ import { debounce } from "lodash";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign } from "react-icons/fi";
+import { FiChevronDown, FiPlus, FiTrash2, FiFileText, FiHash, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiChevronUp, FiMenu } from "react-icons/fi";
 import clsx from "clsx";
 import EntityAvatar from "../common/EntityAvatar";
 import toast from "react-hot-toast";
@@ -51,6 +51,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
         color?: string;
         type: "company" | "employee" | "individual";
     } | null>(null);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const [invoiceData, setInvoiceData] = useState<any>({
         createdBy: user?._id,
         date: new Date().toISOString().split('T')[0],
@@ -219,6 +221,24 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
     const handleDeleteDocument = (index: number) => {
         const updatedItems = invoiceData.items.filter((item: any, itemIndex: number) => itemIndex !== index);
         setInvoiceData({ ...invoiceData, items: updatedItems });
+    };
+
+    const handleMoveItem = (index: number, direction: "up" | "down") => {
+        const items = [...invoiceData.items];
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= items.length) return;
+        [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
+        setInvoiceData({ ...invoiceData, items });
+    };
+
+    const handleDragEnd = (fromIndex: number, toIndex: number | null) => {
+        setDragIndex(null);
+        setDragOverIndex(null);
+        if (toIndex === null || fromIndex === toIndex) return;
+        const items = [...invoiceData.items];
+        const [moved] = items.splice(fromIndex, 1);
+        items.splice(toIndex, 0, moved);
+        setInvoiceData({ ...invoiceData, items });
     };
 
     const handleAddDocument = (e: any) => {
@@ -548,18 +568,68 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                             </div>
                                         )}
 
-                                        {invoiceData?.items?.map((doc: any, index: number) => (
-                                            <div key={index} className="relative rounded-2xl border border-slate-200 bg-slate-50/40 p-5 dark:border-slate-700/60 dark:bg-slate-800/30">
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); handleDeleteDocument(index) }}
-                                                    className="absolute right-4 top-4 rounded-lg bg-rose-50 p-2 text-rose-500 transition-colors hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20"
-                                                    title="Remove Item"
-                                                >
-                                                    <FiTrash2 />
-                                                </button>
+                                        {invoiceData?.items?.map((doc: any, index: number) => {
+                                            const isDragging = dragIndex === index;
+                                            const isOver = dragOverIndex === index && dragIndex !== index;
+                                            return (
+                                            <div
+                                                key={index}
+                                                draggable
+                                                onDragStart={() => setDragIndex(index)}
+                                                onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index); }}
+                                                onDragEnd={() => handleDragEnd(dragIndex!, dragOverIndex)}
+                                                onDrop={(e) => { e.preventDefault(); handleDragEnd(dragIndex!, index); }}
+                                                className={clsx(
+                                                    "relative rounded-2xl border bg-slate-50/40 p-5 transition-all dark:bg-slate-800/30",
+                                                    isDragging ? "opacity-40 scale-[0.98] border-slate-300 dark:border-slate-600" : isOver ? "border-violet-400 bg-violet-50/40 dark:border-violet-500/60 dark:bg-violet-950/20 ring-2 ring-violet-300/40" : "border-slate-200 dark:border-slate-700/60"
+                                                )}
+                                            >
+                                                {/* Top controls row */}
+                                                <div className="mb-4 flex items-center justify-between gap-2">
+                                                    {/* Drag handle + index */}
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="cursor-grab touch-none rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:cursor-grabbing dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                                            title="Drag to reorder"
+                                                        >
+                                                            <FiMenu className="h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-xs font-black uppercase tracking-wider text-slate-400">Item {index + 1}</span>
+                                                    </div>
 
-                                                <div className="space-y-4 pr-12">
+                                                    {/* Up / Down / Delete */}
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            disabled={index === 0}
+                                                            onClick={() => handleMoveItem(index, "up")}
+                                                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                                            title="Move up"
+                                                        >
+                                                            <FiChevronUp className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={index === invoiceData.items.length - 1}
+                                                            onClick={() => handleMoveItem(index, "down")}
+                                                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                                            title="Move down"
+                                                        >
+                                                            <FiChevronDown className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.preventDefault(); handleDeleteDocument(index); }}
+                                                            className="rounded-lg p-1.5 text-rose-400 transition-colors hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-500/20"
+                                                            title="Remove item"
+                                                        >
+                                                            <FiTrash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Fields */}
+                                                <div className="space-y-4">
                                                     <div>
                                                         <label className={labelClass}>Item Title <span className="text-rose-500">*</span></label>
                                                         <input
@@ -579,7 +649,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                             value={doc?.desc || ''}
                                                             onChange={(e) => handleDocumentChange(index, 'desc', e.target.value)}
                                                             className={clsx(inputClass, "resize-y bg-white dark:bg-slate-900")}
-                                                        ></textarea>
+                                                        />
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div>
@@ -611,7 +681,8 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
