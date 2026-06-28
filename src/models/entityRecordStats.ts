@@ -44,6 +44,14 @@ const EntityRecordStatsSchema = new Schema(
       type: Date,
       default: Date.now,
     },
+    lastTransactionAt: {
+      type: Date,
+      default: null,
+    },
+    badDebt: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

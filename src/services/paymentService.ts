@@ -431,6 +431,7 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
         totalTransactions,
         balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
         lastRecomputedAt: now,
+        lastTransactionAt: aggregated?.lastTransactionAt ?? null,
       };
     });
 
@@ -475,6 +476,7 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
       totalTransactions,
       balance: Number((totalIncome - (totalExpense + totalServiceFee)).toFixed(2)),
       lastRecomputedAt: now,
+      lastTransactionAt: aggregated?.lastTransactionAt ?? null,
     };
   });
 

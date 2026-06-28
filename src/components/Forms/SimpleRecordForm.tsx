@@ -66,6 +66,7 @@ interface EntityOption {
   name: string;
   color?: string;
   entityType: "company" | "employee" | "individual";
+  company?: { _id?: string; name?: string } | null;
 }
 
 interface PreviousPaymentSequence {
@@ -1243,7 +1244,9 @@ const theme = usesNeutralTheme
                                       {entity.name}
                                     </span>
                                     <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                                      {entity.entityType}
+                                      {entity.entityType === "employee" && entity.company?.name
+                                        ? `Employee — ${entity.company.name}`
+                                        : entity.entityType}
                                     </span>
                                   </span>
                                 </button>

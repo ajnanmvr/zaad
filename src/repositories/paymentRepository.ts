@@ -180,6 +180,7 @@ export async function aggregateEntityRecordStatsByEntityIds(entityIds?: string[]
         _id: "$entity",
         entityType: { $first: "$entityDoc.entityType" },
         totalTransactions: { $sum: 1 },
+        lastTransactionAt: { $max: "$createdAt" },
         totalIncome: {
           $sum: {
             $cond: [{ $eq: ["$type", "income"] }, { $ifNull: ["$amount", 0] }, 0],
@@ -227,6 +228,7 @@ export async function bulkUpsertEntityRecordStats(statsRows: any[]) {
             totalTransactions: row.totalTransactions,
             balance: row.balance,
             lastRecomputedAt: row.lastRecomputedAt || new Date(),
+            ...(row.lastTransactionAt != null ? { lastTransactionAt: row.lastTransactionAt } : {}),
           },
         },
         upsert: true,
