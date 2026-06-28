@@ -17,6 +17,8 @@ type EntityRecordStatRow = {
   totalServiceFee: number;
   totalTransactions: number;
   lastRecomputedAt?: string;
+  lastTransactionAt?: string | null;
+  badDebt?: boolean;
 };
 
 function formatRows(rows: EntityRecordStatRow[]) {
@@ -29,6 +31,25 @@ function formatRows(rows: EntityRecordStatRow[]) {
     .sort((a, b) => a.balance - b.balance);
 
   return { creditRows, debitRows };
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    await connect();
+    await requirePermission(request, "payments.write");
+    const { entityId, badDebt } = await request.json();
+    if (!entityId || typeof badDebt !== "boolean") {
+      return Response.json({ error: "entityId and badDebt (boolean) are required" }, { status: 400 });
+    }
+    await EntityRecordStats.findOneAndUpdate(
+      { entity: entityId },
+      { $set: { badDebt } },
+    );
+    return Response.json({ message: "Bad debt status updated" }, { status: 200 });
+  } catch (error) {
+    const status = getServiceErrorStatus(error);
+    return Response.json({ error: getServiceErrorMessage(error, "Failed to update bad debt status") }, { status });
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -81,6 +102,8 @@ export async function GET(request: NextRequest) {
           totalServiceFee: 1,
           totalTransactions: 1,
           lastRecomputedAt: 1,
+          lastTransactionAt: 1,
+          badDebt: 1,
         },
       },
       {
