@@ -1245,7 +1245,7 @@ const theme = usesNeutralTheme
                                     </span>
                                     <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                                       {entity.entityType === "employee" && entity.company?.name
-                                        ? entity.company.name
+                                        ? `Employee — ${entity.company.name}`
                                         : entity.entityType}
                                     </span>
                                   </span>
