@@ -1,5 +1,5 @@
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
-import { toZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { DUBAI_TIME_ZONE, getDubaiCurrentYearMonth, getDubaiMonthRange } from "@/utils/dubaiTime";
 import {
   aggregateEntityRecordStatsByEntityIds,
@@ -150,6 +150,8 @@ type PaymentRecordFilters = {
   officeCategory?: string | null;
   employeeCompanyId?: string | null;
   category?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
 };
 
 async function applyPaymentRecordFilters(query: Record<string, any>, input: PaymentRecordFilters) {
@@ -210,6 +212,16 @@ async function applyPaymentRecordFilters(query: Record<string, any>, input: Paym
       query.recordKind = "liability";
     } else {
       query.category = input.category;
+    }
+  }
+
+  if (input.dateFrom || input.dateTo) {
+    query.createdAt = query.createdAt || {};
+    if (input.dateFrom) {
+      query.createdAt.$gte = fromZonedTime(`${input.dateFrom}T00:00:00`, DUBAI_TIME_ZONE);
+    }
+    if (input.dateTo) {
+      query.createdAt.$lte = fromZonedTime(`${input.dateTo}T23:59:59`, DUBAI_TIME_ZONE);
     }
   }
 
@@ -1096,6 +1108,8 @@ export async function listPaymentRecords(input: {
   officeCategory?: string | null;
   employeeCompanyId?: string | null;
   category?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
 }) {
   const requestedLimit = Number(input.limit);
   const isAll = requestedLimit === 0;

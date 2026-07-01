@@ -70,6 +70,8 @@ const baseData = {
   e: "",
   oc: "",
   ec: "",
+  df: "",
+  dt: "",
 };
 
 type LedgerCategory = "office_records" | "liability";
@@ -373,6 +375,8 @@ const TransactionList = ({
       e: String(searchParams.get("e") || "").trim(),
       oc: String(searchParams.get("oc") || "").trim(),
       ec: String(searchParams.get("ec") || "").trim(),
+      df: String(searchParams.get("df") || "").trim(),
+      dt: String(searchParams.get("dt") || "").trim(),
     };
     const nextSearch = String(searchParams.get("q") || "").trim();
     const nextSort = String(searchParams.get("sort") || "newest").trim();
@@ -415,6 +419,8 @@ const TransactionList = ({
       if (filter.e) params.set("e", filter.e);
       if (filter.oc) params.set("oc", filter.oc);
       if (filter.ec) params.set("ec", filter.ec);
+      if (filter.df) params.set("df", filter.df);
+      if (filter.dt) params.set("dt", filter.dt);
       if (category) params.set("category", category);
       if (companyRecordScope) {
         params.set("recordScope", companyRecordScope);
@@ -674,7 +680,9 @@ const TransactionList = ({
     Boolean(filter.k) ||
     Boolean(filter.e) ||
     Boolean(filter.oc) ||
-    Boolean(filter.ec);
+    Boolean(filter.ec) ||
+    Boolean(filter.df) ||
+    Boolean(filter.dt);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -685,6 +693,7 @@ const TransactionList = ({
     if (filter.oc) count += 1;
     if (filter.e) count += filter.e.split(",").filter(Boolean).length;
     if (filter.ec) count += 1;
+    if (filter.df || filter.dt) count += 1;
     return count;
   }, [filter]);
 
@@ -769,6 +778,8 @@ const TransactionList = ({
         if (filter.e) params.set("e", filter.e);
         if (filter.oc) params.set("oc", filter.oc);
         if (filter.ec) params.set("ec", filter.ec);
+        if (filter.df) params.set("df", filter.df);
+        if (filter.dt) params.set("dt", filter.dt);
         if (category) params.set("category", category);
         if (companyRecordScope) {
           params.set("recordScope", companyRecordScope);
@@ -1110,6 +1121,11 @@ const TransactionList = ({
                         Company employees
                       </span>
                     )}
+                    {(filter.df || filter.dt) && (
+                      <span className="inline-flex items-center rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-300">
+                        {filter.df || "..."} → {filter.dt || "..."}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1385,6 +1401,24 @@ const TransactionList = ({
                   </select>
                 )}
 
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={filterDummy.df}
+                    onChange={(e) => setFilterDummy({ ...filterDummy, df: e.target.value })}
+                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    title="From date"
+                  />
+                  <span className="text-xs text-slate-500">to</span>
+                  <input
+                    type="date"
+                    value={filterDummy.dt}
+                    onChange={(e) => setFilterDummy({ ...filterDummy, dt: e.target.value })}
+                    className="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    title="To date"
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleCancelFilter}
@@ -1567,20 +1601,37 @@ const TransactionList = ({
                                   }}
                                   className="group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
                                 >
-                                  <p className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">
-                                    {record?.particular}
-     
-                                  </p>
-                                  <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
-                                                                   {record?.recordKind === "self_transfer"
-                                      ? record?.type === "expense"
-                                        ? "Self Transfer Out"
-                                        : "Self Transfer In"
+                                  {(() => {
+                                    const clientLabel = record?.recordKind === "self_transfer"
+                                      ? record?.type === "expense" ? "Self Transfer Out" : "Self Transfer In"
                                       : record?.recordKind === "office_records"
-                                        ? record?.categoryName ||
-                                        "Office Record"
-                                        : record?.client?.name || "Unknown"}
-                                  </p>
+                                        ? record?.categoryName || "Office Record"
+                                        : record?.client?.name || "Unknown";
+
+                                    if (isInnerEntityRecords) {
+                                      return (
+                                        <>
+                                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">
+                                            {record?.particular}
+                                          </p>
+                                          <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
+                                            {clientLabel}
+                                          </p>
+                                        </>
+                                      );
+                                    }
+
+                                    return (
+                                      <>
+                                        <p className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-60">
+                                          {clientLabel}
+                                        </p>
+                                        <p className="text-xs font-medium text-cyan-500 dark:text-cyan-400 max-w-60">
+                                          {record?.particular}
+                                        </p>
+                                      </>
+                                    );
+                                  })()}
                                 </Link>
                               </div>
                             </td>

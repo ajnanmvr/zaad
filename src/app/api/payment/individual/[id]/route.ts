@@ -23,6 +23,8 @@ export async function GET(
       recordKind: searchParams.get("k"),
       officeCategory: searchParams.get("oc"),
       category: searchParams.get("category"),
+      dateFrom: searchParams.get("df"),
+      dateTo: searchParams.get("dt"),
     });
     return Response.json(response, { status: 200 });
   } catch (error) {
