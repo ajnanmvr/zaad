@@ -66,6 +66,8 @@ export async function GET(request: NextRequest) {
     const officeCategory = searchParams.get("oc");
     const employeeCompanyId = searchParams.get("ec");
     const category = searchParams.get("category");
+    const dateFrom = searchParams.get("df");
+    const dateTo = searchParams.get("dt");
     const response = await listPaymentRecords({
       pageNumber,
       limit,
@@ -79,6 +81,8 @@ export async function GET(request: NextRequest) {
       officeCategory,
       employeeCompanyId,
       category,
+      dateFrom,
+      dateTo,
     });
     return Response.json(response, { status: 200 });
   } catch (error) {
