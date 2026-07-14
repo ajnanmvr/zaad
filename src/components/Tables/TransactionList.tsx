@@ -538,8 +538,8 @@ const TransactionList = ({
         let rb = startBalance;
         return allRecords.map((record) => {
           const withBalance = { ...record, runningBalance: rb };
-          const amount = parseFloat(record.amount) || 0;
-          const serviceFee = parseFloat(record.serviceFee) || 0;
+          const amount = Number(record.amount) || 0;
+          const serviceFee = Number(record.serviceFee) || 0;
           if (record.type === "income" && !(record.status || "").toLowerCase().includes("liability")) {
             rb -= amount;
           } else if (record.type === "expense") {
