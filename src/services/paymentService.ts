@@ -246,6 +246,7 @@ function getPaymentSortMap(sort?: string | null) {
 type EntityLedgerTotals = {
   totalIncome: number;
   totalExpense: number;
+  totalServiceFee: number;
   totalTransactions: number;
   balance: number;
   lastRecomputedAt?: string;
@@ -277,6 +278,7 @@ type LiabilityEntitySummaryRow = {
 const ZERO_ENTITY_TOTALS: EntityLedgerTotals = {
   totalIncome: 0,
   totalExpense: 0,
+  totalServiceFee: 0,
   totalTransactions: 0,
   balance: 0,
 };
@@ -332,6 +334,7 @@ function mapStatsRowsToTotalsByEntity(statsRows: any[]) {
     totalsByEntity.set(entityId, {
       totalIncome,
       totalExpense,
+      totalServiceFee,
       totalTransactions,
       balance,
       lastRecomputedAt,
@@ -346,6 +349,7 @@ function sumEntityTotals(rows: EntityLedgerTotals[]) {
     (acc, row) => {
       acc.totalIncome += Number(row.totalIncome || 0);
       acc.totalExpense += Number(row.totalExpense || 0);
+      acc.totalServiceFee += Number(row.totalServiceFee || 0);
       acc.totalTransactions += Number(row.totalTransactions || 0);
       acc.balance += Number(row.balance || 0);
       return acc;
@@ -1873,6 +1877,7 @@ export async function listCompanyPaymentRecords(
       balance: 0,
       totalIncome: 0,
       totalExpense: 0,
+      totalServiceFee: 0,
       totalTransactions: 0,
       hasMore: false,
     };
@@ -1924,6 +1929,7 @@ export async function listEmployeePaymentRecords(
       balance: 0,
       totalIncome: 0,
       totalExpense: 0,
+      totalServiceFee: 0,
       totalTransactions: 0,
       hasMore: false,
     };
@@ -1971,6 +1977,7 @@ export async function listIndividualPaymentRecords(
       balance: 0,
       totalIncome: 0,
       totalExpense: 0,
+      totalServiceFee: 0,
       totalTransactions: 0,
       hasMore: false,
     };
