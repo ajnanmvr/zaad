@@ -8,7 +8,6 @@ import {
   exportRowsPdf,
 } from "@/utils/exportTableData";
 import {
-  keepPreviousData,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -19,7 +18,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { hasPermission } from "@/auth/permissions";
-import { FiRefreshCw } from "react-icons/fi";
 import toast from "react-hot-toast";
 import AdminRefreshButton from "@/components/common/AdminRefreshButton";
 import {
@@ -27,12 +25,11 @@ import {
   FiArrowRight,
   FiArrowUpRight,
   FiChevronDown,
-  FiChevronLeft,
-  FiChevronRight,
   FiFileText,
   FiInfo,
   FiMenu,
   FiPlusCircle,
+  FiRefreshCw,
   FiSearch,
   FiX
 } from "react-icons/fi";
@@ -390,7 +387,7 @@ const TransactionList = ({
     setPageNumber(0);
   }, [searchParams]);
 
-  const { data: paymentData, isLoading } = useQuery({
+  const { data: paymentData, isLoading, isFetching } = useQuery({
     queryKey: [
       "payment",
       pageNumber,
@@ -430,8 +427,9 @@ const TransactionList = ({
       );
       return res.data;
     },
-    placeholderData: keepPreviousData,
   });
+
+  const isInitialLoading = isLoading && recordsWithBalance.length === 0;
 
   const { data: paymentMethodOptions = [] } = useQuery<TPaymentMethodOption[]>({
     queryKey: ["payment-method-templates"],
@@ -524,70 +522,63 @@ const TransactionList = ({
 
   useEffect(() => {
     if (paymentData) {
-      const nextRecords = isInnerEntityRecords
+      const nextPageRecords = isInnerEntityRecords
         ? (paymentData.records || []).filter(
           (record: TRecordList) => !isLiabilityRecord(record),
         )
         : paymentData.records || [];
 
-      setRecords(nextRecords);
+      setRecords(nextPageRecords);
       setHasMore(paymentData.hasMore);
 
+      const applyRunningBalance = (
+        allRecords: TRecordList[],
+        startBalance: number,
+      ): (TRecordList & { runningBalance?: number })[] => {
+        let rb = startBalance;
+        return allRecords.map((record) => {
+          const withBalance = { ...record, runningBalance: rb };
+          const amount = parseFloat(record.amount) || 0;
+          const serviceFee = parseFloat(record.serviceFee) || 0;
+          if (record.type === "income" && !(record.status || "").toLowerCase().includes("liability")) {
+            rb -= amount;
+          } else if (record.type === "expense") {
+            rb += amount + serviceFee;
+          }
+          return withBalance;
+        });
+      };
+
       if (hasLedgerContext) {
-        const fallbackTotals = summarizeTransactionRecords(
-          nextRecords,
-          isInnerEntityRecords,
-        );
+        const fallbackTotals = summarizeTransactionRecords(nextPageRecords, isInnerEntityRecords);
         const totalIncome = Number(paymentData?.totalIncome);
         const totalExpense = Number(paymentData?.totalExpense);
         const totalTransactions = Number(paymentData?.totalTransactions);
         const balance = Number(paymentData?.balance);
 
-        const nextTotalIncome = Number.isFinite(totalIncome)
-          ? totalIncome
-          : fallbackTotals.totalIncome;
-        const nextTotalExpense = Number.isFinite(totalExpense)
-          ? totalExpense
-          : fallbackTotals.totalExpense;
-        const nextTotalTransactions = Number.isFinite(totalTransactions)
-          ? totalTransactions
-          : fallbackTotals.totalTransactions;
-        const nextBalance = Number.isFinite(balance)
-          ? balance
-          : fallbackTotals.balance;
+        const nextTotalIncome = Number.isFinite(totalIncome) ? totalIncome : fallbackTotals.totalIncome;
+        const nextTotalExpense = Number.isFinite(totalExpense) ? totalExpense : fallbackTotals.totalExpense;
+        const nextTotalTransactions = Number.isFinite(totalTransactions) ? totalTransactions : fallbackTotals.totalTransactions;
+        const nextBalance = Number.isFinite(balance) ? balance : fallbackTotals.balance;
 
-        setCards([
-          nextBalance,
-          nextTotalIncome,
-          nextTotalExpense,
-          nextTotalTransactions,
-        ]);
+        setCards([nextBalance, nextTotalIncome, nextTotalExpense, nextTotalTransactions]);
 
-        const recordsWithRunningBalance = [...nextRecords];
-        let runningBalance = nextBalance;
-
-        for (let i = 0; i < recordsWithRunningBalance.length; i++) {
-          const record = recordsWithRunningBalance[i];
-          recordsWithRunningBalance[i] = { ...record, runningBalance };
-
-          const amount = parseFloat(record.amount) || 0;
-          const serviceFee = parseFloat(record.serviceFee) || 0;
-
-          if (
-            record.type === "income" &&
-            !(record.status || "").toLowerCase().includes("liability")
-          ) {
-            runningBalance -= amount;
-          } else if (record.type === "expense") {
-            runningBalance += amount + serviceFee;
-          }
+        if (pageNumber === 0) {
+          setRecordsWithBalance(applyRunningBalance(nextPageRecords, nextBalance));
+        } else {
+          setRecordsWithBalance((prev) =>
+            applyRunningBalance([...prev.map((r) => ({ ...r })), ...nextPageRecords], nextBalance),
+          );
         }
-        setRecordsWithBalance(recordsWithRunningBalance);
       } else {
-        setRecordsWithBalance(nextRecords);
+        if (pageNumber === 0) {
+          setRecordsWithBalance(nextPageRecords);
+        } else {
+          setRecordsWithBalance((prev) => [...prev, ...nextPageRecords]);
+        }
       }
     }
-  }, [hasLedgerContext, isInnerEntityRecords, paymentData]);
+  }, [hasLedgerContext, isInnerEntityRecords, pageNumber, paymentData]);
 
   const visibleRecords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -954,9 +945,14 @@ const TransactionList = ({
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setPageNumber(page);
-    setSelectedRecordIds([]);
+  const handleLoadMore = () => {
+    setPageNumber((prev) => prev + 1);
+  };
+
+  const handleLoadAll = () => {
+    setRecordsWithBalance([]);
+    setPageNumber(0);
+    setPageSize(0);
   };
 
   const handleFilter = () => {
@@ -964,6 +960,7 @@ const TransactionList = ({
     setFilterOpen(false);
     setPageNumber(0);
     setSelectedRecordIds([]);
+    setRecordsWithBalance([]);
   };
 
   const handleCancelFilter = () => {
@@ -1011,7 +1008,7 @@ const TransactionList = ({
                 Transactions
               </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
-                {isLoading ? "..." : displayEntitySummary.totalTransactions}
+                {isInitialLoading ? "..." : displayEntitySummary.totalTransactions}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70">
@@ -1019,7 +1016,7 @@ const TransactionList = ({
                 Income
               </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
-                {isLoading
+                {isInitialLoading
                   ? "..."
                   : `${displayEntitySummary.totalIncome.toFixed(2)} AED`}
               </p>
@@ -1029,7 +1026,7 @@ const TransactionList = ({
                 Expense
               </p>
               <p className="mt-1 text-base font-black text-slate-900 dark:text-slate-100">
-                {isLoading
+                {isInitialLoading
                   ? "..."
                   : `${(displayEntitySummary.totalExpense + displayEntitySummary.totalServiceFee).toFixed(2)} AED`}
               </p>
@@ -1046,7 +1043,7 @@ const TransactionList = ({
                     : "text-emerald-600 dark:text-emerald-400",
                 )}
               >
-                {isLoading ? "..." : entityBalanceLabel}
+                {isInitialLoading ? "..." : entityBalanceLabel}
               </p>
             </div>
           </div>
@@ -1183,6 +1180,7 @@ const TransactionList = ({
                       value={pageSize}
                       onChange={(e) => {
                         const val = Number(e.target.value);
+                        setRecordsWithBalance([]);
                         const params = new URLSearchParams(searchParams);
                         params.set("limit", String(val));
                         params.set("page", "0");
@@ -1239,44 +1237,28 @@ const TransactionList = ({
                   <div className="absolute right-0 top-full z-20 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSortBy("newest");
-                        setPageNumber(0);
-                        setSortOpen(false);
-                      }}
+                      onClick={() => { setSortBy("newest"); setPageNumber(0); setRecordsWithBalance([]); setSortOpen(false); }}
                       className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       Newest
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSortBy("oldest");
-                        setPageNumber(0);
-                        setSortOpen(false);
-                      }}
+                      onClick={() => { setSortBy("oldest"); setPageNumber(0); setRecordsWithBalance([]); setSortOpen(false); }}
                       className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       Oldest
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSortBy("amount_desc");
-                        setPageNumber(0);
-                        setSortOpen(false);
-                      }}
+                      onClick={() => { setSortBy("amount_desc"); setPageNumber(0); setRecordsWithBalance([]); setSortOpen(false); }}
                       className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       Amount High-Low
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSortBy("amount_asc");
-                        setPageNumber(0);
-                        setSortOpen(false);
-                      }}
+                      onClick={() => { setSortBy("amount_asc"); setPageNumber(0); setRecordsWithBalance([]); setSortOpen(false); }}
                       className="block w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       Amount Low-High
@@ -1492,7 +1474,7 @@ const TransactionList = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoading ? (
+                  {isInitialLoading ? (
                     <tr>
                       <td
                         colSpan={
@@ -1762,63 +1744,35 @@ const TransactionList = ({
           </div>
         </div>
 
-        {/* Pagination Container */}
-        {!isLoading && (
-          <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800 sm:px-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span>
-                  Page{" "}
-                  <span className="font-semibold text-slate-800 dark:text-slate-100">
-                    {pageNumber + 1}
-                  </span>
-                </span>
-                <span>•</span>
-                <span>{visibleRecords.length} rows on this page</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Show
-                  </span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      const params = new URLSearchParams(searchParams);
-                      params.set("limit", String(val));
-                      params.set("page", "0");
-                      router.push(`${window.location.pathname}?${params.toString()}`);
-                    }}
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                    {(Boolean(id) || isInnerEntityRecords) && (
-                      <option value="0">All</option>
-                    )}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
+        {/* Load More Footer */}
+        {!isInitialLoading && (hasMore || isFetching) && (
+          <div className="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {visibleRecords.length} record{visibleRecords.length !== 1 ? "s" : ""} loaded
+              </span>
+              <div className="flex items-center gap-2">
+                {(Boolean(id) || isInnerEntityRecords) && pageSize !== 0 && (
                   <button
-                    onClick={() => handlePageChange(pageNumber - 1)}
-                    disabled={pageNumber === 0 || isLoading}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
+                    onClick={handleLoadAll}
+                    disabled={isFetching}
+                    className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-700/50 dark:bg-violet-900/20 dark:text-violet-300 dark:hover:bg-violet-900/30"
                   >
-                    <FiChevronLeft /> Previous
+                    Load All
                   </button>
-                  <button
-                    onClick={() => handlePageChange(pageNumber + 1)}
-                    disabled={isLoading || !hasMore || !recordsWithBalance.length}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
-                  >
-                    Next <FiChevronRight />
-                  </button>
-                </div>
+                )}
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isFetching || !hasMore}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  {isFetching ? (
+                    <FiRefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FiChevronDown className="h-3.5 w-3.5" />
+                  )}
+                  {isFetching ? "Loading..." : "Load More"}
+                </button>
               </div>
             </div>
           </div>

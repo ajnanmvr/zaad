@@ -184,6 +184,26 @@ const SimpleRecordForm = ({
   );
   const createdById = user?._id;
 
+  const { data: entityStatsData } = useQuery({
+    queryKey: ["entity-record-stats"],
+    queryFn: async () => {
+      const { data } = await axios.get("/api/payment/entity-record-stats");
+      return data?.summary;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: ["standard", "instant_profit", "liability"].includes(String(formData.recordKind || "")),
+  });
+
+  const selectedEntityBalance = useMemo(() => {
+    if (!selectedEntity || !entityStatsData) return null;
+    const allRows = [
+      ...(entityStatsData.creditRows || []),
+      ...(entityStatsData.debitRows || []),
+    ];
+    const row = allRows.find((r: any) => r.entity === selectedEntity._id);
+    return row != null ? Number(row.balance) : null;
+  }, [selectedEntity, entityStatsData]);
+
   const { data: templateOptions } = useQuery({
     queryKey: ["payment-form-template-options"],
     queryFn: async () => {
@@ -1274,6 +1294,23 @@ const theme = usesNeutralTheme
                               {selectedEntity.entityType}
                             </p>
                           </div>
+                          {selectedEntityBalance != null && (
+                            <div className="flex flex-col items-end shrink-0">
+                              <span
+                                className={clsx(
+                                  "text-base font-black leading-tight",
+                                  selectedEntityBalance >= 0
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-rose-600 dark:text-rose-400",
+                                )}
+                              >
+                                {Math.abs(selectedEntityBalance).toFixed(2)}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                {selectedEntityBalance >= 0 ? "credit" : "debit"}
+                              </span>
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={handleRemoveSelectedEntity}
