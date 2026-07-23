@@ -205,27 +205,26 @@ function AreaLineChart({
   fullLabels: string[];
   series: Array<{ label: string; values: number[]; color: string }>;
 }) {
-  const W = 880;
-  const H = 300;
-  const PX = 56;
-  const PY = 20;
-  const PB = 32;
+  const W = 1000;
+  const H = 340;
+  const PX = 62;
+  const PY = 24;
+  const PB = 38;
   const innerW = W - PX * 2;
   const innerH = H - PY - PB;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
 
+  const n = labels.length;
   const allVals = series.flatMap((s) => s.values);
   const rawMax = Math.max(...allVals, 0);
   const rawMin = Math.min(...allVals, 0);
-  const spread = (rawMax - rawMin) * 0.15;
+  const spread = (rawMax - rawMin) * 0.18;
   const vMax = rawMax + spread;
-  const vMin = Math.min(rawMin - spread * 0.5, 0);
+  const vMin = Math.min(rawMin - spread * 0.3, 0);
   const vRange = vMax - vMin || 1;
 
-  const activeIdx = hovered ?? labels.length - 1;
-
-  const xOf = (i: number) => PX + (i / Math.max(labels.length - 1, 1)) * innerW;
+  const xOf = (i: number) => PX + (i / Math.max(n - 1, 1)) * innerW;
   const yOf = (v: number) => PY + innerH - ((v - vMin) / vRange) * innerH;
 
   const bezierPath = (values: number[]) => {
@@ -247,13 +246,24 @@ function AreaLineChart({
   };
 
   const resolveIdx = (clientX: number) => {
-    if (!svgRef.current || labels.length === 0) return null;
+    if (!svgRef.current || n === 0) return null;
     const rect = svgRef.current.getBoundingClientRect();
     const ratio = (clientX - rect.left) / rect.width;
-    return Math.max(0, Math.min(labels.length - 1, Math.round(ratio * (labels.length - 1))));
+    return Math.max(0, Math.min(n - 1, Math.round(ratio * (n - 1))));
   };
 
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((r) => vMin + r * vRange);
+  const fmtY = (v: number) => {
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+    if (abs >= 10_000) return `${(v / 1_000).toFixed(0)}k`;
+    if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}k`;
+    return v.toFixed(0);
+  };
+
+  const yTicks = [0, 0.2, 0.4, 0.6, 0.8, 1].map((r) => vMin + r * vRange);
+  const xStep = n <= 8 ? 1 : n <= 14 ? 2 : n <= 24 ? 3 : 4;
+  const zeroY = yOf(0);
+  const showZero = zeroY > PY + 2 && zeroY < PY + innerH - 2;
 
   return (
     <div className="relative">
@@ -261,7 +271,7 @@ function AreaLineChart({
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
-        style={{ height: "clamp(180px, 30vw, 300px)" }}
+        style={{ height: "clamp(200px, 34vw, 340px)" }}
         onMouseMove={(e) => setHovered(resolveIdx(e.clientX))}
         onMouseLeave={() => setHovered(null)}
         onTouchMove={(e) => { const t = e.touches[0]; if (t) setHovered(resolveIdx(t.clientX)); }}
@@ -269,28 +279,47 @@ function AreaLineChart({
       >
         <defs>
           {series.map((s) => (
-            <linearGradient key={s.label} id={`grad-${s.label}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={s.color} stopOpacity="0.01" />
+            <linearGradient key={s.label} id={`pg-${s.label}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.16" />
+              <stop offset="80%" stopColor={s.color} stopOpacity="0.03" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0" />
             </linearGradient>
           ))}
         </defs>
 
-        {/* Grid lines + Y labels */}
+        {/* Y grid + labels */}
         {yTicks.map((v, i) => {
           const y = yOf(v);
-          const label = Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0);
+          if (y < PY - 4 || y > PY + innerH + 4) return null;
           return (
             <g key={i}>
-              <line x1={PX} y1={y} x2={W - PX} y2={y} stroke="currentColor" strokeOpacity={0.06} strokeWidth={1} />
-              <text x={PX - 8} y={y + 4} textAnchor="end" fontSize={10} fill="currentColor" fillOpacity={0.35}>{label}</text>
+              <line x1={PX} y1={y} x2={W - PX} y2={y} stroke="currentColor" strokeOpacity={0.05} strokeWidth={1} />
+              <text x={PX - 10} y={y + 3.5} textAnchor="end" fontSize={9.5} fill="currentColor" fillOpacity={0.28} fontWeight="600">{fmtY(v)}</text>
             </g>
           );
         })}
 
+        {/* Zero baseline */}
+        {showZero && (
+          <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="currentColor" strokeOpacity={0.1} strokeWidth={1.5} />
+        )}
+
+        {/* Hover column highlight */}
+        {hovered !== null && n > 1 && (
+          <rect
+            x={xOf(hovered) - innerW / (n - 1) / 2}
+            width={innerW / (n - 1)}
+            y={PY}
+            height={innerH}
+            fill="currentColor"
+            fillOpacity={0.025}
+            rx={3}
+          />
+        )}
+
         {/* Area fills */}
         {series.map((s) => (
-          <path key={`area-${s.label}`} d={areaPath(s.values)} fill={`url(#grad-${s.label})`} />
+          <path key={`area-${s.label}`} d={areaPath(s.values)} fill={`url(#pg-${s.label})`} />
         ))}
 
         {/* Lines */}
@@ -298,55 +327,71 @@ function AreaLineChart({
           <path key={`line-${s.label}`} d={bezierPath(s.values)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
         ))}
 
-        {/* Active crosshair */}
-        {activeIdx !== null && (
-          <line x1={xOf(activeIdx)} y1={PY} x2={xOf(activeIdx)} y2={PY + innerH} stroke="currentColor" strokeOpacity={0.12} strokeWidth={1.5} strokeDasharray="4 3" />
+        {/* Crosshair */}
+        {hovered !== null && (
+          <line x1={xOf(hovered)} y1={PY} x2={xOf(hovered)} y2={PY + innerH} stroke="currentColor" strokeOpacity={0.14} strokeWidth={1.5} strokeDasharray="4 3" />
         )}
 
-        {/* Dots */}
-        {series.map((s) =>
-          s.values.map((v, i) => {
-            const isActive = i === activeIdx;
-            return (
-              <g key={`dot-${s.label}-${i}`}>
-                {isActive && <circle cx={xOf(i)} cy={yOf(v)} r={12} fill={s.color} fillOpacity={0.12} />}
-                <circle cx={xOf(i)} cy={yOf(v)} r={isActive ? 5.5 : 2.5} fill={s.color} fillOpacity={isActive ? 1 : 0.45} />
-              </g>
-            );
-          }),
-        )}
+        {/* Dots — only on hover */}
+        {hovered !== null && series.map((s) => {
+          const v = s.values[hovered];
+          if (v === undefined) return null;
+          return (
+            <g key={`dot-${s.label}`}>
+              <circle cx={xOf(hovered)} cy={yOf(v)} r={13} fill={s.color} fillOpacity={0.1} />
+              <circle cx={xOf(hovered)} cy={yOf(v)} r={4.5} fill={s.color} stroke="white" strokeWidth={2} />
+            </g>
+          );
+        })}
 
-        {/* X labels */}
-        {labels.map((label, i) => (
-          <text
-            key={`xl-${i}`}
-            x={xOf(i)}
-            y={H - 6}
-            textAnchor="middle"
-            fontSize={10}
-            fill="currentColor"
-            fillOpacity={i === activeIdx ? 0.8 : 0.3}
-            fontWeight={i === activeIdx ? "700" : "500"}
-          >
-            {label}
-          </text>
-        ))}
+        {/* Tail dots — always show last point per series */}
+        {hovered === null && series.map((s) => {
+          const lastIdx = s.values.length - 1;
+          const v = s.values[lastIdx];
+          if (v === undefined) return null;
+          return <circle key={`tail-${s.label}`} cx={xOf(lastIdx)} cy={yOf(v)} r={3.5} fill={s.color} fillOpacity={0.7} />;
+        })}
+
+        {/* X axis labels — auto-thinned */}
+        {labels.map((label, i) => {
+          const show = i % xStep === 0 || i === n - 1;
+          if (!show) return null;
+          const isActive = i === hovered;
+          return (
+            <text
+              key={`xl-${i}`}
+              x={xOf(i)}
+              y={H - 10}
+              textAnchor="middle"
+              fontSize={9.5}
+              fill="currentColor"
+              fillOpacity={isActive ? 0.8 : 0.28}
+              fontWeight={isActive ? "800" : "500"}
+            >
+              {label}
+            </text>
+          );
+        })}
       </svg>
 
       {/* Tooltip */}
-      {activeIdx !== null && labels[activeIdx] && (
+      {hovered !== null && labels[hovered] && (
         <div
-          className="pointer-events-none absolute top-1 z-10 min-w-[160px] rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-none"
-          style={{ left: `clamp(4px, calc(${(activeIdx / Math.max(labels.length - 1, 1)) * 100}% - 80px), calc(100% - 170px))` }}
+          className="pointer-events-none absolute top-2 z-10 min-w-[180px] rounded-2xl border border-slate-200/80 bg-white/96 px-4 py-3.5 shadow-xl shadow-slate-200/60 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/96 dark:shadow-none"
+          style={{ left: `clamp(4px, calc(${(hovered / Math.max(n - 1, 1)) * 100}% - 90px), calc(100% - 192px))` }}
         >
-          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{fullLabels[activeIdx]}</p>
+          <p className="mb-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+            {fullLabels[hovered]}
+          </p>
           {series.map((s) => (
-            <div key={s.label} className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+            <div key={s.label} className="flex items-center justify-between gap-5 py-0.5">
+              <span className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.color }} />
                 {s.label}
               </span>
-              <span className="text-xs font-black tabular-nums" style={{ color: s.color }}>{formatCurrency(s.values[activeIdx] ?? 0)}</span>
+              <span className="text-xs font-black tabular-nums" style={{ color: s.color }}>
+                {formatCurrency(s.values[hovered] ?? 0)}
+              </span>
             </div>
           ))}
         </div>
@@ -392,7 +437,7 @@ export default function FinanceAnalyticsPage() {
     }
   }, [user, canViewFinanceSummary, router]);
 
-  const [trendWindow, setTrendWindow] = useState<"6m" | "1y" | "total">("6m");
+  const [trendWindow, setTrendWindow] = useState<"6m" | "1y" | "total">("total");
 
   const monthlyStats = useMemo(() => data?.summary ?? [], [data?.summary]);
 
@@ -440,8 +485,16 @@ export default function FinanceAnalyticsPage() {
       labels,
       profit: trendSlice.map((item) => Number(item.profit || 0)),
       officeExpense: trendSlice.map((item) => Number(item.officeRecords?.totalExpense || 0)),
+      netProfit: trendSlice.map((item) => Number(item.netProfit || 0)),
     };
   }, [trendSlice]);
+
+  const periodTotals = useMemo(() => ({
+    profit: trendSlice.reduce((sum, item) => sum + Number(item.profit || 0), 0),
+    expense: trendSlice.reduce((sum, item) => sum + Number(item.officeRecords?.totalExpense || 0), 0),
+    netProfit: trendSlice.reduce((sum, item) => sum + Number(item.netProfit || 0), 0),
+    transactions: trendSlice.reduce((sum, item) => sum + Number(item.totalTransactions || 0), 0),
+  }), [trendSlice]);
 
   const currentMonthCategories = latestStats?.officeRecords?.byCategory || [];
   const currentMonthMethods = [...(latestStats?.paymentMethods || [])].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
@@ -720,43 +773,98 @@ export default function FinanceAnalyticsPage() {
         </ChartCard>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-          <div>
-            <h3 className="text-base font-black tracking-tight text-slate-900 dark:text-slate-100">
-              {trendWindow === "6m" ? "Performance Overview" : trendWindow === "1y" ? "Annual Performance" : "All-Time Performance"}
-            </h3>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Profit vs office expense —{" "}
-              {trendWindow === "6m" ? "last 6 months" : trendWindow === "1y" ? "last 12 months" : "Jul 2024 to now"}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Profit</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Expense</span>
+      <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+        {/* Header */}
+        <div className="border-b border-slate-100/80 bg-slate-50/40 px-6 py-5 dark:border-slate-800 dark:bg-slate-800/20">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                <FiActivity className="h-3 w-3" /> Performance Overview
+              </p>
+              <h3 className="mt-1.5 text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                {trendWindow === "6m" ? "Last 6 Months" : trendWindow === "1y" ? "Last 12 Months" : "All Time"}
+              </h3>
+              {trendSlice.length > 0 && (
+                <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                  {monthLabel(trendSlice[0].month, trendSlice[0].year)}
+                  {" – "}
+                  {monthLabel(trendSlice[trendSlice.length - 1].month, trendSlice[trendSlice.length - 1].year)}
+                  {" · "}{trendSlice.length} months
+                </p>
+              )}
             </div>
-            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
               {(["6m", "1y", "total"] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setTrendWindow(option)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${trendWindow === option ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                  className={clsx(
+                    "rounded-lg px-3.5 py-1.5 text-xs font-bold transition",
+                    trendWindow === option
+                      ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900"
+                      : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                  )}
                 >
                   {option === "6m" ? "6M" : option === "1y" ? "1Y" : "All"}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Period stat strip */}
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="rounded-2xl border border-emerald-200/50 bg-emerald-50/60 px-4 py-3 dark:border-emerald-800/25 dark:bg-emerald-950/15">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600/80 dark:text-emerald-500">Profit</span>
+              </div>
+              <p className="mt-1.5 text-lg font-black tabular-nums leading-none text-emerald-700 dark:text-emerald-300">
+                {isLoading ? "…" : formatCurrency(periodTotals.profit)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-rose-200/50 bg-rose-50/60 px-4 py-3 dark:border-rose-800/25 dark:bg-rose-950/15">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600/80 dark:text-rose-500">Expense</span>
+              </div>
+              <p className="mt-1.5 text-lg font-black tabular-nums leading-none text-rose-700 dark:text-rose-300">
+                {isLoading ? "…" : formatCurrency(periodTotals.expense)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-violet-200/50 bg-violet-50/60 px-4 py-3 dark:border-violet-800/25 dark:bg-violet-950/15">
+              <div className="flex items-center gap-1.5">
+                <FiZap className="h-2.5 w-2.5 text-violet-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80 dark:text-violet-500">Net Profit</span>
+              </div>
+              <p className={clsx(
+                "mt-1.5 text-lg font-black tabular-nums leading-none",
+                periodTotals.netProfit >= 0 ? "text-violet-700 dark:text-violet-300" : "text-rose-700 dark:text-rose-300",
+              )}>
+                {isLoading ? "…" : formatCurrency(periodTotals.netProfit)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200/50 bg-slate-50/60 px-4 py-3 dark:border-slate-700/40 dark:bg-slate-800/30">
+              <div className="flex items-center gap-1.5">
+                <FiActivity className="h-2.5 w-2.5 text-slate-400" />
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Transactions</span>
+              </div>
+              <p className="mt-1.5 text-lg font-black tabular-nums leading-none text-slate-800 dark:text-slate-100">
+                {isLoading ? "…" : periodTotals.transactions.toLocaleString()}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="p-4">
+
+        {/* Chart */}
+        <div className="px-2 pb-2 pt-4">
           {trendChartLabels.length > 0 ? (
             <AreaLineChart
               labels={trendChartLabels}
               fullLabels={trendData.labels}
               series={[
                 { label: "Profit", values: trendData.profit, color: "#10B981" },
+                { label: "Net Profit", values: trendData.netProfit, color: "#8B5CF6" },
                 { label: "Expense", values: trendData.officeExpense, color: "#F43F5E" },
               ]}
             />

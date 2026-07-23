@@ -309,6 +309,10 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(100%)" },
           "50%": { transform: "translateY(0)" },
         },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         linspin: "linspin 1568.2353ms linear infinite",
@@ -321,6 +325,7 @@ const config: Config = {
         rotating: "rotating 30s linear infinite",
         topbottom: "topbottom 60s infinite alternate linear",
         bottomtop: "bottomtop 60s infinite alternate linear",
+        shimmer: "shimmer 1.4s ease-in-out infinite",
         "spin-1.5": "spin 1.5s linear infinite",
         "spin-2": "spin 2s linear infinite",
         "spin-3": "spin 3s linear infinite",

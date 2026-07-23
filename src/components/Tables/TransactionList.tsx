@@ -72,7 +72,6 @@ const baseData = {
 };
 
 type LedgerCategory = "office_records" | "liability";
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const INVOICE_PREFILL_STORAGE_KEY = "zaad.invoice.prefill";
 
@@ -1171,39 +1170,11 @@ const TransactionList = ({
                     <FiFileText /> To Invoice
                   </button>
                 )}
-                <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                      Show
-                    </span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setRecordsWithBalance([]);
-                        const params = new URLSearchParams(searchParams);
-                        params.set("limit", String(val));
-                        params.set("page", "0");
-                        router.push(`${window.location.pathname}?${params.toString()}`);
-                      }}
-                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                      {PAGE_SIZE_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                      {(Boolean(id) || isInnerEntityRecords) && (
-                        <option value="0">All</option>
-                      )}
-                    </select>
-                  </div>
-                  {selectedRecordIds.length > 0 && (
-                    <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      {selectedRecordIds.length} selected
-                    </span>
-                  )}
-                </div>
+                {selectedRecordIds.length > 0 && (
+                  <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    {selectedRecordIds.length} selected
+                  </span>
+                )}
               </div>
             </div>
 
