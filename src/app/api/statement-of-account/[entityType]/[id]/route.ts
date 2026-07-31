@@ -111,7 +111,7 @@ export async function GET(
         },
       );
 
-      openingBalance = openingRecords.reduce((balance, record) => applyRecordEffect(balance, record), 0);
+      openingBalance = openingRecords.reduce((balance: number, record: any) => applyRecordEffect(balance, record), 0);
 
       const records = await findRecords(
         {
@@ -142,8 +142,8 @@ export async function GET(
         };
       });
 
-      const totalDebits = Number(rows.reduce((sum, row) => sum + Number(row.debit || 0), 0).toFixed(2));
-      const totalCredits = Number(rows.reduce((sum, row) => sum + Number(row.credit || 0), 0).toFixed(2));
+      const totalDebits = Number(rows.reduce((sum: number, row: any) => sum + Number(row.debit || 0), 0).toFixed(2));
+      const totalCredits = Number(rows.reduce((sum: number, row: any) => sum + Number(row.credit || 0), 0).toFixed(2));
       const closingBalance = Number((rows.length ? rows[rows.length - 1].balance : Number(openingBalance.toFixed(2))).toFixed(2));
 
       return Response.json({
@@ -229,8 +229,8 @@ export async function GET(
       };
     });
 
-    const totalDebits = Number(rows.reduce((sum, row) => sum + Number(row.debit || 0), 0).toFixed(2));
-    const totalCredits = Number(rows.reduce((sum, row) => sum + Number(row.credit || 0), 0).toFixed(2));
+    const totalDebits = Number(rows.reduce((sum: number, row: any) => sum + Number(row.debit || 0), 0).toFixed(2));
+    const totalCredits = Number(rows.reduce((sum: number, row: any) => sum + Number(row.credit || 0), 0).toFixed(2));
 
     return Response.json({
       success: true,
