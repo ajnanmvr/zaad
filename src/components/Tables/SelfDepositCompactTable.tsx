@@ -199,12 +199,12 @@ export default function SelfDepositCompactTable() {
           </p>
           <div className="flex flex-1 justify-between gap-2 sm:justify-end">
             <button
-              onClick={() => setPageNumber((current) => Math.max(current - 1, 0))}
+                onClick={() => setPageNumber((current) => Math.max(current - 1, 0))}
               disabled={pageNumber === 0 || isLoading || isFetching}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:disabled:border-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-600 uppercase tracking-wider"
             >
               <FiChevronLeft className="h-4 w-4" /> Previous
-            </button>
+            </button> 
             <button
               onClick={() => setPageNumber((current) => current + 1)}
               disabled={isLoading || isFetching || !data?.hasMore || !transfers.length}

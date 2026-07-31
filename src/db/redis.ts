@@ -12,7 +12,9 @@ function create() {
     const client: RedisClientType = createClient({
         url,
         socket: {
-            reconnectStrategy: (retries) => Math.min(retries * 50, 1000),
+            connectTimeout: 2_000,
+            reconnectStrategy: (retries) =>
+                retries < 3 ? Math.min(retries * 50, 1_000) : false,
         },
     });
 
