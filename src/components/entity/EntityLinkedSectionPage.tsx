@@ -4,6 +4,7 @@ import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
+import SOAModal from "@/components/Modals/SOAModal";
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import { TEntityListItem, TPaginatedResponse } from "@/types/types";
@@ -12,7 +13,7 @@ import axios from "axios";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiDownload } from "react-icons/fi";
 
 type EntityType = "company" | "employee" | "individual";
 type LinkedSection = "records" | "invoices" | "employees";
@@ -40,6 +41,7 @@ export default function EntityLinkedSectionPage({
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [employeeSortBy, setEmployeeSortBy] = useState<any>("newest");
   const [employeeCreatedWithinDays, setEmployeeCreatedWithinDays] = useState<number | undefined>(undefined);
+  const [soaOpen, setSoaOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -121,14 +123,30 @@ export default function EntityLinkedSectionPage({
     <>
       <Breadcrumb pageName={pageTitle} />
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <Link
           href={profileHref}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
           <FiArrowLeft /> Back to Profile
         </Link>
+        {section === "records" && (
+          <button
+            onClick={() => setSoaOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-primary bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary hover:text-white dark:bg-primary/20 dark:hover:bg-primary dark:hover:text-white"
+          >
+            <FiDownload size={14} /> Download SOA
+          </button>
+        )}
       </div>
+
+      {soaOpen && (
+        <SOAModal
+          entityType={entityType}
+          entityId={id}
+          onClose={() => setSoaOpen(false)}
+        />
+      )}
 
       {section === "records" && (
         <TransactionList

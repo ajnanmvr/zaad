@@ -39,7 +39,6 @@ import EntityAvatar from "../common/EntityAvatar";
 import ExportActionsMenu from "../common/ExportActionsMenu";
 import PaymentMethodBadge from "../common/PaymentMethodBadge";
 import SkeletonList from "../common/SkeletonList";
-import { getDubaiDateParts } from "@/utils/dubaiTime";
 
 type TPaymentMethodOption = {
   value: string;
@@ -359,11 +358,6 @@ const TransactionList = ({
   const [entityRecordsType, setEntityRecordsType] = useState<
     "company" | "employees" | "both"
   >("company");
-  const [showStatementModal, setShowStatementModal] = useState(false);
-  const [statementMode, setStatementMode] = useState<"all-time" | "custom">("all-time");
-  const [statementFrom, setStatementFrom] = useState("");
-  const [statementTo, setStatementTo] = useState("");
-
   const currentType = Array.isArray(type) ? type[0] : type;
   const hasLedgerContext = Boolean(currentType || category);
 
@@ -390,18 +384,6 @@ const TransactionList = ({
     setPageSize(Number.isFinite(nextLimit) && nextLimit >= 0 ? nextLimit : 25);
     setPageNumber(0);
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!showStatementModal) return;
-
-    const { year, month, day } = getDubaiDateParts(new Date());
-    const today = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const startOfMonth = `${year}-${String(month).padStart(2, "0")}-01`;
-
-    setStatementMode("all-time");
-    setStatementFrom(startOfMonth);
-    setStatementTo(today);
-  }, [showStatementModal]);
 
   const { data: paymentData, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -961,34 +943,6 @@ const TransactionList = ({
     }
   };
 
-  const handleGenerateStatement = () => {
-    if (!lockEntityType || !lockEntityId) {
-      toast.error("Statement of account is available for linked client records only");
-      return;
-    }
-
-    if (statementMode === "custom" && (!statementFrom || !statementTo || statementFrom > statementTo)) {
-      toast.error("Please choose a valid date range");
-      return;
-    }
-
-    const params = new URLSearchParams();
-    params.set("mode", statementMode);
-
-    if (isInnerEntityRecords && lockEntityType === "company") {
-      params.set("scope", entityRecordsType);
-    }
-
-    if (statementMode === "custom") {
-      params.set("from", statementFrom);
-      params.set("to", statementTo);
-    }
-
-    const target = `/accounts/statement-of-account/${lockEntityType}/${lockEntityId}?${params.toString()}`;
-    window.open(target, "_blank", "noopener,noreferrer");
-    setShowStatementModal(false);
-  };
-
   const handleLoadMore = () => {
     setPageNumber((prev) => prev + 1);
   };
@@ -1219,15 +1173,6 @@ const TransactionList = ({
                   <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                     {selectedRecordIds.length} selected
                   </span>
-                )}
-                {lockEntityType && lockEntityId && (
-                  <button
-                    type="button"
-                    onClick={() => setShowStatementModal(true)}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-300 bg-white/90 px-3 text-xs font-bold text-cyan-700 transition hover:bg-white dark:border-cyan-700/40 dark:bg-slate-900/80 dark:text-cyan-300"
-                  >
-                    <FiFileText /> Download SOA
-                  </button>
                 )}
               </div>
             </div>
@@ -1767,99 +1712,6 @@ const TransactionList = ({
               </table>
             </div>
 
-            {showStatementModal && (
-              <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-                <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-                        Download Statement of Account
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                        Choose all time or a custom period, then open a print-ready SOA page.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowStatementModal(false)}
-                      className="rounded-lg border border-slate-300 bg-white p-2 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                    >
-                      <FiX />
-                    </button>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => setStatementMode("all-time")}
-                      className={clsx(
-                        "rounded-2xl border px-4 py-3 text-left transition",
-                        statementMode === "all-time"
-                          ? "border-cyan-500 bg-cyan-50 text-cyan-700 dark:border-cyan-400/40 dark:bg-cyan-500/10 dark:text-cyan-300"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-                      )}
-                    >
-                      <p className="text-sm font-black">All Time</p>
-                      <p className="mt-1 text-xs opacity-80">Use all stored records for this client.</p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setStatementMode("custom")}
-                      className={clsx(
-                        "rounded-2xl border px-4 py-3 text-left transition",
-                        statementMode === "custom"
-                          ? "border-cyan-500 bg-cyan-50 text-cyan-700 dark:border-cyan-400/40 dark:bg-cyan-500/10 dark:text-cyan-300"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
-                      )}
-                    >
-                      <p className="text-sm font-black">Custom</p>
-                      <p className="mt-1 text-xs opacity-80">Choose a from and to date range.</p>
-                    </button>
-                  </div>
-
-                  {statementMode === "custom" && (
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <label className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900/70">
-                        <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">From</span>
-                        <input
-                          type="date"
-                          value={statementFrom}
-                          onChange={(event) => setStatementFrom(event.target.value)}
-                          className="w-full bg-transparent text-sm outline-none"
-                        />
-                      </label>
-                      <label className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900/70">
-                        <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">To</span>
-                        <input
-                          type="date"
-                          value={statementTo}
-                          onChange={(event) => setStatementTo(event.target.value)}
-                          className="w-full bg-transparent text-sm outline-none"
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowStatementModal(false)}
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleGenerateStatement}
-                      className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
-                    >
-                      Generate SOA
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

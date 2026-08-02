@@ -90,7 +90,7 @@ export default function AdminRefreshButton({
       disabled={isRefreshing}
       className={className}
     >
-      <FiRefreshCw /> {isRefreshing ? "Refreshing..." : label}
+      <FiRefreshCw className={isRefreshing ? "animate-spin" : ""}/> {isRefreshing ? "Refreshing..." : label}
     </button>
   );
 }
