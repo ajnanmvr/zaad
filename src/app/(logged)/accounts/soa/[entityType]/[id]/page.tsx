@@ -97,7 +97,7 @@ export default function SOAPage() {
     <>
       {/* ── Column toggles (not printed) ── */}
       <div className="print:hidden mb-3 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Columns:</span>
+        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Columns:</span>
         {COLS.map((c) => (
           <label key={c.key} className="flex cursor-pointer items-center gap-1.5 select-none">
             <input
@@ -106,7 +106,7 @@ export default function SOAPage() {
               onChange={() => toggle(c.key)}
               className="h-3.5 w-3.5 cursor-pointer accent-primary"
             />
-            <span className="text-xs text-slate-700 dark:text-slate-300">{c.label}</span>
+            <span className="text-sm text-slate-700 dark:text-slate-300">{c.label}</span>
           </label>
         ))}
         <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
@@ -117,7 +117,7 @@ export default function SOAPage() {
             onChange={() => setShowAging((v) => !v)}
             className="h-3.5 w-3.5 cursor-pointer accent-primary"
           />
-          <span className="text-xs text-slate-700 dark:text-slate-300">Aging Summary</span>
+          <span className="text-sm text-slate-700 dark:text-slate-300">Aging Summary</span>
         </label>
       </div>
 
@@ -146,10 +146,10 @@ export default function SOAPage() {
         />
 
         {/* ── Compact meta strip ── */}
-        <div className="flex items-stretch gap-0 border border-slate-200 rounded overflow-hidden mb-3 text-[10px]">
+        <div className="flex items-stretch gap-0 border border-slate-200 rounded overflow-hidden mb-3 text-xs">
           {/* Title cell */}
           <div className="bg-slate-800 text-white px-3 py-2 flex items-center">
-            <span className="font-bold uppercase tracking-widest whitespace-nowrap text-[11px]">
+            <span className="font-bold uppercase tracking-widest whitespace-nowrap text-sm">
               Statement of Account
             </span>
           </div>
@@ -161,19 +161,19 @@ export default function SOAPage() {
             ["Currency", "AED"],
           ].map(([label, val]) => (
             <div key={label} className="flex-1 border-l border-slate-200 px-2.5 py-1.5">
-              <p className="text-[8px] uppercase text-slate-400 tracking-wide">{label}</p>
+              <p className="text-xs uppercase text-slate-400 tracking-wide">{label}</p>
               <p className="font-semibold text-slate-700 leading-tight">{val}</p>
             </div>
           ))}
         </div>
 
         {/* ── Client + Account Summary ── */}
-        <div className="flex gap-2 mb-4 text-[10px]">
+        <div className="flex gap-2 mb-4 text-xs">
           {/* Client info */}
           <div className="flex-1 border border-slate-200 rounded px-3 py-2">
-            <p className="text-[8px] uppercase tracking-widest text-slate-400 mb-1">Client</p>
-            <p className="text-xs font-bold uppercase text-slate-800 leading-tight">{data.entity.name}</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-[9px] text-slate-500">
+            <p className="text-xs uppercase tracking-widest text-slate-400 mb-1">Client</p>
+            <p className="text-sm font-bold uppercase text-slate-800 leading-tight">{data.entity.name}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-[11px] text-slate-500">
               {data.entity.licenseNo && (
                 <span><span className="text-slate-400">TL:</span> {data.entity.licenseNo}</span>
               )}
@@ -195,11 +195,11 @@ export default function SOAPage() {
               { label: "Outstanding", val: data.closingBalance, cls: data.closingBalance > 0 ? "text-slate-900 font-bold" : "text-emerald-700 font-bold", bg: "bg-slate-50" },
             ].map(({ label, val, cls, bg }) => (
               <div key={label} className={`px-3 py-2 ${bg ?? ""}`}>
-                <p className="text-[8px] uppercase text-slate-400 tracking-wide whitespace-nowrap">{label}</p>
-                <p className={`text-[10px] font-semibold mt-0.5 ${cls}`}>
+                <p className="text-xs uppercase text-slate-400 tracking-wide whitespace-nowrap">{label}</p>
+                <p className={`text-xs font-semibold mt-0.5 ${cls}`}>
                   {Math.abs(val).toFixed(2)}
                   {label === "Outstanding" && val < 0 && (
-                    <span className="text-[8px] font-normal text-slate-400"> CR</span>
+                    <span className="text-xs font-normal text-slate-400"> CR</span>
                   )}
                 </p>
               </div>
@@ -208,7 +208,7 @@ export default function SOAPage() {
         </div>
 
         {/* ── Transaction table ── */}
-        <table className="w-full text-[10px] border-collapse mb-3">
+        <table className="w-full text-xs border-collapse mb-3">
           <thead>
             <tr className="bg-slate-700 text-white">
               <th className="px-2 py-1.5 text-left font-semibold">Date</th>
@@ -254,7 +254,7 @@ export default function SOAPage() {
                 {cols.refNo         && <td className="px-2 py-1 font-mono text-slate-700">{row.refNo ?? "—"}</td>}
                 {cols.transaction   && (
                   <td className="px-2 py-1">
-                    <span className={`rounded px-1 py-0.5 text-[9px] font-semibold uppercase ${
+                    <span className={`rounded px-1 py-0.5 text-[11px] font-semibold uppercase ${
                       row.transaction === "Invoice"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-rose-100 text-rose-600"
@@ -277,7 +277,7 @@ export default function SOAPage() {
             ))}
             {/* Totals row — in tbody so it never repeats on print page breaks */}
             <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
-              <td className="px-2 py-1.5 text-slate-600 uppercase text-[9px] tracking-wide" colSpan={
+              <td className="px-2 py-1.5 text-slate-600 uppercase text-[11px] tracking-wide" colSpan={
                 1 +
                 (cols.jobNo ? 1 : 0) +
                 (cols.refNo ? 1 : 0) +
@@ -294,11 +294,11 @@ export default function SOAPage() {
         </table>
 
         {/* ── Notes + Aging side by side ── */}
-        <div className={`flex gap-3 mb-4 text-[10px] ${showAging ? "" : ""}`}>
+        <div className={`flex gap-3 mb-4 text-xs ${showAging ? "" : ""}`}>
           {/* Notes */}
           <div className="flex-1 border border-slate-100 rounded px-3 py-2 text-slate-500 leading-relaxed">
-            <p className="font-semibold text-[9px] uppercase tracking-wide text-slate-700 mb-1">Notes</p>
-            <ul className="space-y-0.5 list-disc list-inside text-[9px]">
+            <p className="font-semibold text-[11px] uppercase tracking-wide text-slate-700 mb-1">Notes</p>
+            <ul className="space-y-0.5 list-disc list-inside text-[11px]">
               <li>This statement reflects all transactions posted during the selected period.</li>
               <li>Any discrepancy should be reported within 7 days of the statement date.</li>
               <li>If payment has been made, please share confirmation for reconciliation.</li>
@@ -320,14 +320,14 @@ export default function SOAPage() {
             return (
               <div className="border border-slate-200 rounded overflow-hidden min-w-[300px]">
                 <div className="bg-slate-700 text-white px-3 py-1.5 flex items-center justify-between">
-                  <p className="text-[9px] uppercase tracking-widest font-semibold">Aging Summary</p>
-                  <p className="text-[9px] text-slate-300">Outstanding: <span className="font-bold text-white">{agingTotal.toFixed(2)}</span></p>
+                  <p className="text-[11px] uppercase tracking-widest font-semibold">Aging Summary</p>
+                  <p className="text-[11px] text-slate-300">Outstanding: <span className="font-bold text-white">{agingTotal.toFixed(2)}</span></p>
                 </div>
-                <table className="w-full text-[9px] border-collapse">
+                <table className="w-full text-[11px] border-collapse">
                   <thead>
                     <tr>
                       {buckets.map(({ label, headerBg }) => (
-                        <th key={label} className={`px-2 py-1 text-center font-semibold text-white text-[8px] ${headerBg}`}>
+                        <th key={label} className={`px-2 py-1 text-center font-semibold text-white text-xs ${headerBg}`}>
                           {label}
                         </th>
                       ))}
@@ -337,7 +337,7 @@ export default function SOAPage() {
                     <tr>
                       {buckets.map(({ label, val, rowBg, textCls }) => (
                         <td key={label} className={`px-2 py-1.5 text-center border-t border-white/50 ${rowBg}`}>
-                          <span className={`font-bold text-[10px] ${val > 0 ? textCls : "text-slate-300"}`}>
+                          <span className={`font-bold text-xs ${val > 0 ? textCls : "text-slate-300"}`}>
                             {val.toFixed(2)}
                           </span>
                         </td>
@@ -366,10 +366,10 @@ export default function SOAPage() {
         </div>
 
         {/* ── Footer ── */}
-        <div className="border-t border-slate-200 pt-2 flex items-end justify-between text-[9px] text-slate-400">
+        <div className="border-t border-slate-200 pt-2 flex items-end justify-between text-[11px] text-slate-400">
           <span>Prepared By: ____________________</span>
           <div className="text-center">
-            <p className="font-bold text-[10px] text-slate-600 uppercase tracking-wide">
+            <p className="font-bold text-xs text-slate-600 uppercase tracking-wide">
               ZAAD Business Documents Services
             </p>
             <p>Generated: {data.statementDate}</p>
