@@ -155,7 +155,6 @@ export default function SOAPage() {
           </div>
           {/* Meta cells */}
           {[
-            ["Statement No", data.statementNo],
             ["Date", data.statementDate],
             ["Period", periodLabel],
             ["Currency", "AED"],
