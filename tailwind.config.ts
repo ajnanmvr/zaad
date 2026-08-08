@@ -10,7 +10,7 @@ const config: Config = {
   darkMode: "class",
   theme: {
     fontFamily: {
-      inter: ["Inter", "sans-serif"],
+      inter: ["Plus Jakarta Sans", "sans-serif"],
     },
     screens: {
       "2xsm": "375px",
