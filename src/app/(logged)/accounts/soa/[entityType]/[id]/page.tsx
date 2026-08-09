@@ -166,7 +166,7 @@ export default function SOAPage() {
           </button>
         )}
         content={() => componentRef.current}
-        pageStyle={`@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}`}
+        pageStyle={`@page{size:A4;margin:0 0 14mm 0;@bottom-center{content:"Page " counter(page) " of " counter(pages);font-size:8.5pt;color:#94a3b8;font-family:"Plus Jakarta Sans",sans-serif;letter-spacing:0.04em;}}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}`}
       />
 
       <div
