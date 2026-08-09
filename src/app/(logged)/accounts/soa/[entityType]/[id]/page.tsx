@@ -59,6 +59,7 @@ export default function SOAPage() {
   const initCols = Object.fromEntries(COLS.map((c) => [c.key, c.defaultOn])) as Record<ColKey, boolean>;
   const [cols, setCols] = useState<Record<ColKey, boolean>>(initCols);
   const [showAging, setShowAging] = useState(true);
+  const [showZeroRows, setShowZeroRows] = useState(false);
 
   const toggle = (key: ColKey) => setCols((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -93,8 +94,45 @@ export default function SOAPage() {
     data.dateFrom && data.dateTo ? `${data.dateFrom} to ${data.dateTo}` : "All Time";
   const outstanding = data.closingBalance > 0 ? data.closingBalance : 0;
 
+  const zeroRows = data.rows.filter(
+    (r) => (r.debit == null || r.debit === 0) && (r.credit == null || r.credit === 0),
+  );
+  const displayRows = showZeroRows
+    ? data.rows
+    : data.rows.filter((r) => (r.debit ?? 0) !== 0 || (r.credit ?? 0) !== 0);
+
   return (
     <>
+      {/* ── Hidden-rows warning (not printed) ── */}
+      {zeroRows.length > 0 && !showZeroRows && (
+        <div className="print:hidden mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 dark:border-amber-800/40 dark:bg-amber-950/20">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+            {zeroRows.length} record{zeroRows.length !== 1 ? "s" : ""} hidden (zero amount)
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowZeroRows(true)}
+            className="shrink-0 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/60"
+          >
+            Show hidden records
+          </button>
+        </div>
+      )}
+      {showZeroRows && zeroRows.length > 0 && (
+        <div className="print:hidden mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-700 dark:bg-slate-800/40">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Showing all records including {zeroRows.length} with zero amount
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowZeroRows(false)}
+            className="shrink-0 rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300"
+          >
+            Hide zero records
+          </button>
+        </div>
+      )}
+
       {/* ── Column toggles (not printed) ── */}
       <div className="print:hidden mb-3 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
         <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Columns:</span>
@@ -240,13 +278,13 @@ export default function SOAPage() {
               </td>
             </tr>
 
-            {data.rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={99} className="px-2 py-4 text-center text-slate-400 italic">
                   No transactions in this period.
                 </td>
               </tr>
-            ) : data.rows.map((row, i) => (
+            ) : displayRows.map((row, i) => (
               <tr key={i} className={`border-b border-slate-100 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
                 <td className="px-2 py-1 whitespace-nowrap text-slate-600">{row.date}</td>
                 {cols.jobNo         && <td className="px-2 py-1 font-mono text-slate-500">{row.jobNo ?? "—"}</td>}
@@ -269,8 +307,8 @@ export default function SOAPage() {
                 {cols.remarks && (
                   <td className="px-2 py-1 text-slate-500">{row.remarks ?? "—"}</td>
                 )}
-                <td className="px-2 py-1 text-right text-emerald-700 font-medium">{row.debit != null ? fmt(row.debit) : ""}</td>
-                <td className="px-2 py-1 text-right text-rose-600 font-medium">{row.credit != null ? fmt(row.credit) : ""}</td>
+                <td className="px-2 py-1 text-right text-black font-medium">{row.debit != null ? fmt(row.debit) : ""}</td>
+                <td className="px-2 py-1 text-right text-black font-medium">{row.credit != null ? fmt(row.credit) : ""}</td>
                 <td className="px-2 py-1 text-right font-semibold text-slate-800">{fmtSigned(row.balance)}</td>
               </tr>
             ))}
@@ -292,20 +330,8 @@ export default function SOAPage() {
           </tbody>
         </table>
 
-        {/* ── Notes + Aging side by side ── */}
-        <div className={`flex gap-3 mb-4 text-xs ${showAging ? "" : ""}`}>
-          {/* Notes */}
-          <div className="flex-1 border border-slate-100 rounded px-3 py-2 text-slate-500 leading-relaxed">
-            <p className="font-semibold text-[11px] uppercase tracking-wide text-slate-700 mb-1">Notes</p>
-            <ul className="space-y-0.5 list-disc list-inside text-[11px]">
-              <li>This statement reflects all transactions posted during the selected period.</li>
-              <li>Any discrepancy should be reported within 7 days of the statement date.</li>
-              <li>If payment has been made, please share confirmation for reconciliation.</li>
-            </ul>
-          </div>
-
-          {/* Aging summary */}
-          {showAging && (() => {
+        {/* ── Aging summary ── */}
+        {showAging && (() => {
             const agingTotal = Number(
               (data.aging.current + data.aging.days30 + data.aging.days60 + data.aging.days90 + data.aging.over90).toFixed(2)
             );
@@ -362,7 +388,6 @@ export default function SOAPage() {
               </div>
             );
           })()}
-        </div>
 
         {/* ── Footer ── */}
         <div className="border-t border-slate-200 pt-2 flex items-end justify-between text-[11px] text-slate-400">

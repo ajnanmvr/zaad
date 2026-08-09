@@ -18,13 +18,12 @@ import {
   FiArrowLeft,
   FiArrowRight,
   FiBarChart2,
-  FiChevronRight,
   FiDollarSign,
   FiFileText,
   FiLayers,
   FiTrendingDown,
   FiTrendingUp,
-  FiZap,
+  FiZap
 } from "react-icons/fi";
 
 type MonthlyCategory = {
@@ -66,7 +65,7 @@ type MonthlyStatsListResponse = {
   summary: MonthlyStatsData[];
 };
 
-const formatCurrency = (value: number) => `AED ${Number(value || 0).toFixed(2)}`;
+const formatCurrency = (value: number) => `${Number(value || 0).toFixed(2)} AED`;
 
 const monthLabel = (month: number, year: number) => formatDubaiMonthLabel(year, month);
 
