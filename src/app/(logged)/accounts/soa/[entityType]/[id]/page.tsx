@@ -49,6 +49,12 @@ const fmt = (n?: number) => (n == null ? "" : Math.abs(n).toFixed(2));
 const fmtSigned = (n: number) =>
   `${Math.abs(n).toFixed(2)}${n < 0 ? " CR" : n > 0 ? " DR" : ""}`;
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtPeriodDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
 export default function SOAPage() {
   const { entityType, id } = useParams<{ entityType: string; id: string }>();
   const sp = useSearchParams();
@@ -91,7 +97,9 @@ export default function SOAPage() {
   }
 
   const periodLabel =
-    data.dateFrom && data.dateTo ? `${data.dateFrom} to ${data.dateTo}` : "All Time";
+    data.dateFrom && data.dateTo
+      ? `${fmtPeriodDate(data.dateFrom)} to ${fmtPeriodDate(data.dateTo)}`
+      : "All Time";
   const outstanding = data.closingBalance > 0 ? data.closingBalance : 0;
 
   const zeroRows = data.rows.filter(
