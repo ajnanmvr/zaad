@@ -49,6 +49,12 @@ const fmt = (n?: number) => (n == null ? "" : Math.abs(n).toFixed(2));
 const fmtSigned = (n: number) =>
   `${Math.abs(n).toFixed(2)}${n < 0 ? " CR" : n > 0 ? " DR" : ""}`;
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtPeriodDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
 export default function SOAPage() {
   const { entityType, id } = useParams<{ entityType: string; id: string }>();
   const sp = useSearchParams();
@@ -90,8 +96,6 @@ export default function SOAPage() {
     );
   }
 
-  const periodLabel =
-    data.dateFrom && data.dateTo ? `${data.dateFrom} to ${data.dateTo}` : "All Time";
   const outstanding = data.closingBalance > 0 ? data.closingBalance : 0;
 
   const zeroRows = data.rows.filter(
@@ -194,7 +198,6 @@ export default function SOAPage() {
           {/* Meta cells */}
           {[
             ["Date", data.statementDate],
-            ["Period", periodLabel],
             ["Currency", "AED"],
           ].map(([label, val]) => (
             <div key={label} className="flex-1 border-l border-slate-200 px-2.5 py-1.5">
@@ -202,6 +205,17 @@ export default function SOAPage() {
               <p className="font-semibold text-slate-700 leading-tight">{val}</p>
             </div>
           ))}
+          <div className="flex-1 border-l border-slate-200 px-2.5 py-1.5">
+            <p className="text-xs uppercase text-slate-400 tracking-wide">Period</p>
+            {data.dateFrom && data.dateTo ? (
+              <div className="leading-snug">
+                <p className="font-semibold text-slate-700">{fmtPeriodDate(data.dateFrom)}</p>
+                <p className="text-[10px] text-slate-400">to {fmtPeriodDate(data.dateTo)}</p>
+              </div>
+            ) : (
+              <p className="font-semibold text-slate-700 leading-tight">All Time</p>
+            )}
+          </div>
         </div>
 
         {/* ── Client + Account Summary ── */}
@@ -229,13 +243,13 @@ export default function SOAPage() {
               { label: "Opening",     val: data.openingBalance, cls: "text-slate-700" },
               { label: "Charges",     val: data.totalDebits,    cls: "text-emerald-700" },
               { label: "Payments",    val: data.totalCredits,   cls: "text-rose-600" },
-              { label: "Outstanding", val: data.closingBalance, cls: data.closingBalance > 0 ? "text-slate-900 font-bold" : "text-emerald-700 font-bold", bg: "bg-slate-50" },
+              { label: "Balance", val: data.closingBalance, cls: data.closingBalance > 0 ? "text-slate-900 font-bold" : "text-emerald-700 font-bold", bg: "bg-slate-50" },
             ].map(({ label, val, cls, bg }) => (
               <div key={label} className={`px-3 py-2 ${bg ?? ""}`}>
                 <p className="text-xs uppercase text-slate-400 tracking-wide whitespace-nowrap">{label}</p>
                 <p className={`text-xs font-semibold mt-0.5 ${cls}`}>
                   {Math.abs(val).toFixed(2)}
-                  {label === "Outstanding" && val < 0 && (
+                  {label === "Balance" && val < 0 && (
                     <span className="text-xs font-normal text-slate-400"> CR</span>
                   )}
                 </p>
