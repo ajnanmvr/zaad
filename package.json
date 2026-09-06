@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "migrate:all": "node scripts/migrate-all.mjs"
+    "lint": "next lint"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.63.0",
