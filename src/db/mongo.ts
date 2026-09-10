@@ -13,6 +13,7 @@ const ensureModelsLoaded = () => {
         require('../models/roles');
         require('../models/tasks');
         require('../models/taskNotifications');
+        require('../models/serviceTemplates');
     } catch (error) {
         console.warn('Warning: Could not preload models:', error);
     }

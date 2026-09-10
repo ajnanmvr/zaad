@@ -2,6 +2,7 @@
 
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
+import DashboardServiceList from "@/components/dashboard/DashboardServiceList";
 import Link from "next/link";
 import {
   FiActivity,
@@ -401,6 +402,8 @@ export default function Home() {
 
   return (
     <div className="space-y-6 p-8">
+        <DashboardServiceList />
+
         {visibleSections.map((section) => (
           <section key={section.title} className="space-y-3">
             <div className="flex items-end justify-between gap-3 px-1">

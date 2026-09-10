@@ -7,11 +7,13 @@ import CredentialTemplate from "@/models/credentialTemplates";
 import PaymentTemplate from "@/models/paymentTemplates";
 import PaymentStatusTemplate from "@/models/paymentStatusTemplates";
 import OfficeExpenseCategory from "@/models/officeExpenseCategories";
+import ServiceTemplate from "@/models/serviceTemplates";
 import EntityDocument from "@/models/entityDocuments";
 import EntityCredential from "@/models/entityCredentials";
 import Records from "@/models/records";
 import { DEFAULT_PAYMENT_TEMPLATE_ICON, PAYMENT_TEMPLATE_ICON_KEYS } from "@/config/templateVisuals";
 import { normalizeDocumentCategory } from "@/config/documentCategoryVisuals";
+import { normalizeServiceKind } from "@/config/serviceKinds";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
 function normalizeHexColor(value?: string): string | undefined {
@@ -243,7 +245,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [documentUsageRows, credentialUsageRows, paymentUsageRows, paymentStatusUsageRows, officeCategoryUsageRows] = await Promise.all([
+    if (type === "service") {
+      const usageRows = await Records.aggregate([
+        { $match: { particular: { $ne: null } } },
+        { $group: { _id: "$particular", count: { $sum: 1 } } },
+      ]);
+
+      const usedNames = usageRows
+        .map((row: any) => (row?._id ? String(row._id) : ""))
+        .filter(Boolean);
+
+      const templates = await ServiceTemplate.find({
+        $or: [{ published: { $ne: false } }, { name: { $in: usedNames } }],
+      })
+        .select("name price kind color published createdAt")
+        .sort({ name: 1 });
+
+      const usageMap = new Map<string, number>();
+      usageRows.forEach((row: any) => {
+        usageMap.set(String(row._id), row.count);
+      });
+
+      return Response.json(
+        {
+          options: templates.map((item: any) => ({
+            id: item._id.toString(),
+            label: item.name,
+            name: item.name,
+            price: typeof item.price === "number" ? item.price : 0,
+            kind: normalizeServiceKind(item.kind),
+            color: item.color,
+            published: item.published !== false,
+            unpublished: item.published === false,
+            createdAt: item.createdAt,
+            usageCount: usageMap.get(item.name) || 0,
+          })),
+        },
+        { status: 200 }
+      );
+    }
+
+    const [documentUsageRows, credentialUsageRows, paymentUsageRows, paymentStatusUsageRows, officeCategoryUsageRows, serviceUsageRows] = await Promise.all([
       EntityDocument.aggregate([
         { $match: { documentTemplate: { $ne: null } } },
         { $group: { _id: "$documentTemplate", count: { $sum: 1 } } },
@@ -264,6 +306,10 @@ export async function GET(request: NextRequest) {
         { $match: { category: { $ne: null } } },
         { $group: { _id: "$category", count: { $sum: 1 } } },
       ]),
+      Records.aggregate([
+        { $match: { particular: { $ne: null } } },
+        { $group: { _id: "$particular", count: { $sum: 1 } } },
+      ]),
     ]);
 
     const documentUsageMap = new Map<string, number>();
@@ -271,6 +317,7 @@ export async function GET(request: NextRequest) {
     const paymentUsageMap = new Map<string, number>();
     const paymentStatusUsageMap = new Map<string, number>();
     const officeCategoryUsageMap = new Map<string, number>();
+    const serviceUsageMap = new Map<string, number>();
 
     documentUsageRows.forEach((row: any) => {
       documentUsageMap.set(row._id.toString(), row.count);
@@ -287,8 +334,11 @@ export async function GET(request: NextRequest) {
     officeCategoryUsageRows.forEach((row: any) => {
       officeCategoryUsageMap.set(String(row._id), row.count);
     });
+    serviceUsageRows.forEach((row: any) => {
+      serviceUsageMap.set(String(row._id), row.count);
+    });
 
-    const [documentTemplates, credentialTemplates, paymentTemplates, paymentStatusTemplates, officeExpenseCategories] = await Promise.all([
+    const [documentTemplates, credentialTemplates, paymentTemplates, paymentStatusTemplates, officeExpenseCategories, serviceTemplates] = await Promise.all([
       DocumentTemplate.find({
         $or: [
           { published: { $ne: false } },
@@ -333,6 +383,14 @@ export async function GET(request: NextRequest) {
       })
         .select("category color icon published")
         .sort({ category: 1 }),
+      ServiceTemplate.find({
+        $or: [
+          { published: { $ne: false } },
+          { name: { $in: Array.from(serviceUsageMap.keys()) } },
+        ],
+      })
+        .select("name price kind color published")
+        .sort({ name: 1 }),
     ]);
 
     return Response.json(
@@ -381,6 +439,16 @@ export async function GET(request: NextRequest) {
           published: item.published !== false,
           unpublished: item.published === false,
         })),
+        serviceOptions: serviceTemplates.map((item: any) => ({
+          id: item._id.toString(),
+          label: item.name,
+          name: item.name,
+          price: typeof item.price === "number" ? item.price : 0,
+          kind: normalizeServiceKind(item.kind),
+          color: item.color,
+          published: item.published !== false,
+          unpublished: item.published === false,
+        })),
       },
       { status: 200 }
     );
@@ -411,7 +479,11 @@ export async function POST(request: NextRequest) {
       (type === "credential" && !platform?.trim()) ||
       (type === "payment" && !body?.method?.trim()) ||
       (type === "payment-status" && !body?.status?.trim()) ||
-      (type === "office-expense-category" && !body?.category?.trim())
+      (type === "office-expense-category" && !body?.category?.trim()) ||
+      (type === "service" &&
+        (!body?.name?.trim() ||
+          !Number.isFinite(Number(body?.price)) ||
+          Number(body?.price) < 0))
     ) {
       return Response.json(
         { message: "Invalid input: type and name/platform are required" },
@@ -714,6 +786,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (type === "service") {
+      const serviceName = String(body?.name || "").trim();
+      const price = Number(body?.price);
+      const kind = normalizeServiceKind(body?.kind);
+
+      if (!Number.isFinite(price) || price < 0) {
+        return Response.json({ message: "Invalid service price" }, { status: 400 });
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+
+      const exists = await ServiceTemplate.findOne({ name: serviceName });
+      if (exists) {
+        if (exists.published === false) {
+          exists.published = true;
+          exists.price = price;
+          exists.kind = kind;
+          if (selectedColor) {
+            exists.color = selectedColor;
+          }
+          await exists.save();
+
+          return Response.json(
+            {
+              message: "Service restored successfully",
+              template: {
+                id: exists._id.toString(),
+                name: exists.name,
+                price: exists.price,
+                kind: normalizeServiceKind(exists.kind),
+                color: exists.color,
+              },
+            },
+            { status: 200 }
+          );
+        }
+
+        return Response.json(
+          { message: "Service with this name already exists" },
+          { status: 409 }
+        );
+      }
+
+      const color = selectedColor
+        ? selectedColor
+        : await ServiceTemplate.find({})
+            .select("color")
+            .lean()
+            .then((rows: any[]) => {
+              const existingColors = rows.map((row) => row?.color).filter(Boolean);
+              return generateEntityColor(existingColors);
+            });
+
+      const template = await ServiceTemplate.create({
+        name: serviceName,
+        price,
+        kind,
+        color,
+        published: true,
+      });
+
+      return Response.json(
+        {
+          message: "Service created successfully",
+          template: {
+            id: template._id.toString(),
+            name: template.name,
+            price: template.price,
+            kind: normalizeServiceKind(template.kind),
+            color: template.color,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
     return Response.json(
       { message: "Invalid template type" },
       { status: 400 }
@@ -833,6 +981,24 @@ export async function DELETE(request: NextRequest) {
       }
       return Response.json(
         { message: "Office expense category unpublished successfully" },
+        { status: 200 }
+      );
+    }
+
+    if (type === "service") {
+      const template = await ServiceTemplate.findByIdAndUpdate(
+        templateId,
+        { published: false },
+        { new: true }
+      );
+      if (!template) {
+        return Response.json(
+          { message: "Service not found" },
+          { status: 404 }
+        );
+      }
+      return Response.json(
+        { message: "Service unpublished successfully" },
         { status: 200 }
       );
     }
@@ -1158,6 +1324,73 @@ export async function PUT(request: NextRequest) {
             category: template.category,
             color: template.color,
             icon: template.icon,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (type === "service") {
+      const serviceName = String(body?.name || "").trim();
+      if (!serviceName) {
+        return Response.json(
+          { message: "Service name is required" },
+          { status: 400 }
+        );
+      }
+
+      const price = Number(body?.price);
+      if (!Number.isFinite(price) || price < 0) {
+        return Response.json(
+          { message: "Invalid service price" },
+          { status: 400 }
+        );
+      }
+
+      const existingByName = await ServiceTemplate.findOne({
+        name: serviceName,
+        _id: { $ne: templateId },
+      }).select("_id");
+
+      if (existingByName) {
+        return Response.json(
+          { message: "Service with this name already exists" },
+          { status: 409 }
+        );
+      }
+
+      const selectedColor = normalizeHexColor(body?.color);
+      const update: Record<string, unknown> = {
+        name: serviceName,
+        price,
+        kind: normalizeServiceKind(body?.kind),
+      };
+      if (selectedColor) {
+        update.color = selectedColor;
+      }
+
+      const template = await ServiceTemplate.findByIdAndUpdate(
+        templateId,
+        update,
+        { new: true }
+      );
+
+      if (!template) {
+        return Response.json(
+          { message: "Service not found" },
+          { status: 404 }
+        );
+      }
+
+      return Response.json(
+        {
+          message: "Service updated successfully",
+          template: {
+            id: template._id.toString(),
+            name: template.name,
+            price: template.price,
+            kind: normalizeServiceKind(template.kind),
+            color: template.color,
           },
         },
         { status: 200 }

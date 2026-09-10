@@ -34,6 +34,7 @@ import {
   FiPlusCircle,
   FiRepeat,
   FiSliders,
+  FiTag,
   FiBox,
   FiSettings,
   FiShield,
@@ -104,6 +105,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const canViewPaymentMethods = can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
+  const canViewServices = can("settings.manage.services");
   const canViewBusinessPulse =
     can("dashboard.view.business-pulse") || can("payments.view.finance-summary-page");
   const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
@@ -625,7 +627,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 canViewOfficeCategories ||
                 canViewPaymentMethods ||
                 canViewPaymentStatuses ||
-                canViewParticularSuggestions) && (
+                canViewParticularSuggestions ||
+                canViewServices) && (
                 <SidebarLinkGroup
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
@@ -636,6 +639,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     pathname.startsWith("/settings/payment-methods") ||
                     pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates") ||
+                    pathname.startsWith("/settings/services") ||
                     pathname.startsWith("/settings/particular-suggestions")
                   }
                 >
@@ -654,6 +658,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           pathname.startsWith("/settings/payment-methods") ||
                           pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates") ||
+                          pathname.startsWith("/settings/services") ||
                           pathname.startsWith(
                             "/settings/particular-suggestions",
                           )
@@ -737,6 +742,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                                 icon={<FiEdit2 />}
                                 label="Particulars"
                                 active={pathname === "/settings/particular-suggestions"}
+                              />
+                            </li>
+                          )}
+                          {canViewServices && (
+                            <li>
+                              <NavItem
+                                href="/settings/services"
+                                icon={<FiTag />}
+                                label="Service Pricelist"
+                                active={pathname === "/settings/services"}
                               />
                             </li>
                           )}

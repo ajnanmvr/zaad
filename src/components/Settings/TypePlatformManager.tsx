@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDubaiDate } from "@/utils/dubaiTime";
 import {
   FiAlertCircle,
+  FiDollarSign,
   FiEdit2,
   FiFileText,
   FiLock,
@@ -41,7 +42,8 @@ type ManagerType =
   | "credential"
   | "payment"
   | "payment-status"
-  | "office-expense-category";
+  | "office-expense-category"
+  | "service";
 
 type ItemOption = {
   id: string;
@@ -54,6 +56,7 @@ type ItemOption = {
   category?: TDocumentCategory;
   icon?: TPaymentTemplateIcon;
   categoryName?: string;
+  price?: number;
   published?: boolean;
   unpublished?: boolean;
   createdAt?: string;
@@ -95,6 +98,7 @@ function TypePlatformManager({
     requiredPermissions.some((permission) => hasPermission(userPermissions, permission));
 
   const [value, setValue] = useState("");
+  const [selectedPrice, setSelectedPrice] = useState<number | "">("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedIcon, setSelectedIcon] = useState<TPaymentTemplateIcon>(
     DEFAULT_PAYMENT_TEMPLATE_ICON,
@@ -119,7 +123,9 @@ function TypePlatformManager({
           ? "payment-methods"
           : type === "payment-status"
             ? "payment-statuses"
-            : "office-expense-categories",
+            : type === "service"
+              ? "service-templates"
+              : "office-expense-categories",
   ];
 
   const { data: items = [], isLoading } = useQuery<ItemOption[]>({
@@ -166,7 +172,9 @@ function TypePlatformManager({
           ? item.method || "Untitled"
           : type === "payment-status"
             ? item.status || "Untitled"
-            : item.category || item.categoryName || "Untitled";
+            : type === "service"
+              ? item.name || "Untitled"
+              : item.category || item.categoryName || "Untitled";
 
   const getPaymentIcon = (iconName?: TPaymentTemplateIcon) => {
     return getPaymentMethodIcon(iconName);
@@ -175,6 +183,7 @@ function TypePlatformManager({
   const openAddModal = () => {
     setEditingId(null);
     setValue("");
+    setSelectedPrice("");
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
     setSelectedAppliesTo("both");
@@ -194,8 +203,11 @@ function TypePlatformManager({
             ? item.method || ""
             : type === "payment-status"
               ? item.status || ""
-              : item.category || item.categoryName || "",
+              : type === "service"
+                ? item.name || ""
+                : item.category || item.categoryName || "",
     );
+    setSelectedPrice(typeof item.price === "number" ? item.price : "");
     setSelectedColor(item.color || "");
     setSelectedIcon((item.icon || DEFAULT_PAYMENT_TEMPLATE_ICON) as TPaymentTemplateIcon);
     setSelectedAppliesTo(item.appliesTo || "both");
@@ -208,6 +220,7 @@ function TypePlatformManager({
     setShowAddForm(false);
     setEditingId(null);
     setValue("");
+    setSelectedPrice("");
     setSelectedColor("");
     setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
     setSelectedAppliesTo("both");
@@ -222,12 +235,22 @@ function TypePlatformManager({
       return;
     }
 
+    if (
+      type === "service" &&
+      (selectedPrice === "" ||
+        Number(selectedPrice) < 0 ||
+        Number.isNaN(Number(selectedPrice)))
+    ) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+
     setIsAdding(true);
     try {
       const payload = {
         type,
         ...(editingId ? { id: editingId } : {}),
-        ...(type === "document" || type === "payment" || type === "payment-status"
+        ...(type === "document" || type === "payment" || type === "payment-status" || type === "service"
           ? { color: selectedColor || undefined }
           : {}),
         ...(type === "document"
@@ -238,7 +261,9 @@ function TypePlatformManager({
               ? { method: value.trim(), icon: selectedIcon }
               : type === "payment-status"
                 ? { status: value.trim(), appliesTo: selectedAppliesTo }
-                : { category: value.trim(), icon: selectedIcon }),
+                : type === "service"
+                  ? { name: value.trim(), price: Number(selectedPrice) || 0 }
+                  : { category: value.trim(), icon: selectedIcon }),
       };
 
       if (editingId) {
@@ -249,6 +274,7 @@ function TypePlatformManager({
 
       toast.success(`${title.slice(0, -1)} ${editingId ? "updated" : "added"} successfully`);
       setValue("");
+      setSelectedPrice("");
       setSelectedColor("");
       setSelectedIcon(DEFAULT_PAYMENT_TEMPLATE_ICON);
       setSelectedAppliesTo("both");
@@ -381,6 +407,33 @@ function TypePlatformManager({
                 />
               </div>
 
+              {type === "service" && (
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Price (AED)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={selectedPrice}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(event) =>
+                      setSelectedPrice(
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value) || 0,
+                      )
+                    }
+                    placeholder="0.00"
+                    className={clsx(
+                      "w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+                      accentClasses.focus,
+                    )}
+                  />
+                </div>
+              )}
+
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                 <button
                   type="button"
@@ -401,7 +454,7 @@ function TypePlatformManager({
                 </button>
               </div>
 
-              {(type === "document" || type === "payment" || type === "payment-status" || type === "office-expense-category") && (
+              {(type === "document" || type === "payment" || type === "payment-status" || type === "office-expense-category" || type === "service") && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                   <ColorPicker
                     key={colorPickerKey}
@@ -414,7 +467,9 @@ function TypePlatformManager({
                           ? "Method Color"
                           : type === "payment-status"
                             ? "Status Color"
-                            : "Category Color"
+                            : type === "service"
+                              ? "Service Color"
+                              : "Category Color"
                     }
                     allowAutoAssign
                   />
@@ -567,6 +622,14 @@ function TypePlatformManager({
                       <FiLock className="text-sm" />
                     </span>
                   )}
+                  {type === "service" && (
+                    <span
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white"
+                      style={{ backgroundColor: item.color || "#0891b2" }}
+                    >
+                      <FiDollarSign className="text-sm" />
+                    </span>
+                  )}
                   {type === "payment-status" && item.color && (
                     <span
                       className="inline-block h-3 w-3 rounded-full ring-1 ring-black/10"
@@ -604,6 +667,11 @@ function TypePlatformManager({
                 {type === "document" ? (
                   <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Category: {getDocumentCategoryLabel(item.category)}
+                  </p>
+                ) : null}
+                {type === "service" ? (
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Price: AED {Number(item.price || 0).toFixed(2)}
                   </p>
                 ) : null}
               </div>
