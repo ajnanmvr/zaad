@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FiAlertCircle,
+  FiAlertTriangle,
   FiEdit2,
   FiPlus,
   FiSearch,
@@ -32,7 +33,9 @@ import {
 type ServiceItem = {
   id: string;
   name: string;
-  price: number;
+  amount: number;
+  clientFee: number;
+  serviceFee?: number;
   kind: ServiceKind;
   color?: string;
   published?: boolean;
@@ -57,6 +60,8 @@ const priceFormatter = new Intl.NumberFormat("en-AE", {
 const formatPrice = (value: number) =>
   priceFormatter.format(Number.isFinite(value) ? value : 0);
 
+const toNumber = (value: number | "") => (value === "" ? 0 : Number(value) || 0);
+
 function ServicePricelistManager() {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
@@ -72,13 +77,19 @@ function ServicePricelistManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | "">("");
+  const [amount, setAmount] = useState<number | "">("");
+  const [clientFee, setClientFee] = useState<number | "">("");
   const [kind, setKind] = useState<ServiceKind | "">("");
   const [color, setColor] = useState("");
   const [colorPickerKey, setColorPickerKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
+  const autoServiceFee = useMemo(() => {
+    if (clientFee === "") return 0;
+    return Number((toNumber(clientFee) - toNumber(amount)).toFixed(2));
+  }, [clientFee, amount]);
 
   const { data: items = [], isLoading } = useQuery<ServiceItem[]>({
     queryKey: QUERY_KEY,
@@ -87,8 +98,17 @@ function ServicePricelistManager() {
         params: { type: "service" },
       });
       return ((data?.options || []) as any[]).map((option) => ({
-        ...option,
+        id: String(option?.id || ""),
+        name: String(option?.name || ""),
+        amount: Number(option?.amount) || 0,
+        clientFee: Number(option?.clientFee) || 0,
+        serviceFee: Number(option?.serviceFee) || 0,
         kind: normalizeServiceKind(option?.kind),
+        color: option?.color,
+        published: option?.published,
+        unpublished: option?.unpublished,
+        usageCount: option?.usageCount,
+        createdAt: option?.createdAt,
       })) as ServiceItem[];
     },
   });
@@ -116,7 +136,8 @@ function ServicePricelistManager() {
   const openAddModal = () => {
     setEditingId(null);
     setName("");
-    setPrice("");
+    setAmount("");
+    setClientFee("");
     setKind("");
     setColor("");
     setColorPickerKey((prev) => prev + 1);
@@ -126,7 +147,8 @@ function ServicePricelistManager() {
   const openEditModal = (item: ServiceItem) => {
     setEditingId(item.id);
     setName(item.name || "");
-    setPrice(typeof item.price === "number" ? item.price : "");
+    setAmount(typeof item.amount === "number" ? item.amount : "");
+    setClientFee(typeof item.clientFee === "number" ? item.clientFee : "");
     setKind(normalizeServiceKind(item.kind));
     setColor(item.color || "");
     setColorPickerKey((prev) => prev + 1);
@@ -138,7 +160,8 @@ function ServicePricelistManager() {
     setShowForm(false);
     setEditingId(null);
     setName("");
-    setPrice("");
+    setAmount("");
+    setClientFee("");
     setKind("");
     setColor("");
   };
@@ -150,8 +173,16 @@ function ServicePricelistManager() {
       toast.error("Please enter a service name");
       return;
     }
-    if (price === "" || Number.isNaN(Number(price)) || Number(price) < 0) {
-      toast.error("Please enter a valid price");
+    if (amount === "" || Number.isNaN(Number(amount)) || Number(amount) < 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    if (
+      clientFee === "" ||
+      Number.isNaN(Number(clientFee)) ||
+      Number(clientFee) < 0
+    ) {
+      toast.error("Please enter a valid client fee");
       return;
     }
     if (!kind) {
@@ -165,7 +196,8 @@ function ServicePricelistManager() {
         type: "service",
         ...(editingId ? { id: editingId } : {}),
         name: name.trim(),
-        price: Number(price) || 0,
+        amount: toNumber(amount),
+        clientFee: toNumber(clientFee),
         kind,
         color: color || undefined,
       };
@@ -243,7 +275,8 @@ function ServicePricelistManager() {
             Service Pricelist
           </h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Catalogue of visa and license services with their standard rates.
+            Catalogue of visa and license services — cost amount, client fee and
+            the resulting service fee.
           </p>
         </div>
         <button
@@ -315,6 +348,11 @@ function ServicePricelistManager() {
             {filteredItems.map((item) => {
               const CardIcon = getServiceKindIcon(item.kind);
               const accent = item.color || getServiceKindAccent(item.kind);
+              const fee = Number(
+                (Number(item.clientFee || 0) - Number(item.amount || 0)).toFixed(
+                  2,
+                ),
+              );
               return (
                 <div
                   key={item.id}
@@ -350,32 +388,58 @@ function ServicePricelistManager() {
                       )}
                     </p>
 
-                    <div className="mt-auto flex items-end justify-between pt-3">
-                      <p className="font-mono text-lg font-black tabular-nums text-slate-900 dark:text-slate-100">
-                        <span className="mr-1 text-[11px] font-semibold text-slate-400">
-                          AED
-                        </span>
-                        {formatPrice(Number(item.price) || 0)}
-                      </p>
+                    <div className="mt-auto pt-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Client fee
+                          </p>
+                          <p className="font-mono text-lg font-black tabular-nums text-slate-900 dark:text-slate-100">
+                            <span className="mr-1 text-[11px] font-semibold text-slate-400">
+                              AED
+                            </span>
+                            {formatPrice(Number(item.clientFee) || 0)}
+                          </p>
+                        </div>
 
-                      <div className="flex items-center gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-slate-800"
-                          title="Edit"
+                        <div className="flex items-center gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-slate-800"
+                            title="Edit"
+                          >
+                            <FiEdit2 />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRemoveId(item.id)}
+                            disabled={deletingId === item.id}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-slate-800"
+                            title="Remove"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-100 pt-2 text-[11px] font-semibold dark:border-slate-800">
+                        <span className="text-slate-500 dark:text-slate-400">
+                          Amount{" "}
+                          <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
+                            AED {formatPrice(Number(item.amount) || 0)}
+                          </span>
+                        </span>
+                        <span
+                          className={clsx(
+                            "font-mono tabular-nums",
+                            fee < 0
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-emerald-600 dark:text-emerald-400",
+                          )}
                         >
-                          <FiEdit2 />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmRemoveId(item.id)}
-                          disabled={deletingId === item.id}
-                          className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-slate-800"
-                          title="Remove"
-                        >
-                          <FiTrash2 />
-                        </button>
+                          Service fee AED {formatPrice(fee)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -398,7 +462,7 @@ function ServicePricelistManager() {
                   {editingId ? "Edit service" : "Add service"}
                 </h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Set the service name, its category and standard rate.
+                  Set the name, category, cost amount and client fee.
                 </p>
               </div>
               <button
@@ -461,31 +525,81 @@ function ServicePricelistManager() {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Price
-                </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
-                    AED
-                  </span>
-                  <input
-                    type="number"
-                    value={price}
-                    onWheel={(event) => event.currentTarget.blur()}
-                    onChange={(event) =>
-                      setPrice(
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value) || 0,
-                      )
-                    }
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-14 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Amount
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+                      AED
+                    </span>
+                    <input
+                      type="number"
+                      value={amount}
+                      onWheel={(event) => event.currentTarget.blur()}
+                      onChange={(event) =>
+                        setAmount(
+                          event.target.value === ""
+                            ? ""
+                            : Number(event.target.value) || 0,
+                        )
+                      }
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-14 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    />
+                  </div>
                 </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Client Fee
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+                      AED
+                    </span>
+                    <input
+                      type="number"
+                      value={clientFee}
+                      onWheel={(event) => event.currentTarget.blur()}
+                      onChange={(event) =>
+                        setClientFee(
+                          event.target.value === ""
+                            ? ""
+                            : Number(event.target.value) || 0,
+                        )
+                      }
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-14 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Service Fee:{" "}
+                  <span
+                    className={
+                      autoServiceFee < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }
+                  >
+                    AED {autoServiceFee.toFixed(2)}
+                  </span>
+                </p>
+                {autoServiceFee < 0 ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border-[0.5px] border-amber-300 bg-amber-50 px-2 text-[0.65rem] font-semibold text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300">
+                    <FiAlertTriangle className="h-2.5 w-2.5" />
+                    Service fee is in loss
+                  </span>
+                ) : null}
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">

@@ -100,17 +100,23 @@ export async function GET(request: NextRequest) {
       published: true,
       name: { $regex: regex },
     })
-      .select("name price kind")
+      .select("name amount clientFee price kind")
       .sort({ name: 1 })
       .limit(8)
       .lean();
 
     const services = serviceRows
-      .map((row: any) => ({
-        name: String(row?.name || "").trim(),
-        price: typeof row?.price === "number" ? row.price : Number(row?.price) || 0,
-        kind: normalizeServiceKind(row?.kind),
-      }))
+      .map((row: any) => {
+        const amount = Number(row?.amount ?? row?.price) || 0;
+        const clientFee = Number(row?.clientFee) || 0;
+        return {
+          name: String(row?.name || "").trim(),
+          amount,
+          clientFee,
+          serviceFee: Number((clientFee - amount).toFixed(2)),
+          kind: normalizeServiceKind(row?.kind),
+        };
+      })
       .filter((s) => s.name);
 
     return Response.json({ suggestions: Array.from(unique).slice(0, 12), services }, { status: 200 });

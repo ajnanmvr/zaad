@@ -162,7 +162,12 @@ const SimpleRecordForm = ({
     [],
   );
   const [serviceSuggestions, setServiceSuggestions] = useState<
-    { name: string; price: number; kind?: ServiceKind }[]
+    {
+      name: string;
+      amount: number;
+      clientFee: number;
+      kind?: ServiceKind;
+    }[]
   >([]);
   const [particularLoading, setParticularLoading] = useState(false);
   const [showParticularDropdown, setShowParticularDropdown] = useState(false);
@@ -514,7 +519,8 @@ const SimpleRecordForm = ({
           Array.isArray(res.data?.services)
             ? res.data.services.map((service: any) => ({
                 name: String(service?.name || ""),
-                price: Number(service?.price) || 0,
+                amount: Number(service?.amount) || 0,
+                clientFee: Number(service?.clientFee) || 0,
                 kind: normalizeServiceKind(service?.kind),
               }))
             : [],
@@ -559,18 +565,31 @@ const SimpleRecordForm = ({
 
   const handleSelectService = (service: {
     name: string;
-    price: number;
+    amount: number;
+    clientFee: number;
     kind?: ServiceKind;
   }) => {
+    const rawKind = String(formData.recordKind || "");
+    const effectiveKind =
+      isEdit && rawKind === "instant_profit" ? "standard" : rawKind;
+    const allowsFee =
+      formData.type === "expense" &&
+      ["standard", "instant_profit"].includes(effectiveKind);
+
     setFormData((prev) => {
       const current = Number(prev.amount || 0);
       const shouldFillAmount = prev.amount === undefined || current === 0;
       return {
         ...prev,
         particular: service.name,
-        amount: shouldFillAmount ? service.price : prev.amount,
+        amount: shouldFillAmount ? service.amount : prev.amount,
       };
     });
+
+    if (allowsFee) {
+      setClientFee((prev) => (prev === "" ? service.clientFee : prev));
+    }
+
     setShowParticularDropdown(false);
   };
 
@@ -1479,8 +1498,17 @@ const theme = usesNeutralTheme
                                         {SERVICE_KIND_SHORT_LABELS[serviceKind]}
                                       </span>
                                     </span>
-                                    <span className="ml-2 shrink-0 rounded-md bg-cyan-50 px-1.5 py-0.5 text-[11px] font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
-                                      AED {Number(service.price || 0).toFixed(2)}
+                                    <span className="ml-2 shrink-0 text-right">
+                                      <span className="block rounded-md bg-cyan-50 px-1.5 py-0.5 text-[11px] font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                                        AED{" "}
+                                        {Number(service.clientFee || 0).toFixed(
+                                          2,
+                                        )}
+                                      </span>
+                                      <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">
+                                        cost{" "}
+                                        {Number(service.amount || 0).toFixed(2)}
+                                      </span>
                                     </span>
                                   </button>
                                 );
