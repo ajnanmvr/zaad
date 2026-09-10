@@ -2,7 +2,6 @@
 
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
-import DashboardServiceList from "@/components/dashboard/DashboardServiceList";
 import Link from "next/link";
 import {
   FiActivity,
@@ -30,6 +29,7 @@ import {
   FiRepeat,
   FiSettings,
   FiShield,
+  FiTag,
   FiToggleRight,
   FiTrendingDown,
   FiTrendingUp,
@@ -328,6 +328,15 @@ const tiles = [
     section: "Types & Platforms",
   },
   {
+    label: "Service Pricelist",
+    href: "/settings/services",
+    description: "Service rates",
+    icon: <FiTag className="h-6 w-6" />,
+    accent: "from-blue-500 via-indigo-500 to-violet-600",
+    permissions: ["settings.manage.services"],
+    section: "Types & Platforms",
+  },
+  {
     label: "System Users",
     href: "/users",
     description: "User access",
@@ -372,7 +381,7 @@ const sections = [
   {
     title: "Types & Platforms",
     subtitle: "Settings groups",
-    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions"],
+    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist"],
   },
   {
     title: "Administration",
@@ -402,8 +411,6 @@ export default function Home() {
 
   return (
     <div className="space-y-6 p-8">
-        <DashboardServiceList />
-
         {visibleSections.map((section) => (
           <section key={section.title} className="space-y-3">
             <div className="flex items-end justify-between gap-3 px-1">

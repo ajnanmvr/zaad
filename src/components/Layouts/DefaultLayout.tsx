@@ -5,6 +5,7 @@ import Image from "next/image";
 
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
+import IdleLogout from "@/components/common/IdleLogout";
 import { useUserContext } from "@/contexts/UserContext";
 
 function AppLoadingScreen() {
@@ -44,6 +45,7 @@ export default function DefaultLayout({
 
   return (
     <Suspense fallback={<AppLoadingScreen />}>
+      <IdleLogout />
       <div className="relative flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.2),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.18),_transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,_rgba(14,116,144,0.18),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(5,150,105,0.16),_transparent_40%)]" />
 
