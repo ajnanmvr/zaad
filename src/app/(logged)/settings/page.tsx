@@ -9,6 +9,7 @@ import {
   FiLink,
   FiSettings,
   FiShield,
+  FiTag,
   FiUsers,
 } from "react-icons/fi";
 
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const canViewDocumentTypes = can("entities.write") || can("settings.write") || can("settings.manage.document-types");
   const canViewCredentialPlatforms = can("entities.write") || can("settings.write") || can("settings.manage.credential-platforms");
   const canViewOfficeCategories = can("payments.write") || can("settings.write") || can("settings.manage.office-categories");
+  const canViewServices = can("payments.write") || can("settings.write") || can("settings.manage.services");
   const canViewPaymentMethods = can("payments.write") || can("settings.write") || can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("payments.write") || can("settings.write") || can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.write") || can("payments.manage.particular-suggestions") || can("settings.manage.particular-suggestions");
@@ -55,6 +57,13 @@ export default function SettingsPage() {
       description: "Manage office expense categories.",
       icon: FiBriefcase,
       visible: canViewOfficeCategories,
+    },
+    {
+      href: "/settings/services",
+      title: "Service Pricelist",
+      description: "Manage visa & license service rates.",
+      icon: FiTag,
+      visible: canViewServices,
     },
     {
       href: "/settings/payment-methods",

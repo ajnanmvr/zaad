@@ -14,6 +14,7 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "settings.manage.payment-methods",
     "settings.manage.payment-statuses",
     "settings.manage.particular-suggestions",
+    "settings.manage.services",
   ],
   users: [
     "users.read",

@@ -3,6 +3,12 @@ import { useUserContext } from "@/contexts/UserContext";
 import { TRecordData } from "@/types/records";
 import { getPaymentMethodIcon } from "@/config/paymentMethodIcons";
 import { TPaymentTemplateIcon } from "@/config/templateVisuals";
+import {
+  SERVICE_KIND_SHORT_LABELS,
+  ServiceKind,
+  normalizeServiceKind,
+} from "@/config/serviceKinds";
+import { getServiceKindIcon } from "@/config/serviceKindVisuals";
 import axios from "axios";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -155,6 +161,9 @@ const SimpleRecordForm = ({
   const [particularSuggestions, setParticularSuggestions] = useState<string[]>(
     [],
   );
+  const [serviceSuggestions, setServiceSuggestions] = useState<
+    { name: string; price: number; kind?: ServiceKind }[]
+  >([]);
   const [particularLoading, setParticularLoading] = useState(false);
   const [showParticularDropdown, setShowParticularDropdown] = useState(false);
   const [isEditingTransactionNumber, setIsEditingTransactionNumber] =
@@ -490,6 +499,7 @@ const SimpleRecordForm = ({
     async (searchValue: string) => {
       if (!searchValue.trim()) {
         setParticularSuggestions([]);
+        setServiceSuggestions([]);
         return;
       }
 
@@ -500,9 +510,19 @@ const SimpleRecordForm = ({
           params: { q: searchValue, category },
         });
         setParticularSuggestions(res.data?.suggestions || []);
+        setServiceSuggestions(
+          Array.isArray(res.data?.services)
+            ? res.data.services.map((service: any) => ({
+                name: String(service?.name || ""),
+                price: Number(service?.price) || 0,
+                kind: normalizeServiceKind(service?.kind),
+              }))
+            : [],
+        );
       } catch (error) {
         console.error("Error searching particular suggestions:", error);
         setParticularSuggestions([]);
+        setServiceSuggestions([]);
       } finally {
         setParticularLoading(false);
       }
@@ -533,6 +553,24 @@ const SimpleRecordForm = ({
 
   const handleSelectParticular = (value: string) => {
     setFormData((prev) => ({ ...prev, particular: value }));
+    setShowParticularDropdown(false);
+    setServiceSuggestions([]);
+  };
+
+  const handleSelectService = (service: {
+    name: string;
+    price: number;
+    kind?: ServiceKind;
+  }) => {
+    setFormData((prev) => {
+      const current = Number(prev.amount || 0);
+      const shouldFillAmount = prev.amount === undefined || current === 0;
+      return {
+        ...prev,
+        particular: service.name,
+        amount: shouldFillAmount ? service.price : prev.amount,
+      };
+    });
     setShowParticularDropdown(false);
   };
 
@@ -1400,8 +1438,59 @@ const theme = usesNeutralTheme
                           />
                         )}
                         {showParticularDropdown &&
-                          particularSuggestions.length > 0 && (
+                          (particularSuggestions.length > 0 ||
+                            serviceSuggestions.length > 0) && (
                             <div className="absolute left-0 right-0 top-full z-10 mt-2 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+                              {serviceSuggestions.length > 0 && (
+                                <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  Services
+                                </p>
+                              )}
+                              {serviceSuggestions.map((service) => {
+                                const serviceKind = normalizeServiceKind(
+                                  service.kind,
+                                );
+                                const ServiceIcon =
+                                  getServiceKindIcon(serviceKind);
+                                return (
+                                  <button
+                                    key={`svc-${service.name}`}
+                                    type="button"
+                                    onClick={() => handleSelectService(service)}
+                                    className="flex w-full items-center gap-2.5 border-b border-slate-200 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 last:border-b-0 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                                  >
+                                    <span
+                                      className={clsx(
+                                        "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+                                        serviceKind === "visa"
+                                          ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
+                                          : serviceKind === "license"
+                                            ? "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300"
+                                            : "bg-cyan-100 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-300",
+                                      )}
+                                    >
+                                      <ServiceIcon className="h-3.5 w-3.5" />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate">
+                                        {service.name}
+                                      </span>
+                                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                                        {SERVICE_KIND_SHORT_LABELS[serviceKind]}
+                                      </span>
+                                    </span>
+                                    <span className="ml-2 shrink-0 rounded-md bg-cyan-50 px-1.5 py-0.5 text-[11px] font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                                      AED {Number(service.price || 0).toFixed(2)}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                              {particularSuggestions.length > 0 &&
+                                serviceSuggestions.length > 0 && (
+                                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Particulars
+                                  </p>
+                                )}
                               {particularSuggestions.map((suggestion) => (
                                 <button
                                   key={suggestion}

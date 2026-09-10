@@ -2,6 +2,8 @@ import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
 import { requireAnyPermission, requirePermission } from "@/auth/guards";
 import PaymentParticularTemplate from "@/models/paymentParticularTemplates";
+import ServiceTemplate from "@/models/serviceTemplates";
+import { normalizeServiceKind } from "@/config/serviceKinds";
 
 type ParticularCategory =
   | "office_records"
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
     const category = normalizeCategory(searchParams.get("category"));
 
     if (q.length < 1) {
-      return Response.json({ suggestions: [] }, { status: 200 });
+      return Response.json({ suggestions: [], services: [] }, { status: 200 });
     }
 
     const regex = new RegExp(escapeRegex(q), "i");
@@ -94,10 +96,27 @@ export async function GET(request: NextRequest) {
       if (value) unique.add(value);
     }
 
-    return Response.json({ suggestions: Array.from(unique).slice(0, 12) }, { status: 200 });
+    const serviceRows = await ServiceTemplate.find({
+      published: true,
+      name: { $regex: regex },
+    })
+      .select("name price kind")
+      .sort({ name: 1 })
+      .limit(8)
+      .lean();
+
+    const services = serviceRows
+      .map((row: any) => ({
+        name: String(row?.name || "").trim(),
+        price: typeof row?.price === "number" ? row.price : Number(row?.price) || 0,
+        kind: normalizeServiceKind(row?.kind),
+      }))
+      .filter((s) => s.name);
+
+    return Response.json({ suggestions: Array.from(unique).slice(0, 12), services }, { status: 200 });
   } catch (error: any) {
     return Response.json(
-      { error: error?.message || "Failed to fetch particular suggestions", suggestions: [] },
+      { error: error?.message || "Failed to fetch particular suggestions", suggestions: [], services: [] },
       { status: error?.status || 500 },
     );
   }

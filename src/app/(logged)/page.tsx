@@ -29,6 +29,7 @@ import {
   FiRepeat,
   FiSettings,
   FiShield,
+  FiTag,
   FiToggleRight,
   FiTrendingDown,
   FiTrendingUp,
@@ -327,6 +328,15 @@ const tiles = [
     section: "Types & Platforms",
   },
   {
+    label: "Service Pricelist",
+    href: "/settings/services",
+    description: "Service rates",
+    icon: <FiTag className="h-6 w-6" />,
+    accent: "from-blue-500 via-indigo-500 to-violet-600",
+    permissions: ["settings.manage.services"],
+    section: "Types & Platforms",
+  },
+  {
     label: "System Users",
     href: "/users",
     description: "User access",
@@ -371,7 +381,7 @@ const sections = [
   {
     title: "Types & Platforms",
     subtitle: "Settings groups",
-    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions"],
+    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist"],
   },
   {
     title: "Administration",
