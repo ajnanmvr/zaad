@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
       const templates = await ServiceTemplate.find({
         $or: [{ published: { $ne: false } }, { name: { $in: usedNames } }],
       })
-        .select("name price kind color published createdAt")
+        .select("name amount clientFee price kind color published createdAt")
         .sort({ name: 1 });
 
       const usageMap = new Map<string, number>();
@@ -268,18 +268,24 @@ export async function GET(request: NextRequest) {
 
       return Response.json(
         {
-          options: templates.map((item: any) => ({
-            id: item._id.toString(),
-            label: item.name,
-            name: item.name,
-            price: typeof item.price === "number" ? item.price : 0,
-            kind: normalizeServiceKind(item.kind),
-            color: item.color,
-            published: item.published !== false,
-            unpublished: item.published === false,
-            createdAt: item.createdAt,
-            usageCount: usageMap.get(item.name) || 0,
-          })),
+          options: templates.map((item: any) => {
+            const amount = Number(item.amount ?? item.price) || 0;
+            const clientFee = Number(item.clientFee) || 0;
+            return {
+              id: item._id.toString(),
+              label: item.name,
+              name: item.name,
+              amount,
+              clientFee,
+              serviceFee: Number((clientFee - amount).toFixed(2)),
+              kind: normalizeServiceKind(item.kind),
+              color: item.color,
+              published: item.published !== false,
+              unpublished: item.published === false,
+              createdAt: item.createdAt,
+              usageCount: usageMap.get(item.name) || 0,
+            };
+          }),
         },
         { status: 200 }
       );
@@ -389,7 +395,7 @@ export async function GET(request: NextRequest) {
           { name: { $in: Array.from(serviceUsageMap.keys()) } },
         ],
       })
-        .select("name price kind color published")
+        .select("name amount clientFee price kind color published")
         .sort({ name: 1 }),
     ]);
 
@@ -439,16 +445,22 @@ export async function GET(request: NextRequest) {
           published: item.published !== false,
           unpublished: item.published === false,
         })),
-        serviceOptions: serviceTemplates.map((item: any) => ({
-          id: item._id.toString(),
-          label: item.name,
-          name: item.name,
-          price: typeof item.price === "number" ? item.price : 0,
-          kind: normalizeServiceKind(item.kind),
-          color: item.color,
-          published: item.published !== false,
-          unpublished: item.published === false,
-        })),
+        serviceOptions: serviceTemplates.map((item: any) => {
+          const amount = Number(item.amount ?? item.price) || 0;
+          const clientFee = Number(item.clientFee) || 0;
+          return {
+            id: item._id.toString(),
+            label: item.name,
+            name: item.name,
+            amount,
+            clientFee,
+            serviceFee: Number((clientFee - amount).toFixed(2)),
+            kind: normalizeServiceKind(item.kind),
+            color: item.color,
+            published: item.published !== false,
+            unpublished: item.published === false,
+          };
+        }),
       },
       { status: 200 }
     );
@@ -482,8 +494,8 @@ export async function POST(request: NextRequest) {
       (type === "office-expense-category" && !body?.category?.trim()) ||
       (type === "service" &&
         (!body?.name?.trim() ||
-          !Number.isFinite(Number(body?.price)) ||
-          Number(body?.price) < 0))
+          !Number.isFinite(Number(body?.amount ?? body?.price)) ||
+          Number(body?.amount ?? body?.price) < 0))
     ) {
       return Response.json(
         { message: "Invalid input: type and name/platform are required" },
@@ -788,11 +800,14 @@ export async function POST(request: NextRequest) {
 
     if (type === "service") {
       const serviceName = String(body?.name || "").trim();
-      const price = Number(body?.price);
+      const amount = Number(body?.amount ?? body?.price);
+      const clientFeeRaw = Number(body?.clientFee);
+      const clientFee =
+        Number.isFinite(clientFeeRaw) && clientFeeRaw >= 0 ? clientFeeRaw : 0;
       const kind = normalizeServiceKind(body?.kind);
 
-      if (!Number.isFinite(price) || price < 0) {
-        return Response.json({ message: "Invalid service price" }, { status: 400 });
+      if (!Number.isFinite(amount) || amount < 0) {
+        return Response.json({ message: "Invalid service amount" }, { status: 400 });
       }
 
       const selectedColor = normalizeHexColor(body?.color);
@@ -801,7 +816,8 @@ export async function POST(request: NextRequest) {
       if (exists) {
         if (exists.published === false) {
           exists.published = true;
-          exists.price = price;
+          exists.amount = amount;
+          exists.clientFee = clientFee;
           exists.kind = kind;
           if (selectedColor) {
             exists.color = selectedColor;
@@ -814,7 +830,8 @@ export async function POST(request: NextRequest) {
               template: {
                 id: exists._id.toString(),
                 name: exists.name,
-                price: exists.price,
+                amount: exists.amount,
+                clientFee: exists.clientFee,
                 kind: normalizeServiceKind(exists.kind),
                 color: exists.color,
               },
@@ -841,7 +858,8 @@ export async function POST(request: NextRequest) {
 
       const template = await ServiceTemplate.create({
         name: serviceName,
-        price,
+        amount,
+        clientFee,
         kind,
         color,
         published: true,
@@ -853,7 +871,8 @@ export async function POST(request: NextRequest) {
           template: {
             id: template._id.toString(),
             name: template.name,
-            price: template.price,
+            amount: template.amount,
+            clientFee: template.clientFee,
             kind: normalizeServiceKind(template.kind),
             color: template.color,
           },
@@ -1339,13 +1358,17 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      const price = Number(body?.price);
-      if (!Number.isFinite(price) || price < 0) {
+      const amount = Number(body?.amount ?? body?.price);
+      if (!Number.isFinite(amount) || amount < 0) {
         return Response.json(
-          { message: "Invalid service price" },
+          { message: "Invalid service amount" },
           { status: 400 }
         );
       }
+
+      const clientFeeRaw = Number(body?.clientFee);
+      const clientFee =
+        Number.isFinite(clientFeeRaw) && clientFeeRaw >= 0 ? clientFeeRaw : 0;
 
       const existingByName = await ServiceTemplate.findOne({
         name: serviceName,
@@ -1362,7 +1385,8 @@ export async function PUT(request: NextRequest) {
       const selectedColor = normalizeHexColor(body?.color);
       const update: Record<string, unknown> = {
         name: serviceName,
-        price,
+        amount,
+        clientFee,
         kind: normalizeServiceKind(body?.kind),
       };
       if (selectedColor) {
@@ -1388,7 +1412,8 @@ export async function PUT(request: NextRequest) {
           template: {
             id: template._id.toString(),
             name: template.name,
-            price: template.price,
+            amount: template.amount,
+            clientFee: template.clientFee,
             kind: normalizeServiceKind(template.kind),
             color: template.color,
           },

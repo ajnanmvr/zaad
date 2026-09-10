@@ -7,9 +7,14 @@ const ServiceTemplateSchema = new Schema(
       required: true,
       trim: true,
     },
-    price: {
+    amount: {
       type: Number,
       required: true,
+      min: 0,
+      default: 0,
+    },
+    clientFee: {
+      type: Number,
       min: 0,
       default: 0,
     },
