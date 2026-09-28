@@ -36,9 +36,11 @@ import InvoiceList from "@/components/Tables/InvoiceList";
 import TransactionList from "@/components/Tables/TransactionList";
 import RelatedTasksPanel from "@/components/tasks/RelatedTasksPanel";
 import {
+  DOCUMENT_CATEGORY_OPTIONS,
   getDocumentCategoryIcon,
   getDocumentCategoryLabel,
   normalizeDocumentCategory,
+  TDocumentCategory,
 } from "@/config/documentCategoryVisuals";
 import { TEntityListItem, TPagination } from "@/types/types";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
@@ -107,6 +109,12 @@ type TemplateOption = {
   platform?: string;
   color?: string;
   category?: "visa" | "license" | "other";
+};
+
+const missingDocumentChipHoverMap: Record<TDocumentCategory, string> = {
+  visa: "hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:hover:border-blue-700/60 dark:hover:bg-blue-500/10 dark:hover:text-blue-300",
+  license: "hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:border-violet-700/60 dark:hover:bg-violet-500/10 dark:hover:text-violet-300",
+  other: "hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300",
 };
 
 type OverviewResponse = {
@@ -397,6 +405,42 @@ export default function EntitySectionPage({
     selectedDocumentTemplateCategory,
   );
   const SelectedDocumentTemplateIcon = selectedDocumentTemplateIcon;
+  const usedDocumentTemplateIds = useMemo(
+    () =>
+      new Set(
+        documents
+          .map((doc) => doc.documentTemplate)
+          .filter((templateId): templateId is string => Boolean(templateId)),
+      ),
+    [documents],
+  );
+  const missingDocumentOptions = useMemo(
+    () =>
+      documentOptions.filter((option) => !usedDocumentTemplateIds.has(option.id)),
+    [documentOptions, usedDocumentTemplateIds],
+  );
+  const missingDocumentGroups = useMemo(
+    () =>
+      DOCUMENT_CATEGORY_OPTIONS.map((categoryOption) => ({
+        key: categoryOption.value,
+        label: categoryOption.label,
+        options: missingDocumentOptions.filter(
+          (option) => normalizeDocumentCategory(option.category) === categoryOption.value,
+        ),
+      })).filter((group) => group.options.length > 0),
+    [missingDocumentOptions],
+  );
+  const handleQuickAddDocument = (option: TemplateOption) => {
+    setEditingDocumentId(null);
+    setDocumentDraft({
+      category: normalizeDocumentCategory(option.category),
+      documentTemplate: option.id,
+      issueDate: "",
+      expiryDate: "",
+      notes: "",
+    });
+    setShowAddDocument(true);
+  };
   const selectedCredentialTemplate = credentialDraft.credentialTemplate
     ? credentialTemplateMap.get(credentialDraft.credentialTemplate)
     : undefined;
@@ -1638,6 +1682,49 @@ export default function EntitySectionPage({
                             })}
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {missingDocumentGroups.length > 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/20">
+                      <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <FiPlus className="text-sm" />
+                        Not yet added — click to add
+                      </p>
+                      <div className="space-y-3">
+                        {missingDocumentGroups.map((group) => (
+                          <div key={group.key}>
+                            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              {group.label}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {group.options.map((option) => {
+                                const OptionIcon = getDocumentCategoryIcon(group.key);
+                                return (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() => handleQuickAddDocument(option)}
+                                    className={clsx(
+                                      "inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+                                      missingDocumentChipHoverMap[group.key],
+                                    )}
+                                    title={`Add ${option.name || "this document"}`}
+                                  >
+                                    <span
+                                      className="inline-flex h-5 w-5 items-center justify-center rounded-md text-white"
+                                      style={{ backgroundColor: option.color || "#10b981" }}
+                                    >
+                                      <OptionIcon className="text-[10px]" />
+                                    </span>
+                                    {option.name || "Unnamed document"}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
