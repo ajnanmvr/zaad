@@ -6,6 +6,14 @@ export async function checkRateLimit(
   windowMs: number,
   options?: { failOpen?: boolean }
 ): Promise<{ allowed: boolean; remaining: number; retryAfter: number }> {
+  if (process.env.NODE_ENV === "development") {
+    return {
+      allowed: true,
+      remaining: limit,
+      retryAfter: 0,
+    };
+  }
+
   try {
     const redisKey = `rate-limit:${key}`;
     const windowSec = Math.max(1, Math.ceil(windowMs / 1000));

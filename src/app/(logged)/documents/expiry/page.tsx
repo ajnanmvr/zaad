@@ -12,7 +12,7 @@ import { PAGINATION } from "@/config/pagination";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { FiAlertCircle, FiArchive, FiCalendar, FiCheckSquare, FiEdit2, FiFileText, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiAlertCircle, FiArchive, FiCalendar, FiCheckSquare, FiChevronDown, FiEdit2, FiFileText, FiPlus, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
@@ -59,6 +59,21 @@ function getEntityHref(entityId?: string, entityType?: string) {
   return null;
 }
 
+function getDisplayEntity(item: TExpiryDocumentItem) {
+  const entity = item.entity;
+  const typeLabel =
+    entity?.entityType === "employee" && entity.company
+      ? entity.company.name || "unknown"
+      : entity?.entityType || "unknown";
+
+  return {
+    name: entity?.name || "Unknown",
+    color: entity?.color,
+    href: getEntityHref(entity?.id, entity?.entityType),
+    typeLabel,
+  };
+}
+
 const ExpiryDocumentsPage = () => {
   const archiveNoteSuggestions = [
     "Renewed by another provider",
@@ -89,13 +104,32 @@ const ExpiryDocumentsPage = () => {
     return searchParams.get("name")?.trim() || "all";
   }, [searchParams]);
 
-  const { data, isLoading, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
+  const [accumulatedRows, setAccumulatedRows] = useState<TExpiryDocumentItem[]>([]);
+
+  const { data, isLoading, isFetching, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
     queryKey: ["expiry-documents", page, limit, nameFilter],
     queryFn: () => fetchExpiryDocuments(page, limit, nameFilter === "all" ? undefined : { name: nameFilter }),
   });
 
-  const rows = useMemo(() => data?.data || [], [data]);
+  useEffect(() => {
+    if (!data) return;
+
+    const nextPageRows = data.data || [];
+    if (page === PAGINATION.DEFAULT_PAGE) {
+      setAccumulatedRows(nextPageRows);
+    } else {
+      setAccumulatedRows((prev) => [...prev, ...nextPageRows]);
+    }
+  }, [data, page]);
+
+  const rows = accumulatedRows;
   const pagination = data?.pagination;
+  const isInitialLoading = isLoading && rows.length === 0;
+  const hasMore = Boolean(pagination && pagination.page < pagination.totalPages);
+
+  const handleLoadMore = () => {
+    setPage((prev) => prev + 1);
+  };
 
   const documentNames = useMemo(() => {
     return Array.from(
@@ -135,8 +169,8 @@ const ExpiryDocumentsPage = () => {
 
   const mapExportRows = (items: TExpiryDocumentItem[]) =>
     items.map((item) => ({
-      Entity: item.entity?.name || "",
-      EntityType: item.entity?.entityType || "",
+      Entity: getDisplayEntity(item).name,
+      EntityType: getDisplayEntity(item).typeLabel,
       DocumentName: item.name || "",
       DocumentCategory: getDocumentCategoryLabel(item.templateCategory),
       ExpiryDate: formatDate(item.expiryDate || null),
@@ -208,6 +242,7 @@ const ExpiryDocumentsPage = () => {
       });
       toast.success("Document updated successfully");
       cancelEditDocument();
+      setPage(PAGINATION.DEFAULT_PAGE);
       await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
     } catch (error) {
       toast.error("Failed to update document");
@@ -229,6 +264,7 @@ const ExpiryDocumentsPage = () => {
       await axios.delete(`/api/${deletingItem.entity.entityType}/${deletingItem.entity.id}/doc/${deletingItem.id}`);
       toast.success("Document deleted successfully");
       setDeletingItem(null);
+      setPage(PAGINATION.DEFAULT_PAGE);
       await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
     } catch (error) {
       toast.error("Failed to delete document");
@@ -248,31 +284,8 @@ const ExpiryDocumentsPage = () => {
 
       toast.success("Document archived");
       setSelectedIds((prev) => prev.filter((id) => id !== archivingItem.id));
-      queryClient.setQueriesData(
-        { queryKey: ["expiry-documents"] },
-        (previous: TPaginatedResponse<TExpiryDocumentItem> | undefined) => {
-          if (!previous) {
-            return previous;
-          }
-
-          const nextData = previous.data.filter((row) => row.id !== archivingItem.id);
-          const nextTotal = Math.max((previous.pagination?.total || 0) - 1, 0);
-
-          return {
-            ...previous,
-            data: nextData,
-            pagination: {
-              ...previous.pagination,
-              total: nextTotal,
-              totalPages: Math.max(
-                1,
-                Math.ceil(nextTotal / (previous.pagination?.limit || limit || 1))
-              ),
-            },
-          };
-        }
-      );
       cancelArchiveDocument();
+      setPage(PAGINATION.DEFAULT_PAGE);
       await queryClient.invalidateQueries({ queryKey: ["expiry-documents"] });
       await queryClient.invalidateQueries({ queryKey: ["archived-documents"] });
     } catch (error) {
@@ -565,7 +578,7 @@ const ExpiryDocumentsPage = () => {
             </select>
 
             <select
-              title="Rows per page"
+              title="Documents loaded per batch"
               value={limit}
               onChange={(event) => {
                 setLimit(Number(event.target.value));
@@ -574,11 +587,11 @@ const ExpiryDocumentsPage = () => {
               }}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
-              <option value={10}>Show 10</option>
-              <option value={20}>Show 20</option>
-              <option value={30}>Show 30</option>
-              <option value={50}>Show 50</option>
-              <option value={100}>Show 100</option>
+              <option value={10}>Load 10 at a time</option>
+              <option value={20}>Load 20 at a time</option>
+              <option value={30}>Load 30 at a time</option>
+              <option value={50}>Load 50 at a time</option>
+              <option value={100}>Load 100 at a time</option>
             </select>
           </div>
 
@@ -588,7 +601,7 @@ const ExpiryDocumentsPage = () => {
 
 
         <div className="max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-          {isLoading ? (
+          {isInitialLoading ? (
             <div className="flex justify-center py-10">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
             </div>
@@ -633,10 +646,7 @@ const ExpiryDocumentsPage = () => {
                     const status =
                       item.status || calculateStatus(item.expiryDate || "");
                     const daysLeft = item.daysLeft;
-                    const entityName = item.entity?.name || "Unknown";
-                    const entityType = item.entity?.entityType || "unknown";
-                    const entityId = item.entity?.id;
-                    const entityHref = getEntityHref(entityId, entityType);
+                    const displayEntity = getDisplayEntity(item);
                     const documentAvatarColor = resolveAvatarColorWithFallback(
                       item.templateColor,
                       item.name || "Document",
@@ -677,7 +687,7 @@ const ExpiryDocumentsPage = () => {
                                 onClick={() => {
                                   updateNameFilter(item.name || "unnamed");
                                 }}
-                                className="text-left text-sm font-bold text-primary hover:underline"
+                                className="text-left text-sm font-bold text-blue-600 hover:underline dark:text-blue-400"
                                 title="Show all entities with this document name"
                               >
                                 {item.name || "Unnamed document"}
@@ -690,22 +700,22 @@ const ExpiryDocumentsPage = () => {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex min-w-0 items-center gap-3">
-                            <EntityAvatar name={entityName} color={item.entity?.color} size="sm" />
+                            <EntityAvatar name={displayEntity.name} color={displayEntity.color} size="sm" />
                             <div className="min-w-0 flex-1">
-                              {entityHref ? (
+                              {displayEntity.href ? (
                                 <Link
-                                  href={entityHref}
-                                  className="block max-w-[14rem] text-sm font-semibold capitalize leading-5 text-primary hover:underline line-clamp-2"
+                                  href={displayEntity.href}
+                                  className="block max-w-[14rem] text-sm font-semibold capitalize leading-5 text-slate-900 hover:underline dark:text-slate-100 line-clamp-2"
                                 >
-                                  {entityName}
+                                  {displayEntity.name}
                                 </Link>
                               ) : (
-                                <span className="block max-w-[14rem] text-sm font-medium capitalize leading-5 text-slate-700 line-clamp-2 dark:text-slate-300">
-                                  {entityName}
+                                <span className="block max-w-[14rem] text-sm font-semibold capitalize leading-5 text-slate-900 line-clamp-2 dark:text-slate-100">
+                                  {displayEntity.name}
                                 </span>
                               )}
-                              <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
-                                {entityType}
+                              <span className="text-xs capitalize text-slate-500 dark:text-slate-400">
+                                {displayEntity.typeLabel}
                               </span>
                             </div>
                           </div>
@@ -788,31 +798,25 @@ const ExpiryDocumentsPage = () => {
                   })}
                 </tbody>
               </table>
-              <div className="mt-4 flex items-center justify-between px-2 pb-1">
+              <div className="mt-4 flex flex-col items-center justify-between gap-3 px-2 pb-1 sm:flex-row">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Showing {pagination?.total || 0} documents. Page{" "}
-                  {pagination?.page || 1} of {pagination?.totalPages || 1}
+                  Showing {rows.length} of {pagination?.total ?? rows.length} documents
                 </p>
-                <div className="flex gap-2">
+                {(hasMore || isFetching) && (
                   <button
                     type="button"
-                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={!pagination || pagination.page <= 1}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    onClick={handleLoadMore}
+                    disabled={isFetching || !hasMore}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   >
-                    Previous
+                    {isFetching ? (
+                      <FiRefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FiChevronDown className="h-3.5 w-3.5" />
+                    )}
+                    {isFetching ? "Loading..." : "Load More"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((prev) => prev + 1)}
-                    disabled={
-                      !pagination || pagination.page >= pagination.totalPages
-                    }
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                  >
-                    Next
-                  </button>
-                </div>
+                )}
               </div>
             </>
           )}

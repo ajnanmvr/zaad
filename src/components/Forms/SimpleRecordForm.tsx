@@ -1498,17 +1498,8 @@ const theme = usesNeutralTheme
                                         {SERVICE_KIND_SHORT_LABELS[serviceKind]}
                                       </span>
                                     </span>
-                                    <span className="ml-2 shrink-0 text-right">
-                                      <span className="block rounded-md bg-cyan-50 px-1.5 py-0.5 text-[11px] font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
-                                        AED{" "}
-                                        {Number(service.clientFee || 0).toFixed(
-                                          2,
-                                        )}
-                                      </span>
-                                      <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">
-                                        cost{" "}
-                                        {Number(service.amount || 0).toFixed(2)}
-                                      </span>
+                                    <span className="ml-2 shrink-0 rounded-md bg-cyan-50 px-1.5 py-0.5 text-[11px] font-bold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                                      AED {Number(service.clientFee || 0).toFixed(2)}
                                     </span>
                                   </button>
                                 );

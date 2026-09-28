@@ -194,7 +194,7 @@ export async function listExpiryDocuments(
     .map((doc) => doc.entity?.toString())
     .filter((id): id is string => Boolean(id));
   const entities = await Entity.find({ _id: { $in: entityIds } }).select(
-    "name entityType color"
+    "name entityType color company"
   );
 
   const entityMap = new Map<string, any>();
@@ -202,9 +202,26 @@ export async function listExpiryDocuments(
     entityMap.set(entity._id.toString(), entity);
   });
 
+  const companyIds = entities
+    .filter((entity: any) => entity.entityType === "employee" && entity.company)
+    .map((entity: any) => entity.company.toString());
+  const companies = companyIds.length
+    ? await Entity.find({ _id: { $in: companyIds } }).select("name color")
+    : [];
+
+  const companyMap = new Map<string, any>();
+  companies.forEach((company: any) => {
+    companyMap.set(company._id.toString(), company);
+  });
+
   const data = documents.map((doc: any) => {
     const entity = entityMap.get(doc.entity.toString());
     const status = calculateStatus(doc.expiryDate);
+    const company =
+      entity?.entityType === "employee" && entity?.company
+        ? companyMap.get(entity.company.toString())
+        : undefined;
+
     return {
       id: doc._id,
       documentTemplate: doc.documentTemplate?._id || doc.documentTemplate,
@@ -221,6 +238,13 @@ export async function listExpiryDocuments(
         name: entity?.name || "Unknown",
         entityType: entity?.entityType || "unknown",
         color: entity?.color,
+        company: company
+          ? {
+              id: company._id.toString(),
+              name: company.name,
+              color: company.color,
+            }
+          : undefined,
       },
     };
   });

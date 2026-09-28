@@ -117,6 +117,11 @@ export type TExpiryDocumentItem = {
     name: string;
     color?: string;
     entityType: "company" | "employee" | "individual";
+    company?: {
+      id: string;
+      name: string;
+      color?: string;
+    };
   };
 };
 
