@@ -12,7 +12,7 @@ import { getServiceKindIcon } from "@/config/serviceKindVisuals";
 import axios from "axios";
 import clsx from "clsx";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
 import {
   FiSave,
@@ -148,6 +148,7 @@ const SimpleRecordForm = ({
   const { user } = useUserContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentStatuses, setPaymentStatuses] = useState<PaymentStatus[]>([]);
   const [officeExpenseCategories, setOfficeExpenseCategories] = useState<
@@ -855,6 +856,12 @@ const SimpleRecordForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Guard against double submission synchronously — `loading` state only
+    // disables the button after a re-render, which a fast double click/tap
+    // or double Enter can race past. This ref blocks re-entrant calls
+    // immediately, before any validation or network request runs.
+    if (isSubmittingRef.current) return;
+
     if (formData.amount === undefined || Number.isNaN(formData.amount) || formData.amount < 0) {
       toast.error("Amount is required and must be zero or greater");
       return;
@@ -908,6 +915,7 @@ const SimpleRecordForm = ({
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
 
     try {
@@ -941,6 +949,7 @@ const SimpleRecordForm = ({
         "Failed to save record";
       toast.error(errorMessage);
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
