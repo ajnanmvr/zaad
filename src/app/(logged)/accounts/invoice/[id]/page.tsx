@@ -182,6 +182,9 @@ function SingleInvoice() {
               </>
             ) : (
               <>
+                <p className="bg-primary text-white px-4 py-2 text-lg rounded-md font-semibold">
+                  {invoice?.title}
+                </p>
                 <div className="flex justify-between w-full">
                   <div className="flex-grow">
                     <p className="text-xs">TO</p>
