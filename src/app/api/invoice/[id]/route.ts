@@ -68,6 +68,7 @@ export async function GET(
       purpose,
       location,
       advance,
+      govtFee,
       trn,
       quotation,
       message,
@@ -78,6 +79,7 @@ export async function GET(
       items,
       remarks,
       advance,
+      govtFee,
       purpose,
       location,
       client,
@@ -94,11 +96,12 @@ export async function GET(
         ? {
           invoiceNo: suffix + invoiceNo,
           creator: createdBy?.username || "Unknown",
-          amount: items.reduce(
-            (acc: number, item: TInvoiceItemsData) =>
-              acc + item.rate * item.quantity,
-            0
-          ),
+          amount:
+            items.reduce(
+              (acc: number, item: TInvoiceItemsData) =>
+                acc + item.rate * item.quantity,
+              0
+            ) + (govtFee || 0),
           date: formatDate(date),
           validTo: formatDate(validTo),
           ...commonData,

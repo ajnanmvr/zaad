@@ -146,11 +146,12 @@ export async function GET(request: NextRequest) {
           purpose: invoice.purpose,
           invoiceNo: invoice.suffix + invoice.invoiceNo,
           quotation: invoice.quotation === true,
-          amount: invoice.items.reduce(
-            (acc: number, item: TInvoiceItemsData) =>
-              acc + item.rate * item.quantity,
-            0
-          ),
+          amount:
+            invoice.items.reduce(
+              (acc: number, item: TInvoiceItemsData) =>
+                acc + item.rate * item.quantity,
+              0
+            ) + (invoice.govtFee || 0),
           date: formatDate(invoice.date),
         };
       });
