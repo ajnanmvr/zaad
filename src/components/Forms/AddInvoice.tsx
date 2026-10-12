@@ -775,6 +775,29 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                             </div>
                                         </div>
 
+                                        <div>
+                                            <label className={labelClass}>Government Fee (optional)</label>
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                    <FiDollarSign />
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    name="govtFee"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={invoiceData?.govtFee || ''}
+                                                    onWheel={(e: any) => e.target.blur()}
+                                                    onChange={handleChange}
+                                                    placeholder="0.00"
+                                                    className={clsx(inputClass, "pl-11")}
+                                                />
+                                            </div>
+                                            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                                Added to the total and shown as its own line on the invoice.
+                                            </p>
+                                        </div>
+
                                         {invoiceData.quotation === "false" && (
                                             <div>
                                                 <label className={labelClass}>Advance Payment</label>

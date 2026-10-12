@@ -19,6 +19,10 @@ const InvoiceSchema = new Schema(
     trn: String,
     purpose: String,
     advance: Number,
+    govtFee: {
+      type: Number,
+      default: 0,
+    },
     showBalance:String,
     createdBy: {
       type: Schema.Types.ObjectId,

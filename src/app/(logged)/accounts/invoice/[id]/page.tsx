@@ -152,6 +152,12 @@ function SingleInvoice() {
                   </tbody>
                 </table>
 
+                {Boolean(invoice?.govtFee) && (
+                  <div className="w-full border-t flex justify-between py-2 text-sm">
+                    <p>Government Fee</p>
+                    <p>{(invoice?.govtFee || 0).toFixed(2)} AED</p>
+                  </div>
+                )}
                 <div className="w-full border-t font-bold flex justify-between py-2 text-sm">
                   <p>Total</p>
                   <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
@@ -249,6 +255,12 @@ function SingleInvoice() {
                   </tbody>
                 </table>
 
+                {Boolean(invoice?.govtFee) && (
+                  <div className="w-full border-t flex justify-between py-2 text-sm">
+                    <p>Government Fee</p>
+                    <p>{(invoice?.govtFee || 0).toFixed(2)} AED</p>
+                  </div>
+                )}
                 <div className="w-full border-t font-bold flex justify-between py-2 text-sm">
                   <p>Total</p>
                   <p>{(invoice?.amount || 0).toFixed(2)} AED</p>
