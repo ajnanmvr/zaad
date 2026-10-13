@@ -14,7 +14,6 @@ export type TInvoiceData = {
   items: TInvoiceItemsData[];
   remarks: string;
   advance: number;
-  govtFee?: number;
   location: string;
   purpose: string;
   amount: number;
@@ -40,4 +39,5 @@ export type TInvoiceItemsData = {
   desc: string;
   rate: number;
   quantity: number;
+  govtFee?: number;
 };

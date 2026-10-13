@@ -190,6 +190,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                     ...item,
                     rate: Number(item?.rate || 0),
                     quantity: Number(item?.quantity || 0),
+                    govtFee: Number(item?.govtFee || 0),
                 }))
                 : [];
 
@@ -243,7 +244,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const handleAddDocument = (e: any) => {
         e.preventDefault()
-        const newItem = { quantity: 1, rate: "", title: "", desc: "" };
+        const newItem = { quantity: 1, rate: "", govtFee: "", title: "", desc: "" };
         if (!invoiceData.items) {
             setInvoiceData({ ...invoiceData, items: [newItem] })
         }
@@ -254,7 +255,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
 
     const handleDocumentChange = (index: number, field: string, value: string | Date | number) => {
         const updateditems = [...invoiceData.items];
-        if (field === 'rate' || field === 'quantity') {
+        if (field === 'rate' || field === 'quantity' || field === 'govtFee') {
             if (value === "") {
                 updateditems[index][field] = "";
             } else {
@@ -651,7 +652,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                             className={clsx(inputClass, "resize-y bg-white dark:bg-slate-900")}
                                                         />
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-3 gap-4">
                                                         <div>
                                                             <label className={labelClass}>Rate (AED)</label>
                                                             <input
@@ -675,6 +676,19 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                                 onWheel={(e: any) => e.target.blur()}
                                                                 onChange={(e) => handleDocumentChange(index, 'quantity', e.target.value)}
                                                                 placeholder="1"
+                                                                className={clsx(inputClass, "bg-white dark:bg-slate-900")}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelClass}>Govt Fee (optional)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                min="0"
+                                                                value={doc?.govtFee !== undefined ? doc.govtFee : ''}
+                                                                onWheel={(e: any) => e.target.blur()}
+                                                                onChange={(e) => handleDocumentChange(index, 'govtFee', e.target.value)}
+                                                                placeholder="0.00"
                                                                 className={clsx(inputClass, "bg-white dark:bg-slate-900")}
                                                             />
                                                         </div>
@@ -773,29 +787,6 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                     className={inputClass}
                                                 />
                                             </div>
-                                        </div>
-
-                                        <div>
-                                            <label className={labelClass}>Government Fee (optional)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                                    <FiDollarSign />
-                                                </span>
-                                                <input
-                                                    type="number"
-                                                    name="govtFee"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={invoiceData?.govtFee || ''}
-                                                    onWheel={(e: any) => e.target.blur()}
-                                                    onChange={handleChange}
-                                                    placeholder="0.00"
-                                                    className={clsx(inputClass, "pl-11")}
-                                                />
-                                            </div>
-                                            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                                                Added to the total and shown as its own line on the invoice.
-                                            </p>
                                         </div>
 
                                         {invoiceData.quotation === "false" && (
