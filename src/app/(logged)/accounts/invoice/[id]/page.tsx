@@ -5,10 +5,13 @@ import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactToPrint from "react-to-print";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
+import Link from "next/link";
+import clsx from "clsx";
+import { FiEdit2 } from "react-icons/fi";
 
 
 function SingleInvoice() {
@@ -17,7 +20,10 @@ function SingleInvoice() {
   const { user } = useUserContext();
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
   const canViewInvoice = hasPermission(permissions, "payments.view.invoices");
+  const canUpdateInvoice = hasPermission(permissions, "payments.update.invoices");
   const componentRef = useRef(null);
+  const [showFeeBreakdown, setShowFeeBreakdown] = useState(false);
+  const initializedBreakdownRef = useRef(false);
 
   useEffect(() => {
     if (user && !canViewInvoice) {
@@ -33,6 +39,21 @@ function SingleInvoice() {
     },
     enabled: Boolean(id) && canViewInvoice,
   });
+
+  const govtFeeTotal = (invoice?.items || []).reduce(
+    (sum, item) => sum + (Number(item?.govtFee) || 0),
+    0
+  );
+
+  useEffect(() => {
+    initializedBreakdownRef.current = false;
+  }, [id]);
+
+  useEffect(() => {
+    if (!invoice || initializedBreakdownRef.current) return;
+    initializedBreakdownRef.current = true;
+    setShowFeeBreakdown(govtFeeTotal > 0);
+  }, [invoice, govtFeeTotal]);
 
   if (!user || !canViewInvoice) {
     return (
@@ -59,6 +80,41 @@ function SingleInvoice() {
               </span>
               <span className="text-xs">{invoice?.remarks}</span>
             </p>
+          )}
+          {(govtFeeTotal > 0 || canUpdateInvoice) && (
+            <div className="mb-2 flex w-fit flex-wrap items-center gap-2 normal-case">
+              {govtFeeTotal > 0 && (
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+                  <span>Show Govt Fee &amp; Service Fee breakdown</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showFeeBreakdown}
+                    onClick={() => setShowFeeBreakdown((prev) => !prev)}
+                    className={clsx(
+                      "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                      showFeeBreakdown ? "bg-primary" : "bg-slate-300"
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        showFeeBreakdown ? "translate-x-6" : "translate-x-1"
+                      )}
+                    />
+                  </button>
+                </label>
+              )}
+              {canUpdateInvoice && (
+                <Link
+                  href={`/accounts/invoice/${id}/edit`}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                >
+                  <FiEdit2 />
+                  Edit Invoice
+                </Link>
+              )}
+            </div>
           )}
           <ReactToPrint
             trigger={() => (
@@ -131,11 +187,22 @@ function SingleInvoice() {
                       <th>Description</th>
                       <th className="text-center">Rate</th>
                       <th className="text-center">Quantity</th>
-                      <th className="text-center">Amount</th>
+                      {showFeeBreakdown ? (
+                        <>
+                          <th className="text-center">Govt Fee</th>
+                          <th className="text-center">Service Fee</th>
+                          <th className="text-center">Total</th>
+                        </>
+                      ) : (
+                        <th className="text-center">Amount</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {invoice?.items?.map((item, index) => (
+                    {invoice?.items?.map((item, index) => {
+                      const serviceFee = item.rate * item.quantity;
+                      const itemGovtFee = Number(item.govtFee) || 0;
+                      return (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
                         <td>
@@ -144,18 +211,31 @@ function SingleInvoice() {
                         </td>
                         <td className="text-center">{item.rate.toFixed(2)}</td>
                         <td className="text-center">{item.quantity}</td>
-                        <td className="text-center">
-                          {(item.rate * item.quantity).toFixed(2)}
-                        </td>
+                        {showFeeBreakdown ? (
+                          <>
+                            <td className="text-center">
+                              {itemGovtFee ? itemGovtFee.toFixed(2) : "-"}
+                            </td>
+                            <td className="text-center">{serviceFee.toFixed(2)}</td>
+                            <td className="text-center">
+                              {(serviceFee + itemGovtFee).toFixed(2)}
+                            </td>
+                          </>
+                        ) : (
+                          <td className="text-center">
+                            {(serviceFee + itemGovtFee).toFixed(2)}
+                          </td>
+                        )}
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
 
-                {Boolean(invoice?.govtFee) && (
+                {showFeeBreakdown && govtFeeTotal > 0 && (
                   <div className="w-full border-t flex justify-between py-2 text-sm">
-                    <p>Government Fee</p>
-                    <p>{(invoice?.govtFee || 0).toFixed(2)} AED</p>
+                    <p>Total Govt Fee</p>
+                    <p>{govtFeeTotal.toFixed(2)} AED</p>
                   </div>
                 )}
                 <div className="w-full border-t font-bold flex justify-between py-2 text-sm">
@@ -234,11 +314,22 @@ function SingleInvoice() {
                       <th>Description</th>
                       <th className="text-center">Rate</th>
                       <th className="text-center">Quantity</th>
-                      <th className="text-center">Amount</th>
+                      {showFeeBreakdown ? (
+                        <>
+                          <th className="text-center">Govt Fee</th>
+                          <th className="text-center">Service Fee</th>
+                          <th className="text-center">Total</th>
+                        </>
+                      ) : (
+                        <th className="text-center">Amount</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {invoice?.items?.map((item, index) => (
+                    {invoice?.items?.map((item, index) => {
+                      const serviceFee = item.rate * item.quantity;
+                      const itemGovtFee = Number(item.govtFee) || 0;
+                      return (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
                         <td>
@@ -247,18 +338,31 @@ function SingleInvoice() {
                         </td>
                         <td className="text-center">{item.rate.toFixed(2)}</td>
                         <td className="text-center">{item.quantity}</td>
-                        <td className="text-center">
-                          {(item.rate * item.quantity).toFixed(2)}
-                        </td>
+                        {showFeeBreakdown ? (
+                          <>
+                            <td className="text-center">
+                              {itemGovtFee ? itemGovtFee.toFixed(2) : "-"}
+                            </td>
+                            <td className="text-center">{serviceFee.toFixed(2)}</td>
+                            <td className="text-center">
+                              {(serviceFee + itemGovtFee).toFixed(2)}
+                            </td>
+                          </>
+                        ) : (
+                          <td className="text-center">
+                            {(serviceFee + itemGovtFee).toFixed(2)}
+                          </td>
+                        )}
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
 
-                {Boolean(invoice?.govtFee) && (
+                {showFeeBreakdown && govtFeeTotal > 0 && (
                   <div className="w-full border-t flex justify-between py-2 text-sm">
-                    <p>Government Fee</p>
-                    <p>{(invoice?.govtFee || 0).toFixed(2)} AED</p>
+                    <p>Total Govt Fee</p>
+                    <p>{govtFeeTotal.toFixed(2)} AED</p>
                   </div>
                 )}
                 <div className="w-full border-t font-bold flex justify-between py-2 text-sm">

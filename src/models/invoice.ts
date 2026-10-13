@@ -19,10 +19,6 @@ const InvoiceSchema = new Schema(
     trn: String,
     purpose: String,
     advance: Number,
-    govtFee: {
-      type: Number,
-      default: 0,
-    },
     showBalance:String,
     createdBy: {
       type: Schema.Types.ObjectId,
@@ -39,7 +35,15 @@ const InvoiceSchema = new Schema(
       default: false,
     },
     message: String,
-    items: [{ title: String, desc: String, rate: Number, quantity: Number }],
+    items: [
+      {
+        title: String,
+        desc: String,
+        rate: Number,
+        quantity: Number,
+        govtFee: { type: Number, default: 0 },
+      },
+    ],
     remarks: String,
   },
   {
