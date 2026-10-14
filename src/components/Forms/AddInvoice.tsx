@@ -680,7 +680,7 @@ const AddInvoice = ({ edit }: { edit?: string | string[] }) => {
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label className={labelClass}>Govt Fee (optional)</label>
+                                                            <label className={labelClass}>Govt Fee /unit (optional)</label>
                                                             <input
                                                                 type="number"
                                                                 step="0.01"

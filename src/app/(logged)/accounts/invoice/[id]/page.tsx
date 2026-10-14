@@ -41,7 +41,12 @@ function SingleInvoice() {
   });
 
   const govtFeeTotal = (invoice?.items || []).reduce(
-    (sum, item) => sum + (Number(item?.govtFee) || 0),
+    (sum, item) =>
+      sum + (Number(item?.govtFee) || 0) * (Number(item?.quantity) || 0),
+    0
+  );
+  const serviceFeeTotal = (invoice?.items || []).reduce(
+    (sum, item) => sum + (Number(item?.rate) || 0) * (Number(item?.quantity) || 0),
     0
   );
 
@@ -185,7 +190,7 @@ function SingleInvoice() {
                     <tr>
                       <th className="text-center">S.No</th>
                       <th>Description</th>
-                      <th className="text-center">Rate</th>
+                      {!showFeeBreakdown && <th className="text-center">Rate</th>}
                       <th className="text-center">Quantity</th>
                       {showFeeBreakdown ? (
                         <>
@@ -202,6 +207,9 @@ function SingleInvoice() {
                     {invoice?.items?.map((item, index) => {
                       const serviceFee = item.rate * item.quantity;
                       const itemGovtFee = Number(item.govtFee) || 0;
+                      const govtFeeLineTotal = itemGovtFee * item.quantity;
+                      const combinedRate = item.rate + itemGovtFee;
+                      const lineTotal = serviceFee + govtFeeLineTotal;
                       return (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
@@ -209,21 +217,23 @@ function SingleInvoice() {
                           <p className="font-semibold text-sm">{item.title}</p>
                           <p className="text-xs">{item.desc}</p>
                         </td>
-                        <td className="text-center">{item.rate.toFixed(2)}</td>
+                        {!showFeeBreakdown && (
+                          <td className="text-center">{combinedRate.toFixed(2)}</td>
+                        )}
                         <td className="text-center">{item.quantity}</td>
                         {showFeeBreakdown ? (
                           <>
                             <td className="text-center">
-                              {itemGovtFee ? itemGovtFee.toFixed(2) : "-"}
+                              {govtFeeLineTotal ? govtFeeLineTotal.toFixed(2) : "-"}
                             </td>
                             <td className="text-center">{serviceFee.toFixed(2)}</td>
                             <td className="text-center">
-                              {(serviceFee + itemGovtFee).toFixed(2)}
+                              {lineTotal.toFixed(2)}
                             </td>
                           </>
                         ) : (
                           <td className="text-center">
-                            {(serviceFee + itemGovtFee).toFixed(2)}
+                            {lineTotal.toFixed(2)}
                           </td>
                         )}
                       </tr>
@@ -232,6 +242,12 @@ function SingleInvoice() {
                   </tbody>
                 </table>
 
+                {showFeeBreakdown && serviceFeeTotal > 0 && (
+                  <div className="w-full border-t flex justify-between py-2 text-sm">
+                    <p>Total Service Fee</p>
+                    <p>{serviceFeeTotal.toFixed(2)} AED</p>
+                  </div>
+                )}
                 {showFeeBreakdown && govtFeeTotal > 0 && (
                   <div className="w-full border-t flex justify-between py-2 text-sm">
                     <p>Total Govt Fee</p>
@@ -312,7 +328,7 @@ function SingleInvoice() {
                     <tr>
                       <th className="text-center">S.No</th>
                       <th>Description</th>
-                      <th className="text-center">Rate</th>
+                      {!showFeeBreakdown && <th className="text-center">Rate</th>}
                       <th className="text-center">Quantity</th>
                       {showFeeBreakdown ? (
                         <>
@@ -329,6 +345,9 @@ function SingleInvoice() {
                     {invoice?.items?.map((item, index) => {
                       const serviceFee = item.rate * item.quantity;
                       const itemGovtFee = Number(item.govtFee) || 0;
+                      const govtFeeLineTotal = itemGovtFee * item.quantity;
+                      const combinedRate = item.rate + itemGovtFee;
+                      const lineTotal = serviceFee + govtFeeLineTotal;
                       return (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
@@ -336,21 +355,23 @@ function SingleInvoice() {
                           <p className="font-semibold text-sm">{item.title}</p>
                           <p className="text-xs">{item.desc}</p>
                         </td>
-                        <td className="text-center">{item.rate.toFixed(2)}</td>
+                        {!showFeeBreakdown && (
+                          <td className="text-center">{combinedRate.toFixed(2)}</td>
+                        )}
                         <td className="text-center">{item.quantity}</td>
                         {showFeeBreakdown ? (
                           <>
                             <td className="text-center">
-                              {itemGovtFee ? itemGovtFee.toFixed(2) : "-"}
+                              {govtFeeLineTotal ? govtFeeLineTotal.toFixed(2) : "-"}
                             </td>
                             <td className="text-center">{serviceFee.toFixed(2)}</td>
                             <td className="text-center">
-                              {(serviceFee + itemGovtFee).toFixed(2)}
+                              {lineTotal.toFixed(2)}
                             </td>
                           </>
                         ) : (
                           <td className="text-center">
-                            {(serviceFee + itemGovtFee).toFixed(2)}
+                            {lineTotal.toFixed(2)}
                           </td>
                         )}
                       </tr>
@@ -359,6 +380,12 @@ function SingleInvoice() {
                   </tbody>
                 </table>
 
+                {showFeeBreakdown && serviceFeeTotal > 0 && (
+                  <div className="w-full border-t flex justify-between py-2 text-sm">
+                    <p>Total Service Fee</p>
+                    <p>{serviceFeeTotal.toFixed(2)} AED</p>
+                  </div>
+                )}
                 {showFeeBreakdown && govtFeeTotal > 0 && (
                   <div className="w-full border-t flex justify-between py-2 text-sm">
                     <p>Total Govt Fee</p>
