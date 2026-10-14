@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { FiGrid, FiMenu } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { FiArrowLeft, FiMenu } from "react-icons/fi";
 
 import DarkModeSwitcher from "./DarkModeSwitcher";
 import DropdownNotification from "./DropdownNotification";
@@ -10,6 +11,7 @@ const Header = (props: {
   sidebarOpen: string | boolean | undefined;
   setSidebarOpen: (arg0: boolean) => void;
 }) => {
+  const router = useRouter();
   const todayLabel = new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
@@ -36,9 +38,15 @@ const Header = (props: {
           </Link>
 
           <div className="hidden items-center gap-3 sm:flex">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-500/30">
-              <FiGrid className="text-lg" />
-            </div>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              title="Go back"
+              aria-label="Go back"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 transition hover:bg-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-500/30 dark:hover:bg-cyan-500/20"
+            >
+              <FiArrowLeft className="text-lg" />
+            </button>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 Workspace
