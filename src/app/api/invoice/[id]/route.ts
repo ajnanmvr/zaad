@@ -96,7 +96,7 @@ export async function GET(
           creator: createdBy?.username || "Unknown",
           amount: items.reduce(
             (acc: number, item: TInvoiceItemsData) =>
-              acc + item.rate * item.quantity + (item.govtFee || 0),
+              acc + (item.rate + (item.govtFee || 0)) * item.quantity,
             0
           ),
           date: formatDate(date),
