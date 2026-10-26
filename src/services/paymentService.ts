@@ -142,6 +142,7 @@ type PaymentRecordFilters = {
   limit?: number;
   sort?: string | null;
   query?: string | null;
+  jobId?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;
@@ -203,6 +204,13 @@ async function applyPaymentRecordFilters(query: Record<string, any>, input: Paym
     const escapedQuery = String(input.query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp(escapedQuery, "i");
     query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
+  }
+
+  if (input.jobId) {
+    query.jobId = {
+      $regex: String(input.jobId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      $options: "i",
+    };
   }
 
   if (input.category) {
@@ -1104,6 +1112,7 @@ export async function listPaymentRecords(input: {
   limit?: number;
   sort?: string | null;
   query?: string | null;
+  jobId?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;

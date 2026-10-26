@@ -185,6 +185,7 @@ const SimpleRecordForm = ({
     category: "",
     recordKind: "standard",
     remarks: "",
+    jobId: "",
     serviceFee: 0,
     method: "",
     suffix: "",
@@ -1066,6 +1067,7 @@ const theme = usesNeutralTheme
       type: formData.type,
       recordKind: effectiveRecordKind,
       remarks: formData.remarks,
+      jobId: formData.jobId?.trim() || undefined,
       createdBy: createdById,
       serviceFee: visibility.allowsServiceFee ? autoServiceFee : 0,
     };
@@ -1831,6 +1833,18 @@ const theme = usesNeutralTheme
             )}
 
             <div>
+              <div className="mt-3">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                  Job ID <span className="font-normal normal-case text-slate-400">(optional)</span>
+                </label>
+                <input
+                  name="jobId"
+                  value={formData.jobId || ""}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  placeholder="Enter job ID"
+                />
+              </div>
               <div className="mt-3">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
                   Notes

@@ -22,6 +22,7 @@ type TRecordBase = {
     | "instant_profit"
     | "office_records";
   transferGroupId?: string;
+  jobId?: string;
 };
 
 export type TRecordData = TRecordBase & {

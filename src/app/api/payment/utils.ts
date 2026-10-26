@@ -102,6 +102,7 @@ export function mapRecordListItem(record: any) {
     creator: record?.createdBy?.username,
     creatorFullname: record?.createdBy?.fullname,
     remarks: record.remarks,
+    jobId: record.jobId || "",
     number: record.number,
     suffix: record.suffix,
     version,
