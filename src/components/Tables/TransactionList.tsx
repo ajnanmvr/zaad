@@ -69,6 +69,7 @@ const baseData = {
   ec: "",
   df: "",
   dt: "",
+  jobId: "",
 };
 
 type LedgerCategory = "office_records" | "liability";
@@ -372,6 +373,7 @@ const TransactionList = ({
       ec: String(searchParams.get("ec") || "").trim(),
       df: String(searchParams.get("df") || "").trim(),
       dt: String(searchParams.get("dt") || "").trim(),
+      jobId: String(searchParams.get("jobId") || "").trim(),
     };
     const nextSearch = String(searchParams.get("q") || "").trim();
     const nextSort = String(searchParams.get("sort") || "newest").trim();
@@ -416,6 +418,7 @@ const TransactionList = ({
       if (filter.ec) params.set("ec", filter.ec);
       if (filter.df) params.set("df", filter.df);
       if (filter.dt) params.set("dt", filter.dt);
+      if (filter.jobId) params.set("jobId", filter.jobId);
       if (category) params.set("category", category);
       if (companyRecordScope) {
         params.set("recordScope", companyRecordScope);
@@ -671,7 +674,8 @@ const TransactionList = ({
     Boolean(filter.oc) ||
     Boolean(filter.ec) ||
     Boolean(filter.df) ||
-    Boolean(filter.dt);
+    Boolean(filter.dt) ||
+    Boolean(filter.jobId);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -683,6 +687,7 @@ const TransactionList = ({
     if (filter.e) count += filter.e.split(",").filter(Boolean).length;
     if (filter.ec) count += 1;
     if (filter.df || filter.dt) count += 1;
+    if (filter.jobId) count += 1;
     return count;
   }, [filter]);
 
@@ -1353,6 +1358,15 @@ const TransactionList = ({
                   </select>
                 )}
 
+                <input
+                  value={filterDummy.jobId}
+                  onChange={(e) =>
+                    setFilterDummy({ ...filterDummy, jobId: e.target.value })
+                  }
+                  placeholder="Job ID"
+                  className="h-9 w-36 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
@@ -1521,6 +1535,14 @@ const TransactionList = ({
                                   {(record?.suffix || "") +
                                     (record?.number || "")}
                                 </span>
+                                {record?.jobId && (
+                                  <Link
+                                    href={`/accounts/transactions?jobId=${encodeURIComponent(record.jobId)}`}
+                                    className="w-fit text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                                  >
+                                    Job ID: {record.jobId}
+                                  </Link>
+                                )}
                                 {Number(record?.version || 0) > 0 && (
                                   <span className="inline-flex w-fit items-center text-xs font-medium text-orange-600 dark:text-orange-400">
                                     {getEditCountText(

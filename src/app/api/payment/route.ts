@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     const limit = Number(searchParams.get("limit") || 25);
     const sort = searchParams.get("sort") || "newest";
     const query = searchParams.get("q");
+    const jobId = searchParams.get("jobId");
     const method = searchParams.get("m");
     const type = searchParams.get("t");
     const status = searchParams.get("s");
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
       limit,
       sort,
       query,
+      jobId,
       method,
       type,
       status,
@@ -93,5 +95,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
 

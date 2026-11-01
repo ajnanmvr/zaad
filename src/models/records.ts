@@ -67,6 +67,11 @@ const RecordSchema = new Schema(
       ref: "users",
     },
     remarks: String,
+    jobId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
     edited: {
       type: Boolean,
       default: false,
