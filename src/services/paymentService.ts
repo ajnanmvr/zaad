@@ -143,6 +143,7 @@ type PaymentRecordFilters = {
   sort?: string | null;
   query?: string | null;
   jobId?: string | null;
+  jobIdExact?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;
@@ -206,7 +207,9 @@ async function applyPaymentRecordFilters(query: Record<string, any>, input: Paym
     query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
   }
 
-  if (input.jobId) {
+  if (input.jobIdExact) {
+    query.jobId = String(input.jobIdExact);
+  } else if (input.jobId) {
     query.jobId = {
       $regex: String(input.jobId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
       $options: "i",
@@ -1113,6 +1116,7 @@ export async function listPaymentRecords(input: {
   sort?: string | null;
   query?: string | null;
   jobId?: string | null;
+  jobIdExact?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;

@@ -3,6 +3,7 @@
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EmployeeList from "@/components/Tables/EmployeeList";
 import InvoiceList from "@/components/Tables/InvoiceList";
+import JobList from "@/components/Tables/JobList";
 import TransactionList from "@/components/Tables/TransactionList";
 import SOAModal from "@/components/Modals/SOAModal";
 import { hasPermission } from "@/auth/permissions";
@@ -16,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiDownload } from "react-icons/fi";
 
 type EntityType = "company" | "employee" | "individual";
-type LinkedSection = "records" | "invoices" | "employees";
+type LinkedSection = "records" | "invoices" | "employees" | "jobs";
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -109,7 +110,9 @@ export default function EntityLinkedSectionPage({
       ? `${entityName} Records`
       : section === "invoices"
         ? `${entityName} Invoices`
-        : `${entityName} Employees`;
+        : section === "jobs"
+          ? `${entityName} Jobs`
+          : `${entityName} Employees`;
 
   if (section === "invoices" && (!user || !canViewInvoices)) {
     return (
@@ -163,6 +166,10 @@ export default function EntityLinkedSectionPage({
 
       {section === "invoices" && (
         <InvoiceList entityId={id} embedded returnTo={`/${entityType}/${id}/invoices`} />
+      )}
+
+      {section === "jobs" && (
+        <JobList embedded entity={{ id, name: entityName, type: entityType }} />
       )}
 
       {section === "employees" && entityType === "company" && (
