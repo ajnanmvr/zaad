@@ -19,6 +19,7 @@ type EntityRecordStatRow = {
   lastRecomputedAt?: string;
   lastTransactionAt?: string | null;
   badDebt?: boolean;
+  entityDeleted?: boolean;
 };
 
 function formatRows(rows: EntityRecordStatRow[]) {
@@ -58,11 +59,8 @@ export async function GET(request: NextRequest) {
     await requirePermission(request, "payments.read");
 
     const rows = await EntityRecordStats.aggregate<EntityRecordStatRow>([
-      {
-        $match: {
-          published: true,
-        },
-      },
+      // Include unpublished rows too: deleting an entity unpublishes its stats row,
+      // and those must still reach the "Deleted Clients" section.
       {
         $lookup: {
           from: "entities",
@@ -88,8 +86,19 @@ export async function GET(request: NextRequest) {
           entityColor: {
             $ifNull: ["$entityDoc.color", "#3C50E0"],
           },
+          // Soft-deleted (published: false) or hard-removed entities.
+          entityDeleted: {
+            $or: [
+              { $eq: ["$published", false] },
+              { $eq: [{ $type: "$entityDoc" }, "missing"] },
+              { $eq: ["$entityDoc.published", false] },
+              { $ne: [{ $ifNull: ["$entityDoc.deletedAt", null] }, null] },
+            ],
+          },
         },
       },
+      // Deleted clients are excluded from the credit/debit lists.
+      { $match: { entityDeleted: false } },
       {
         $project: {
           entity: { $toString: "$entity" },
@@ -104,6 +113,7 @@ export async function GET(request: NextRequest) {
           lastRecomputedAt: 1,
           lastTransactionAt: 1,
           badDebt: 1,
+          entityDeleted: 1,
         },
       },
       {

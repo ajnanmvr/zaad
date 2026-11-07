@@ -31,18 +31,7 @@ function formatRelativeExpiry(daysLeft: number | null) {
   }
 
   const absDays = Math.abs(daysLeft);
-  const years = Math.floor(absDays / 365);
-  const months = Math.floor(absDays / 30);
-
   const suffix = daysLeft >= 0 ? "left" : "ago";
-
-  if (years >= 1) {
-    return `${years} year${years === 1 ? "" : "s"} ${suffix}`;
-  }
-
-  if (months >= 1) {
-    return `${months} month${months === 1 ? "" : "s"} ${suffix}`;
-  }
 
   return `${absDays} day${absDays === 1 ? "" : "s"} ${suffix}`;
 }

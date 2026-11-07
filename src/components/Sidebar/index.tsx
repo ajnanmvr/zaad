@@ -546,6 +546,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   />
                 </li>
               )}
+              {can("payments.view.transactions") && (
+                <li>
+                  <NavItem
+                    href="/accounts/jobs"
+                    icon={<FiBriefcase />}
+                    label="Jobs"
+                    active={pathname.startsWith("/accounts/jobs")}
+                  />
+                </li>
+              )}
               {can("payments.view.invoices") && (
                 <li>
                   <NavItem

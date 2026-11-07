@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get("sort") || "newest";
     const query = searchParams.get("q");
     const jobId = searchParams.get("jobId");
+    const jobIdExact = searchParams.get("jobIdExact");
     const method = searchParams.get("m");
     const type = searchParams.get("t");
     const status = searchParams.get("s");
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
       sort,
       query,
       jobId,
+      jobIdExact,
       method,
       type,
       status,

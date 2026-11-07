@@ -31,9 +31,12 @@ import {
   FiEdit2,
   FiX,
   FiTrendingDown,
+  FiPlus,
 } from "react-icons/fi";
 import { debounce } from "lodash";
 import { useQuery } from "@tanstack/react-query";
+import NewJobModal from "@/components/Modals/NewJobModal";
+import EntityAvatar from "@/components/common/EntityAvatar";
 
 type RecordType = "income" | "expense";
 type RecordKind =
@@ -750,6 +753,33 @@ const SimpleRecordForm = ({
       return sanitizeFormDataByVisibility(draft);
     });
   }, [isEdit, sanitizeFormDataByVisibility, searchParams]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    const prefillJobId = String(searchParams.get("jobId") || "").trim();
+    if (prefillJobId) {
+      setFormData((prev) => ({ ...prev, jobId: prefillJobId }));
+    }
+  }, [isEdit, searchParams]);
+
+  const [jobPickerOpen, setJobPickerOpen] = useState(false);
+  const [newJobOpen, setNewJobOpen] = useState(false);
+  const { data: jobSuggestions } = useQuery({
+    queryKey: ["job-suggestions", formData.jobId || "", selectedEntity?._id || ""],
+    queryFn: async () =>
+      (
+        await axios.get("/api/jobs", {
+          params: {
+            q: formData.jobId || "",
+            status: "open",
+            limit: 8,
+            entityId: selectedEntity?._id || undefined,
+          },
+        })
+      ).data,
+    enabled: jobPickerOpen,
+    staleTime: 15_000,
+  });
 
   const handleRecordKindChange = (kind: RecordKind) => {
     const visibility = getFormVisibility(kind, formData.type);
@@ -1834,16 +1864,76 @@ const theme = usesNeutralTheme
 
             <div>
               <div className="mt-3">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                  Job ID <span className="font-normal normal-case text-slate-400">(optional)</span>
-                </label>
-                <input
-                  name="jobId"
-                  value={formData.jobId || ""}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  placeholder="Enter job ID"
-                />
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                    Job ID <span className="font-normal normal-case text-slate-400">(optional)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNewJobOpen(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 hover:text-cyan-700"
+                  >
+                    <FiPlus className="h-3.5 w-3.5" /> New job
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    name="jobId"
+                    value={formData.jobId || ""}
+                    onChange={handleChange}
+                    onFocus={() => setJobPickerOpen(true)}
+                    onBlur={() => setTimeout(() => setJobPickerOpen(false), 150)}
+                    autoComplete="off"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    placeholder="Search or enter job ID"
+                  />
+                  {jobPickerOpen && (jobSuggestions?.jobs?.length ?? 0) > 0 && (
+                    <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-900">
+                      {jobSuggestions.jobs.map(
+                        (job: {
+                          id: string;
+                          jobId: string;
+                          title: string;
+                          client?: { name: string; type: string; color?: string } | null;
+                        }) => (
+                          <li key={job.id}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, jobId: job.jobId }));
+                                setJobPickerOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              {job.client && (
+                                <EntityAvatar
+                                  name={job.client.name}
+                                  color={job.client.color}
+                                  size="sm"
+                                />
+                              )}
+                              <span className="min-w-0">
+                                <span className="block font-semibold text-slate-900 dark:text-slate-100">
+                                  {job.jobId}
+                                  <span className="ml-2 font-normal text-slate-500">{job.title}</span>
+                                </span>
+                                {job.client && (
+                                  <span className="block truncate text-xs text-slate-500">
+                                    {job.client.name}
+                                    <span className="ml-1 uppercase tracking-wider text-[10px]">
+                                      · {job.client.type}
+                                    </span>
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  )}
+                </div>
               </div>
               <div className="mt-3">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
@@ -1899,6 +1989,24 @@ const theme = usesNeutralTheme
             </button>
           </div>
         </form>
+        {newJobOpen && (
+          <NewJobModal
+            defaultClient={
+              selectedEntity
+                ? {
+                    id: selectedEntity._id,
+                    name: selectedEntity.name,
+                    type: selectedEntity.entityType as "company" | "employee" | "individual",
+                  }
+                : null
+            }
+            onClose={() => setNewJobOpen(false)}
+            onCreated={(job) => {
+              setFormData((prev) => ({ ...prev, jobId: job.jobId }));
+              setNewJobOpen(false);
+            }}
+          />
+        )}
       </div>
     </div>
   );

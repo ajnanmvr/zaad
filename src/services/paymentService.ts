@@ -7,6 +7,7 @@ import {
   aggregateOfficeRecordCategoryStatsByKeys,
   aggregateRecords,
   bulkUpsertEntityRecordStats,
+  zeroStaleEntityRecordStats,
   bulkUpsertLiabilityEntityStats,
   bulkUpsertOfficeRecordCategoryStats,
   countRecordsByQuery,
@@ -143,6 +144,7 @@ type PaymentRecordFilters = {
   sort?: string | null;
   query?: string | null;
   jobId?: string | null;
+  jobIdExact?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;
@@ -206,7 +208,9 @@ async function applyPaymentRecordFilters(query: Record<string, any>, input: Paym
     query.$or = [{ particular: regex }, { status: regex }, { method: regex }];
   }
 
-  if (input.jobId) {
+  if (input.jobIdExact) {
+    query.jobId = String(input.jobIdExact);
+  } else if (input.jobId) {
     query.jobId = {
       $regex: String(input.jobId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
       $options: "i",
@@ -432,13 +436,6 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
       }
     }
 
-    if (aggregateByEntity.size === 0) {
-      return {
-        updatedEntities: 0,
-        lastRecomputedAt: new Date().toISOString(),
-      };
-    }
-
     const now = new Date();
     const upsertRows = Array.from(aggregateByEntity.values()).map((aggregated) => {
       const entityId = String(aggregated?._id || "");
@@ -460,9 +457,12 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
     });
 
     await bulkUpsertEntityRecordStats(upsertRows);
+    // Entities whose records were all deleted are absent from the aggregate; reset them.
+    const zeroedEntities = await zeroStaleEntityRecordStats(Array.from(aggregateByEntity.keys()));
 
     return {
       updatedEntities: upsertRows.length,
+      zeroedEntities,
       lastRecomputedAt: now.toISOString(),
     };
   }
@@ -475,13 +475,6 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
     if (key) {
       aggregateByEntity.set(key, row);
     }
-  }
-
-  if (aggregateByEntity.size === 0) {
-    return {
-      updatedEntities: 0,
-      lastRecomputedAt: new Date().toISOString(),
-    };
   }
 
   const now = new Date();
@@ -505,9 +498,15 @@ async function recomputeEntityRecordStats(entityIds?: string[]) {
   });
 
   await bulkUpsertEntityRecordStats(upsertRows);
+  // Requested entities with no active records left must be reset, not skipped.
+  const zeroedEntities = await zeroStaleEntityRecordStats(
+    Array.from(aggregateByEntity.keys()),
+    normalizedEntityIds,
+  );
 
   return {
     updatedEntities: upsertRows.length,
+    zeroedEntities,
     lastRecomputedAt: now.toISOString(),
   };
 }
@@ -699,6 +698,11 @@ async function getCompanyScopedEntityTotals(
 export function isAdminRole(role?: string) {
   const normalized = (role || "").toLowerCase().replace(/[\s_-]+/g, "");
   return normalized === "admin" || normalized === "superadmin";
+}
+
+// Rebuilds only the per-entity credit/debit stats (not office, liability or monthly stats).
+export async function recomputeCreditDebitStats() {
+  return recomputeEntityRecordStats();
 }
 
 export async function recomputeAllEntityLedgerStats() {
@@ -1113,6 +1117,7 @@ export async function listPaymentRecords(input: {
   sort?: string | null;
   query?: string | null;
   jobId?: string | null;
+  jobIdExact?: string | null;
   method?: string | null;
   type?: string | null;
   status?: string | null;

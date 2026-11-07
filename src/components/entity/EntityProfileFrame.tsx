@@ -6,6 +6,7 @@ import { hasPermission } from "@/auth/permissions";
 import type { ReactNode } from "react";
 import { formatDubaiDate } from "@/utils/dubaiTime";
 import {
+  FiBriefcase,
   FiClipboard,
   FiEdit2,
   FiFileText,
@@ -28,7 +29,8 @@ export type EntitySectionKey =
   | "tasks"
   | "employees"
   | "records"
-  | "invoices";
+  | "invoices"
+  | "jobs";
 
 export type EntityMetric = {
   icon: ReactNode;
@@ -153,6 +155,11 @@ export function getEntitySectionLinks(entityType: EntityType, id: string): Entit
         label: "Invoices",
         active: false,
       },
+      {
+        href: `/${entityType}/${id}/jobs`,
+        label: "Jobs",
+        active: false,
+      },
     );
   } else {
     links.push(
@@ -164,6 +171,11 @@ export function getEntitySectionLinks(entityType: EntityType, id: string): Entit
       {
         href: `/${entityType}/${id}/invoices`,
         label: "Invoices",
+        active: false,
+      },
+      {
+        href: `/${entityType}/${id}/jobs`,
+        label: "Jobs",
         active: false,
       },
     );
@@ -192,6 +204,8 @@ export function getSectionTitle(section: EntitySectionKey) {
       return "Records";
     case "invoices":
       return "Invoices";
+    case "jobs":
+      return "Jobs";
   }
 }
 
@@ -340,6 +354,7 @@ export function EntityProfileTabs({
     employees: <FiUsers className="text-base" />,
     records: <FiList className="text-base" />,
     invoices: <FiFileText className="text-base" />,
+    jobs: <FiBriefcase className="text-base" />,
   };
 
   const links = getEntitySectionLinks(entityType, id).map((link) => ({
@@ -360,6 +375,7 @@ export function EntityProfileTabs({
     employees: "entities.read",
     records: ["payments.view.transactions", "payments.view.records-summary"],
     invoices: "payments.view.invoices",
+    jobs: "payments.view.transactions",
   };
 
   const visibleLinks = links.filter((link) => {
@@ -383,6 +399,7 @@ export function EntityProfileTabs({
               sectionKey !== "details" &&
               sectionKey !== "records" &&
               sectionKey !== "invoices" &&
+              sectionKey !== "jobs" &&
               count > 0;
 
             return (
