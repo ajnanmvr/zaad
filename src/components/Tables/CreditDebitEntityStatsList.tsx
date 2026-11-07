@@ -8,7 +8,6 @@ import axios from "axios";
 import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import AdminRefreshButton from "@/components/common/AdminRefreshButton";
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import EntityAvatar from "@/components/common/EntityAvatar";
 import ExportActionsMenu from "@/components/common/ExportActionsMenu";
@@ -17,6 +16,7 @@ import {
   FiAlertTriangle,
   FiArrowRight,
   FiCreditCard,
+  FiRefreshCw,
   FiSearch,
   FiTrendingUp,
 } from "react-icons/fi";
@@ -36,6 +36,7 @@ type EntityRecordStatRow = {
   totalTransactions: number;
   lastTransactionAt?: string | null;
   badDebt?: boolean;
+  entityDeleted?: boolean;
 };
 
 type EntityRecordStatsResponse = {
@@ -83,6 +84,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
   const [entityTypeFilter, setEntityTypeFilter] = useState<"all" | "company" | "employee" | "individual">("all");
   const [sortBy, setSortBy] = useState<SortOption>("last-payment-desc");
   const [togglingBadDebt, setTogglingBadDebt] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const isCredit = mode === "credit";
 
@@ -109,7 +111,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
     return rows.filter((row) => Number(row.balance || 0) !== 0);
   }, [data?.summary?.creditRows, data?.summary?.debitRows, isCredit]);
 
-  const filteredRows = useMemo(() => {
+  const filteredAllRows = useMemo(() => {
     const searchText = search.trim().toLowerCase();
     const filtered = baseRows.filter((row) => {
       if (entityTypeFilter !== "all" && row.entityType !== entityTypeFilter) return false;
@@ -136,6 +138,9 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
 
     return filtered;
   }, [baseRows, entityTypeFilter, search, sortBy]);
+
+  // Deleted clients are never shown here (the API already excludes them).
+  const filteredRows = useMemo(() => filteredAllRows.filter((r) => !r.entityDeleted), [filteredAllRows]);
 
   const badDebtRows = useMemo(() => filteredRows.filter((r) => r.badDebt), [filteredRows]);
 
@@ -184,6 +189,23 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
     }
   };
 
+  // Rebuilds only the credit/debit list data, not every precomputed stat.
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    try {
+      const { data: result } = await axios.post("/api/payment/entity-record-stats/recompute");
+      await queryClient.invalidateQueries({ queryKey: ["entity-record-stats"] });
+      const cleared = Number(result?.zeroedEntities || 0);
+      toast.success(
+        `Credit/debit list regenerated (${Number(result?.updatedEntities || 0)} clients${cleared ? `, ${cleared} cleared with no transactions` : ""})`,
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to regenerate credit/debit list");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const headingTitle = isCredit ? "Credit List" : "Debit List";
 
   return (
@@ -209,10 +231,16 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
               <FiTrendingUp /> Finance Summary
             </Link>
             {canAdminRefresh && (
-              <AdminRefreshButton
-                invalidateKeys={[["entity-record-stats", mode]]}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
-              />
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                title="Rebuilds only the credit/debit list data"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800"
+              >
+                <FiRefreshCw className={regenerating ? "animate-spin" : ""} />
+                {regenerating ? "Regenerating..." : "Regenerate Credit/Debit List"}
+              </button>
             )}
           </div>
         </div>
@@ -382,6 +410,7 @@ export default function CreditDebitEntityStatsList({ mode }: { mode: ViewMode })
           </p>
         </div>
       </section>
+
     </div>
   );
 }

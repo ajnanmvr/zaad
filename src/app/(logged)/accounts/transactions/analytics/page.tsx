@@ -11,7 +11,7 @@ import axios from "axios";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
   FiActivity,
@@ -139,21 +139,25 @@ function PieChart({
   centerTitle: string;
   centerValue: string;
 }) {
-  const size = 220;
-  const strokeWidth = 26;
+  const size = 200;
+  const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const total = Math.max(slices.reduce((sum, slice) => sum + Math.max(slice.value, 0), 0), 1);
+  const ranked = [...slices].sort((a, b) => b.value - a.value);
+  const topValue = Math.max(ranked[0]?.value || 0, 1);
   let runningOffset = 0;
 
   return (
-    <div className="space-y-4">
-      <div className="relative mx-auto h-[220px] w-[220px] shrink-0">
+    <div className="flex flex-col items-center gap-6 md:flex-row md:items-center">
+      <div className="relative h-[200px] w-[200px] shrink-0">
         <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth={strokeWidth} />
-          {slices.map((slice, index) => {
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth={strokeWidth} />
+          {ranked.map((slice, index) => {
             const sliceLength = (Math.max(slice.value, 0) / total) * circumference;
-            const dashArray = `${sliceLength} ${circumference - sliceLength}`;
+            // 2px gap between segments keeps thin slices visible.
+            const visible = Math.max(sliceLength - 2, 0);
+            const dashArray = `${visible} ${circumference - visible}`;
             const dashOffset = circumference - runningOffset;
             runningOffset += sliceLength;
             return (
@@ -172,25 +176,35 @@ function PieChart({
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{centerTitle}</span>
-          <span className="mt-1 text-xl font-black text-slate-900 dark:text-white">{centerValue}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{centerTitle}</span>
+          <span className="mt-1 text-lg font-black tabular-nums leading-tight text-slate-900 dark:text-white">{centerValue}</span>
+          <span className="mt-0.5 text-[11px] text-slate-400">{ranked.length} categories</span>
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {slices.map((slice) => {
+
+      <ul className="no-scrollbar max-h-[260px] w-full min-w-0 flex-1 space-y-3 overflow-y-auto pr-1">
+        {ranked.map((slice) => {
           const percent = ((Math.max(slice.value, 0) / total) * 100).toFixed(1);
           return (
-            <div key={slice.label} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-950/30">
-              <div className="flex items-center gap-3">
-                <span className="h-3.5 w-3.5 rounded-full" style={{ background: slice.color }} />
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">{slice.label}</span>
+            <li key={slice.label}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
+                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title={slice.label}>{slice.label}</span>
+                </span>
+                <span className="shrink-0 text-sm tabular-nums">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(slice.value)}</span>
+                  <span className="ml-2 inline-block w-11 text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{percent}%</span>
+                </span>
               </div>
-              <span className="text-sm font-black text-slate-900 dark:text-slate-100">{percent}%</span>
-            </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="h-full rounded-full" style={{ width: `${(slice.value / topValue) * 100}%`, background: slice.color }} />
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -202,7 +216,7 @@ function AreaLineChart({
 }: {
   labels: string[];
   fullLabels: string[];
-  series: Array<{ label: string; values: number[]; color: string }>;
+  series: Array<{ label: string; values: number[]; color: string; fill?: boolean }>;
 }) {
   const W = 1000;
   const H = 340;
@@ -213,9 +227,14 @@ function AreaLineChart({
   const innerH = H - PY - PB;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
+  const [hidden, setHidden] = useState<string[]>([]);
+  // Gradient ids must not contain spaces/colons, otherwise the fill silently turns black.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
 
   const n = labels.length;
-  const allVals = series.flatMap((s) => s.values);
+  const shown = series.filter((s) => !hidden.includes(s.label));
+  const scaleSeries = shown.length ? shown : series;
+  const allVals = scaleSeries.flatMap((s) => s.values);
   const rawMax = Math.max(...allVals, 0);
   const rawMin = Math.min(...allVals, 0);
   const spread = (rawMax - rawMin) * 0.18;
@@ -226,15 +245,48 @@ function AreaLineChart({
   const xOf = (i: number) => PX + (i / Math.max(n - 1, 1)) * innerW;
   const yOf = (v: number) => PY + innerH - ((v - vMin) / vRange) * innerH;
 
+  // Monotone cubic (Fritsch–Carlson): smooth like a spline but never overshoots the data,
+  // so the curve cannot dip below zero or above a peak between two points.
   const bezierPath = (values: number[]) => {
-    if (values.length === 0) return "";
-    if (values.length === 1) return `M${xOf(0).toFixed(1)},${yOf(values[0]).toFixed(1)}`;
-    let d = `M${xOf(0).toFixed(1)},${yOf(values[0]).toFixed(1)}`;
-    for (let i = 1; i < values.length; i++) {
-      const x0 = xOf(i - 1); const y0 = yOf(values[i - 1]);
-      const x1 = xOf(i); const y1 = yOf(values[i]);
-      const cpx = (x0 + x1) / 2;
-      d += ` C${cpx.toFixed(1)},${y0.toFixed(1)} ${cpx.toFixed(1)},${y1.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+    const count = values.length;
+    if (count === 0) return "";
+    const xs = values.map((_, i) => xOf(i));
+    const ys = values.map((v) => yOf(v));
+    if (count === 1) return `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+
+    const dx: number[] = [];
+    const slope: number[] = [];
+    for (let i = 0; i < count - 1; i++) {
+      dx.push(xs[i + 1] - xs[i]);
+      slope.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+    }
+    const tangent: number[] = [slope[0]];
+    for (let i = 1; i < count - 1; i++) {
+      tangent.push(slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2);
+    }
+    tangent.push(slope[count - 2]);
+    for (let i = 0; i < count - 1; i++) {
+      if (slope[i] === 0) {
+        tangent[i] = 0;
+        tangent[i + 1] = 0;
+        continue;
+      }
+      const a = tangent[i] / slope[i];
+      const b = tangent[i + 1] / slope[i];
+      const h = Math.hypot(a, b);
+      if (h > 3) {
+        tangent[i] = (3 * a * slope[i]) / h;
+        tangent[i + 1] = (3 * b * slope[i]) / h;
+      }
+    }
+
+    let d = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+    for (let i = 0; i < count - 1; i++) {
+      const c1x = xs[i] + dx[i] / 3;
+      const c1y = ys[i] + (tangent[i] * dx[i]) / 3;
+      const c2x = xs[i + 1] - dx[i] / 3;
+      const c2y = ys[i + 1] - (tangent[i + 1] * dx[i]) / 3;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${xs[i + 1].toFixed(1)},${ys[i + 1].toFixed(1)}`;
     }
     return d;
   };
@@ -266,6 +318,29 @@ function AreaLineChart({
 
   return (
     <div className="relative">
+      <div className="mb-1 flex flex-wrap items-center gap-2 px-4">
+        {series.map((s) => {
+          const off = hidden.includes(s.label);
+          return (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() =>
+                setHidden((prev) => (off ? prev.filter((l) => l !== s.label) : [...prev, s.label]))
+              }
+              className={clsx(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition",
+                off
+                  ? "border-slate-200 text-slate-400 line-through dark:border-slate-700"
+                  : "border-transparent bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+              )}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: off ? "#CBD5E1" : s.color }} />
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -277,10 +352,10 @@ function AreaLineChart({
         onTouchEnd={() => setHovered(null)}
       >
         <defs>
-          {series.map((s) => (
-            <linearGradient key={s.label} id={`pg-${s.label}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity="0.16" />
-              <stop offset="80%" stopColor={s.color} stopOpacity="0.03" />
+          {series.map((s, idx) => (
+            <linearGradient key={s.label} id={`pg-${uid}-${idx}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.28" />
+              <stop offset="75%" stopColor={s.color} stopOpacity="0.05" />
               <stop offset="100%" stopColor={s.color} stopOpacity="0" />
             </linearGradient>
           ))}
@@ -292,15 +367,15 @@ function AreaLineChart({
           if (y < PY - 4 || y > PY + innerH + 4) return null;
           return (
             <g key={i}>
-              <line x1={PX} y1={y} x2={W - PX} y2={y} stroke="currentColor" strokeOpacity={0.05} strokeWidth={1} />
-              <text x={PX - 10} y={y + 3.5} textAnchor="end" fontSize={9.5} fill="currentColor" fillOpacity={0.28} fontWeight="600">{fmtY(v)}</text>
+              <line x1={PX} y1={y} x2={W - PX} y2={y} stroke="currentColor" strokeOpacity={0.09} strokeWidth={1} strokeDasharray="3 5" />
+              <text x={PX - 10} y={y + 3.5} textAnchor="end" fontSize={10} fill="currentColor" fillOpacity={0.45} fontWeight="600">{fmtY(v)}</text>
             </g>
           );
         })}
 
         {/* Zero baseline */}
         {showZero && (
-          <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="currentColor" strokeOpacity={0.1} strokeWidth={1.5} />
+          <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="currentColor" strokeOpacity={0.25} strokeWidth={1.25} />
         )}
 
         {/* Hover column highlight */}
@@ -317,13 +392,24 @@ function AreaLineChart({
         )}
 
         {/* Area fills */}
-        {series.map((s) => (
-          <path key={`area-${s.label}`} d={areaPath(s.values)} fill={`url(#pg-${s.label})`} />
-        ))}
+        {shown.map((s) => {
+          if (s.fill === false) return null;
+          const idx = series.indexOf(s);
+          return <path key={`area-${s.label}`} d={areaPath(s.values)} fill={`url(#pg-${uid}-${idx})`} />;
+        })}
 
         {/* Lines */}
-        {series.map((s) => (
-          <path key={`line-${s.label}`} d={bezierPath(s.values)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        {shown.map((s) => (
+          <path
+            key={`line-${s.label}`}
+            d={bezierPath(s.values)}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={s.fill === false ? 2 : 2.5}
+            strokeDasharray={s.fill === false ? "6 4" : undefined}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         ))}
 
         {/* Crosshair */}
@@ -332,7 +418,7 @@ function AreaLineChart({
         )}
 
         {/* Dots — only on hover */}
-        {hovered !== null && series.map((s) => {
+        {hovered !== null && shown.map((s) => {
           const v = s.values[hovered];
           if (v === undefined) return null;
           return (
@@ -344,7 +430,7 @@ function AreaLineChart({
         })}
 
         {/* Tail dots — always show last point per series */}
-        {hovered === null && series.map((s) => {
+        {hovered === null && shown.map((s) => {
           const lastIdx = s.values.length - 1;
           const v = s.values[lastIdx];
           if (v === undefined) return null;
@@ -362,9 +448,9 @@ function AreaLineChart({
               x={xOf(i)}
               y={H - 10}
               textAnchor="middle"
-              fontSize={9.5}
+              fontSize={10}
               fill="currentColor"
-              fillOpacity={isActive ? 0.8 : 0.28}
+              fillOpacity={isActive ? 0.85 : 0.45}
               fontWeight={isActive ? "800" : "500"}
             >
               {label}
@@ -382,7 +468,7 @@ function AreaLineChart({
           <p className="mb-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
             {fullLabels[hovered]}
           </p>
-          {series.map((s) => (
+          {shown.map((s) => (
             <div key={s.label} className="flex items-center justify-between gap-5 py-0.5">
               <span className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.color }} />
@@ -631,8 +717,90 @@ export default function FinanceAnalyticsPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <ChartCard title="Office Expense Pie" subtitle={`Category split for ${latestStats ? monthLabel(latestStats.month, latestStats.year) : "the latest month"}`}>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+          <div>
+            <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">This Month</h3>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              {latestStats ? monthLabel(latestStats.month, latestStats.year) : "No data"}
+            </p>
+          </div>
+          {latestStats && (
+            <Link
+              href={`/accounts/transactions/analytics/${latestStats.year}/${latestStats.month}`}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              Full detail <FiArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
+
+        {latestStats ? (
+          <div className="grid gap-4 p-5 lg:grid-cols-5">
+            <div className={clsx(
+              "relative flex flex-col justify-between overflow-hidden rounded-2xl p-6 lg:col-span-2",
+              isNetPositive
+                ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                : "bg-gradient-to-br from-rose-500 to-pink-600"
+            )}>
+              <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-xl" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">Net Profit</p>
+                <p className="mt-2 text-4xl font-black tabular-nums text-white">{formatCurrency(latestStats.netProfit)}</p>
+              </div>
+              <p className="mt-6 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                {isNetPositive ? "↑ Positive month" : "↓ Needs attention"}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 lg:col-span-3">
+              <div className="rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-950/30">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400">Profit</p>
+                <p className="mt-2 text-xl font-black tabular-nums text-emerald-700 dark:text-emerald-300">{formatCurrency(latestStats.profit)}</p>
+              </div>
+              <div className="rounded-2xl bg-rose-50 p-4 dark:bg-rose-950/30">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-600 dark:text-rose-400">Expenses</p>
+                <p className="mt-2 text-xl font-black tabular-nums text-rose-700 dark:text-rose-300">{formatCurrency(latestStats.officeRecords.totalExpense)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  <FiActivity className="h-3.5 w-3.5" /> Transactions
+                </p>
+                <p className="mt-2 text-xl font-black tabular-nums text-slate-800 dark:text-slate-100">{(latestStats.totalTransactions || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-200/70 bg-amber-50 p-4 dark:border-amber-800/30 dark:bg-amber-950/20">
+                <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
+                  <FiZap className="h-3.5 w-3.5" /> Today&apos;s Profit
+                </p>
+                <p className="mt-2 text-xl font-black tabular-nums text-amber-700 dark:text-amber-300">
+                  {todayProfit === null ? "…" : formatCurrency(todayProfit)}
+                </p>
+              </div>
+              {Number(latestStats.profit || 0) > 0 && (
+                <div className="col-span-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <span>Expenses use {Math.min((Number(latestStats.officeRecords.totalExpense || 0) / Number(latestStats.profit)) * 100, 999).toFixed(0)}% of profit</span>
+                    <span>{formatCurrency(latestStats.netProfit)} kept</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+                    <div
+                      className="h-full rounded-full bg-rose-400"
+                      style={{ width: `${Math.min((Number(latestStats.officeRecords.totalExpense || 0) / Number(latestStats.profit)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-40 items-center justify-center p-5 text-sm text-slate-400">
+            No monthly stats available yet.
+          </div>
+        )}
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <ChartCard title="Office Expenses" subtitle={`Category split for ${latestStats ? monthLabel(latestStats.month, latestStats.year) : "the latest month"}`}>
           {officeExpenseSlices.length > 0 ? (
             <PieChart
               slices={officeExpenseSlices}
@@ -646,123 +814,53 @@ export default function FinanceAnalyticsPage() {
           )}
         </ChartCard>
 
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base font-black tracking-tight text-slate-900 dark:text-slate-100">This Month</h3>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  {latestStats ? monthLabel(latestStats.month, latestStats.year) : "No data"}
-                </p>
-              </div>
-              {latestStats && (
-                <Link
-                  href={`/accounts/transactions/analytics/${latestStats.year}/${latestStats.month}`}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                >
-                  Full detail <FiArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {latestStats ? (
-            <div className="p-5 space-y-3">
-              {/* Net profit hero */}
-              <div className={clsx(
-                "relative overflow-hidden rounded-2xl p-5",
-                isNetPositive
-                  ? "bg-gradient-to-br from-emerald-500 to-teal-600"
-                  : "bg-gradient-to-br from-rose-500 to-pink-600"
-              )}>
-                <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">Net Profit</p>
-                <p className="mt-1.5 text-3xl font-black tabular-nums text-white">{formatCurrency(latestStats.netProfit)}</p>
-                <p className="mt-2 text-xs text-white/60">{isNetPositive ? "↑ Positive month" : "↓ Needs attention"}</p>
-              </div>
-
-              {/* Profit + Expense */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/30">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400">Profit</p>
-                  <p className="mt-1.5 text-base font-black tabular-nums text-emerald-700 dark:text-emerald-300">{formatCurrency(latestStats.profit)}</p>
-                </div>
-                <div className="rounded-xl bg-rose-50 p-3.5 dark:bg-rose-950/30">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-600 dark:text-rose-400">Expenses</p>
-                  <p className="mt-1.5 text-base font-black tabular-nums text-rose-700 dark:text-rose-300">{formatCurrency(latestStats.officeRecords.totalExpense)}</p>
-                </div>
-              </div>
-
-              {/* Transactions */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40">
-                <div className="flex items-center gap-2.5">
-                  <FiActivity className="h-4 w-4 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Transactions</span>
-                </div>
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100">{(latestStats.totalTransactions || 0).toLocaleString()}</span>
-              </div>
-
-              {/* Today's profit */}
-              <div className="flex items-center justify-between rounded-xl border border-amber-200/70 bg-amber-50 px-4 py-3 dark:border-amber-800/30 dark:bg-amber-950/20">
-                <div className="flex items-center gap-2.5">
-                  <FiZap className="h-4 w-4 text-amber-500" />
-                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Today&apos;s Profit</span>
-                </div>
-                <span className="text-sm font-black tabular-nums text-amber-700 dark:text-amber-300">
-                  {todayProfit === null ? "…" : formatCurrency(todayProfit)}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-48 items-center justify-center p-5 text-sm text-slate-400">
-              No monthly stats available yet.
-            </div>
-          )}
-        </div>
-
-        <ChartCard title="Top Payment Methods" subtitle={`Latest month balances (showing ${Math.min(currentMonthMethodsLimited.length, LIMITS.paymentMethodRows)} of ${currentMonthMethods.length})`}>
+        <ChartCard title="Payment Methods" subtitle={`Latest month balances (showing ${currentMonthMethodsLimited.length} of ${currentMonthMethods.length})`}>
           {currentMonthMethods.length > 0 ? (
             <>
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-700">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50/80 dark:bg-slate-800/40">
-                    <tr className="border-b border-slate-200 text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                      <th className="px-4 py-3">Method</th>
-                      <th className="px-4 py-3 text-right">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentMonthMethodsLimited.map((method) => {
-                      const positive = Number(method.balance || 0) >= 0;
-                      const methodColor = String(method.methodColor || "").trim() || "#64748B";
-                      const MethodIcon = getPaymentMethodIcon(method.methodIcon);
-                      const netValue = Number(method.net ?? Number(method.income || 0) - Number(method.expense || 0));
-
-                      return (
-                        <tr key={method.methodId} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
-                          <td className="px-4 py-3">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: methodColor }}>
-                                <MethodIcon className="h-4 w-4" />
-                              </div>
-                              <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{method.methodLabel}</span>
-                            </div>
-                          </td>
-                          <td className={clsx("px-4 py-3 text-right text-sm font-bold tabular-nums", positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>{formatCurrency(method.balance)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="mb-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/40">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Total balance</span>
+                <span className={clsx("text-lg font-black tabular-nums", currentMonthTotalBalance >= 0 ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
+                  {formatCurrency(currentMonthTotalBalance)}
+                </span>
               </div>
 
-              <div className="mt-3">
-                {currentMonthMethods.length > LIMITS.paymentMethodRows && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
-                    Payment methods are intentionally capped here to keep the dashboard compact.
-                  </div>
-                )}
-              </div>
+              <ul className="space-y-3.5">
+                {currentMonthMethodsLimited.map((method) => {
+                  const balance = Number(method.balance || 0);
+                  const positive = balance >= 0;
+                  const methodColor = String(method.methodColor || "").trim() || "#64748B";
+                  const MethodIcon = getPaymentMethodIcon(method.methodIcon);
+                  const maxAbs = Math.max(...currentMonthMethodsLimited.map((m) => Math.abs(Number(m.balance || 0))), 1);
+
+                  return (
+                    <li key={method.methodId} className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: methodColor }}>
+                        <MethodIcon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{method.methodLabel}</span>
+                          <span className={clsx("shrink-0 text-sm font-bold tabular-nums", positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
+                            {formatCurrency(balance)}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${(Math.abs(balance) / maxAbs) * 100}%`, background: positive ? methodColor : "#F43F5E" }}
+                          />
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {currentMonthMethods.length > LIMITS.paymentMethodRows && (
+                <p className="mt-4 text-xs text-slate-400">
+                  +{currentMonthMethods.length - LIMITS.paymentMethodRows} more methods not shown to keep this compact.
+                </p>
+              )}
             </>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
@@ -864,7 +962,7 @@ export default function FinanceAnalyticsPage() {
               series={[
                 { label: "Profit", values: trendData.profit, color: "#10B981" },
                 { label: "Net Profit", values: trendData.netProfit, color: "#8B5CF6" },
-                { label: "Expense", values: trendData.officeExpense, color: "#F43F5E" },
+                { label: "Expense", values: trendData.officeExpense, color: "#F43F5E", fill: false },
               ]}
             />
           ) : (

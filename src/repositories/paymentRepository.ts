@@ -237,6 +237,54 @@ export async function bulkUpsertEntityRecordStats(statsRows: any[]) {
   );
 }
 
+/**
+ * Zeroes stats rows whose entity no longer has any active records (all deleted/moved).
+ * The aggregate only returns entities that still have records, so without this their
+ * old totals would linger in the credit/debit lists. Rows of deleted entities are left
+ * untouched so they keep appearing in the "Deleted Clients" section.
+ */
+export async function zeroStaleEntityRecordStats(keepEntityIds: string[], scopeEntityIds?: string[]) {
+  const toObjectIds = (ids: string[]) =>
+    ids
+      .filter((id) => mongoose.Types.ObjectId.isValid(String(id)))
+      .map((id) => new mongoose.Types.ObjectId(String(id)));
+
+  const filter: Record<string, any> = {
+    $or: [{ balance: { $ne: 0 } }, { totalTransactions: { $gt: 0 } }],
+  };
+  const entityFilter: Record<string, any> = {};
+  if (keepEntityIds.length) entityFilter.$nin = toObjectIds(keepEntityIds);
+  if (scopeEntityIds && scopeEntityIds.length) entityFilter.$in = toObjectIds(scopeEntityIds);
+  if (Object.keys(entityFilter).length) filter.entity = entityFilter;
+
+  const staleRows = await EntityRecordStats.find(filter).select("entity").lean();
+  if (!staleRows.length) return 0;
+
+  const livingEntities = await Entity.find({
+    _id: { $in: staleRows.map((row: any) => row.entity) },
+    published: true,
+  })
+    .select("_id")
+    .lean();
+  if (!livingEntities.length) return 0;
+
+  const result = await EntityRecordStats.updateMany(
+    { entity: { $in: livingEntities.map((e: any) => e._id) } },
+    {
+      $set: {
+        totalIncome: 0,
+        totalExpense: 0,
+        totalServiceFee: 0,
+        totalTransactions: 0,
+        balance: 0,
+        lastTransactionAt: null,
+        lastRecomputedAt: new Date(),
+      },
+    },
+  );
+  return result.modifiedCount || 0;
+}
+
 export async function findEntityRecordStatsByEntityIds(entityIds: string[]) {
   if (!entityIds.length) {
     return [];
