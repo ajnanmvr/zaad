@@ -156,7 +156,7 @@ export default function JobDetailPage() {
         toast.error("No transactions to export");
         return;
       }
-      const rows = all.map((r) => ({
+      const rows: Record<string, string>[] = all.map((r) => ({
         Date: r.dateTime,
         Particular: r.particular,
         Client: r.client?.name || "",
