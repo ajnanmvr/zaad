@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Jobs, { Counters } from "@/models/jobs";
 import { Entity } from "@/models/entities";
 import Records from "@/models/records";
@@ -22,6 +23,10 @@ const ZERO_TOTALS: JobTotals = {
   incomeCount: 0,
   expenseCount: 0,
 };
+
+// Accepts either the Mongo _id or the human-readable jobId (JOB-0001).
+const jobKey = (id: string) =>
+  mongoose.isValidObjectId(id) ? { _id: id } : { jobId: id };
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -67,6 +72,14 @@ function mapEntity(entity: any) {
     name: entity.name as string,
     type: (entity.entityType || "company") as "company" | "employee" | "individual",
     color: entity.color as string | undefined,
+    companyName:
+      entity.entityType === "employee" && entity.company?.name
+        ? (entity.company.name as string)
+        : undefined,
+    companyId:
+      entity.entityType === "employee" && entity.company?._id
+        ? String(entity.company._id)
+        : undefined,
   };
 }
 
@@ -98,7 +111,12 @@ export async function listJobs(input: {
     filter.status = input.status;
   }
   if (input.entityId) {
-    filter.entity = input.entityId;
+    // Include jobs of the entity itself and, for a company, of its employees.
+    const employees = await Entity.find({ company: input.entityId, published: true })
+      .select("_id")
+      .limit(500)
+      .lean();
+    filter.entity = { $in: [input.entityId, ...employees.map((e: any) => e._id)] };
   }
   if (input.query?.trim()) {
     const regex = new RegExp(escapeRegex(input.query.trim()), "i");
@@ -115,7 +133,7 @@ export async function listJobs(input: {
     .sort({ createdAt: -1 })
     .skip(page * limit)
     .limit(limit + 1)
-    .populate("entity", "name entityType color")
+    .populate({ path: "entity", select: "name entityType color company", populate: { path: "company", select: "name", strictPopulate: false } })
     .lean();
 
   const hasMore = jobs.length > limit;
@@ -129,8 +147,8 @@ export async function listJobs(input: {
 }
 
 export async function getJob(id: string) {
-  const job = await Jobs.findOne({ _id: id, published: true })
-    .populate("entity", "name entityType color")
+  const job = await Jobs.findOne({ ...jobKey(id), published: true })
+    .populate({ path: "entity", select: "name entityType color company", populate: { path: "company", select: "name", strictPopulate: false } })
     .lean();
   if (!job) throw new ServiceError("Job not found", 404);
 
@@ -204,7 +222,7 @@ export async function createJob(input: any, userId?: string) {
 }
 
 export async function updateJob(id: string, input: any) {
-  const current = await Jobs.findOne({ _id: id, published: true });
+  const current = await Jobs.findOne({ ...jobKey(id), published: true });
   if (!current) throw new ServiceError("Job not found", 404);
 
   // jobId is immutable: transactions reference it.
@@ -226,6 +244,6 @@ export async function updateJob(id: string, input: any) {
 }
 
 export async function deleteJob(id: string) {
-  const job = await Jobs.findOneAndUpdate({ _id: id, published: true }, { published: false });
+  const job = await Jobs.findOneAndUpdate({ ...jobKey(id), published: true }, { published: false });
   if (!job) throw new ServiceError("Job not found", 404);
 }

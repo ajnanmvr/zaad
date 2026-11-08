@@ -1,4 +1,5 @@
 import { getRecordClient, mapRecordListItem, PAYMENT_POPULATE_FIELDS } from "@/app/api/payment/utils";
+import { isAdminRoleName } from "@/auth/roleConstants";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { DUBAI_TIME_ZONE, getDubaiCurrentYearMonth, getDubaiMonthRange } from "@/utils/dubaiTime";
 import {
@@ -696,8 +697,7 @@ async function getCompanyScopedEntityTotals(
 }
 
 export function isAdminRole(role?: string) {
-  const normalized = (role || "").toLowerCase().replace(/[\s_-]+/g, "");
-  return normalized === "admin" || normalized === "superadmin";
+  return isAdminRoleName(role);
 }
 
 // Rebuilds only the per-entity credit/debit stats (not office, liability or monthly stats).

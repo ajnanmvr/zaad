@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  FiArrowLeft,
-  FiChevronLeft,
-  FiChevronRight,
-  FiDownload,
   FiEdit2,
   FiPlus,
-  FiSearch,
   FiTrash2,
+  FiLock,
+  FiUnlock,
+  FiFileText,
 } from "react-icons/fi";
+import EntityAvatar from "@/components/common/EntityAvatar";
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
-import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
+import TransactionList from "@/components/Tables/TransactionList";
 
 type JobRecord = {
   id: string;
@@ -40,15 +39,6 @@ const money = (value: number | string) =>
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
 
-function StatCard({ label, value, tone }: { label: string; value: string; tone: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-black ${tone}`}>{value}</p>
-    </div>
-  );
-}
-
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -60,27 +50,14 @@ export default function JobDetailPage() {
   const canUpdate = hasPermission(permissions, "payments.update.transactions");
   const canDelete = hasPermission(permissions, "payments.delete.transactions");
 
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"" | "income" | "expense">("");
-  const [page, setPage] = useState(0);
   const [isEditing, setEditing] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", status: "open" });
   const [formClient, setFormClient] = useState<PickedEntity | null>(null);
   const [exporting, setExporting] = useState(false);
-  const pageSize = 25;
 
   useEffect(() => {
     if (user && !canView) router.push("/not-permitted");
   }, [user, canView, router]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(0);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
 
   const { data: job, isLoading: jobLoading, error: jobError } = useQuery({
     queryKey: ["job", id],
@@ -88,26 +65,6 @@ export default function JobDetailPage() {
     enabled: canView && Boolean(id),
     retry: false,
   });
-
-  const { data: recordsData, isLoading: recordsLoading } = useQuery({
-    queryKey: ["job-records", job?.jobId, search, typeFilter, page],
-    queryFn: async () =>
-      (
-        await axios.get("/api/payment", {
-          params: {
-            jobIdExact: job.jobId,
-            q: search || undefined,
-            t: typeFilter || undefined,
-            page,
-            limit: pageSize,
-          },
-        })
-      ).data,
-    enabled: Boolean(job?.jobId),
-    placeholderData: keepPreviousData,
-  });
-
-  const records: JobRecord[] = recordsData?.records || [];
 
   const startEdit = () => {
     setFormClient(job.client ? { id: job.client.id, name: job.client.name, type: job.client.type } : null);
@@ -127,9 +84,97 @@ export default function JobDetailPage() {
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ["job", id] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["job-records"] });
+      queryClient.invalidateQueries({ queryKey: ["payment"] });
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to update job");
+    }
+  };
+
+  const convertToInvoice = async () => {
+    setExporting(true);
+    try {
+      const { data } = await axios.get("/api/payment", {
+        params: { jobIdExact: job.jobId, sort: "oldest", limit: 0 },
+      });
+      const all: JobRecord[] = data?.records || [];
+      const items = all
+        .filter((r) => r.type === "expense")
+        .map((r: any) => ({
+          title: r.particular || `Expense ${r.suffix || ""}${r.number || ""}`,
+          desc: "",
+          rate: Number((Number(r.amount || 0) + Number(r.serviceFee || 0)).toFixed(2)),
+          quantity: 1,
+        }));
+      if (!items.length) {
+        toast.error("This job has no expense transactions to invoice");
+        return;
+      }
+      const advance = all
+        .filter((r) => r.type === "income")
+        .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+      const today = new Date();
+      const validTo = new Date(today);
+      validTo.setDate(validTo.getDate() + 30);
+      const entityType = job.client?.type || null;
+
+      sessionStorage.setItem(
+        "zaad.invoice.prefill",
+        JSON.stringify({
+          connectionMode: entityType ? "connected" : "detached",
+          selectedEntityType: entityType,
+          selectedEntitySummary: job.client
+            ? { id: job.client.id, name: job.client.name, type: job.client.type }
+            : null,
+          invoiceData: {
+            quotation: "false",
+            message: "",
+            trn: "",
+            createdBy: user?._id,
+            client: job.client?.name || "Client",
+            entityId: job.client?.id || null,
+            entityType,
+            date: today.toISOString().split("T")[0],
+            validTo: validTo.toISOString().split("T")[0],
+            items,
+            remarks: `Generated from job ${job.jobId} - ${job.title}`,
+            advance: Number(advance.toFixed(2)),
+            location: "",
+            purpose: job.title || "Job to Invoice",
+            amount: 0,
+            showBalance: "show",
+            balance: 0,
+          },
+          createdAt: Date.now(),
+        }),
+      );
+      const params = new URLSearchParams({
+        prefill: "records",
+        returnTo: `/accounts/jobs/${id}`,
+      });
+      router.push(`/accounts/invoice/new?${params.toString()}`);
+    } catch {
+      toast.error("Failed to prepare invoice from job");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const toggleStatus = async () => {
+    const next = job.status === "closed" ? "open" : "closed";
+    const message =
+      next === "closed"
+        ? `Close job ${job.jobId}? It will no longer appear in job suggestions.`
+        : `Reopen job ${job.jobId}?`;
+    if (!window.confirm(message)) return;
+    try {
+      await axios.put(`/api/jobs/${id}`, { status: next });
+      toast.success(next === "closed" ? "Job closed" : "Job reopened");
+      queryClient.invalidateQueries({ queryKey: ["job", id] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["job-suggestions"] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to update job status");
     }
   };
 
@@ -142,50 +187,6 @@ export default function JobDetailPage() {
       router.push("/accounts/jobs");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to delete job");
-    }
-  };
-
-  const downloadReport = async (format: "pdf" | "excel" | "csv") => {
-    setExporting(true);
-    try {
-      const { data } = await axios.get("/api/payment", {
-        params: { jobIdExact: job.jobId, sort: "oldest", limit: 0 },
-      });
-      const all: JobRecord[] = data?.records || [];
-      if (all.length === 0) {
-        toast.error("No transactions to export");
-        return;
-      }
-      const rows: Record<string, string>[] = all.map((r) => ({
-        Date: r.dateTime,
-        Particular: r.particular,
-        Client: r.client?.name || "",
-        Method: r.method,
-        Status: r.status,
-        Type: r.type,
-        Income: r.type === "income" ? Number(r.amount).toFixed(2) : "",
-        Expense: r.type === "expense" ? Number(r.amount).toFixed(2) : "",
-        "Service Fee": r.serviceFee ? Number(r.serviceFee).toFixed(2) : "",
-      }));
-      rows.push({
-        Date: "",
-        Particular: `TOTAL (${job.jobId} - ${job.title})`,
-        Client: "",
-        Method: "",
-        Status: "",
-        Type: `Net ${job.totals.net.toFixed(2)}`,
-        Income: job.totals.totalIncome.toFixed(2),
-        Expense: job.totals.totalExpense.toFixed(2),
-        "Service Fee": job.totals.totalServiceFee.toFixed(2),
-      });
-      const prefix = `job-${job.jobId}`.replace(/[^\w-]+/g, "_");
-      if (format === "pdf") await exportRowsPdf(rows, prefix);
-      else if (format === "excel") exportRowsExcel(rows, prefix);
-      else exportRowsCsv(rows, prefix);
-    } catch {
-      toast.error("Failed to generate report");
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -215,19 +216,25 @@ export default function JobDetailPage() {
     if (row.type === "income") entry.income += row.amount;
     else entry.expense += row.amount;
   });
+  // Drop empty buckets (e.g. zero-amount service-fee-only records with no method).
+  Object.keys(methodTotals).forEach((key) => {
+    if (!methodTotals[key].income && !methodTotals[key].expense) delete methodTotals[key];
+  });
+
+  const totalDue = t.totalExpense + t.totalServiceFee;
+  const balance = totalDue - t.totalIncome;
+  const isClosed = job.status === "closed";
 
   return (
     <>
-      <Link
-        href="/accounts/jobs"
-        className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-cyan-700 dark:text-slate-400"
+      <section
+        className={`overflow-hidden rounded-3xl border bg-white shadow-sm dark:bg-slate-900 ${
+          isClosed ? "border-slate-200 dark:border-slate-700" : "border-cyan-200 dark:border-cyan-900/50"
+        }`}
       >
-        <FiArrowLeft /> All jobs
-      </Link>
-
-      <section className="rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-sm dark:border-cyan-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/20 sm:p-6">
+        <div className={`h-1.5 w-full ${isClosed ? "bg-slate-300 dark:bg-slate-700" : "bg-gradient-to-r from-cyan-500 via-sky-500 to-violet-500"}`} />
         {isEditing ? (
-          <form onSubmit={saveEdit} className="grid gap-3 sm:grid-cols-2">
+          <form onSubmit={saveEdit} className="grid gap-3 p-4 sm:grid-cols-2">
             <EntitySearchPicker value={formClient} onChange={setFormClient} />
             <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} placeholder="Title" />
             <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inputClass} sm:col-span-2`} placeholder="Description" />
@@ -241,164 +248,141 @@ export default function JobDetailPage() {
             </div>
           </form>
         ) : (
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                {job.jobId} · {job.status}
-              </p>
-              {job.client && (
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Client:{" "}
-                  <Link href={`/${job.client.type}/${job.client.id}`} className="font-semibold text-cyan-700 hover:underline dark:text-cyan-400">
-                    {job.client.name}
-                  </Link>{" "}
-                  <span className="text-xs uppercase text-slate-500">{job.client.type}</span>
-                </p>
-              )}
-              <h2 className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{job.title}</h2>
-              {job.description && (
-                <p className="mt-1 max-w-2xl whitespace-pre-line text-sm text-slate-600 dark:text-slate-400">{job.description}</p>
-              )}
+          <div className="p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {job.jobId}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                      isClosed
+                        ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                    }`}
+                  >
+                    {isClosed ? <FiLock className="h-3 w-3" /> : <FiUnlock className="h-3 w-3" />}
+                    {job.status}
+                  </span>
+                </div>
+                <h2 className="mt-2 text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">{job.title}</h2>
+                {job.description && (
+                  <p className="mt-1 max-w-2xl whitespace-pre-line text-sm leading-5 text-slate-600 dark:text-slate-400">{job.description}</p>
+                )}
+                {job.client && (
+                  <Link
+                    href={`/${job.client.type}/${job.client.id}`}
+                    className="mt-1.5 inline-flex max-w-full items-center gap-1.5 text-xs text-slate-500 hover:text-cyan-700"
+                  >
+                    <span className="scale-75 origin-left -mr-1.5">
+                      <EntityAvatar name={job.client.name} color={job.client.color} size="sm" />
+                    </span>
+                    <span className="truncate font-semibold text-slate-800 dark:text-slate-200">{job.client.name}</span>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wider">
+                      {job.client.type === "employee" && job.client.companyName
+                        ? `Employee — ${job.client.companyName}`
+                        : job.client.type}
+                    </span>
+                  </Link>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 lg:items-end">
+                <div className="flex flex-wrap gap-2">
+                  {canCreate && (
+                    <Link
+                      href={`/accounts/add-record?type=income&jobId=${encodeURIComponent(job.jobId)}${job.client ? `&lockEntityId=${job.client.id}&lockEntityType=${job.client.type}&lockEntityName=${encodeURIComponent(job.client.name)}` : ""}`}
+                      className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm hover:bg-cyan-700"
+                    >
+                      <FiPlus /> Add record
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={convertToInvoice}
+                    disabled={exporting}
+                    className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:opacity-60"
+                  >
+                    <FiFileText /> To Invoice
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {canUpdate && (
+                    <button type="button" onClick={startEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
+                      <FiEdit2 /> Edit
+                    </button>
+                  )}
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={toggleStatus}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                        isClosed
+                          ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                          : "border-amber-300 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                      }`}
+                    >
+                      {isClosed ? (
+                        <>
+                          <FiUnlock /> Reopen job
+                        </>
+                      ) : (
+                        <>
+                          <FiLock /> Close job
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button type="button" onClick={handleDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                      <FiTrash2 /> Delete
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canCreate && (
-                <Link
-                  href={`/accounts/add-record?type=income&jobId=${encodeURIComponent(job.jobId)}${job.client ? `&lockEntityId=${job.client.id}&lockEntityType=${job.client.type}&lockEntityName=${encodeURIComponent(job.client.name)}` : ""}`}
-                  className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-3 py-2 text-sm font-bold text-white hover:bg-cyan-700"
-                >
-                  <FiPlus /> Add record
-                </Link>
-              )}
-              {canUpdate && (
-                <button type="button" onClick={startEdit} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold dark:border-slate-600 dark:text-slate-200">
-                  <FiEdit2 /> Edit
-                </button>
-              )}
-              {canDelete && (
-                <button type="button" onClick={handleDelete} className="inline-flex items-center gap-2 rounded-xl border border-rose-300 px-3 py-2 text-sm font-semibold text-rose-600">
-                  <FiTrash2 /> Delete
-                </button>
-              )}
+            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="flex items-center justify-between gap-2 rounded-xl border-l-4 border-emerald-500 bg-emerald-500/10 px-3.5 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Income</p>
+                <p className="text-lg font-black tabular-nums text-emerald-600 dark:text-emerald-400">{money(t.totalIncome)}</p>
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border-l-4 border-rose-500 bg-rose-500/10 px-3.5 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">Expense</p>
+                <p className="text-lg font-black tabular-nums text-rose-600 dark:text-rose-400">{money(totalDue)}</p>
+              </div>
+              <div
+                className={`flex items-center justify-between gap-2 rounded-xl border-l-4 px-3.5 py-2.5 ${
+                  balance > 0 ? "border-amber-500 bg-amber-500/15" : "border-emerald-500 bg-emerald-500/10"
+                }`}
+              >
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${balance > 0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}`}>Balance</p>
+                <p className={`text-lg font-black tabular-nums ${balance > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>{money(balance)}</p>
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-xl border-l-4 border-violet-500 bg-violet-500/10 px-3.5 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Transactions</p>
+                <p className="text-lg font-black tabular-nums text-violet-600 dark:text-violet-400">{t.transactionCount}</p>
+              </div>
             </div>
+            {Object.keys(methodTotals).length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                {Object.entries(methodTotals).map(([method, v]) => (
+                  <span key={method} className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-0.5 text-xs dark:bg-slate-800/60">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{method}</span>
+                    {v.income > 0 && <span className="font-bold text-emerald-600">+{money(v.income)}</span>}
+                    {v.expense > 0 && <span className="font-bold text-rose-600">-{money(v.expense)}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="Total Income" value={money(t.totalIncome)} tone="text-emerald-600" />
-        <StatCard label="Total Expense" value={money(t.totalExpense)} tone="text-rose-600" />
-        <StatCard label="Net" value={money(t.net)} tone={t.net >= 0 ? "text-emerald-600" : "text-rose-600"} />
-        <StatCard label="Service Fees" value={money(t.totalServiceFee)} tone="text-cyan-600" />
-        <StatCard label="Transactions" value={String(t.transactionCount)} tone="text-slate-900 dark:text-slate-100" />
-      </div>
-
-      {Object.keys(methodTotals).length > 0 && (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">By payment method</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(methodTotals).map(([method, v]) => (
-              <div key={method} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800/60">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{method}</span>
-                <span>
-                  <span className="text-emerald-600">+{money(v.income)}</span>{" "}
-                  <span className="text-rose-600">-{money(v.expense)}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search transactions in this job"
-            className={`${inputClass} pl-9`}
-          />
-        </div>
-        <select
-          value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value as "" | "income" | "expense");
-            setPage(0);
-          }}
-          className={`${inputClass} lg:w-40`}
-        >
-          <option value="">All types</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-        <div className="flex gap-2">
-          {(["pdf", "excel", "csv"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              disabled={exporting}
-              onClick={() => downloadReport(f)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold uppercase hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              <FiDownload /> {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/60">
-            <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Particular</th>
-              <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Method</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {recordsLoading && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">Loading transactions...</td>
-              </tr>
-            )}
-            {!recordsLoading && records.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
-                  No transactions linked to this job yet. Enter Job ID {job.jobId} when creating a record.
-                </td>
-              </tr>
-            )}
-            {records.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-slate-400">{r.dateTime}</td>
-                <td className="px-4 py-3">
-                  <Link href={`/accounts/transactions/details/${r.id}`} className="font-semibold text-slate-900 hover:text-cyan-700 hover:underline dark:text-slate-100">
-                    {r.particular}
-                  </Link>
-                  {r.status && <p className="text-xs text-slate-500">{r.status}</p>}
-                </td>
-                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.client?.name || "-"}</td>
-                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.method || "-"}</td>
-                <td className={`whitespace-nowrap px-4 py-3 text-right font-bold ${r.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>
-                  {r.type === "income" ? "+" : "-"}
-                  {money(r.amount)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 flex items-center justify-end gap-2">
-        <button type="button" disabled={page === 0} onClick={() => setPage((p) => Math.max(p - 1, 0))} className="rounded-lg border border-slate-300 p-2 disabled:opacity-40 dark:border-slate-600">
-          <FiChevronLeft />
-        </button>
-        <span className="text-sm text-slate-600 dark:text-slate-400">Page {page + 1}</span>
-        <button type="button" disabled={!recordsData?.hasMore} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-slate-300 p-2 disabled:opacity-40 dark:border-slate-600">
-          <FiChevronRight />
-        </button>
+      <div className="mt-4">
+        <Suspense fallback={<div className="py-10 text-center text-sm text-slate-500">Loading transactions...</div>}>
+          <TransactionList embedded enableSelection lockJobId={job.jobId} returnTo={`/accounts/jobs/${id}`} />
+        </Suspense>
       </div>
     </>
   );

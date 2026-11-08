@@ -5,6 +5,14 @@ import { NextRequest } from "next/server";
 import { logUserActivity } from "@/helpers/userActivityLogger";
 import { ALL_PERMISSIONS } from "@/auth/permissionCatalog";
 import { expandPermissions } from "@/auth/permissions";
+import {
+  DEVELOPER_ROLE,
+  PARTNER_ROLE,
+  isDeveloperRole,
+  isLegacySuperAdminRole,
+  isReservedRoleName,
+} from "@/auth/roleConstants";
+import User from "@/models/users";
 
 const CACHE_TTL_SECONDS = 5 * 60;
 
@@ -18,7 +26,9 @@ export async function getPermissionsForRole(roleName: string): Promise<string[]>
     return [];
   }
 
-  if (["superadmin", "super_admin", "super-admin", "super admin"].includes(normalizedRole)) {
+  // Developer is unrestricted by design. The legacy "superadmin" spellings keep full access only
+  // until migrateSuperAdminToDeveloperAndPartner has run, so nobody is locked out mid-rollout.
+  if (isDeveloperRole(normalizedRole) || isLegacySuperAdminRole(normalizedRole)) {
     return expandPermissions(ALL_PERMISSIONS);
   }
 
@@ -65,9 +75,13 @@ export async function invalidateRolePermissionCache(roleName: string) {
 }
 
 export async function listRoles() {
-  return Role.find({ published: true })
+  const roles = await Role.find({ published: true })
     .select("name description permissions isSystem")
-    .sort({ name: 1 });
+    .sort({ name: 1 })
+    .lean();
+
+  // The developer role is always a locked system role, whatever the stored flag says.
+  return roles.map((role: any) => (isDeveloperRole(role.name) ? { ...role, isSystem: true } : role));
 }
 
 export async function roleExists(roleName: string) {
@@ -88,6 +102,10 @@ export async function createRole(input: {
   const name = (input.name || "").trim().toLowerCase();
   if (!name) {
     throw new ServiceError("Role name is required", 400);
+  }
+
+  if (isReservedRoleName(name)) {
+    throw new ServiceError(`"${name}" is a reserved role name`, 400);
   }
 
   const exists = await Role.findOne({ name, published: true });
@@ -134,6 +152,10 @@ export async function updateRole(
   const normalizedRole = (roleName || "").trim().toLowerCase();
   if (!normalizedRole) {
     throw new ServiceError("Role name is required", 400);
+  }
+
+  if (isDeveloperRole(normalizedRole)) {
+    throw new ServiceError("The developer role cannot be modified", 403);
   }
 
   const existing = await Role.findOne({ name: normalizedRole, published: true });
@@ -195,6 +217,10 @@ export async function deleteRole(
   audit?: { performedById: string; request?: NextRequest }
 ) {
   const normalizedRole = (roleName || "").trim().toLowerCase();
+  if (isDeveloperRole(normalizedRole)) {
+    throw new ServiceError("The developer role cannot be deleted", 403);
+  }
+
   const role = await Role.findOne({ name: normalizedRole, published: true });
 
   if (!role) {
@@ -228,4 +254,78 @@ export async function deleteRole(
       request: audit.request,
     });
   }
+}
+
+const LEGACY_SUPERADMIN_REGEX = /^super[s_-]?admin$/i;
+
+/**
+ * One-off, idempotent rollout of the developer/partner split:
+ *  - creates the locked "developer" role and the editable "partner" role (all permissions),
+ *  - moves `developerUsername` to developer and every other legacy superadmin user to partner,
+ *  - retires the legacy superadmin role document and clears permission caches.
+ */
+export async function migrateSuperAdminToDeveloperAndPartner(developerUsername: string) {
+  const username = (developerUsername || "").trim();
+  if (!username) {
+    throw new ServiceError("developerUsername is required", 400);
+  }
+
+  const developerUser = await User.findOne({ username, published: true }).select("_id username role");
+  if (!developerUser) {
+    throw new ServiceError(`User "${username}" not found`, 404);
+  }
+
+  await Role.findOneAndUpdate(
+    { name: DEVELOPER_ROLE },
+    {
+      $set: {
+        description: "Unrestricted system role for the platform developer. Cannot be edited or reassigned.",
+        isSystem: true,
+        published: true,
+      },
+      $setOnInsert: { permissions: [] },
+    },
+    { upsert: true }
+  );
+
+  const partnerExisting = await Role.findOne({ name: PARTNER_ROLE });
+  if (!partnerExisting) {
+    await Role.create({
+      name: PARTNER_ROLE,
+      description: "Full access by default. Can be edited and restricted.",
+      permissions: ALL_PERMISSIONS,
+      isSystem: false,
+      published: true,
+    });
+  } else if (!partnerExisting.published) {
+    await Role.updateOne({ _id: partnerExisting._id }, { published: true });
+  }
+
+  const legacyUsers = await User.find({ role: LEGACY_SUPERADMIN_REGEX }).select("_id username role");
+  const movedToPartner: string[] = [];
+
+  for (const legacyUser of legacyUsers) {
+    if (String(legacyUser._id) === String(developerUser._id)) continue;
+    await User.updateOne({ _id: legacyUser._id }, { role: PARTNER_ROLE, $inc: { roleVersion: 1 } });
+    movedToPartner.push(legacyUser.username);
+  }
+
+  let developerChanged = false;
+  if (developerUser.role !== DEVELOPER_ROLE) {
+    await User.updateOne({ _id: developerUser._id }, { role: DEVELOPER_ROLE, $inc: { roleVersion: 1 } });
+    developerChanged = true;
+  }
+
+  await Role.updateMany({ name: LEGACY_SUPERADMIN_REGEX }, { published: false });
+
+  await Promise.all(
+    [DEVELOPER_ROLE, PARTNER_ROLE, "superadmin", "super_admin", "super-admin", "super admin"].map(
+      invalidateRolePermissionCache
+    )
+  );
+
+  return {
+    developer: { username: developerUser.username, changed: developerChanged },
+    movedToPartner,
+  };
 }

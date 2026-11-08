@@ -360,6 +360,18 @@ const TransactionDetailsPage = () => {
                       <FiFileText />
                     )}
 
+                    {(record as any).jobId &&
+                      renderTableRow(
+                        "Job ID",
+                        <Link
+                          href={`/accounts/jobs/${encodeURIComponent((record as any).jobId)}`}
+                          className="font-semibold text-violet-600 hover:underline dark:text-violet-400"
+                        >
+                          {(record as any).jobId}
+                        </Link>,
+                        <FiFileText />
+                      )}
+
                     {renderTableRow(
                       "Remarks",
                       <div className="max-w-prose whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300">

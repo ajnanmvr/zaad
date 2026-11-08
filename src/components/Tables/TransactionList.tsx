@@ -1,4 +1,5 @@
 "use client";
+import { isAdminRoleName } from "@/auth/roleConstants";
 import { useUserContext } from "@/contexts/UserContext";
 import { TRecordList } from "@/types/records";
 import { formatDateTime } from "@/utils/dateUtils";
@@ -320,6 +321,7 @@ const TransactionList = ({
   lockEntityId,
   lockEntityName,
   returnTo,
+  lockJobId,
 }: {
   type?: string | string[];
   id?: string | string[];
@@ -330,6 +332,7 @@ const TransactionList = ({
   lockEntityId?: string;
   lockEntityName?: string;
   returnTo?: string;
+  lockJobId?: string;
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -339,7 +342,7 @@ const TransactionList = ({
   const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const normalizedRole = (user?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
-  const isAdmin = ["admin", "superadmin"].includes(normalizedRole);
+  const isAdmin = isAdminRoleName(normalizedRole);
 
   const [pageNumber, setPageNumber] = useState(0);
   const [isFilterOpen, setFilterOpen] = useState(false);
@@ -373,7 +376,7 @@ const TransactionList = ({
       ec: String(searchParams.get("ec") || "").trim(),
       df: String(searchParams.get("df") || "").trim(),
       dt: String(searchParams.get("dt") || "").trim(),
-      jobId: String(searchParams.get("jobId") || "").trim(),
+      jobId: lockJobId || String(searchParams.get("jobId") || "").trim(),
     };
     const nextSearch = String(searchParams.get("q") || "").trim();
     const nextSort = String(searchParams.get("sort") || "newest").trim();
@@ -385,7 +388,7 @@ const TransactionList = ({
     setSortBy(nextSort || "newest");
     setPageSize(Number.isFinite(nextLimit) && nextLimit >= 0 ? nextLimit : 25);
     setPageNumber(0);
-  }, [searchParams]);
+  }, [searchParams, lockJobId]);
 
   const { data: paymentData, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -398,6 +401,7 @@ const TransactionList = ({
       category,
       entityRecordsType,
       filter,
+      lockJobId,
     ],
     queryFn: async () => {
       const routeSegment = currentType
@@ -418,7 +422,8 @@ const TransactionList = ({
       if (filter.ec) params.set("ec", filter.ec);
       if (filter.df) params.set("df", filter.df);
       if (filter.dt) params.set("dt", filter.dt);
-      if (filter.jobId) params.set("jobId", filter.jobId);
+      if (lockJobId) params.set("jobIdExact", lockJobId);
+      else if (filter.jobId) params.set("jobId", filter.jobId);
       if (category) params.set("category", category);
       if (companyRecordScope) {
         params.set("recordScope", companyRecordScope);
@@ -1535,9 +1540,9 @@ const TransactionList = ({
                                   {(record?.suffix || "") +
                                     (record?.number || "")}
                                 </span>
-                                {record?.jobId && (
+                                {record?.jobId && !lockJobId && (
                                   <Link
-                                    href={`/accounts/transactions?jobId=${encodeURIComponent(record.jobId)}`}
+                                    href={`/accounts/jobs/${encodeURIComponent(record.jobId)}`}
                                     className="w-fit text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
                                   >
                                     Job ID: {record.jobId}

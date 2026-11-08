@@ -57,7 +57,9 @@ const AddUser = ({ editUserId, initialData }: AddUserProps) => {
             try {
                 const { data } = await axios.get("/api/roles");
                 const fetchedRoles = Array.isArray(data?.roles)
-                    ? data.roles.map((role: any) => ({
+                    ? data.roles
+                          .filter((role: any) => role.name !== "developer" || initialRole === "developer")
+                          .map((role: any) => ({
                           name: role.name,
                           permissions: Array.isArray(role.permissions)
                               ? role.permissions

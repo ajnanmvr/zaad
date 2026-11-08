@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FiBriefcase, FiChevronLeft, FiChevronRight, FiPlus, FiSearch, FiX } from "react-icons/fi";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { FiBriefcase, FiChevronDown, FiLoader, FiLock, FiPlus, FiSearch, FiUnlock, FiX } from "react-icons/fi";
 import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
+import EntityAvatar from "@/components/common/EntityAvatar";
 
 type JobRow = {
   id: string;
@@ -17,10 +18,11 @@ type JobRow = {
   title: string;
   description: string;
   status: "open" | "closed";
-  client: { id: string; name: string; type: "company" | "employee" | "individual" } | null;
+  client: { id: string; name: string; type: "company" | "employee" | "individual"; color?: string; companyName?: string } | null;
   totals: {
     totalIncome: number;
     totalExpense: number;
+    totalServiceFee: number;
     net: number;
     transactionCount: number;
   };
@@ -51,7 +53,6 @@ export default function JobList({
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | "open" | "closed">("");
-  const [page, setPage] = useState(0);
   const [isModalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "" });
   const [client, setClient] = useState<PickedEntity | null>(entity || null);
@@ -64,20 +65,20 @@ export default function JobList({
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(searchInput.trim());
-      setPage(0);
     }, 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["jobs", search, status, page, entity?.id],
-    queryFn: async () =>
-      (await axios.get("/api/jobs", { params: { q: search, status, page, limit: 20, entityId: entity?.id } })).data,
+  const { data, isLoading, isFetching, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ["jobs", search, status, entity?.id],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) =>
+      (await axios.get("/api/jobs", { params: { q: search, status, page: pageParam, limit: 20, entityId: entity?.id } })).data,
+    getNextPageParam: (lastPage, allPages) => (lastPage?.hasMore ? allPages.length : undefined),
     enabled: canView,
-    placeholderData: keepPreviousData,
   });
 
-  const jobs: JobRow[] = data?.jobs || [];
+  const jobs: JobRow[] = data?.pages.flatMap((p: any) => p?.jobs || []) || [];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,7 +164,6 @@ export default function JobList({
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as "" | "open" | "closed");
-            setPage(0);
           }}
           className={`${inputClass} sm:w-40`}
         >
@@ -183,7 +183,7 @@ export default function JobList({
               <th className="px-4 py-3 text-right">Txns</th>
               <th className="px-4 py-3 text-right">Income</th>
               <th className="px-4 py-3 text-right">Expense</th>
-              <th className="px-4 py-3 text-right">Net</th>
+              <th className="px-4 py-3 text-right">Balance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -198,7 +198,12 @@ export default function JobList({
               </tr>
             )}
             {jobs.map((job) => (
-              <tr key={job.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
+              <tr
+                key={job.id}
+                className={`transition hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                  job.status === "closed" ? "bg-slate-50/70 opacity-70 dark:bg-slate-800/30" : ""
+                }`}
+              >
                 <td className="px-4 py-3">
                   <Link
                     href={`/accounts/jobs/${job.id}`}
@@ -211,8 +216,19 @@ export default function JobList({
                 </td>
                 <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
                   {job.client ? (
-                    <Link href={`/${job.client.type}/${job.client.id}`} className="hover:text-cyan-700 hover:underline">
-                      {job.client.name}
+                    <Link
+                      href={`/${job.client.type}/${job.client.id}`}
+                      className="inline-flex items-center gap-2 hover:text-cyan-700"
+                    >
+                      <EntityAvatar name={job.client.name} color={job.client.color} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium hover:underline">{job.client.name}</span>
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          {job.client.type === "employee" && job.client.companyName
+                            ? `Employee — ${job.client.companyName}`
+                            : job.client.type}
+                        </span>
+                      </span>
                     </Link>
                   ) : (
                     "-"
@@ -220,20 +236,21 @@ export default function JobList({
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                       job.status === "open"
                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                        : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                        : "bg-slate-300 text-slate-700 ring-1 ring-inset ring-slate-400/40 dark:bg-slate-700 dark:text-slate-200"
                     }`}
                   >
+                    {job.status === "closed" ? <FiLock className="h-3 w-3" /> : <FiUnlock className="h-3 w-3" />}
                     {job.status}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">{job.totals.transactionCount}</td>
                 <td className="px-4 py-3 text-right font-semibold text-emerald-600">{money(job.totals.totalIncome)}</td>
-                <td className="px-4 py-3 text-right font-semibold text-rose-600">{money(job.totals.totalExpense)}</td>
-                <td className={`px-4 py-3 text-right font-bold ${job.totals.net >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {money(job.totals.net)}
+                <td className="px-4 py-3 text-right font-semibold text-rose-600">{money(job.totals.totalExpense + (job.totals.totalServiceFee || 0))}</td>
+                <td className={`px-4 py-3 text-right font-bold ${job.totals.totalExpense + (job.totals.totalServiceFee || 0) - job.totals.totalIncome > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                  {money(job.totals.totalExpense + (job.totals.totalServiceFee || 0) - job.totals.totalIncome)}
                 </td>
               </tr>
             ))}
@@ -241,24 +258,19 @@ export default function JobList({
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(p - 1, 0))}
-          className="rounded-lg border border-slate-300 p-2 disabled:opacity-40 dark:border-slate-600"
-        >
-          <FiChevronLeft />
-        </button>
-        <span className="text-sm text-slate-600 dark:text-slate-400">Page {page + 1}</span>
-        <button
-          type="button"
-          disabled={!data?.hasMore}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded-lg border border-slate-300 p-2 disabled:opacity-40 dark:border-slate-600"
-        >
-          <FiChevronRight />
-        </button>
+      <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Showing {jobs.length} jobs</p>
+        {hasNextPage && (
+          <button
+            type="button"
+            onClick={() => fetchNextPage()}
+            disabled={isFetching}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {isFetching ? <FiLoader className="h-3.5 w-3.5 animate-spin" /> : <FiChevronDown className="h-3.5 w-3.5" />}
+            {isFetching ? "Loading..." : "Load More"}
+          </button>
+        )}
       </div>
 
       {isModalOpen && (

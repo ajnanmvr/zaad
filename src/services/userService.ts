@@ -3,6 +3,7 @@ import { logUserActivity, getUserActivityHistory } from "@/helpers/userActivityL
 import { NextRequest } from "next/server";
 import { ServiceError } from "./serviceError";
 import { getPermissionsForRole, roleExists } from "./roleService";
+import { isDeveloperRole } from "@/auth/roleConstants";
 import {
   buildUserListQuery,
   countUsers,
@@ -64,6 +65,10 @@ export async function createUser(input: TCreateUserInput) {
 
   if (!username || !password || !role) {
     throw new ServiceError("Username, password and role are required", 400);
+  }
+
+  if (isDeveloperRole(role)) {
+    throw new ServiceError("The developer role cannot be assigned", 403);
   }
 
   if (!(await roleExists(role))) {
@@ -136,6 +141,17 @@ export async function updateUser(input: TUpdateUserInput) {
   const existingUser = await findActiveUserById(id);
   if (!existingUser) {
     throw new ServiceError("User not found", 404);
+  }
+
+  if (isDeveloperRole(existingUser.role)) {
+    const performer = await findActiveUserById(currentUserId);
+    if (!performer || !isDeveloperRole(performer.role)) {
+      throw new ServiceError("Only a developer can modify a developer account", 403);
+    }
+  }
+
+  if (role && isDeveloperRole(role) && !isDeveloperRole(existingUser.role)) {
+    throw new ServiceError("The developer role cannot be assigned", 403);
   }
 
   const existingUserPermissions = await getPermissionsForRole(existingUser.role);
@@ -258,6 +274,10 @@ export async function softDeleteUser(input: TSoftDeleteUserInput) {
   const user = await findActiveUserById(id);
   if (!user) {
     throw new ServiceError("User not found", 404);
+  }
+
+  if (isDeveloperRole(user.role)) {
+    throw new ServiceError("A developer account cannot be deleted", 403);
   }
 
   await softDeleteUserById(id);

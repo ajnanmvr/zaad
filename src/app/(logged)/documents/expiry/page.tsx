@@ -75,7 +75,7 @@ const ExpiryDocumentsPage = () => {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
-  const [limit, setLimit] = useState<number>(PAGINATION.LIMITS.EXPIRY_DOCUMENTS);
+  const limit = PAGINATION.LIMITS.EXPIRY_DOCUMENTS;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAddDocument, setShowAddDocument] = useState(false);
   const [editingItem, setEditingItem] = useState<TExpiryDocumentItem | null>(null);
@@ -95,7 +95,11 @@ const ExpiryDocumentsPage = () => {
 
   const [accumulatedRows, setAccumulatedRows] = useState<TExpiryDocumentItem[]>([]);
 
-  const { data, isLoading, isFetching, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
+  const { data, isLoading, isFetching, isError } = useQuery<
+    TPaginatedResponse<TExpiryDocumentItem> & {
+      counts?: { expired: number; renewal: number; valid: number; unknown: number };
+    }
+  >({
     queryKey: ["expiry-documents", page, limit, nameFilter],
     queryFn: () => fetchExpiryDocuments(page, limit, nameFilter === "all" ? undefined : { name: nameFilter }),
   });
@@ -140,18 +144,13 @@ const ExpiryDocumentsPage = () => {
   const isDocumentFiltered = nameFilter !== "all";
   const activeDocumentLabel = nameFilter === "unnamed" ? "Unnamed" : nameFilter;
 
-  const statusCounts = useMemo(() => {
-    return filteredRows.reduce(
-      (acc, item) => {
-        const status = item.status || calculateStatus(item.expiryDate || "");
-        if (status === "expired") acc.expired += 1;
-        if (status === "renewal") acc.renewal += 1;
-        if (status === "valid") acc.valid += 1;
-        return acc;
-      },
-      { expired: 0, renewal: 0, valid: 0 }
-    );
-  }, [filteredRows]);
+  // Totals come from the server for the whole filtered set, so they don't depend on how many rows are loaded.
+  const statusCounts = {
+    expired: data?.counts?.expired ?? 0,
+    renewal: data?.counts?.renewal ?? 0,
+    valid: data?.counts?.valid ?? 0,
+  };
+  const totalCount = pagination?.total ?? filteredRows.length;
 
   const allSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.includes(row.id));
   const selectedRows = filteredRows.filter((row) => selectedIds.includes(row.id));
@@ -466,7 +465,7 @@ const ExpiryDocumentsPage = () => {
 
       <section
         className={clsx(
-          "relative overflow-visible rounded-3xl p-5 shadow-sm sm:p-6",
+          "relative overflow-visible rounded-2xl p-4 shadow-sm",
           isDocumentFiltered
             ? "border-2 border-amber-400/80 bg-gradient-to-br from-amber-100 via-amber-50 to-rose-50 dark:border-amber-600/70 dark:from-amber-950/30 dark:via-slate-900 dark:to-amber-950/30"
             : "border border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-rose-50 dark:border-amber-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20",
@@ -481,7 +480,7 @@ const ExpiryDocumentsPage = () => {
               <FiAlertCircle />
               Expiry Monitor
             </p>
-            <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 className="mt-1.5 text-base font-black tracking-tight text-slate-900 dark:text-slate-100">
               Document Expiry Control
             </h2>
           </div>
@@ -505,27 +504,15 @@ const ExpiryDocumentsPage = () => {
           </div>
         </div>
 
-        <div className="relative mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-2xl border border-rose-200/70 bg-white/80 p-4 dark:border-rose-800/40 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Expired</p>
-            <p className="mt-1 text-2xl font-black text-rose-600 dark:text-rose-400">{statusCounts.expired}</p>
-          </div>
-          <div className="rounded-2xl border border-amber-200/70 bg-white/80 p-4 dark:border-amber-800/40 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Renewal</p>
-            <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">{statusCounts.renewal}</p>
-          </div>
-          <div className="rounded-2xl border border-emerald-200/70 bg-white/80 p-4 dark:border-emerald-800/40 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Valid</p>
-            <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">{statusCounts.valid}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
-            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">{filteredRows.length}</p>
-          </div>
+        <div className="relative mt-3 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Expired <b className="text-rose-600 dark:text-rose-400">{statusCounts.expired}</b></span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Renewal <b className="text-amber-600 dark:text-amber-400">{statusCounts.renewal}</b></span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Valid <b className="text-emerald-600 dark:text-emerald-400">{statusCounts.valid}</b></span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Total <b className="text-slate-900 dark:text-slate-100">{totalCount}</b></span>
         </div>
 
         {isDocumentFiltered && (
-          <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-100/70 px-4 py-3 text-amber-900 dark:border-amber-700/70 dark:bg-amber-900/20 dark:text-amber-200">
+          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-100/70 px-4 py-3 text-amber-900 dark:border-amber-700/70 dark:bg-amber-900/20 dark:text-amber-200">
             <p className="text-sm font-semibold">
               List filtered by document: <span className="rounded-md bg-white/80 px-2 py-1 font-black dark:bg-slate-900/60">{activeDocumentLabel}</span>
             </p>
@@ -542,8 +529,8 @@ const ExpiryDocumentsPage = () => {
         )}
       </section>
 
-      <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
             <FiFileText className="text-slate-500" />
             {isDocumentFiltered ? `Expiry Documents List - ${activeDocumentLabel}` : "Expiry Documents List"}
@@ -564,23 +551,6 @@ const ExpiryDocumentsPage = () => {
                   {name}
                 </option>
               ))}
-            </select>
-
-            <select
-              title="Documents loaded per batch"
-              value={limit}
-              onChange={(event) => {
-                setLimit(Number(event.target.value));
-                setPage(PAGINATION.DEFAULT_PAGE);
-                setSelectedIds([]);
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
-              <option value={10}>Load 10 at a time</option>
-              <option value={20}>Load 20 at a time</option>
-              <option value={30}>Load 30 at a time</option>
-              <option value={50}>Load 50 at a time</option>
-              <option value={100}>Load 100 at a time</option>
             </select>
           </div>
 
@@ -607,7 +577,7 @@ const ExpiryDocumentsPage = () => {
               <table className="w-full text-left">
                 <thead className="bg-slate-50/80 dark:bg-slate-800/40">
                   <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    <th className="px-3 pb-3">
+                    <th className="px-3 pb-2">
                       <input
                         type="checkbox"
                         aria-label="Select all expiry rows"
@@ -622,11 +592,11 @@ const ExpiryDocumentsPage = () => {
                         className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                       />
                     </th>
-                    <th className="min-w-[240px] pb-3 pl-4">Document</th>
-                    <th className="min-w-[220px] px-4 pb-3">Entity</th>
-                    <th className="min-w-[150px] px-4 pb-3">Expiry Date</th>
-                    <th className="min-w-[100px] px-4 pb-3">Days Left</th>
-                    <th className="min-w-[120px] px-4 pb-3">Status</th>
+                    <th className="min-w-[240px] pb-2 pl-4">Document</th>
+                    <th className="min-w-[220px] px-4 pb-2">Entity</th>
+                    <th className="min-w-[150px] px-4 pb-2">Expiry Date</th>
+                    <th className="min-w-[100px] px-4 pb-2">Days Left</th>
+                    <th className="min-w-[120px] px-4 pb-2">Status</th>
                     <th className="min-w-[120px] px-4 pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -647,7 +617,7 @@ const ExpiryDocumentsPage = () => {
                       <tr
                         className="border-b border-slate-100 transition-colors last:border-0 hover:bg-amber-50/40 dark:border-slate-800 dark:hover:bg-amber-500/5"
                       >
-                        <td className="px-3 py-4">
+                        <td className="px-3 py-2">
                           <input
                             type="checkbox"
                             aria-label={`Select ${item.name || item.id}`}
@@ -662,10 +632,10 @@ const ExpiryDocumentsPage = () => {
                             className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                           />
                         </td>
-                        <td className="py-4 pl-4">
+                        <td className="py-2 pl-4">
                           <div className="flex items-center gap-3">
                             <span
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-white"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm text-white"
                               style={{ backgroundColor: documentAvatarColor }}
                             >
                               <DocumentIcon />
@@ -687,7 +657,7 @@ const ExpiryDocumentsPage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2">
                           <div className="flex min-w-0 items-center gap-3">
                             <EntityAvatar name={displayEntity.name} color={displayEntity.color} size="sm" />
                             <div className="min-w-0 flex-1">
@@ -709,10 +679,10 @@ const ExpiryDocumentsPage = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
+                        <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
                           {formatDate(item.expiryDate || null)}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2">
                           <span
                             className={clsx(
                               "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
@@ -728,7 +698,7 @@ const ExpiryDocumentsPage = () => {
                             {formatRelativeExpiry(daysLeft)}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2">
                           <span
                             className={clsx(
                               "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize",
@@ -744,12 +714,12 @@ const ExpiryDocumentsPage = () => {
                             {status}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => startEditDocument(item)}
-                              className="rounded-lg border border-blue-300 p-2 text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                              className="rounded-lg border border-blue-300 p-1.5 text-blue-700 transition hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-500/10"
                               title="Edit document"
                             >
                               <FiEdit2 className="text-sm" />
@@ -757,7 +727,7 @@ const ExpiryDocumentsPage = () => {
                             <button
                               type="button"
                               onClick={() => createTaskFromDocument(item)}
-                              className="rounded-lg border border-cyan-300 p-2 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
+                              className="rounded-lg border border-cyan-300 p-1.5 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
                               title="Create task from this document"
                             >
                               <FiCheckSquare className="text-sm" />
@@ -765,7 +735,7 @@ const ExpiryDocumentsPage = () => {
                             <button
                               type="button"
                               onClick={() => startArchiveDocument(item)}
-                              className="rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                              className="rounded-lg border border-slate-300 p-1.5 text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                               title="Archive document"
                             >
                               <FiArchive className="text-sm" />
@@ -773,7 +743,7 @@ const ExpiryDocumentsPage = () => {
                             <button
                               type="button"
                               onClick={() => deleteDocument(item)}
-                              className="rounded-lg border border-rose-300 p-2 text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                              className="rounded-lg border border-rose-300 p-1.5 text-rose-700 transition hover:bg-rose-50 dark:border-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10"
                               title="Delete document"
                             >
                               <FiTrash2 className="text-sm" />
