@@ -10,6 +10,7 @@ import {
   FiActivity,
   FiArrowDownRight,
   FiArrowUpRight,
+  FiAward,
   FiBarChart2,
   FiBookOpen,
   FiBriefcase,
@@ -107,6 +108,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const canViewPaymentStatuses = can("settings.manage.payment-statuses");
   const canViewParticularSuggestions = can("settings.manage.particular-suggestions");
   const canViewServices = can("settings.manage.services");
+  const canViewJobTitles = can("settings.manage.job-titles");
   const canViewBusinessPulse =
     can("dashboard.view.business-pulse") || can("payments.view.finance-summary-page");
   const canViewRoles = isDeveloperRole(user?.role);
@@ -639,7 +641,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                 canViewPaymentMethods ||
                 canViewPaymentStatuses ||
                 canViewParticularSuggestions ||
-                canViewServices) && (
+                canViewServices ||
+                canViewJobTitles) && (
                 <SidebarLinkGroup
                   activeCondition={
                     pathname.startsWith("/settings/document-types") ||
@@ -651,6 +654,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     pathname.startsWith("/settings/payment-statuses") ||
                     pathname.startsWith("/settings/templates") ||
                     pathname.startsWith("/settings/services") ||
+                    pathname.startsWith("/settings/job-titles") ||
                     pathname.startsWith("/settings/particular-suggestions")
                   }
                 >
@@ -670,6 +674,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                           pathname.startsWith("/settings/payment-statuses") ||
                           pathname.startsWith("/settings/templates") ||
                           pathname.startsWith("/settings/services") ||
+                          pathname.startsWith("/settings/job-titles") ||
                           pathname.startsWith(
                             "/settings/particular-suggestions",
                           )
@@ -763,6 +768,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                                 icon={<FiTag />}
                                 label="Service Pricelist"
                                 active={pathname === "/settings/services"}
+                              />
+                            </li>
+                          )}
+                          {canViewJobTitles && (
+                            <li>
+                              <NavItem
+                                href="/settings/job-titles"
+                                icon={<FiAward />}
+                                label="Job Titles"
+                                active={pathname === "/settings/job-titles"}
                               />
                             </li>
                           )}

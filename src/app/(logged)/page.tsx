@@ -8,6 +8,7 @@ import {
   FiActivity,
   FiArrowDownRight,
   FiArrowUpRight,
+  FiAward,
   FiBarChart2,
   FiBookOpen,
   FiBox,
@@ -359,6 +360,15 @@ const tiles: Array<{
     section: "Types & Platforms",
   },
   {
+    label: "Job Titles",
+    href: "/settings/job-titles",
+    description: "License & visa",
+    icon: <FiAward className="h-6 w-6" />,
+    accent: "from-cyan-500 via-sky-500 to-blue-600",
+    permissions: ["settings.manage.job-titles"],
+    section: "Types & Platforms",
+  },
+  {
     label: "System Users",
     href: "/users",
     description: "User access",
@@ -403,7 +413,7 @@ const sections = [
   {
     title: "Types & Platforms",
     subtitle: "Settings groups",
-    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist"],
+    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist", "Job Titles"],
   },
   {
     title: "Administration",

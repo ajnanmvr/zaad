@@ -3,6 +3,8 @@ import Jobs, { Counters } from "@/models/jobs";
 import { Entity } from "@/models/entities";
 import Records from "@/models/records";
 import { ServiceError } from "@/services/serviceError";
+import { getDubaiDateParts } from "@/utils/dubaiTime";
+import { JOB_CATEGORY_CODES, type JobCategory } from "@/config/jobTitleSuggestions";
 
 export type JobTotals = {
   totalIncome: number;
@@ -88,6 +90,7 @@ function mapJob(job: any, totals?: JobTotals) {
     client: mapEntity(job.entity),
     id: String(job._id),
     jobId: job.jobId,
+    category: (job.category as JobCategory | undefined) || null,
     title: job.title,
     description: job.description || "",
     status: job.status || "open",
@@ -184,15 +187,21 @@ export async function getJob(id: string) {
   return { ...mapJob(job, totals), byMethod };
 }
 
-async function generateJobId() {
-  // Atomic counter; skip any ID already used by a job or by legacy free-text record IDs.
+// Job IDs look like ZD-26-TL-1043 (ZD, 2-digit year, TL = license / VS = visa, running number).
+const JOB_SERIAL_START = 1000;
+
+async function generateJobId(category: JobCategory) {
+  const yearCode = String(getDubaiDateParts().year % 100).padStart(2, "0");
+  const code = JOB_CATEGORY_CODES[category];
+
+  // Atomic counter shared by both categories; skip any ID already used by a job or a record.
   for (let attempt = 0; attempt < 50; attempt++) {
     const counter = await Counters.findOneAndUpdate(
-      { _id: "jobId" },
+      { _id: "jobSerial" },
       { $inc: { seq: 1 } },
       { new: true, upsert: true },
     );
-    const candidate = `JOB-${String(counter.seq).padStart(4, "0")}`;
+    const candidate = `ZD-${yearCode}-${code}-${JOB_SERIAL_START + counter.seq}`;
     const [jobTaken, recordTaken] = await Promise.all([
       Jobs.exists({ jobId: candidate }),
       Records.exists({ jobId: candidate }),
@@ -202,17 +211,76 @@ async function generateJobId() {
   throw new ServiceError("Could not generate a unique Job ID", 500);
 }
 
+const JOB_ID_RE = /^[A-Z0-9][A-Z0-9_-]{0,39}$/;
+
+function normalizeJobId(value: unknown) {
+  const jobId = String(value ?? "").trim().toUpperCase();
+  if (!JOB_ID_RE.test(jobId)) {
+    throw new ServiceError("Job ID can only contain letters, numbers, - and _ (max 40 characters)", 400);
+  }
+  return jobId;
+}
+
+// A Job ID must be unique across jobs (including deleted ones) and not already used by any record.
+async function assertJobIdFree(jobId: string) {
+  const [jobTaken, recordTaken] = await Promise.all([
+    Jobs.exists({ jobId }),
+    Records.exists({ jobId }),
+  ]);
+  if (jobTaken || recordTaken) {
+    throw new ServiceError(`Job ID ${jobId} is already in use`, 400);
+  }
+}
+
+// The ID the next generated job would get; read-only, so it never consumes the counter.
+export async function peekNextJobId(categoryInput: string | null | undefined) {
+  const category = String(categoryInput ?? "") as JobCategory;
+  if (!Object.prototype.hasOwnProperty.call(JOB_CATEGORY_CODES, category)) {
+    throw new ServiceError("Job type is required (license or visa)", 400);
+  }
+  const yearCode = String(getDubaiDateParts().year % 100).padStart(2, "0");
+  const code = JOB_CATEGORY_CODES[category];
+  const counter = await Counters.findById("jobSerial").lean();
+  let seq = (counter as any)?.seq ?? 0;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    seq += 1;
+    const candidate = `ZD-${yearCode}-${code}-${JOB_SERIAL_START + seq}`;
+    const [jobTaken, recordTaken] = await Promise.all([
+      Jobs.exists({ jobId: candidate }),
+      Records.exists({ jobId: candidate }),
+    ]);
+    if (!jobTaken && !recordTaken) return candidate;
+  }
+  throw new ServiceError("Could not determine the next Job ID", 500);
+}
+
 export async function createJob(input: any, userId?: string) {
   const title = String(input?.title ?? "").trim();
   const entityId = String(input?.entity ?? "").trim();
+  const category = String(input?.category ?? "").trim() as JobCategory;
   if (!title) throw new ServiceError("Title is required", 400);
   if (!entityId) throw new ServiceError("Client is required", 400);
+  if (!Object.prototype.hasOwnProperty.call(JOB_CATEGORY_CODES, category)) {
+    throw new ServiceError("Job type is required (license or visa)", 400);
+  }
 
   const entity = await Entity.findById(entityId).select("_id").lean();
   if (!entity) throw new ServiceError("Client not found", 404);
 
+  // A custom Job ID may be supplied; otherwise one is generated.
+  const customJobId = String(input?.jobId ?? "").trim();
+  let jobId: string;
+  if (customJobId) {
+    jobId = normalizeJobId(customJobId);
+    await assertJobIdFree(jobId);
+  } else {
+    jobId = await generateJobId(category);
+  }
+
   const job = await Jobs.create({
-    jobId: await generateJobId(),
+    jobId,
+    category,
     title,
     description: String(input?.description ?? "").trim(),
     entity: entityId,
@@ -225,7 +293,18 @@ export async function updateJob(id: string, input: any) {
   const current = await Jobs.findOne({ ...jobKey(id), published: true });
   if (!current) throw new ServiceError("Job not found", 404);
 
-  // jobId is immutable: transactions reference it.
+  // Changing the Job ID re-links every transaction that uses the old one.
+  const requestedJobId = String(input?.jobId ?? "").trim();
+  const oldJobId: string = current.jobId;
+  let newJobId = oldJobId;
+  if (requestedJobId) {
+    const normalized = normalizeJobId(requestedJobId);
+    if (normalized !== oldJobId) {
+      await assertJobIdFree(normalized);
+      newJobId = normalized;
+    }
+  }
+
   const title = String(input?.title ?? current.title).trim();
   if (!title) throw new ServiceError("Title is required", 400);
   current.title = title;
@@ -239,7 +318,11 @@ export async function updateJob(id: string, input: any) {
     current.entity = entityId;
   }
 
+  current.jobId = newJobId;
   await current.save();
+  if (newJobId !== oldJobId) {
+    await Records.updateMany({ jobId: oldJobId }, { $set: { jobId: newJobId } });
+  }
   return mapJob(current.toObject());
 }
 

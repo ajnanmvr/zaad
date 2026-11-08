@@ -11,6 +11,8 @@ import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
 import EntityAvatar from "@/components/common/EntityAvatar";
+import JobCategoryTitleFields from "@/components/common/JobCategoryTitleFields";
+import type { JobCategory } from "@/config/jobTitleSuggestions";
 
 type JobRow = {
   id: string;
@@ -55,6 +57,8 @@ export default function JobList({
   const [status, setStatus] = useState<"" | "open" | "closed">("");
   const [isModalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "" });
+  const [category, setCategory] = useState<JobCategory | "">("");
+  const [customJobId, setCustomJobId] = useState("");
   const [client, setClient] = useState<PickedEntity | null>(entity || null);
   const [saving, setSaving] = useState(false);
 
@@ -86,12 +90,18 @@ export default function JobList({
       toast.error("Select a client for this job");
       return;
     }
+    if (!category) {
+      toast.error("Select a job type (License or Visa)");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await axios.post("/api/jobs", { ...form, entity: client.id });
+      const res = await axios.post("/api/jobs", { ...form, category, jobId: customJobId || undefined, entity: client.id });
       toast.success("Job created");
       setModalOpen(false);
       setForm({ title: "", description: "" });
+      setCategory("");
+      setCustomJobId("");
       setClient(entity || null);
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       router.push(`/accounts/jobs/${res.data.data.id}`);
@@ -286,7 +296,7 @@ export default function JobList({
               </button>
             </div>
             <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              The Job ID is generated automatically when you create the job.
+              The Job ID is generated for you when you create the job (you can edit it).
             </p>
             <div>
               <label className={labelClass}>Client</label>
@@ -296,16 +306,14 @@ export default function JobList({
                 <EntitySearchPicker value={client} onChange={setClient} />
               )}
             </div>
-            <div>
-              <label className={labelClass}>Title</label>
-              <input
-                required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className={inputClass}
-                placeholder="Job title"
-              />
-            </div>
+            <JobCategoryTitleFields
+              category={category}
+              onCategoryChange={setCategory}
+              title={form.title}
+              onTitleChange={(title) => setForm({ ...form, title })}
+              jobId={customJobId}
+              onJobIdChange={setCustomJobId}
+            />
             <div>
               <label className={labelClass}>Description</label>
               <textarea

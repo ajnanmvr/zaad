@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   FiArrowRight,
+  FiAward,
   FiBriefcase,
   FiDollarSign,
   FiFileText,
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const canViewDocumentTypes = can("entities.write") || can("settings.write") || can("settings.manage.document-types");
   const canViewCredentialPlatforms = can("entities.write") || can("settings.write") || can("settings.manage.credential-platforms");
   const canViewOfficeCategories = can("payments.write") || can("settings.write") || can("settings.manage.office-categories");
+  const canViewJobTitles = can("settings.manage.job-titles");
   const canViewServices = can("payments.write") || can("settings.write") || can("settings.manage.services");
   const canViewPaymentMethods = can("payments.write") || can("settings.write") || can("settings.manage.payment-methods");
   const canViewPaymentStatuses = can("payments.write") || can("settings.write") || can("settings.manage.payment-statuses");
@@ -39,6 +41,13 @@ export default function SettingsPage() {
     can("users.read");
 
   const navigationItems = [
+    {
+      href: "/settings/job-titles",
+      title: "Job Title Suggestions",
+      description: "Manage license and visa job title suggestions.",
+      icon: FiAward,
+      visible: canViewJobTitles,
+    },
     {
       href: "/settings/service-fee",
       title: "Server Cost + Maintenance",

@@ -15,6 +15,7 @@ export const PERMISSION_GROUPS: Record<string, string[]> = {
     "settings.manage.payment-statuses",
     "settings.manage.particular-suggestions",
     "settings.manage.services",
+    "settings.manage.job-titles",
   ],
   users: [
     "users.read",
