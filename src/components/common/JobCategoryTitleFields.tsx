@@ -9,7 +9,6 @@ import { FiAward, FiCreditCard, FiRotateCcw } from "react-icons/fi";
 import {
   JOB_CATEGORIES,
   JOB_CATEGORY_CODES,
-  JOB_TITLE_SUGGESTIONS,
   type JobCategory,
 } from "@/config/jobTitleSuggestions";
 
@@ -62,12 +61,10 @@ export default function JobCategoryTitleFields({
   });
 
   const allSuggestions = useMemo(() => {
-    const byCategory: Record<JobCategory, string[]> = stored
-      ? {
-          license: stored.filter((item) => item.category === "license").map((item) => item.title),
-          visa: stored.filter((item) => item.category === "visa").map((item) => item.title),
-        }
-      : JOB_TITLE_SUGGESTIONS;
+    const byCategory: Record<JobCategory, string[]> = {
+      license: (stored ?? []).filter((item) => item.category === "license").map((item) => item.title),
+      visa: (stored ?? []).filter((item) => item.category === "visa").map((item) => item.title),
+    };
     return (Object.keys(byCategory) as JobCategory[]).flatMap((cat) =>
       byCategory[cat].map((item) => ({ category: cat, title: item })),
     );
