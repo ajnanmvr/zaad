@@ -1,6 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
-import { requirePermission } from "@/auth/guards";
+import { requireDeveloper, requirePermission } from "@/auth/guards";
 import { createRole, listRoles } from "@/services/roleService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connect();
-    const principal = await requirePermission(request, "settings.write");
+    const principal = await requireDeveloper(request);
 
     const payload = await request.json();
     const role = await createRole(payload, {

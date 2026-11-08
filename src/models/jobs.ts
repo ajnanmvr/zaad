@@ -2,13 +2,15 @@ import mongoose, { Schema, type Model } from "mongoose";
 
 const JobSchema = new Schema(
   {
-    // Auto-generated, human-readable identifier (JOB-0001). Records link via `records.jobId`.
+    // Auto-generated, human-readable identifier (ZD-26-TL-1043; legacy jobs: JOB-0001). Records link via `records.jobId`.
     jobId: {
       type: String,
       required: [true, "Job ID is required"],
       trim: true,
       index: true,
     },
+    // License (TL) or visa (VS); drives the Job ID code. Older JOB-0001 style jobs have none.
+    category: { type: String, enum: ["license", "visa"], index: true },
     title: { type: String, required: [true, "Title is required"], trim: true },
     description: { type: String, trim: true, default: "" },
     entity: {

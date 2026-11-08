@@ -26,6 +26,8 @@ import {
 import ConfirmationModal from "../Modals/ConfirmationModal";
 import ExportActionsMenu from "../common/ExportActionsMenu";
 import { formatDate } from "@/utils/dateUtils";
+import { useUserContext } from "@/contexts/UserContext";
+import { isDeveloperRole } from "@/auth/roleConstants";
 import { exportRowsCsv, exportRowsExcel, exportRowsPdf } from "@/utils/exportTableData";
 
 interface User {
@@ -55,6 +57,8 @@ type UserSort =
   | "fullname-desc";
 
 const UsersList = () => {
+  const { user: currentUser } = useUserContext();
+  const viewerIsDeveloper = isDeveloperRole(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -517,6 +521,24 @@ const UsersList = () => {
                             <FiRefreshCw />
                             Reactivate
                           </button>
+                        ) : isDeveloperRole(item.role) ? (
+                          <>
+                            {viewerIsDeveloper && (
+                              <Link
+                                href={`/users/${item._id}/edit`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold dark:border-slate-700"
+                              >
+                                <FiEdit2 />
+                                Edit
+                              </Link>
+                            )}
+                            <span
+                              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                              title="The developer account is protected"
+                            >
+                              Protected
+                            </span>
+                          </>
                         ) : (
                           <>
                             <Link

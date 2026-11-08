@@ -13,6 +13,7 @@ const PERMISSION_IMPLICATIONS: Record<AppPermission, AppPermission[]> = {
     "settings.manage.payment-methods",
     "settings.manage.payment-statuses",
     "settings.manage.particular-suggestions",
+    "settings.manage.job-titles",
   ],
   "entities.write": [
     "entities.read",

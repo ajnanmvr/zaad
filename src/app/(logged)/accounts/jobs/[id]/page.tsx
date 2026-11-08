@@ -19,6 +19,7 @@ import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
 import TransactionList from "@/components/Tables/TransactionList";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 type JobRecord = {
   id: string;
@@ -51,9 +52,11 @@ export default function JobDetailPage() {
   const canDelete = hasPermission(permissions, "payments.delete.transactions");
 
   const [isEditing, setEditing] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", status: "open" });
+  const [form, setForm] = useState({ jobId: "", title: "", description: "", status: "open" });
   const [formClient, setFormClient] = useState<PickedEntity | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [confirmStep, setConfirmStep] = useState<null | "status" | "delete-1" | "delete-2">(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   useEffect(() => {
     if (user && !canView) router.push("/not-permitted");
@@ -69,6 +72,7 @@ export default function JobDetailPage() {
   const startEdit = () => {
     setFormClient(job.client ? { id: job.client.id, name: job.client.name, type: job.client.type } : null);
     setForm({
+      jobId: job.jobId,
       title: job.title,
       description: job.description || "",
       status: job.status,
@@ -79,10 +83,13 @@ export default function JobDetailPage() {
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const jobIdChanged = form.jobId.trim().toUpperCase() !== job.jobId;
       await axios.put(`/api/jobs/${id}`, { ...form, entity: formClient?.id });
-      toast.success("Job updated");
+      toast.success(jobIdChanged ? "Job updated, linked transactions re-linked to the new Job ID" : "Job updated");
       setEditing(false);
-      queryClient.invalidateQueries({ queryKey: ["job", id] });
+      // The URL may use the old Job ID; move to the stable database ID before refetching.
+      if (jobIdChanged) router.replace(`/accounts/jobs/${job.id}`);
+      queryClient.invalidateQueries({ queryKey: ["job", jobIdChanged ? job.id : id] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["payment"] });
     } catch (error: any) {
@@ -162,31 +169,32 @@ export default function JobDetailPage() {
 
   const toggleStatus = async () => {
     const next = job.status === "closed" ? "open" : "closed";
-    const message =
-      next === "closed"
-        ? `Close job ${job.jobId}? It will no longer appear in job suggestions.`
-        : `Reopen job ${job.jobId}?`;
-    if (!window.confirm(message)) return;
+    setConfirmBusy(true);
     try {
       await axios.put(`/api/jobs/${id}`, { status: next });
       toast.success(next === "closed" ? "Job closed" : "Job reopened");
       queryClient.invalidateQueries({ queryKey: ["job", id] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["job-suggestions"] });
+      setConfirmStep(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to update job status");
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete job ${job.jobId}? Linked transactions are kept.`)) return;
+    setConfirmBusy(true);
     try {
       await axios.delete(`/api/jobs/${id}`);
       toast.success("Job deleted");
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      setConfirmStep(null);
       router.push("/accounts/jobs");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to delete job");
+      setConfirmBusy(false);
     }
   };
 
@@ -227,6 +235,47 @@ export default function JobDetailPage() {
 
   return (
     <>
+      <ConfirmationModal
+        isOpen={confirmStep === "status"}
+        title={job.status === "closed" ? "Reopen job" : "Close job"}
+        message={
+          job.status === "closed"
+            ? `Reopen ${job.jobId}? It will appear in job suggestions again.`
+            : `Close ${job.jobId}? It will no longer appear in job suggestions when creating records.`
+        }
+        confirmLabel={job.status === "closed" ? "Reopen job" : "Close job"}
+        cancelLabel="Cancel"
+        variant={job.status === "closed" ? "primary" : "warning"}
+        isLoading={confirmBusy}
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={toggleStatus}
+      />
+      <ConfirmationModal
+        isOpen={confirmStep === "delete-1"}
+        title="Delete job"
+        message={`Delete ${job.jobId} (${job.title})? Linked transactions are kept.`}
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={() => setConfirmStep("delete-2")}
+      />
+      <ConfirmationModal
+        isOpen={confirmStep === "delete-2"}
+        title="Final confirmation"
+        message={`This will delete ${job.jobId}.${
+          (job.totals?.transactionCount ?? 0) > 0
+            ? ` Its ${job.totals.transactionCount} linked transaction${job.totals.transactionCount === 1 ? "" : "s"} will keep the job ID, but it will no longer open a job page.`
+            : ""
+        } Are you sure?`}
+        confirmLabel="Yes, delete job"
+        cancelLabel="Go back"
+        variant="danger"
+        isLoading={confirmBusy}
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={handleDelete}
+      />
+
       <section
         className={`overflow-hidden rounded-3xl border bg-white shadow-sm dark:bg-slate-900 ${
           isClosed ? "border-slate-200 dark:border-slate-700" : "border-cyan-200 dark:border-cyan-900/50"
@@ -236,6 +285,21 @@ export default function JobDetailPage() {
         {isEditing ? (
           <form onSubmit={saveEdit} className="grid gap-3 p-4 sm:grid-cols-2">
             <EntitySearchPicker value={formClient} onChange={setFormClient} />
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Job ID</label>
+              <input
+                required
+                value={form.jobId}
+                onChange={(e) => setForm({ ...form, jobId: e.target.value.toUpperCase() })}
+                className={`${inputClass} font-mono tracking-wide`}
+                placeholder="Job ID"
+              />
+              {form.jobId.trim().toUpperCase() !== job.jobId && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  Changing the Job ID updates every transaction linked to {job.jobId}.
+                </p>
+              )}
+            </div>
             <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} placeholder="Title" />
             <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={`${inputClass} sm:col-span-2`} placeholder="Description" />
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputClass}>
@@ -255,6 +319,11 @@ export default function JobDetailPage() {
                   <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                     {job.jobId}
                   </span>
+                  {job.category && (
+                    <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300">
+                      {job.category === "visa" ? "Visa" : "License"}
+                    </span>
+                  )}
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
                       isClosed
@@ -316,7 +385,7 @@ export default function JobDetailPage() {
                   {canUpdate && (
                     <button
                       type="button"
-                      onClick={toggleStatus}
+                      onClick={() => setConfirmStep("status")}
                       className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                         isClosed
                           ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
@@ -335,7 +404,7 @@ export default function JobDetailPage() {
                     </button>
                   )}
                   {canDelete && (
-                    <button type="button" onClick={handleDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                    <button type="button" onClick={() => setConfirmStep("delete-1")} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                       <FiTrash2 /> Delete
                     </button>
                   )}

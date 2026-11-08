@@ -30,6 +30,7 @@ import {
   FiInfo,
   FiMenu,
   FiPlusCircle,
+  FiPrinter,
   FiRefreshCw,
   FiSearch,
   FiX
@@ -1721,6 +1722,13 @@ const TransactionList = ({
 
                             <td className="py-4 pr-4 pl-2 align-top text-center">
                               <div className="flex items-center justify-center space-x-2">
+                                <Link
+                                  title="Print Receipt"
+                                  href={`/accounts/receipt/${record?.id}`}
+                                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800/80 dark:hover:text-slate-200"
+                                >
+                                  <FiPrinter className="text-lg" />
+                                </Link>
                                 <Link
                                   title="Open Transaction Details"
                                   href={`/accounts/transactions/details/${record?.id}`}

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import IdleLogout from "@/components/common/IdleLogout";
+import { ServiceFeeBar } from "@/components/ServiceFee/ServiceFeeNotice";
 import { useUserContext } from "@/contexts/UserContext";
 
 function AppLoadingScreen() {
@@ -51,13 +52,16 @@ export default function DefaultLayout({
 
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-          <main>
-            <div className="mx-auto w-full max-w-screen-2xl px-4 pb-10 pt-4 md:px-6 2xl:px-10">
-              {children}
-            </div>
-          </main>
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+            <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            <main>
+              <div className="mx-auto w-full max-w-screen-2xl px-4 pb-10 pt-4 md:px-6 2xl:px-10">
+                {children}
+              </div>
+            </main>
+          </div>
+          <ServiceFeeBar />
         </div>
 
       </div>

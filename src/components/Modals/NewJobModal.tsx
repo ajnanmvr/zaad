@@ -6,6 +6,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiX } from "react-icons/fi";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
+import JobCategoryTitleFields from "@/components/common/JobCategoryTitleFields";
+import type { JobCategory } from "@/config/jobTitleSuggestions";
 
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -22,7 +24,9 @@ export default function NewJobModal({
   onCreated: (job: { id: string; jobId: string; title: string }) => void;
 }) {
   const [client, setClient] = useState<PickedEntity | null>(defaultClient || null);
+  const [category, setCategory] = useState<JobCategory | "">("");
   const [title, setTitle] = useState("");
+  const [jobId, setJobId] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -34,9 +38,13 @@ export default function NewJobModal({
       toast.error("Select a client for this job");
       return;
     }
+    if (!category) {
+      toast.error("Select a job type (License or Visa)");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await axios.post("/api/jobs", { title, description, entity: client.id });
+      const res = await axios.post("/api/jobs", { title, description, category, jobId: jobId || undefined, entity: client.id });
       toast.success(`Job ${res.data.data.jobId} created`);
       onCreated(res.data.data);
     } catch (error: any) {
@@ -60,23 +68,21 @@ export default function NewJobModal({
           </button>
         </div>
         <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-          The Job ID is generated automatically and will be filled into the record.
+          The Job ID is generated for you (you can edit it) and will be filled into the record.
         </p>
         <div>
           <label className={labelClass}>Client</label>
           <EntitySearchPicker value={client} onChange={setClient} />
         </div>
-        <div>
-          <label className={labelClass}>Title</label>
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={inputClass}
-            placeholder="Job title"
-            autoFocus
-          />
-        </div>
+        <JobCategoryTitleFields
+          category={category}
+          onCategoryChange={setCategory}
+          title={title}
+          onTitleChange={setTitle}
+          jobId={jobId}
+          onJobIdChange={setJobId}
+          autoFocusTitle
+        />
         <div>
           <label className={labelClass}>Description</label>
           <textarea

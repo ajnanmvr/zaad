@@ -1,12 +1,14 @@
 "use client";
 
 import { hasPermission } from "@/auth/permissions";
+import { isDeveloperRole } from "@/auth/roleConstants";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
 import {
   FiActivity,
   FiArrowDownRight,
   FiArrowUpRight,
+  FiAward,
   FiBarChart2,
   FiBookOpen,
   FiBox,
@@ -27,6 +29,7 @@ import {
   FiLock,
   FiPackage,
   FiRepeat,
+  FiServer,
   FiSettings,
   FiShield,
   FiTag,
@@ -38,7 +41,26 @@ import {
   FiUserPlus
 } from "react-icons/fi";
 
-const tiles = [
+const tiles: Array<{
+  label: string;
+  href: string;
+  description: string;
+  icon: React.ReactNode;
+  accent: string;
+  permissions: string[];
+  section: string;
+  developerOnly?: boolean;
+}> = [
+  {
+    label: "Record Maintenance Fee",
+    href: "/settings/service-fee",
+    description: "Server + maintenance",
+    icon: <FiServer className="h-6 w-6" />,
+    accent: "from-rose-500 via-red-500 to-orange-500",
+    permissions: [],
+    section: "Overview",
+    developerOnly: true,
+  },
   {
     label: "Business Pulse",
     href: "/business-pulse",
@@ -261,8 +283,9 @@ const tiles = [
     description: "Access control",
     icon: <FiKey className="h-6 w-6" />,
     accent: "from-slate-700 via-slate-800 to-cyan-900",
-    permissions: ["settings.manage.roles", "settings.manage.permissions", "roles.manage"],
+    permissions: [],
     section: "Administration",
+    developerOnly: true,
   },
   {
     label: "Change Password",
@@ -337,6 +360,15 @@ const tiles = [
     section: "Types & Platforms",
   },
   {
+    label: "Job Titles",
+    href: "/settings/job-titles",
+    description: "License & visa",
+    icon: <FiAward className="h-6 w-6" />,
+    accent: "from-cyan-500 via-sky-500 to-blue-600",
+    permissions: ["settings.manage.job-titles"],
+    section: "Types & Platforms",
+  },
+  {
     label: "System Users",
     href: "/users",
     description: "User access",
@@ -351,7 +383,7 @@ const sections = [
   {
     title: "Overview",
     subtitle: "Overview and workflow",
-    tileLabels: ["Dashboard", "Business Pulse", "My Tasks", "Task Calendar", "Expiry Documents", "Physical Handover"],
+    tileLabels: ["Record Maintenance Fee", "Dashboard", "Business Pulse", "My Tasks", "Task Calendar", "Expiry Documents", "Physical Handover"],
   },
   {
     title: "Entities",
@@ -381,7 +413,7 @@ const sections = [
   {
     title: "Types & Platforms",
     subtitle: "Settings groups",
-    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist"],
+    tileLabels: ["Document Types", "Credential Platforms", "Office Categories", "Payment Methods", "Payment Statuses", "Particular Suggestions", "Service Pricelist", "Job Titles"],
   },
   {
     title: "Administration",
@@ -395,9 +427,10 @@ export default function Home() {
   const { user } = useUserContext();
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
-  const visibleTiles = tiles.filter(
-    (tile) => tile.permissions.length === 0 || tile.permissions.some((permission) => hasPermission(permissions, permission)),
-  );
+  const visibleTiles = tiles.filter((tile) => {
+    if (tile.developerOnly) return isDeveloperRole(user?.role);
+    return tile.permissions.length === 0 || tile.permissions.some((permission) => hasPermission(permissions, permission));
+  });
 
   const tilesByLabel = new Map(visibleTiles.map((tile) => [tile.label, tile]));
   const visibleSections = sections
