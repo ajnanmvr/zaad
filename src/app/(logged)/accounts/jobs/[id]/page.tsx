@@ -179,7 +179,15 @@ export default function JobDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete job ${job.jobId}? Linked transactions are kept.`)) return;
+    // Two separate confirmations before a job is deleted.
+    if (!window.confirm(`Delete job ${job.jobId} (${job.title})? Linked transactions are kept.`)) return;
+    const count = job.totals?.transactionCount ?? 0;
+    if (
+      !window.confirm(
+        `Final confirmation: delete ${job.jobId}?${count > 0 ? ` ${count} linked transaction${count === 1 ? "" : "s"} will keep the job ID, but it will no longer open a job page.` : ""}`,
+      )
+    )
+      return;
     try {
       await axios.delete(`/api/jobs/${id}`);
       toast.success("Job deleted");

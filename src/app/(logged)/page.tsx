@@ -1,6 +1,7 @@
 "use client";
 
 import { hasPermission } from "@/auth/permissions";
+import { isDeveloperRole } from "@/auth/roleConstants";
 import { useUserContext } from "@/contexts/UserContext";
 import Link from "next/link";
 import {
@@ -27,6 +28,7 @@ import {
   FiLock,
   FiPackage,
   FiRepeat,
+  FiServer,
   FiSettings,
   FiShield,
   FiTag,
@@ -38,7 +40,26 @@ import {
   FiUserPlus
 } from "react-icons/fi";
 
-const tiles = [
+const tiles: Array<{
+  label: string;
+  href: string;
+  description: string;
+  icon: React.ReactNode;
+  accent: string;
+  permissions: string[];
+  section: string;
+  developerOnly?: boolean;
+}> = [
+  {
+    label: "Record Maintenance Fee",
+    href: "/settings/service-fee",
+    description: "Server + maintenance",
+    icon: <FiServer className="h-6 w-6" />,
+    accent: "from-rose-500 via-red-500 to-orange-500",
+    permissions: [],
+    section: "Overview",
+    developerOnly: true,
+  },
   {
     label: "Business Pulse",
     href: "/business-pulse",
@@ -351,7 +372,7 @@ const sections = [
   {
     title: "Overview",
     subtitle: "Overview and workflow",
-    tileLabels: ["Dashboard", "Business Pulse", "My Tasks", "Task Calendar", "Expiry Documents", "Physical Handover"],
+    tileLabels: ["Record Maintenance Fee", "Dashboard", "Business Pulse", "My Tasks", "Task Calendar", "Expiry Documents", "Physical Handover"],
   },
   {
     title: "Entities",
@@ -395,9 +416,10 @@ export default function Home() {
   const { user } = useUserContext();
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
 
-  const visibleTiles = tiles.filter(
-    (tile) => tile.permissions.length === 0 || tile.permissions.some((permission) => hasPermission(permissions, permission)),
-  );
+  const visibleTiles = tiles.filter((tile) => {
+    if (tile.developerOnly) return isDeveloperRole(user?.role);
+    return tile.permissions.length === 0 || tile.permissions.some((permission) => hasPermission(permissions, permission));
+  });
 
   const tilesByLabel = new Map(visibleTiles.map((tile) => [tile.label, tile]));
   const visibleSections = sections

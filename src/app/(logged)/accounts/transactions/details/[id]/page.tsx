@@ -34,7 +34,8 @@ import {
   FiMessageSquare,
   FiBox,
   FiFileText,
-  FiBookmark
+  FiBookmark,
+  FiPrinter
 } from "react-icons/fi";
 
 const renderBadge = (status: string | undefined, colorClass: string) => (
@@ -223,6 +224,14 @@ const TransactionDetailsPage = () => {
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <FiExternalLink /> View Entity
+              </Link>
+            ) : null}
+            {record?.recordKind !== "self_transfer" ? (
+              <Link
+                href={`/accounts/receipt/${record?.id}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-700 transition hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20"
+              >
+                <FiPrinter /> Print Receipt
               </Link>
             ) : null}
             {record?.recordKind !== "self_transfer" ? (

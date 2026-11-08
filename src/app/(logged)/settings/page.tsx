@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   FiArrowRight,
   FiBriefcase,
+  FiDollarSign,
   FiFileText,
   FiLayers,
   FiLink,
@@ -15,6 +16,7 @@ import {
 
 import Breadcrumb from "@/components/Breadcrumbs/Breadcrumb";
 import { useUserContext } from "@/contexts/UserContext";
+import { isDeveloperRole } from "@/auth/roleConstants";
 
 export default function SettingsPage() {
   const { user } = useUserContext();
@@ -37,6 +39,13 @@ export default function SettingsPage() {
     can("users.read");
 
   const navigationItems = [
+    {
+      href: "/settings/service-fee",
+      title: "Server Cost + Maintenance",
+      description: "Track server cost + maintenance charge payments month by month.",
+      icon: FiDollarSign,
+      visible: isDeveloperRole(user?.role),
+    },
     {
       href: "/settings/document-types",
       title: "Document Types",
