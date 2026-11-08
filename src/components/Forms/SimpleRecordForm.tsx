@@ -78,6 +78,12 @@ interface EntityOption {
   company?: { _id?: string; name?: string } | null;
 }
 
+interface SelectedJob {
+  jobId: string;
+  title?: string;
+  client?: { id?: string; name: string; type: string; color?: string; companyId?: string } | null;
+}
+
 interface PreviousPaymentSequence {
   suffix?: string;
   number?: number;
@@ -764,6 +770,39 @@ const SimpleRecordForm = ({
 
   const [jobPickerOpen, setJobPickerOpen] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<SelectedJob | null>(null);
+  const resolvedJobRef = useRef<string>("");
+
+  const resolveJob = useCallback(async (jobId: string) => {
+    const id = jobId.trim();
+    if (!id) return;
+    try {
+      const res = await axios.get("/api/jobs", { params: { q: id, limit: 10 } });
+      const match = (res.data?.jobs || []).find((j: any) => j.jobId === id);
+      if (match) {
+        setSelectedJob({
+          jobId: match.jobId,
+          title: match.title,
+          client: match.client || null,
+        });
+      }
+    } catch {
+      // Leave as plain text job ID if lookup fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = String(formData.jobId || "").trim();
+    if (!isEdit || !id || resolvedJobRef.current === id) return;
+    resolvedJobRef.current = id;
+    void resolveJob(id);
+  }, [isEdit, formData.jobId, resolveJob]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    const prefill = String(searchParams.get("jobId") || "").trim();
+    if (prefill) void resolveJob(prefill);
+  }, [isEdit, searchParams, resolveJob]);
   const { data: jobSuggestions } = useQuery({
     queryKey: ["job-suggestions", formData.jobId || "", selectedEntity?._id || ""],
     queryFn: async () =>
@@ -772,7 +811,7 @@ const SimpleRecordForm = ({
           params: {
             q: formData.jobId || "",
             status: "open",
-            limit: 8,
+            limit: 5,
             entityId: selectedEntity?._id || undefined,
           },
         })
@@ -780,6 +819,17 @@ const SimpleRecordForm = ({
     enabled: jobPickerOpen,
     staleTime: 15_000,
   });
+
+  // Warn when the linked job's client is unrelated to the selected entity
+  // (same entity, or an employee of that company either way, is fine).
+  const jobClientMismatch = (() => {
+    const client = selectedJob?.client;
+    if (!client?.id || !selectedEntity || selectedJob?.jobId !== formData.jobId) return false;
+    if (client.id === selectedEntity._id) return false;
+    if (client.companyId && client.companyId === selectedEntity._id) return false;
+    if (selectedEntity.company?._id && selectedEntity.company._id === client.id) return false;
+    return true;
+  })();
 
   const handleRecordKindChange = (kind: RecordKind) => {
     const visibility = getFormVisibility(kind, formData.type);
@@ -1876,6 +1926,42 @@ const theme = usesNeutralTheme
                     <FiPlus className="h-3.5 w-3.5" /> New job
                   </button>
                 </div>
+                {selectedJob && selectedJob.jobId === formData.jobId ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+                    {selectedJob.client && (
+                      <EntityAvatar
+                        name={selectedJob.client.name}
+                        color={selectedJob.client.color}
+                        size="sm"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedJob.jobId}
+                        {selectedJob.title && (
+                          <span className="ml-2 font-normal text-slate-500">{selectedJob.title}</span>
+                        )}
+                      </p>
+                      {selectedJob.client && (
+                        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                          {selectedJob.client.name} · {selectedJob.client.type}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedJob(null);
+                        setFormData((prev) => ({ ...prev, jobId: "" }));
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
+                      aria-label="Remove selected job"
+                      title="Remove selected job"
+                    >
+                      <FiX className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
                 <div className="relative">
                   <input
                     name="jobId"
@@ -1894,7 +1980,7 @@ const theme = usesNeutralTheme
                           id: string;
                           jobId: string;
                           title: string;
-                          client?: { name: string; type: string; color?: string } | null;
+                          client?: { id?: string; name: string; type: string; color?: string; companyId?: string } | null;
                         }) => (
                           <li key={job.id}>
                             <button
@@ -1902,6 +1988,27 @@ const theme = usesNeutralTheme
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => {
                                 setFormData((prev) => ({ ...prev, jobId: job.jobId }));
+                                setSelectedJob({
+                                  jobId: job.jobId,
+                                  title: job.title,
+                                  client: job.client || null,
+                                });
+                                if (!selectedEntity && job.client?.id && needsEntity) {
+                                  const clientEntity: EntityOption = {
+                                    _id: job.client.id,
+                                    name: job.client.name,
+                                    color: job.client.color,
+                                    entityType: job.client.type as EntityOption["entityType"],
+                                  };
+                                  setSelectedEntity(clientEntity);
+                                  setEntitySearch(clientEntity.name);
+                                  setShowEntityDropdown(false);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    jobId: job.jobId,
+                                    entity: clientEntity._id,
+                                  }));
+                                }
                                 setJobPickerOpen(false);
                               }}
                               className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1934,6 +2041,16 @@ const theme = usesNeutralTheme
                     </ul>
                   )}
                 </div>
+                )}
+                {jobClientMismatch && selectedJob?.client && selectedEntity && (
+                  <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
+                    <FiAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                      This job belongs to <b>{selectedJob.client.name}</b>, but the selected entity is{" "}
+                      <b>{selectedEntity.name}</b>. Make sure this record should be linked to this job.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="mt-3">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
@@ -2003,6 +2120,7 @@ const theme = usesNeutralTheme
             onClose={() => setNewJobOpen(false)}
             onCreated={(job) => {
               setFormData((prev) => ({ ...prev, jobId: job.jobId }));
+              void resolveJob(job.jobId);
               setNewJobOpen(false);
             }}
           />
