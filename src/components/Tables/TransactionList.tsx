@@ -1,4 +1,5 @@
 "use client";
+import { isAdminRoleName } from "@/auth/roleConstants";
 import { useUserContext } from "@/contexts/UserContext";
 import { TRecordList } from "@/types/records";
 import { formatDateTime } from "@/utils/dateUtils";
@@ -341,7 +342,7 @@ const TransactionList = ({
   const canAdminRefresh = user ? hasPermission(permissions, "payments.manage.recompute-monthly-stats") || hasPermission(permissions, "payments.admin") || hasPermission(permissions, "admin.access") : false;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const normalizedRole = (user?.role || "").toLowerCase().replace(/[\s_-]+/g, "");
-  const isAdmin = ["admin", "superadmin"].includes(normalizedRole);
+  const isAdmin = isAdminRoleName(normalizedRole);
 
   const [pageNumber, setPageNumber] = useState(0);
   const [isFilterOpen, setFilterOpen] = useState(false);

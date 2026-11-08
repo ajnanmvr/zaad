@@ -173,6 +173,7 @@ export async function listExpiryDocuments(
             total: 0,
             totalPages: 0,
           },
+          counts: { expired: 0, renewal: 0, valid: 0, unknown: 0 },
         };
       }
 
@@ -180,7 +181,7 @@ export async function listExpiryDocuments(
     }
   }
 
-  const [documents, total] = await Promise.all([
+  const [documents, total, statusBuckets] = await Promise.all([
     EntityDocument.find(query)
       .populate("documentTemplate", "name color category")
       .select("entity documentTemplate issueDate expiryDate notes")
@@ -188,7 +189,41 @@ export async function listExpiryDocuments(
       .skip(skip)
       .limit(normalizedLimit),
     EntityDocument.countDocuments(query),
+    // Status totals across ALL matching documents (not just the loaded page); mirrors calculateStatus.
+    EntityDocument.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          expiryAt: { $dateFromString: { dateString: "$expiryDate", onError: null, onNull: null } },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$expiryAt", null] }, then: "unknown" },
+                { case: { $lt: ["$expiryAt", "$$NOW"] }, then: "expired" },
+                {
+                  case: {
+                    $lte: ["$expiryAt", { $dateAdd: { startDate: "$$NOW", unit: "day", amount: 30 } }],
+                  },
+                  then: "renewal",
+                },
+              ],
+              default: "valid",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
+
+  const counts = { expired: 0, renewal: 0, valid: 0, unknown: 0 };
+  for (const bucket of statusBuckets as Array<{ _id: keyof typeof counts; count: number }>) {
+    if (bucket._id in counts) counts[bucket._id] = bucket.count;
+  }
 
   const entityIds = documents
     .map((doc) => doc.entity?.toString())
@@ -257,6 +292,7 @@ export async function listExpiryDocuments(
       total,
       totalPages: Math.ceil(total / normalizedLimit),
     },
+    counts,
   };
 }
 

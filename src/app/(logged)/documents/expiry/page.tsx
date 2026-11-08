@@ -95,7 +95,11 @@ const ExpiryDocumentsPage = () => {
 
   const [accumulatedRows, setAccumulatedRows] = useState<TExpiryDocumentItem[]>([]);
 
-  const { data, isLoading, isFetching, isError } = useQuery<TPaginatedResponse<TExpiryDocumentItem>>({
+  const { data, isLoading, isFetching, isError } = useQuery<
+    TPaginatedResponse<TExpiryDocumentItem> & {
+      counts?: { expired: number; renewal: number; valid: number; unknown: number };
+    }
+  >({
     queryKey: ["expiry-documents", page, limit, nameFilter],
     queryFn: () => fetchExpiryDocuments(page, limit, nameFilter === "all" ? undefined : { name: nameFilter }),
   });
@@ -140,18 +144,13 @@ const ExpiryDocumentsPage = () => {
   const isDocumentFiltered = nameFilter !== "all";
   const activeDocumentLabel = nameFilter === "unnamed" ? "Unnamed" : nameFilter;
 
-  const statusCounts = useMemo(() => {
-    return filteredRows.reduce(
-      (acc, item) => {
-        const status = item.status || calculateStatus(item.expiryDate || "");
-        if (status === "expired") acc.expired += 1;
-        if (status === "renewal") acc.renewal += 1;
-        if (status === "valid") acc.valid += 1;
-        return acc;
-      },
-      { expired: 0, renewal: 0, valid: 0 }
-    );
-  }, [filteredRows]);
+  // Totals come from the server for the whole filtered set, so they don't depend on how many rows are loaded.
+  const statusCounts = {
+    expired: data?.counts?.expired ?? 0,
+    renewal: data?.counts?.renewal ?? 0,
+    valid: data?.counts?.valid ?? 0,
+  };
+  const totalCount = pagination?.total ?? filteredRows.length;
 
   const allSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.includes(row.id));
   const selectedRows = filteredRows.filter((row) => selectedIds.includes(row.id));
@@ -509,7 +508,7 @@ const ExpiryDocumentsPage = () => {
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Expired <b className="text-rose-600 dark:text-rose-400">{statusCounts.expired}</b></span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Renewal <b className="text-amber-600 dark:text-amber-400">{statusCounts.renewal}</b></span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Valid <b className="text-emerald-600 dark:text-emerald-400">{statusCounts.valid}</b></span>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Total <b className="text-slate-900 dark:text-slate-100">{filteredRows.length}</b></span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900/70">Total <b className="text-slate-900 dark:text-slate-100">{totalCount}</b></span>
         </div>
 
         {isDocumentFiltered && (

@@ -1686,7 +1686,7 @@ export default function EntitySectionPage({
                     </div>
                   )}
 
-                  {missingDocumentGroups.length > 0 && (
+                  {entityType === "company" && missingDocumentGroups.length > 0 && (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/20">
                       <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         <FiPlus className="text-sm" />
