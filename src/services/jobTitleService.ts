@@ -1,5 +1,5 @@
 import JobTitleSuggestion from "@/models/jobTitleSuggestions";
-import { JOB_CATEGORY_CODES, JOB_TITLE_SUGGESTIONS, type JobCategory } from "@/config/jobTitleSuggestions";
+import { JOB_CATEGORY_CODES, type JobCategory } from "@/config/jobTitleSuggestions";
 import { ServiceError } from "./serviceError";
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -11,17 +11,7 @@ function mapSuggestion(doc: any) {
   return { id: String(doc._id), category: doc.category as JobCategory, title: doc.title as string };
 }
 
-// First use: seed the defaults from config so the lists are never empty.
-async function ensureSeeded() {
-  if ((await JobTitleSuggestion.estimatedDocumentCount()) > 0) return;
-  const rows = (Object.keys(JOB_TITLE_SUGGESTIONS) as JobCategory[]).flatMap((category) =>
-    JOB_TITLE_SUGGESTIONS[category].map((title) => ({ category, title })),
-  );
-  await JobTitleSuggestion.insertMany(rows, { ordered: false }).catch(() => undefined);
-}
-
 export async function listJobTitleSuggestions(category?: string | null) {
-  await ensureSeeded();
   const filter: Record<string, unknown> = { published: true };
   if (category && isCategory(category)) filter.category = category;
   const rows = await JobTitleSuggestion.find(filter).sort({ category: 1, title: 1 }).lean();
@@ -49,7 +39,6 @@ async function assertUnique(category: JobCategory, title: string, excludeId?: st
 
 export async function createJobTitleSuggestion(input: any) {
   const data = validate(input);
-  await ensureSeeded();
   await assertUnique(data.category, data.title);
   const created = await JobTitleSuggestion.create(data);
   return mapSuggestion(created.toObject());
