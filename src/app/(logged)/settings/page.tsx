@@ -100,14 +100,14 @@ export default function SettingsPage() {
       title: "Roles",
       description: "Manage roles and inspect permission groups.",
       icon: FiShield,
-      visible: canViewRoles,
+      visible: isDeveloperRole(user?.role) && canViewRoles,
     },
     {
       href: "/settings/permissions",
       title: "Permissions",
       description: "View access permissions in one place.",
       icon: FiShield,
-      visible: canViewPermissions,
+      visible: isDeveloperRole(user?.role) && canViewPermissions,
     },
     {
       href: "/settings/change-password",

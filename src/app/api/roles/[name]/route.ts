@@ -1,6 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
-import { requirePermission } from "@/auth/guards";
+import { requireDeveloper } from "@/auth/guards";
 import Role from "@/models/roles";
 import { deleteRole, updateRole } from "@/services/roleService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     await connect();
-    await requirePermission(request, "settings.read");
+    await requireDeveloper(request);
 
     const normalizedName = params.name.trim().toLowerCase();
     const role = await Role.findOne({ name: normalizedName, published: true })
@@ -36,7 +36,7 @@ export async function PUT(
 ) {
   try {
     await connect();
-    const principal = await requirePermission(request, "settings.write");
+    const principal = await requireDeveloper(request);
 
     const payload = await request.json();
     const role = await updateRole(params.name, payload, {
@@ -59,7 +59,7 @@ export async function DELETE(
 ) {
   try {
     await connect();
-    const principal = await requirePermission(request, "settings.write");
+    const principal = await requireDeveloper(request);
 
     await deleteRole(params.name, {
       performedById: principal.userId,

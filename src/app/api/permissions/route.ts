@@ -1,6 +1,6 @@
 import connect from "@/db/mongo";
 import { NextRequest } from "next/server";
-import { requirePermission } from "@/auth/guards";
+import { requireDeveloper } from "@/auth/guards";
 import { ALL_PERMISSIONS, PERMISSION_GROUPS } from "@/auth/permissionCatalog";
 import { listRoles } from "@/services/roleService";
 import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/serviceError";
@@ -8,7 +8,7 @@ import { getServiceErrorMessage, getServiceErrorStatus } from "@/services/servic
 export async function GET(request: NextRequest) {
   try {
     await connect();
-    await requirePermission(request, "settings.read");
+    await requireDeveloper(request);
 
     const roles = await listRoles();
     return Response.json(

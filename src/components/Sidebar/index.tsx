@@ -51,6 +51,7 @@ import {
 } from "react-icons/fi";
 
 import { useUserContext } from "@/contexts/UserContext";
+import { isDeveloperRole } from "@/auth/roleConstants";
 import SidebarLinkGroup from "./SidebarLinkGroup";
 import { hasPermission } from "@/auth/permissions";
 
@@ -108,7 +109,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   const canViewServices = can("settings.manage.services");
   const canViewBusinessPulse =
     can("dashboard.view.business-pulse") || can("payments.view.finance-summary-page");
-  const canViewRoles = can("settings.manage.roles") || can("settings.read") || can("roles.manage");
+  const canViewRoles = isDeveloperRole(user?.role);
   const canViewPermissions = can("settings.manage.permissions") || can("settings.read");
 
   const trigger = useRef<HTMLButtonElement | null>(null);

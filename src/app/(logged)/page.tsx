@@ -282,8 +282,9 @@ const tiles: Array<{
     description: "Access control",
     icon: <FiKey className="h-6 w-6" />,
     accent: "from-slate-700 via-slate-800 to-cyan-900",
-    permissions: ["settings.manage.roles", "settings.manage.permissions", "roles.manage"],
+    permissions: [],
     section: "Administration",
+    developerOnly: true,
   },
   {
     label: "Change Password",

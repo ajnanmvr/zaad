@@ -7,6 +7,7 @@ import {
   hasPermission,
 } from "./permissions";
 import { getPermissionsForRole } from "@/services/roleService";
+import { isDeveloperRole } from "./roleConstants";
 
 export class AuthError extends Error {
   status: number;
@@ -83,6 +84,17 @@ export async function requireRole(
 
   if (principal.role !== role) {
     throw new AuthError(`Required role: ${role}`, 403);
+  }
+
+  return principal;
+}
+
+/** Only the developer role passes; used for role/permission administration. */
+export async function requireDeveloper(request: NextRequest): Promise<AuthPrincipal> {
+  const principal = await requireAuth(request);
+
+  if (!isDeveloperRole(principal.role)) {
+    throw new AuthError("Only the developer can manage roles and permissions", 403);
   }
 
   return principal;

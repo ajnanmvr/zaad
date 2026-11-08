@@ -19,6 +19,7 @@ import { hasPermission } from "@/auth/permissions";
 import { useUserContext } from "@/contexts/UserContext";
 import EntitySearchPicker, { type PickedEntity } from "@/components/common/EntitySearchPicker";
 import TransactionList from "@/components/Tables/TransactionList";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 type JobRecord = {
   id: string;
@@ -54,6 +55,8 @@ export default function JobDetailPage() {
   const [form, setForm] = useState({ title: "", description: "", status: "open" });
   const [formClient, setFormClient] = useState<PickedEntity | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [confirmStep, setConfirmStep] = useState<null | "status" | "delete-1" | "delete-2">(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   useEffect(() => {
     if (user && !canView) router.push("/not-permitted");
@@ -162,39 +165,32 @@ export default function JobDetailPage() {
 
   const toggleStatus = async () => {
     const next = job.status === "closed" ? "open" : "closed";
-    const message =
-      next === "closed"
-        ? `Close job ${job.jobId}? It will no longer appear in job suggestions.`
-        : `Reopen job ${job.jobId}?`;
-    if (!window.confirm(message)) return;
+    setConfirmBusy(true);
     try {
       await axios.put(`/api/jobs/${id}`, { status: next });
       toast.success(next === "closed" ? "Job closed" : "Job reopened");
       queryClient.invalidateQueries({ queryKey: ["job", id] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["job-suggestions"] });
+      setConfirmStep(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to update job status");
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
   const handleDelete = async () => {
-    // Two separate confirmations before a job is deleted.
-    if (!window.confirm(`Delete job ${job.jobId} (${job.title})? Linked transactions are kept.`)) return;
-    const count = job.totals?.transactionCount ?? 0;
-    if (
-      !window.confirm(
-        `Final confirmation: delete ${job.jobId}?${count > 0 ? ` ${count} linked transaction${count === 1 ? "" : "s"} will keep the job ID, but it will no longer open a job page.` : ""}`,
-      )
-    )
-      return;
+    setConfirmBusy(true);
     try {
       await axios.delete(`/api/jobs/${id}`);
       toast.success("Job deleted");
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      setConfirmStep(null);
       router.push("/accounts/jobs");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to delete job");
+      setConfirmBusy(false);
     }
   };
 
@@ -235,6 +231,47 @@ export default function JobDetailPage() {
 
   return (
     <>
+      <ConfirmationModal
+        isOpen={confirmStep === "status"}
+        title={job.status === "closed" ? "Reopen job" : "Close job"}
+        message={
+          job.status === "closed"
+            ? `Reopen ${job.jobId}? It will appear in job suggestions again.`
+            : `Close ${job.jobId}? It will no longer appear in job suggestions when creating records.`
+        }
+        confirmLabel={job.status === "closed" ? "Reopen job" : "Close job"}
+        cancelLabel="Cancel"
+        variant={job.status === "closed" ? "primary" : "warning"}
+        isLoading={confirmBusy}
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={toggleStatus}
+      />
+      <ConfirmationModal
+        isOpen={confirmStep === "delete-1"}
+        title="Delete job"
+        message={`Delete ${job.jobId} (${job.title})? Linked transactions are kept.`}
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={() => setConfirmStep("delete-2")}
+      />
+      <ConfirmationModal
+        isOpen={confirmStep === "delete-2"}
+        title="Final confirmation"
+        message={`This will delete ${job.jobId}.${
+          (job.totals?.transactionCount ?? 0) > 0
+            ? ` Its ${job.totals.transactionCount} linked transaction${job.totals.transactionCount === 1 ? "" : "s"} will keep the job ID, but it will no longer open a job page.`
+            : ""
+        } Are you sure?`}
+        confirmLabel="Yes, delete job"
+        cancelLabel="Go back"
+        variant="danger"
+        isLoading={confirmBusy}
+        onCancel={() => setConfirmStep(null)}
+        onConfirm={handleDelete}
+      />
+
       <section
         className={`overflow-hidden rounded-3xl border bg-white shadow-sm dark:bg-slate-900 ${
           isClosed ? "border-slate-200 dark:border-slate-700" : "border-cyan-200 dark:border-cyan-900/50"
@@ -324,7 +361,7 @@ export default function JobDetailPage() {
                   {canUpdate && (
                     <button
                       type="button"
-                      onClick={toggleStatus}
+                      onClick={() => setConfirmStep("status")}
                       className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                         isClosed
                           ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
@@ -343,7 +380,7 @@ export default function JobDetailPage() {
                     </button>
                   )}
                   {canDelete && (
-                    <button type="button" onClick={handleDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                    <button type="button" onClick={() => setConfirmStep("delete-1")} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                       <FiTrash2 /> Delete
                     </button>
                   )}
