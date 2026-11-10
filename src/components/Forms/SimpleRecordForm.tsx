@@ -32,11 +32,11 @@ import {
   FiX,
   FiTrendingDown,
   FiPlus,
+  FiBriefcase,
 } from "react-icons/fi";
 import { debounce } from "lodash";
 import { useQuery } from "@tanstack/react-query";
 import NewJobModal from "@/components/Modals/NewJobModal";
-import EntityAvatar from "@/components/common/EntityAvatar";
 
 type RecordType = "income" | "expense";
 type RecordKind =
@@ -1524,6 +1524,137 @@ const theme = usesNeutralTheme
                     </div>
                   ) : null}
 
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                    Job ID <span className="font-normal normal-case text-slate-400">(optional)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setNewJobOpen(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 hover:text-cyan-700"
+                  >
+                    <FiPlus className="h-3.5 w-3.5" /> New job
+                  </button>
+                </div>
+                {selectedJob && selectedJob.jobId === formData.jobId ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300">
+                      <FiBriefcase className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedJob.jobId}
+                        {selectedJob.title && (
+                          <span className="ml-2 font-normal text-slate-500">{selectedJob.title}</span>
+                        )}
+                      </p>
+                      {selectedJob.client && (
+                        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                          {selectedJob.client.name} · {selectedJob.client.type}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedJob(null);
+                        setFormData((prev) => ({ ...prev, jobId: "" }));
+                      }}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
+                      aria-label="Remove selected job"
+                      title="Remove selected job"
+                    >
+                      <FiX className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                <div className="relative">
+                  <input
+                    name="jobId"
+                    value={formData.jobId || ""}
+                    onChange={handleChange}
+                    onFocus={() => setJobPickerOpen(true)}
+                    onBlur={() => setTimeout(() => setJobPickerOpen(false), 150)}
+                    autoComplete="off"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    placeholder="Search or enter job ID"
+                  />
+                  {jobPickerOpen && (jobSuggestions?.jobs?.length ?? 0) > 0 && (
+                    <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-900">
+                      {jobSuggestions.jobs.map(
+                        (job: {
+                          id: string;
+                          jobId: string;
+                          title: string;
+                          client?: { id?: string; name: string; type: string; color?: string; companyId?: string } | null;
+                        }) => (
+                          <li key={job.id}>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, jobId: job.jobId }));
+                                setSelectedJob({
+                                  jobId: job.jobId,
+                                  title: job.title,
+                                  client: job.client || null,
+                                });
+                                if (!selectedEntity && job.client?.id && needsEntity) {
+                                  const clientEntity: EntityOption = {
+                                    _id: job.client.id,
+                                    name: job.client.name,
+                                    color: job.client.color,
+                                    entityType: job.client.type as EntityOption["entityType"],
+                                  };
+                                  setSelectedEntity(clientEntity);
+                                  setEntitySearch(clientEntity.name);
+                                  setShowEntityDropdown(false);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    jobId: job.jobId,
+                                    entity: clientEntity._id,
+                                  }));
+                                }
+                                setJobPickerOpen(false);
+                              }}
+                              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300">
+                                <FiBriefcase className="h-4 w-4" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block font-semibold text-slate-900 dark:text-slate-100">
+                                  {job.jobId}
+                                  <span className="ml-2 font-normal text-slate-500">{job.title}</span>
+                                </span>
+                                {job.client && (
+                                  <span className="block truncate text-xs text-slate-500">
+                                    {job.client.name}
+                                    <span className="ml-1 uppercase tracking-wider text-[10px]">
+                                      · {job.client.type}
+                                    </span>
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  )}
+                </div>
+                )}
+                {jobClientMismatch && selectedJob?.client && selectedEntity && (
+                  <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
+                    <FiAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                      This job belongs to <b>{selectedJob.client.name}</b>, but the selected entity is{" "}
+                      <b>{selectedEntity.name}</b>. Make sure this record should be linked to this job.
+                    </p>
+                  </div>
+                )}
+              </div>
                   {needsParticular && (
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
@@ -1913,145 +2044,6 @@ const theme = usesNeutralTheme
             )}
 
             <div>
-              <div className="mt-3">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                    Job ID <span className="font-normal normal-case text-slate-400">(optional)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setNewJobOpen(true)}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-cyan-600 hover:text-cyan-700"
-                  >
-                    <FiPlus className="h-3.5 w-3.5" /> New job
-                  </button>
-                </div>
-                {selectedJob && selectedJob.jobId === formData.jobId ? (
-                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
-                    {selectedJob.client && (
-                      <EntityAvatar
-                        name={selectedJob.client.name}
-                        color={selectedJob.client.color}
-                        size="sm"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {selectedJob.jobId}
-                        {selectedJob.title && (
-                          <span className="ml-2 font-normal text-slate-500">{selectedJob.title}</span>
-                        )}
-                      </p>
-                      {selectedJob.client && (
-                        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                          {selectedJob.client.name} · {selectedJob.client.type}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedJob(null);
-                        setFormData((prev) => ({ ...prev, jobId: "" }));
-                      }}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
-                      aria-label="Remove selected job"
-                      title="Remove selected job"
-                    >
-                      <FiX className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                <div className="relative">
-                  <input
-                    name="jobId"
-                    value={formData.jobId || ""}
-                    onChange={handleChange}
-                    onFocus={() => setJobPickerOpen(true)}
-                    onBlur={() => setTimeout(() => setJobPickerOpen(false), 150)}
-                    autoComplete="off"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                    placeholder="Search or enter job ID"
-                  />
-                  {jobPickerOpen && (jobSuggestions?.jobs?.length ?? 0) > 0 && (
-                    <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-900">
-                      {jobSuggestions.jobs.map(
-                        (job: {
-                          id: string;
-                          jobId: string;
-                          title: string;
-                          client?: { id?: string; name: string; type: string; color?: string; companyId?: string } | null;
-                        }) => (
-                          <li key={job.id}>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => {
-                                setFormData((prev) => ({ ...prev, jobId: job.jobId }));
-                                setSelectedJob({
-                                  jobId: job.jobId,
-                                  title: job.title,
-                                  client: job.client || null,
-                                });
-                                if (!selectedEntity && job.client?.id && needsEntity) {
-                                  const clientEntity: EntityOption = {
-                                    _id: job.client.id,
-                                    name: job.client.name,
-                                    color: job.client.color,
-                                    entityType: job.client.type as EntityOption["entityType"],
-                                  };
-                                  setSelectedEntity(clientEntity);
-                                  setEntitySearch(clientEntity.name);
-                                  setShowEntityDropdown(false);
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    jobId: job.jobId,
-                                    entity: clientEntity._id,
-                                  }));
-                                }
-                                setJobPickerOpen(false);
-                              }}
-                              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                              {job.client && (
-                                <EntityAvatar
-                                  name={job.client.name}
-                                  color={job.client.color}
-                                  size="sm"
-                                />
-                              )}
-                              <span className="min-w-0">
-                                <span className="block font-semibold text-slate-900 dark:text-slate-100">
-                                  {job.jobId}
-                                  <span className="ml-2 font-normal text-slate-500">{job.title}</span>
-                                </span>
-                                {job.client && (
-                                  <span className="block truncate text-xs text-slate-500">
-                                    {job.client.name}
-                                    <span className="ml-1 uppercase tracking-wider text-[10px]">
-                                      · {job.client.type}
-                                    </span>
-                                  </span>
-                                )}
-                              </span>
-                            </button>
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  )}
-                </div>
-                )}
-                {jobClientMismatch && selectedJob?.client && selectedEntity && (
-                  <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-200">
-                    <FiAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p>
-                      This job belongs to <b>{selectedJob.client.name}</b>, but the selected entity is{" "}
-                      <b>{selectedEntity.name}</b>. Make sure this record should be linked to this job.
-                    </p>
-                  </div>
-                )}
-              </div>
               <div className="mt-3">
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
                   Notes

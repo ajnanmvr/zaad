@@ -170,6 +170,18 @@ export default function ReceiptPage() {
           </div>
         </div>
 
+        <div className="mt-6 grid w-full grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <div>
+            <p className="text-[11px] font-semibold tracking-widest text-[var(--accent)]">{variant.partyLabel}</p>
+            <p className="text-base font-bold">{partyName}</p>
+            {partySub && <p className="text-xs">{partySub}</p>}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold tracking-widest text-[var(--accent)]">{variant.methodLabel}</p>
+            <p className="text-base font-bold">{record.method || "-"}</p>
+          </div>
+        </div>
+
         <div className="relative mt-6 flex w-full items-center justify-between overflow-hidden rounded-2xl border-2 border-[var(--accent)] bg-[var(--accent-soft)] px-6 py-5">
           <div>
             <p className="text-xs font-semibold tracking-widest">{variant.amountLabel}</p>
@@ -185,16 +197,7 @@ export default function ReceiptPage() {
         </div>
 
         <div className="mt-6 grid w-full grid-cols-2 gap-x-8 gap-y-4 text-sm">
-          <div>
-            <p className="text-[11px] font-semibold tracking-widest text-[var(--accent)]">{variant.partyLabel}</p>
-            <p className="text-base font-bold">{partyName}</p>
-            {partySub && <p className="text-xs">{partySub}</p>}
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold tracking-widest text-[var(--accent)]">{variant.methodLabel}</p>
-            <p className="text-base font-bold">{record.method || "-"}</p>
-          </div>
-          <div className="col-span-2 border-t pt-3">
+          <div className="col-span-2">
             <p className="text-[11px] font-semibold tracking-widest text-[var(--accent)]">{variant.forLabel}</p>
             <p className="text-base font-bold">{record.particular || "-"}</p>
             {record.remarks && <p className="mt-1 text-xs normal-case">{record.remarks}</p>}
